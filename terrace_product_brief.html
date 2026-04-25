@@ -1,0 +1,204 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { padding: 1.5rem 0; }
+  .hero { text-align: center; margin-bottom: 2rem; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--color-background-success); color: var(--color-text-success); margin-bottom: 10px; letter-spacing: .04em; }
+  .name { font-size: 32px; font-weight: 500; color: var(--color-text-primary); line-height: 1.1; }
+  .tagline { font-size: 14px; color: var(--color-text-secondary); margin-top: 6px; }
+
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: .06em; color: var(--color-text-tertiary); text-transform: uppercase; margin: 2rem 0 .75rem; }
+
+  .layer { border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 1rem; }
+  .layer-header { padding: .75rem 1rem; display: flex; align-items: center; gap: 10px; }
+  .layer-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .layer-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .layer-sub { font-size: 12px; color: var(--color-text-secondary); margin-left: auto; }
+  .layer-body { border-top: 0.5px solid var(--color-border-tertiary); padding: .75rem 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .feat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: .6rem .75rem; }
+  .feat-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+  .feat-desc { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; line-height: 1.4; }
+
+  .l1 .layer-dot { background: #1D9E75; }
+  .l1 .layer-header { background: #E1F5EE; }
+  .l2 .layer-dot { background: #378ADD; }
+  .l2 .layer-header { background: #E6F1FB; }
+  .l3 .layer-dot { background: #7F77DD; }
+  .l3 .layer-header { background: #EEEDFE; }
+  .l4 .layer-dot { background: #EF9F27; }
+  .l4 .layer-header { background: #FAEEDA; }
+
+  @media (prefers-color-scheme: dark) {
+    .l1 .layer-header { background: #04342C; }
+    .l2 .layer-header { background: #042C53; }
+    .l3 .layer-header { background: #26215C; }
+    .l4 .layer-header { background: #412402; }
+  }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .pill { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); color: var(--color-text-secondary); background: var(--color-background-secondary); }
+
+  .salient-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .salient-card { border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 1rem; background: var(--color-background-primary); }
+  .salient-icon { font-size: 18px; margin-bottom: 6px; }
+  .salient-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
+  .salient-text { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; }
+
+  .stack-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .stack-box { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: .75rem 1rem; background: var(--color-background-secondary); }
+  .stack-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  .stack-text { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; }
+
+  .niche-row { display: flex; align-items: center; gap: 10px; padding: .75rem 1rem; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); margin-bottom: .5rem; }
+  .niche-label { font-size: 12px; font-weight: 500; color: var(--color-text-primary); min-width: 120px; }
+  .niche-bar-wrap { flex: 1; height: 4px; border-radius: 2px; background: var(--color-border-tertiary); }
+  .niche-bar { height: 4px; border-radius: 2px; }
+  .niche-note { font-size: 11px; color: var(--color-text-secondary); min-width: 70px; text-align: right; }
+</style>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="badge">Product brief</div>
+    <div class="name">Terrace</div>
+    <div class="tagline">Where fans back their teams with real conviction — not just a watch party</div>
+  </div>
+
+  <p class="section-label">Salient features</p>
+  <div class="salient-grid">
+    <div class="salient-card">
+      <div class="salient-icon">⚡</div>
+      <div class="salient-title">Permissionless markets</div>
+      <div class="salient-text">Any fan can spin up a market — match outcome, player perf, group chat take. No gatekeepers.</div>
+    </div>
+    <div class="salient-card">
+      <div class="salient-icon">🏆</div>
+      <div class="salient-title">Parlays</div>
+      <div class="salient-text">Chain multiple markets into single conviction plays. Your multi carries your badge.</div>
+    </div>
+    <div class="salient-card">
+      <div class="salient-icon">⚔️</div>
+      <div class="salient-title">Matchups</div>
+      <div class="salient-text">Head-to-head fan duels. Settle group chat debates with real stakes on a single market.</div>
+    </div>
+    <div class="salient-card">
+      <div class="salient-icon">🏟️</div>
+      <div class="salient-title">Flash contests</div>
+      <div class="salient-text">Short, live, high-urgency markets during matches. Half-time calls, next-goal scorer.</div>
+    </div>
+    <div class="salient-card">
+      <div class="salient-icon">📊</div>
+      <div class="salient-title">Leverage</div>
+      <div class="salient-text">Amplify conviction on markets you're sure of. Borrowed exposure, not borrowed bets.</div>
+    </div>
+    <div class="salient-card">
+      <div class="salient-icon">🛠️</div>
+      <div class="salient-title">Frontend tooling</div>
+      <div class="salient-text">Embed Kalshi & Polymarket liquidity. Creators earn from their own market activity.</div>
+    </div>
+  </div>
+
+  <p class="section-label">Product layers</p>
+
+  <div class="layer l1">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <div class="layer-title">Layer 1 — The one-stop sports prediction app</div>
+      <div class="layer-sub">Foundation / PMF</div>
+    </div>
+    <div class="layer-body">
+      <div class="feat"><div class="feat-name">Sports pools</div><div class="feat-desc">Weekly pools with squad picks, auto-settle on-chain</div></div>
+      <div class="feat"><div class="feat-name">Parlays</div><div class="feat-desc">Multi-market chains, bonding curve price discovery</div></div>
+      <div class="feat"><div class="feat-name">Permissionless markets</div><div class="feat-desc">Spin up any market, private or public, in seconds</div></div>
+      <div class="feat"><div class="feat-name">Social feed</div><div class="feat-desc">Live match feed + friend activity + market moves</div></div>
+      <div class="feat"><div class="feat-name">Group chats + tools</div><div class="feat-desc">TG bot / X thread market drops, Arcium privacy rails</div></div>
+      <div class="feat"><div class="feat-name">Kalshi + Polymarket</div><div class="feat-desc">Integrated liquidity via Solana, earn builder fees</div></div>
+    </div>
+  </div>
+
+  <div class="layer l2">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <div class="layer-title">Layer 2 — Sports-specific intelligence</div>
+      <div class="layer-sub">Retention / moat</div>
+    </div>
+    <div class="layer-body">
+      <div class="feat"><div class="feat-name">Follow sharps</div><div class="feat-desc">Track real fan predictors by win rate, not bots/MMs</div></div>
+      <div class="feat"><div class="feat-name">Reputation graph</div><div class="feat-desc">Your record, streaks, and badge displayed on profile</div></div>
+      <div class="feat"><div class="feat-name">Fantasy overlay</div><div class="feat-desc">FPL-style squad picks scored on real player stats</div></div>
+      <div class="feat"><div class="feat-name">Leagues</div><div class="feat-desc">Friends create mini-leagues, compete for max points</div></div>
+      <div class="feat"><div class="feat-name">Matchups</div><div class="feat-desc">1v1 group-chat challenges with real stakes</div></div>
+      <div class="feat"><div class="feat-name">Flash contests</div><div class="feat-desc">In-match micro-markets: next goal, next card, MOTM</div></div>
+    </div>
+  </div>
+
+  <div class="layer l3">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <div class="layer-title">Layer 3 — Economic + social layer</div>
+      <div class="layer-sub">Monetisation</div>
+    </div>
+    <div class="layer-body">
+      <div class="feat"><div class="feat-name">Creator earnings</div><div class="feat-desc">Market creators earn a % of all volume on their markets</div></div>
+      <div class="feat"><div class="feat-name">Stablecoin payments</div><div class="feat-desc">USDC-native. Fiat on-ramp via MoonPay / Stripe</div></div>
+      <div class="feat"><div class="feat-name">Arcium privacy</div><div class="feat-desc">MPC-backed private markets locked to friend groups</div></div>
+      <div class="feat"><div class="feat-name">Leverage layer</div><div class="feat-desc">Borrow against conviction — optional, opt-in risk</div></div>
+      <div class="feat"><div class="feat-name">Bonding curve AMM</div><div class="feat-desc">Early movers rewarded — price reflects crowd conviction</div></div>
+      <div class="feat"><div class="feat-name">AI oracle</div><div class="feat-desc">Agent-driven market resolution for subjective outcomes</div></div>
+    </div>
+  </div>
+
+  <div class="layer l4">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <div class="layer-title">Layer 4 — Upstream / downstream</div>
+      <div class="layer-sub">Long-term</div>
+    </div>
+    <div class="layer-body">
+      <div class="feat"><div class="feat-name">AI fan agents</div><div class="feat-desc">Autonomous agents that trade markets on your behalf</div></div>
+      <div class="feat"><div class="feat-name">API + B2B</div><div class="feat-desc">Brand sentiment markets, club analytics feeds</div></div>
+      <div class="feat"><div class="feat-name">Expand to iOS/Android</div><div class="feat-desc">From Solana Mobile native → general mobile + web</div></div>
+      <div class="feat"><div class="feat-name">Multi-sport</div><div class="feat-desc">Cricket, basketball, F1 — Football first, then scale</div></div>
+    </div>
+  </div>
+
+  <p class="section-label">Go-to-market — niche first</p>
+  <div class="niche-row">
+    <div class="niche-label">Premier League</div>
+    <div class="niche-bar-wrap"><div class="niche-bar" style="width:90%;background:#1D9E75"></div></div>
+    <div class="niche-note">Start here</div>
+  </div>
+  <div class="niche-row">
+    <div class="niche-label">Champions League</div>
+    <div class="niche-bar-wrap"><div class="niche-bar" style="width:70%;background:#378ADD"></div></div>
+    <div class="niche-note">Phase 2</div>
+  </div>
+  <div class="niche-row">
+    <div class="niche-label">La Liga / Serie A</div>
+    <div class="niche-bar-wrap"><div class="niche-bar" style="width:55%;background:#7F77DD"></div></div>
+    <div class="niche-note">Phase 3</div>
+  </div>
+  <div class="niche-row">
+    <div class="niche-label">Cricket / F1 / NBA</div>
+    <div class="niche-bar-wrap"><div class="niche-bar" style="width:35%;background:#EF9F27"></div></div>
+    <div class="niche-note">Scale</div>
+  </div>
+
+  <p class="section-label">Tech stack</p>
+  <div class="stack-row">
+    <div class="stack-box"><div class="stack-title">Mobile (Solana-native first)</div><div class="stack-text">Solana Mobile Stack · React Native · Seed Vault wallet · dApp Store distribution</div></div>
+    <div class="stack-box"><div class="stack-title">Prediction infrastructure</div><div class="stack-text">Kalshi Builder Codes · Polymarket SDK · Hxro parimutuel · custom bonding curve program</div></div>
+    <div class="stack-box"><div class="stack-title">Privacy + settlement</div><div class="stack-text">Arcium MPC for private group markets · USDC stablecoin · on-chain auto-settlement</div></div>
+    <div class="stack-box"><div class="stack-title">Distribution bots</div><div class="stack-text">Telegram bot · X/Twitter thread bot · deep link to in-app market on tap</div></div>
+  </div>
+
+  <p class="section-label">Identity pillars</p>
+  <div class="pill-row">
+    <div class="pill">Your calls · your win rate · your rep</div>
+    <div class="pill">Not for traders — for fans</div>
+    <div class="pill">Social signaling, real stakes</div>
+    <div class="pill">Crypto is the rail, not the product</div>
+    <div class="pill">Group chat-native</div>
+    <div class="pill">FPL meets Polymarket</div>
+  </div>
+</div>

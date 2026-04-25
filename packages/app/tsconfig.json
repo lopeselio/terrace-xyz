@@ -1,0 +1,9 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@terrace/sdk": ["../sdk/src/index.ts"]
+    }
+  }
+}

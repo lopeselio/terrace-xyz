@@ -1,0 +1,34 @@
+node_modules/
+.turbo/
+dist/
+build/
+.next/
+
+# Anchor / Rust
+target/
+**/*.rs.bk
+.anchor/
+test-ledger/
+
+# Solana keypairs — never commit
+*.json
+!package.json
+!tsconfig*.json
+!turbo.json
+
+# Environment
+.env
+.env.local
+.env.devnet
+
+# React Native
+.expo/
+packages/app/android/
+packages/app/ios/
+packages/app/.gradle/
+*.jks
+*.keystore
+
+# Misc
+.DS_Store
+*.log
