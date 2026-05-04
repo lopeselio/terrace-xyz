@@ -1,133 +1,245 @@
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Pressable,
+  SafeAreaView,
   StatusBar,
 } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { useWallet } from "./hooks/useWallet";
-import { MarketListScreen } from "./screens/MarketListScreen";
+import { HomeScreen } from "./screens/HomeScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 
+// ---------------------------------------------------------------------------
+// Bottom navigation
+// ---------------------------------------------------------------------------
+type Tab = "Home" | "Markets" | "Create" | "Social" | "Profile";
+
+const TABS: { id: Tab; icon: string; label: string }[] = [
+  { id: "Home",    icon: "🏠", label: "Home"    },
+  { id: "Markets", icon: "📋", label: "Markets" },
+  { id: "Create",  icon: "＋", label: "Create"  },
+  { id: "Social",  icon: "✈️", label: "Social"  },
+  { id: "Profile", icon: "👤", label: "Profile" },
+];
+
+// ---------------------------------------------------------------------------
+// Stub screens for non-Home tabs
+// ---------------------------------------------------------------------------
+function StubScreen({ label, emoji }: { label: string; emoji: string }) {
+  return (
+    <View style={stub.root}>
+      <Text style={stub.emoji}>{emoji}</Text>
+      <Text style={stub.label}>{label}</Text>
+      <Text style={stub.sub}>Coming soon</Text>
+    </View>
+  );
+}
+
+const stub = StyleSheet.create({
+  root:  { flex: 1, backgroundColor: "#0a0a0a", alignItems: "center", justifyContent: "center", gap: 10 },
+  emoji: { fontSize: 40 },
+  label: { fontSize: 20, fontWeight: "600", color: "#fff" },
+  sub:   { fontSize: 14, color: "#6b7280" },
+});
+
+// ---------------------------------------------------------------------------
+// Connect wallet overlay — shown on first open if not connected
+// ---------------------------------------------------------------------------
+interface ConnectSheetProps {
+  onConnectMWA: () => void;
+  onConnectPrivy: (method: "email" | "google") => void;
+  connecting: boolean;
+}
+
+function ConnectSheet({ onConnectMWA, onConnectPrivy, connecting }: ConnectSheetProps) {
+  return (
+    <View style={sheet.root}>
+      <View style={sheet.handle} />
+      <Text style={sheet.title}>Back your team.</Text>
+      <Text style={sheet.sub}>Bet your take. Build your rep.</Text>
+
+      {/* Primary: Solana wallet (MWA) */}
+      <TouchableOpacity style={sheet.btn} onPress={onConnectMWA} disabled={connecting}>
+        <Text style={sheet.btnText}>{connecting ? "Connecting…" : "Connect Solana wallet"}</Text>
+      </TouchableOpacity>
+
+      {/* Divider */}
+      <View style={sheet.dividerRow}>
+        <View style={sheet.dividerLine} />
+        <Text style={sheet.dividerText}>or continue with</Text>
+        <View style={sheet.dividerLine} />
+      </View>
+
+      {/* Social login track (Privy) */}
+      <View style={sheet.socialRow}>
+        <TouchableOpacity
+          style={sheet.socialBtn}
+          onPress={() => onConnectPrivy("email")}
+          disabled={connecting}
+        >
+          <Text style={sheet.socialBtnText}>✉  Email</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={sheet.socialBtn}
+          onPress={() => onConnectPrivy("google")}
+          disabled={connecting}
+        >
+          <Text style={sheet.socialBtnText}>G  Google</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={sheet.note}>Powered by Solana · USDC settlement</Text>
+    </View>
+  );
+}
+
+const sheet = StyleSheet.create({
+  root:    { backgroundColor: "#111", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 40, gap: 10 },
+  handle:  { width: 36, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
+  title:   { fontSize: 24, fontWeight: "700", color: "#fff", letterSpacing: -0.5 },
+  sub:     { fontSize: 15, color: "#9ca3af", marginBottom: 8 },
+  btn:     { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  btnText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
+  dividerLine: { flex: 1, height: 0.5, backgroundColor: "#2a2a2a" },
+  dividerText: { fontSize: 11, color: "#555" },
+  socialRow: { flexDirection: "row", gap: 10 },
+  socialBtn: { flex: 1, backgroundColor: "#1a1a1a", borderRadius: 12, paddingVertical: 13, alignItems: "center", borderWidth: 0.5, borderColor: "#333" },
+  socialBtnText: { fontSize: 13, fontWeight: "600", color: "#d1d5db" },
+  note:    { fontSize: 11, color: "#4b5563", textAlign: "center", marginTop: 4 },
+});
+
+// ---------------------------------------------------------------------------
+// App root
+// ---------------------------------------------------------------------------
 export default function App() {
-  const { publicKey, connected, connecting, connect, disconnect } = useWallet();
-  const [markets] = useState([]);
+  const { publicKey, connected, connecting, connectMWA, connectPrivy } = useWallet();
+  const [activeTab, setActiveTab] = useState<Tab>("Home");
+  const [showConnect, setShowConnect] = useState(false);
 
-  const shortKey = publicKey
-    ? `${publicKey.slice(0, 4)}…${publicKey.slice(-4)}`
-    : null;
+  // Tapping "Create" or "Profile" when not connected triggers the wallet sheet
+  const handleTabPress = (tab: Tab) => {
+    if (!connected && (tab === "Create" || tab === "Profile")) {
+      setShowConnect(true);
+      return;
+    }
+    setShowConnect(false);
+    setActiveTab(tab);
+  };
+
+  const handleConnectMWA = async () => {
+    await connectMWA();
+    setShowConnect(false);
+    setActiveTab("Home");
+  };
+
+  const handleConnectPrivy = async (method: "email" | "google") => {
+    await connectPrivy(method);
+    setShowConnect(false);
+    setActiveTab("Home");
+  };
+
+  // ------ Render active tab content ------
+  const renderContent = () => {
+    if (showConnect) return null; // sheet overlays below
+
+    switch (activeTab) {
+      case "Home":
+        return (
+          <HomeScreen
+            walletPubkey={publicKey}
+            winRate={null}
+            onSelectMarket={(id) => console.log("open market:", id)}
+          />
+        );
+      case "Markets":
+        return <StubScreen label="All Markets" emoji="📋" />;
+      case "Social":
+        return <StubScreen label="Social Feed" emoji="✈️" />;
+      case "Profile":
+        return (
+          <ProfileScreen
+            walletPubkey={publicKey}
+            onConnectWallet={() => setShowConnect(true)}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.root}>
       <ExpoStatusBar style="light" />
 
-      <View style={styles.header}>
-        <Text style={styles.logo}>Terrace</Text>
-
-        {connected ? (
-          <TouchableOpacity style={styles.walletBtn} onPress={disconnect}>
-            <Text style={styles.walletBtnText}>{shortKey}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.walletBtn, styles.connectBtn]}
-            onPress={connect}
-            disabled={connecting}
-          >
-            <Text style={styles.walletBtnText}>
-              {connecting ? "Connecting…" : "Connect"}
-            </Text>
-          </TouchableOpacity>
-        )}
+      {/* Main content area */}
+      <View style={styles.content}>
+        {renderContent()}
       </View>
 
-      {!connected ? (
-        <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Football prediction markets</Text>
-          <Text style={styles.heroSub}>
-            Bet on match outcomes with USDC on Solana.
-          </Text>
-          <TouchableOpacity style={styles.ctaBtn} onPress={connect}>
-            <Text style={styles.ctaBtnText}>Get started</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <MarketListScreen
-          markets={markets}
-          loading={false}
-          onSelectMarket={(addr) => console.log("selected market:", addr)}
+      {/* Connect sheet (partial bottom overlay) */}
+      {showConnect && !connected && (
+        <ConnectSheet
+          onConnectMWA={handleConnectMWA}
+          onConnectPrivy={handleConnectPrivy}
+          connecting={connecting}
         />
       )}
+
+      {/* ── Bottom navigation ────────────────────────────── */}
+      <View style={styles.bottomNav}>
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id && !showConnect;
+          const isCreate = tab.id === "Create";
+          return (
+            <Pressable key={tab.id} style={styles.navBtn} onPress={() => handleTabPress(tab.id)}>
+              <View
+                style={[
+                  styles.navIconCircle,
+                  isCreate  && styles.navIconCreate,
+                  isActive  && !isCreate && styles.navIconActive,
+                ]}
+              >
+                <Text style={isCreate ? styles.navIconTextCreate : styles.navIconText}>
+                  {tab.icon}
+                </Text>
+              </View>
+              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#111827",
-  },
-  header: {
+  root:    { flex: 1, backgroundColor: "#0a0a0a", paddingTop: StatusBar.currentHeight ?? 0 },
+  content: { flex: 1 },
+
+  // Bottom nav
+  bottomNav: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1f2937",
+    justifyContent: "space-around",
+    backgroundColor: "#111",
+    borderTopWidth: 0.5,
+    borderTopColor: "#1e1e1e",
+    paddingTop: 10,
+    paddingBottom: 20,
   },
-  logo: {
-    color: "#22c55e",
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  walletBtn: {
-    backgroundColor: "#1f2937",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  connectBtn: {
-    backgroundColor: "#22c55e",
-  },
-  walletBtnText: {
-    color: "#f9fafb",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  hero: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 12,
-  },
-  heroTitle: {
-    color: "#f9fafb",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.5,
-  },
-  heroSub: {
-    color: "#9ca3af",
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  ctaBtn: {
-    marginTop: 16,
-    backgroundColor: "#22c55e",
-    borderRadius: 14,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-  },
-  ctaBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  navBtn:            { alignItems: "center", gap: 3 },
+  navIconCircle:     { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  navIconActive:     { backgroundColor: "#22c55e" },
+  navIconCreate:     { backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#333" },
+  navIconText:       { fontSize: 16 },
+  navIconTextCreate: { fontSize: 18, color: "#fff", fontWeight: "300" },
+  navLabel:          { fontSize: 9, color: "#555" },
+  navLabelActive:    { color: "#22c55e" },
 });
