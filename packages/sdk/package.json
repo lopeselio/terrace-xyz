@@ -10,12 +10,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.30.0",
     "@solana/kit": "^2.0.0",
-    "@coral-xyz/anchor": "^0.30.0"
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }
