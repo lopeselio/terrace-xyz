@@ -12,6 +12,7 @@ import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { useWallet } from "./hooks/useWallet";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { SocialScreen } from "./screens/SocialScreen";
 
 // ---------------------------------------------------------------------------
 // Bottom navigation
@@ -159,7 +160,7 @@ export default function App() {
       case "Markets":
         return <StubScreen label="All Markets" emoji="📋" />;
       case "Social":
-        return <StubScreen label="Social Feed" emoji="✈️" />;
+        return <SocialScreen walletPubkey={publicKey} />;
       case "Profile":
         return (
           <ProfileScreen

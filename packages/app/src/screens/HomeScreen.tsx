@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useMarkets } from "../hooks/useMarkets";
 import { usePlaceBet } from "../hooks/usePlaceBet";
+import { useLeaderboard, avatarColorFromPubkey, type SharpEntry } from "../hooks/useLeaderboard";
 import { groupMarkets } from "../utils/groupMarkets";
 import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
@@ -157,12 +158,108 @@ function LeaguesTab() {
   );
 }
 
-function SharpsTab() {
+const BADGE_EMOJI: Record<SharpEntry["badge"], string> = {
+  Legend: "👑",
+  Sharp:  "⚡",
+  Casual: "🎯",
+};
+
+const PERIOD_LABELS = [
+  { key: "weekly"  as const, label: "This week" },
+  { key: "daily"   as const, label: "Today"     },
+  { key: "alltime" as const, label: "All time"  },
+];
+
+interface SharpRowProps {
+  entry: SharpEntry;
+  walletPubkey: string | null;
+  onFollow: () => void;
+}
+
+function SharpRow({ entry, walletPubkey, onFollow }: SharpRowProps) {
+  const avatarBg = avatarColorFromPubkey(entry.pubkey);
+  const pnlSign = (entry.pnlUsdc ?? 0) >= 0;
   return (
-    <View style={styles.comingSoon}>
-      <Text style={styles.comingSoonEmoji}>⚡</Text>
-      <Text style={styles.comingSoonTitle}>Sharps leaderboard</Text>
-      <Text style={styles.comingSoonSub}>Follow the highest win-rate predictors — coming in Phase 3</Text>
+    <View style={styles.sharpRow}>
+      <Text style={styles.sharpRank}>#{entry.rank}</Text>
+
+      <View style={[styles.sharpAvatar, { backgroundColor: avatarBg }]}>
+        <Text style={styles.sharpAvatarText}>{entry.pubkey.slice(0, 1).toUpperCase()}</Text>
+      </View>
+
+      <View style={styles.sharpInfo}>
+        <View style={styles.sharpNameRow}>
+          <Text style={styles.sharpBadge}>{BADGE_EMOJI[entry.badge]}</Text>
+          <Text style={styles.sharpName}>{entry.displayName}</Text>
+        </View>
+        <View style={styles.sharpStats}>
+          {entry.winRate !== null && (
+            <Text style={styles.sharpWinRate}>{Math.round(entry.winRate * 100)}% W</Text>
+          )}
+          {entry.pnlUsdc !== null && (
+            <Text style={[styles.sharpPnl, pnlSign ? styles.pnlPos : styles.pnlNeg]}>
+              {pnlSign ? "+" : ""}${Math.abs(entry.pnlUsdc).toFixed(0)}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {walletPubkey && entry.pubkey !== walletPubkey && (
+        <TouchableOpacity
+          style={[styles.followBtn, entry.isFollowing && styles.followBtnActive]}
+          onPress={onFollow}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.followBtnText, entry.isFollowing && styles.followBtnTextActive]}>
+            {entry.isFollowing ? "Following" : "Follow"}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+interface SharpsTabProps { walletPubkey: string | null }
+
+function SharpsTab({ walletPubkey }: SharpsTabProps) {
+  const [period, setPeriod] = useState<"daily" | "weekly" | "alltime">("weekly");
+  const { entries, loading, error, toggleFollow } = useLeaderboard(period);
+
+  return (
+    <View>
+      {/* Period selector */}
+      <View style={styles.periodRow}>
+        {PERIOD_LABELS.map(({ key, label }) => (
+          <Pressable
+            key={key}
+            style={[styles.periodBtn, period === key && styles.periodBtnActive]}
+            onPress={() => setPeriod(key)}
+          >
+            <Text style={[styles.periodBtnText, period === key && styles.periodBtnTextActive]}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color="#22c55e" style={{ paddingVertical: 40 }} />
+      ) : error || entries.length === 0 ? (
+        <View style={styles.comingSoon}>
+          <Text style={styles.comingSoonEmoji}>⚡</Text>
+          <Text style={styles.comingSoonTitle}>No leaderboard data</Text>
+          <Text style={styles.comingSoonSub}>Check back after more markets settle</Text>
+        </View>
+      ) : (
+        entries.slice(0, 25).map((entry) => (
+          <SharpRow
+            key={entry.pubkey}
+            entry={entry}
+            walletPubkey={walletPubkey}
+            onFollow={() => toggleFollow(entry.pubkey, walletPubkey)}
+          />
+        ))
+      )}
     </View>
   );
 }
@@ -297,7 +394,7 @@ export function HomeScreen({ walletPubkey, winRate, onSelectMarket }: Props) {
           )
         )}
         {activeTab === "Leagues" && <LeaguesTab />}
-        {activeTab === "Sharps"  && <SharpsTab />}
+        {activeTab === "Sharps"  && <SharpsTab walletPubkey={walletPubkey} />}
 
         {/* Spacer so last row clears bottom nav */}
         <View style={{ height: 80 }} />
@@ -422,4 +519,37 @@ const styles = StyleSheet.create({
   // Bet sheet overlay
   betOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, top: 0, justifyContent: "flex-end" },
   betBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+
+  // Sharps leaderboard
+  periodRow: { flexDirection: "row", gap: 6, paddingHorizontal: 18, paddingBottom: 12 },
+  periodBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#1e1e1e" },
+  periodBtnActive: { backgroundColor: "#22c55e" },
+  periodBtnText: { fontSize: 11, fontWeight: "500", color: "#aaa" },
+  periodBtnTextActive: { color: "#000" },
+
+  sharpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#1a1a1a",
+  },
+  sharpRank:       { width: 24, fontSize: 11, color: "#555", fontWeight: "600", textAlign: "right" },
+  sharpAvatar:     { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  sharpAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  sharpInfo:       { flex: 1, minWidth: 0 },
+  sharpNameRow:    { flexDirection: "row", alignItems: "center", gap: 4 },
+  sharpBadge:      { fontSize: 12 },
+  sharpName:       { fontSize: 13, fontWeight: "600", color: "#fff" },
+  sharpStats:      { flexDirection: "row", gap: 8, marginTop: 2 },
+  sharpWinRate:    { fontSize: 10, color: "#22c55e", fontWeight: "600" },
+  sharpPnl:        { fontSize: 10, fontWeight: "600" },
+  pnlPos:          { color: "#4ade80" },
+  pnlNeg:          { color: "#f87171" },
+  followBtn:        { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: "#333" },
+  followBtnActive:  { backgroundColor: "#052e16", borderColor: "#22c55e" },
+  followBtnText:    { fontSize: 11, fontWeight: "600", color: "#aaa" },
+  followBtnTextActive: { color: "#22c55e" },
 });
