@@ -15,6 +15,8 @@ export interface Market {
   vault: Address;
   status: MarketStatus;
   creatorFeeBps: number;
+  /** Switchboard Function oracle pubkey. null = creator-only settlement. */
+  oracle: Address | null;
   nonce: bigint;
   bump: number;
 }
@@ -48,6 +50,13 @@ export interface CreateMarketParams {
   creatorFeeBps?: number;
   nonce: bigint;
   usdcMint: Address;
+  /** Switchboard Function pubkey allowed to call settle_market_oracle. null = creator-only. */
+  oracle?: Address | null;
+}
+
+export interface SettleMarketOracleParams {
+  market: Address;
+  winningOutcome: 0 | 1;
 }
 
 export interface PlaceBetParams {

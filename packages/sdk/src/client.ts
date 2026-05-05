@@ -19,6 +19,7 @@ import type {
   CreateMarketParams,
   PlaceBetParams,
   SettleMarketParams,
+  SettleMarketOracleParams,
   ClaimWinningsParams,
   RecordLossParams,
   CreateParlayParams,
@@ -37,6 +38,7 @@ import {
   buildCreateMarketInstruction,
   buildPlaceBetInstruction,
   buildSettleMarketInstruction,
+  buildSettleMarketOracleInstruction,
   buildClaimWinningsInstruction,
   buildRecordLossInstruction,
   buildCreateParlayInstruction,
@@ -121,6 +123,14 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
   const creatorFeeBps = view.getUint16(o, true);
   o += 2;
 
+  const hasOracle = view.getUint8(o) === 1;
+  o += 1;
+  let oracle: Address | null = null;
+  if (hasOracle) {
+    oracle = pubkeyBytesToAddress(data.slice(o, o + 32));
+    o += 32;
+  }
+
   const nonce = view.getBigUint64(o, true);
   o += 8;
 
@@ -138,6 +148,7 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
     vault,
     status,
     creatorFeeBps,
+    oracle,
     nonce,
     bump,
   };
@@ -251,6 +262,7 @@ export class TerraceSdk {
     const ix = await buildCreateMarketInstruction({
       ...params,
       creatorFeeBps: params.creatorFeeBps ?? 0,
+      oracle: params.oracle ?? null,
       marketAddress,
       creator: this.signer.address,
       programId: this.programId,
@@ -280,6 +292,18 @@ export class TerraceSdk {
     const ix = buildSettleMarketInstruction({
       ...params,
       creator: this.signer.address,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  /** Oracle-driven settlement — signer must be the oracle keypair stored in market.oracle. */
+  async settleMarketOracle(params: SettleMarketOracleParams): Promise<string> {
+    const ix = buildSettleMarketOracleInstruction({
+      market: params.market,
+      winningOutcome: params.winningOutcome,
+      oracle: this.signer.address,
       programId: this.programId,
     });
 

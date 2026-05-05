@@ -67,7 +67,7 @@ describe("terrace", () => {
 
   it("creates a market", async () => {
     const tx = await program.methods
-      .createMarket(question, new anchor.BN(expiry), 200, nonce) // 2% creator fee
+      .createMarket(question, new anchor.BN(expiry), 200, nonce, null) // 2% creator fee, no oracle
       .accounts({
         market,
         vault,
@@ -97,7 +97,7 @@ describe("terrace", () => {
 
     try {
       await program.methods
-        .createMarket(question, new anchor.BN(expiry), 501, badNonce2) // 5.01% — over limit
+        .createMarket(question, new anchor.BN(expiry), 501, badNonce2, null) // 5.01% — over limit
         .accounts({
           market: badMarket2,
           vault: badVault2,
@@ -122,7 +122,7 @@ describe("terrace", () => {
 
     try {
       await program.methods
-        .createMarket("Bad market", new anchor.BN(pastExpiry), 0, badNonce)
+        .createMarket("Bad market", new anchor.BN(pastExpiry), 0, badNonce, null)
         .accounts({
           market: badMarket,
           vault: badVault,
@@ -192,6 +192,94 @@ describe("terrace", () => {
     const m = await program.account.market.fetch(market);
     assert.equal(m.outcome, 1);
     assert.deepEqual(m.status, { settled: {} });
+  });
+
+  // ── settle_market_oracle ───────────────────────────────────────────────────
+
+  it("creates a market with an oracle and settles it via the oracle", async () => {
+    const oracleKeypair = anchor.web3.Keypair.generate();
+    const oracleNonce = new anchor.BN(50);
+    const [oracleMarket] = marketPda(program, creator.publicKey, oracleNonce);
+    const oracleVault = getAssociatedTokenAddressSync(USDC_MINT, oracleMarket, true);
+
+    await program.methods
+      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, oracleKeypair.publicKey)
+      .accounts({
+        market: oracleMarket,
+        vault: oracleVault,
+        usdcMint: USDC_MINT,
+        creator: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    const m = await program.account.market.fetch(oracleMarket);
+    assert.deepEqual(m.oracle, oracleKeypair.publicKey);
+
+    // Oracle keypair (simulating Switchboard Function) settles the market
+    const tx = await program.methods
+      .settleMarketOracle(1)
+      .accounts({
+        market: oracleMarket,
+        oracle: oracleKeypair.publicKey,
+      })
+      .signers([oracleKeypair])
+      .rpc();
+
+    console.log("settle_market_oracle tx:", tx);
+
+    const settled = await program.account.market.fetch(oracleMarket);
+    assert.equal(settled.outcome, 1);
+    assert.deepEqual(settled.status, { settled: {} });
+  });
+
+  it("rejects oracle settlement with wrong keypair", async () => {
+    const wrongOracle = anchor.web3.Keypair.generate();
+    const oracleNonce = new anchor.BN(51);
+    const [oracleMarket] = marketPda(program, creator.publicKey, oracleNonce);
+    const oracleVault = getAssociatedTokenAddressSync(USDC_MINT, oracleMarket, true);
+    const realOracle = anchor.web3.Keypair.generate();
+
+    await program.methods
+      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, realOracle.publicKey)
+      .accounts({
+        market: oracleMarket,
+        vault: oracleVault,
+        usdcMint: USDC_MINT,
+        creator: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    try {
+      await program.methods
+        .settleMarketOracle(1)
+        .accounts({ market: oracleMarket, oracle: wrongOracle.publicKey })
+        .signers([wrongOracle])
+        .rpc();
+      assert.fail("Expected Unauthorized error");
+    } catch (e: any) {
+      assert.include(e.message, "Unauthorized");
+    }
+  });
+
+  it("rejects oracle settlement on a market with no oracle configured", async () => {
+    // market (nonce=1) was created with oracle=null; any signer is rejected
+    const anyKey = anchor.web3.Keypair.generate();
+    try {
+      await program.methods
+        .settleMarketOracle(0)
+        .accounts({ market, oracle: anyKey.publicKey })
+        .signers([anyKey])
+        .rpc();
+      assert.fail("Expected OracleNotSet error");
+    } catch (e: any) {
+      assert.include(e.message, "OracleNotSet");
+    }
   });
 
   it("rejects settling an already-settled market", async () => {

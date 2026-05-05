@@ -19,12 +19,14 @@ pub mod terrace {
     /// Create a binary-outcome prediction market.
     /// nonce lets one creator own many markets: PDA = [b"market", creator, nonce_le].
     /// creator_fee_bps: cut of each winning payout sent to the creator (max 500 = 5%).
+    /// oracle: optional Switchboard Function pubkey authorized to call settle_market_oracle.
     pub fn create_market(
         ctx: Context<CreateMarket>,
         question: String,
         expiry: i64,
         creator_fee_bps: u16,
         nonce: u64,
+        oracle: Option<Pubkey>,
     ) -> Result<()> {
         require!(
             question.len() > 0 && question.len() <= MAX_QUESTION_LEN,
@@ -50,6 +52,7 @@ pub mod terrace {
         market.vault = ctx.accounts.vault.key();
         market.status = MarketStatus::Open;
         market.creator_fee_bps = creator_fee_bps;
+        market.oracle = oracle;
         market.nonce = nonce;
         market.bump = ctx.bumps.market;
 
@@ -137,7 +140,8 @@ pub mod terrace {
     }
 
     /// Settle the market by recording the winning outcome.
-    /// Only the market creator can settle.
+    /// Only the market creator can settle. If an oracle is configured,
+    /// prefer settle_market_oracle — this remains as a creator override.
     pub fn settle_market(
         ctx: Context<SettleMarket>,
         winning_outcome: u8,
@@ -146,6 +150,36 @@ pub mod terrace {
 
         let market = &mut ctx.accounts.market;
         require!(market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+
+        market.outcome = Some(winning_outcome);
+        market.status = MarketStatus::Settled;
+
+        emit!(MarketSettled {
+            market: market.key(),
+            winning_outcome,
+        });
+
+        Ok(())
+    }
+
+    /// Permissionless oracle settlement for sports markets.
+    /// The oracle signer must match the pubkey stored in market.oracle at creation.
+    /// In production this is called by a Switchboard Function TEE that queries a
+    /// football API, maps the match result to 0 (No) or 1 (Yes), and submits here.
+    pub fn settle_market_oracle(
+        ctx: Context<SettleMarketOracle>,
+        winning_outcome: u8,
+    ) -> Result<()> {
+        require!(winning_outcome <= 1, TerracError::InvalidOutcome);
+
+        let market = &mut ctx.accounts.market;
+        require!(market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+
+        let expected_oracle = market.oracle.ok_or(TerracError::OracleNotSet)?;
+        require!(
+            ctx.accounts.oracle.key() == expected_oracle,
+            TerracError::Unauthorized
+        );
 
         market.outcome = Some(winning_outcome);
         market.status = MarketStatus::Settled;
@@ -594,6 +628,19 @@ pub struct SettleMarket<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SettleMarketOracle<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, Market>,
+
+    /// Switchboard Function oracle keypair — key validated against market.oracle in the instruction.
+    pub oracle: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct ClaimWinnings<'info> {
     /// Market PDA — read-only; vault authority
     #[account(
@@ -793,6 +840,7 @@ pub struct Market {
     pub vault: Pubkey,             // 32
     pub status: MarketStatus,      // 1
     pub creator_fee_bps: u16,      // 2  — basis points taken on each winning claim
+    pub oracle: Option<Pubkey>,    // 1 + 32 — Switchboard Function pubkey (None = creator-only)
     pub nonce: u64,                // 8
     pub bump: u8,                  // 1
 }
@@ -809,9 +857,10 @@ impl Market {
         + 32                             // vault
         + 1                              // status
         + 2                              // creator_fee_bps
+        + 1 + 32                         // oracle Option<Pubkey>
         + 8                              // nonce
         + 1                              // bump
-        + 14;                            // padding
+        + 5;                             // padding
 }
 
 #[account]
@@ -1006,4 +1055,6 @@ pub enum TerracError {
     ParlayNotWon,
     #[msg("Provided market account does not match parlay leg")]
     MarketMismatch,
+    #[msg("Market has no oracle configured — use settle_market instead")]
+    OracleNotSet,
 }

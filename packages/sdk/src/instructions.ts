@@ -8,14 +8,15 @@ import {
 
 // Instruction discriminators: sha256("global:<ix_name>")[0..8]
 // Regenerate from IDL after `anchor build` if the program is redeployed.
-const IX_CREATE_MARKET   = Buffer.from([162, 93, 19, 147, 76, 203, 184, 147]);
-const IX_PLACE_BET       = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
-const IX_SETTLE_MARKET   = Buffer.from([130, 125, 241, 173, 147, 184, 200, 93]);
-const IX_CLAIM_WINNINGS  = Buffer.from([149, 95, 181, 242, 27, 205, 138, 50]);
-const IX_RECORD_LOSS     = Buffer.from([88, 12, 193, 242, 198, 165, 0, 195]);
-const IX_CREATE_PARLAY   = Buffer.from([127, 36, 125, 173, 162, 128, 246, 207]);
-const IX_SETTLE_PARLAY   = Buffer.from([51, 60, 177, 79, 214, 52, 6, 22]);
-const IX_CLAIM_PARLAY    = Buffer.from([47, 40, 30, 204, 201, 172, 97, 250]);
+const IX_CREATE_MARKET         = Buffer.from([162, 93, 19, 147, 76, 203, 184, 147]);
+const IX_PLACE_BET             = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
+const IX_SETTLE_MARKET         = Buffer.from([130, 125, 241, 173, 147, 184, 200, 93]);
+const IX_SETTLE_MARKET_ORACLE  = Buffer.from([48, 254, 79, 182, 3, 109, 22, 4]); // sha256("global:settle_market_oracle")[0..8]
+const IX_CLAIM_WINNINGS        = Buffer.from([149, 95, 181, 242, 27, 205, 138, 50]);
+const IX_RECORD_LOSS           = Buffer.from([88, 12, 193, 242, 198, 165, 0, 195]);
+const IX_CREATE_PARLAY         = Buffer.from([127, 36, 125, 173, 162, 128, 246, 207]);
+const IX_SETTLE_PARLAY         = Buffer.from([51, 60, 177, 79, 214, 52, 6, 22]);
+const IX_CLAIM_PARLAY          = Buffer.from([47, 40, 30, 204, 201, 172, 97, 250]);
 
 const TOKEN_PROGRAM_ID       = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
 const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
@@ -26,6 +27,17 @@ function encodeString(s: string): Buffer {
   const buf = Buffer.alloc(4 + bytes.length);
   buf.writeUInt32LE(bytes.length, 0);
   buf.set(bytes, 4);
+  return buf;
+}
+
+function encodeOptionPubkey(pubkey: Address | null | undefined): Buffer {
+  if (!pubkey) {
+    return Buffer.from([0]); // None
+  }
+  const enc = getAddressEncoder();
+  const buf = Buffer.alloc(33);
+  buf[0] = 1; // Some
+  buf.set(enc.encode(pubkey), 1);
   return buf;
 }
 
@@ -52,12 +64,13 @@ export async function buildCreateMarketInstruction(params: {
   expiry: bigint;
   creatorFeeBps: number;
   nonce: bigint;
+  oracle?: Address | null;
   usdcMint: Address;
   marketAddress: Address;
   creator: Address;
   programId: Address;
 }): Promise<IInstruction> {
-  const { question, expiry, creatorFeeBps, nonce, usdcMint, marketAddress, creator, programId } = params;
+  const { question, expiry, creatorFeeBps, nonce, oracle, usdcMint, marketAddress, creator, programId } = params;
   const vaultAddress = await deriveAta(usdcMint, marketAddress);
 
   const data = Buffer.concat([
@@ -66,6 +79,7 @@ export async function buildCreateMarketInstruction(params: {
     encodeI64LE(expiry),
     encodeU16LE(creatorFeeBps),
     encodeU64LE(nonce),
+    encodeOptionPubkey(oracle),
   ]);
 
   return {
@@ -137,6 +151,30 @@ export function buildSettleMarketInstruction(params: {
     accounts: [
       { address: market, role: AccountRole.WRITABLE },
       { address: creator, role: AccountRole.READONLY_SIGNER },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/** Called by the Switchboard Function oracle to settle a market trustlessly. */
+export function buildSettleMarketOracleInstruction(params: {
+  market: Address;
+  winningOutcome: 0 | 1;
+  oracle: Address;
+  programId: Address;
+}): IInstruction {
+  const { market, winningOutcome, oracle, programId } = params;
+
+  const data = Buffer.concat([
+    IX_SETTLE_MARKET_ORACLE,
+    Buffer.from([winningOutcome]),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: market, role: AccountRole.WRITABLE },
+      { address: oracle, role: AccountRole.READONLY_SIGNER },
     ],
     data: new Uint8Array(data),
   };
