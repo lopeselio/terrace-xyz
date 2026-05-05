@@ -68,6 +68,41 @@ export interface RecordLossParams {
   market: Address;
 }
 
+export interface ParlayLeg {
+  market: Address;
+  outcome: 0 | 1;
+}
+
+export type ParlayStatus = "Open" | "Won" | "Lost" | "Claimed" | "Cancelled";
+
+export interface Parlay {
+  address: Address;
+  creator: Address;
+  legs: ParlayLeg[];
+  stakeUsdc: bigint;
+  status: ParlayStatus;
+  nonce: bigint;
+  bump: number;
+}
+
+export interface CreateParlayParams {
+  legs: ParlayLeg[];
+  stakeUsdc: bigint;
+  nonce: bigint;
+  usdcMint: Address;
+}
+
+export interface SettleParlayParams {
+  parlay: Address;
+  /** Market accounts in the same order as the parlay legs. */
+  marketAccounts: Address[];
+}
+
+export interface ClaimParlayParams {
+  parlay: Address;
+  usdcMint: Address;
+}
+
 export const USDC_DEVNET_MINT =
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" as Address;
 

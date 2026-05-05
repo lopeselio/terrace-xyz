@@ -59,3 +59,19 @@ export async function getReputationPda(
     ],
   });
 }
+
+export async function getParlayPda(
+  creator: Address,
+  nonce: bigint,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<[Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [
+      new TextEncoder().encode("parlay"),
+      enc.encode(creator),
+      u64LeBytes(nonce),
+    ],
+  });
+}

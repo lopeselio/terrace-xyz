@@ -39,8 +39,54 @@ terrace/
 | Light Protocol | ZK compression for private group market PDAs |
 | DFlow | Kalshi + Polymarket liquidity bridge, builder fees |
 | Solana Agent Kit | AI prediction agent + resolution oracle |
-| Arcium MPC | Confidential group market privacy (post-MVP) |
+| Arcium MPC | Private group markets (hidden positions), sealed-bid matchups, reputation proofs without exposing history, sharp score computation on encrypted data |
 | USDC | Settlement token throughout |
+
+## Arcium MPC — integration design
+
+Arcium runs encrypted computation on Solana: inputs go in encrypted, MPC nodes compute over the ciphertext, result comes out. No single node sees the raw data. The on-chain interface is a CPI from your Anchor program into Arcium's on-chain program.
+
+```
+User encrypts input client-side
+→ Encrypted input posted to Arcium MPC cluster
+→ MPC nodes compute over encrypted data (no node sees full picture)
+→ Verified result returned to authorized recipient
+→ Result feeds back into Anchor program via CPI → triggers settlement / reputation update
+```
+
+### Use cases in Terrace (prioritized)
+
+**Phase 3 — Private group markets** *(start here)*
+- Who bet what amount stays encrypted until settlement
+- Position sizes hidden from other participants
+- Only the final outcome (win/lose/payout) is revealed publicly
+- Fan-facing pitch: "private league where nobody can see each other's positions until the whistle"
+- Integration point: `create_market` with `is_private: true` CPIs into Arcium; Arcium result feeds `settle_market`
+
+**Phase 3 — Sealed-bid matchups**
+- Both sides commit encrypted stakes; Arcium verifies each has sufficient USDC without revealing amounts
+- Stakes revealed only after both parties have locked in — prevents second mover sizing off first mover's visible position
+- Integration point: `create_matchup` posts encrypted commitments; Arcium verifies and unlocks escrow
+
+**Phase 4 — Reputation proofs without exposing history**
+- Prove "win rate > 65%" without exposing every individual bet
+- Useful for users who want a verified Sharp badge without doxxing their strategy
+- Integration point: Arcium computes over encrypted Reputation PDA history → outputs a boolean proof → badge minted on-chain
+
+**Phase 4 — Sharp score computation**
+- The "follow sharps" feed filter logic (weights, thresholds, signals) is valuable IP
+- Running the filter inside Arcium: algorithm executes on encrypted wallet activity → outputs a verified sharp score → neither input data nor scoring model is exposed
+- Users get a trustworthy feed; Terrace protects the algorithm
+
+**Phase 4 — Parlay privacy**
+- Full parlay position is readable on-chain before legs settle → sophisticated actors could front-run later legs once early ones hit
+- Arcium lets you commit a parlay encrypted, reveal legs progressively, publish full chain only on final settlement
+- Integration point: `create_parlay` posts encrypted leg commitments; each leg reveal CPIs Arcium for partial verification
+
+### Reference
+- Skill: `inco-svm` (closest confidential compute analogue in the skill library)
+- Arcium docs: MPC cluster setup + on-chain CPI interface
+- Phase handoff: integrate Arcium after Light Protocol private markets are working — they share the `is_private` market flag and complement each other (Light = compressed storage, Arcium = encrypted computation)
 
 ## Program accounts
 

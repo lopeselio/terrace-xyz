@@ -13,6 +13,9 @@ const IX_PLACE_BET       = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
 const IX_SETTLE_MARKET   = Buffer.from([130, 125, 241, 173, 147, 184, 200, 93]);
 const IX_CLAIM_WINNINGS  = Buffer.from([149, 95, 181, 242, 27, 205, 138, 50]);
 const IX_RECORD_LOSS     = Buffer.from([88, 12, 193, 242, 198, 165, 0, 195]);
+const IX_CREATE_PARLAY   = Buffer.from([127, 36, 125, 173, 162, 128, 246, 207]);
+const IX_SETTLE_PARLAY   = Buffer.from([51, 60, 177, 79, 214, 52, 6, 22]);
+const IX_CLAIM_PARLAY    = Buffer.from([47, 40, 30, 204, 201, 172, 97, 250]);
 
 const TOKEN_PROGRAM_ID       = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
 const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
@@ -181,6 +184,101 @@ export function buildRecordLossInstruction(params: {
       { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
     ],
     data: new Uint8Array(IX_RECORD_LOSS),
+  };
+}
+
+export async function buildCreateParlayInstruction(params: {
+  legs: Array<{ market: Address; outcome: 0 | 1 }>;
+  stakeUsdc: bigint;
+  nonce: bigint;
+  usdcMint: Address;
+  parlayAddress: Address;
+  parlayVaultAddress: Address;
+  creator: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { legs, stakeUsdc, nonce, usdcMint, parlayAddress, parlayVaultAddress, creator, programId } = params;
+  const creatorAta = await deriveAta(usdcMint, creator);
+
+  // Encode Vec<ParlayLeg>: u32 LE length + (32-byte pubkey + u8 outcome) per leg
+  const enc = getAddressEncoder();
+  const legsLen = Buffer.alloc(4);
+  legsLen.writeUInt32LE(legs.length, 0);
+  const legBytes = legs.map(l => {
+    const b = Buffer.alloc(33);
+    b.set(enc.encode(l.market), 0);
+    b[32] = l.outcome;
+    return b;
+  });
+
+  const data = Buffer.concat([
+    IX_CREATE_PARLAY,
+    legsLen,
+    ...legBytes,
+    encodeU64LE(stakeUsdc),
+    encodeU64LE(nonce),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: parlayAddress, role: AccountRole.WRITABLE },
+      { address: parlayVaultAddress, role: AccountRole.WRITABLE },
+      { address: creatorAta, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+export function buildSettleParlayInstruction(params: {
+  parlayAddress: Address;
+  /** Market accounts in the same order as parlay.legs (passed as remaining_accounts). */
+  marketAccounts: Address[];
+  programId: Address;
+}): IInstruction {
+  const { parlayAddress, marketAccounts, programId } = params;
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: parlayAddress, role: AccountRole.WRITABLE },
+      // Leg markets as remaining_accounts — append after named accounts
+      ...marketAccounts.map(addr => ({ address: addr, role: AccountRole.READONLY })),
+    ],
+    data: new Uint8Array(IX_SETTLE_PARLAY),
+  };
+}
+
+export async function buildClaimParlayInstruction(params: {
+  parlayAddress: Address;
+  parlayCreator: Address;
+  parlayNonce: bigint;
+  usdcMint: Address;
+  creator: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { parlayAddress, usdcMint, creator, programId } = params;
+  const parlayVaultAddress = await deriveAta(usdcMint, parlayAddress);
+  const creatorAta = await deriveAta(usdcMint, creator);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: parlayAddress, role: AccountRole.WRITABLE },
+      { address: parlayVaultAddress, role: AccountRole.WRITABLE },
+      { address: creatorAta, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_CLAIM_PARLAY),
   };
 }
 

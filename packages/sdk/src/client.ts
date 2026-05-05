@@ -21,18 +21,27 @@ import type {
   SettleMarketParams,
   ClaimWinningsParams,
   RecordLossParams,
+  CreateParlayParams,
+  SettleParlayParams,
+  ClaimParlayParams,
   Market,
   Reputation,
+  Parlay,
+  ParlayLeg,
+  ParlayStatus,
   BadgeTier,
   MarketStatus,
 } from "./types";
-import { getMarketPda, getBetPda, getReputationPda, TERRACE_PROGRAM_ID } from "./pda";
+import { getMarketPda, getBetPda, getReputationPda, getParlayPda, TERRACE_PROGRAM_ID } from "./pda";
 import {
   buildCreateMarketInstruction,
   buildPlaceBetInstruction,
   buildSettleMarketInstruction,
   buildClaimWinningsInstruction,
   buildRecordLossInstruction,
+  buildCreateParlayInstruction,
+  buildSettleParlayInstruction,
+  buildClaimParlayInstruction,
 } from "./instructions";
 
 // Minimal base58 encoder — keeps the deserializers dependency-free.
@@ -128,6 +137,52 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
     nonce,
     bump,
   };
+}
+
+const PARLAY_STATUS_MAP: ParlayStatus[] = ["Open", "Won", "Lost", "Claimed", "Cancelled"];
+
+/**
+ * Deserialises a raw Parlay account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   creator    — 32-byte Pubkey
+ *   legs       — u32 LE count + (32-byte Pubkey + u8 outcome) × count
+ *   stake_usdc — u64 LE
+ *   status     — u8 enum (0=Open, 1=Won, 2=Lost, 3=Claimed, 4=Cancelled)
+ *   nonce      — u64 LE
+ *   bump       — u8
+ */
+export function deserializeParlayAccount(data: Uint8Array, address: Address): Parlay {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8; // skip discriminator
+
+  const creator = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+
+  const legCount = view.getUint32(o, true);
+  o += 4;
+  const legs: ParlayLeg[] = [];
+  for (let i = 0; i < legCount; i++) {
+    const market = pubkeyBytesToAddress(data.slice(o, o + 32));
+    o += 32;
+    const outcome = view.getUint8(o) as 0 | 1;
+    o += 1;
+    legs.push({ market, outcome });
+  }
+
+  const stakeUsdc = view.getBigUint64(o, true);
+  o += 8;
+
+  const statusByte = view.getUint8(o);
+  o += 1;
+  const status: ParlayStatus = PARLAY_STATUS_MAP[statusByte] ?? "Open";
+
+  const nonce = view.getBigUint64(o, true);
+  o += 8;
+
+  const bump = view.getUint8(o);
+
+  return { address, creator, legs, stakeUsdc, status, nonce, bump };
 }
 
 const BADGE_MAP: BadgeTier[] = ["Casual", "Sharp", "Legend"];
@@ -261,6 +316,73 @@ export class TerraceSdk {
     });
 
     return this._sendTx([ix]);
+  }
+
+  async createParlay(params: CreateParlayParams): Promise<string> {
+    const [parlayAddress] = await getParlayPda(
+      this.signer.address,
+      params.nonce,
+      this.programId
+    );
+
+    const { getProgramDerivedAddress, getAddressEncoder } = await import("@solana/kit");
+    const enc = getAddressEncoder();
+    const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
+    const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
+    const [parlayVaultAddress] = await getProgramDerivedAddress({
+      programAddress: ASSOC_TOKEN_PROGRAM_ID,
+      seeds: [enc.encode(parlayAddress), enc.encode(TOKEN_PROGRAM_ID), enc.encode(params.usdcMint)],
+    });
+
+    const ix = await buildCreateParlayInstruction({
+      legs: params.legs,
+      stakeUsdc: params.stakeUsdc,
+      nonce: params.nonce,
+      usdcMint: params.usdcMint,
+      parlayAddress,
+      parlayVaultAddress,
+      creator: this.signer.address,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async settleParlay(params: SettleParlayParams): Promise<string> {
+    const ix = buildSettleParlayInstruction({
+      parlayAddress: params.parlay,
+      marketAccounts: params.marketAccounts,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async claimParlay(params: ClaimParlayParams): Promise<string> {
+    const parlay = await this.fetchParlay(params.parlay);
+
+    const ix = await buildClaimParlayInstruction({
+      parlayAddress: params.parlay,
+      parlayCreator: parlay.creator,
+      parlayNonce: parlay.nonce,
+      usdcMint: params.usdcMint,
+      creator: this.signer.address,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async fetchParlay(address: Address): Promise<Parlay> {
+    const accountInfo = await this.rpc
+      .getAccountInfo(address, { encoding: "base64" })
+      .send();
+
+    if (!accountInfo.value) throw new Error(`Parlay not found: ${address}`);
+
+    const [b64] = accountInfo.value.data as [string, string];
+    const raw = new Uint8Array(Buffer.from(b64, "base64"));
+    return deserializeParlayAccount(raw, address);
   }
 
   async fetchMarket(address: Address): Promise<Market> {

@@ -300,4 +300,121 @@ describe("terrace", () => {
       assert.include(e.message, "BetWasWinner");
     }
   });
+
+  // ── Parlay ─────────────────────────────────────────────────────────────────
+
+  function parlayPda(
+    program: Program<Terrace>,
+    creator: anchor.web3.PublicKey,
+    nonce: anchor.BN
+  ): [anchor.web3.PublicKey, number] {
+    return anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("parlay"),
+        creator.toBuffer(),
+        nonce.toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+  }
+
+  it("rejects a parlay with fewer than 2 legs", async () => {
+    const pNonce = new anchor.BN(42);
+    const [parlay] = parlayPda(program, creator.publicKey, pNonce);
+    const parlayVault = getAssociatedTokenAddressSync(USDC_MINT, parlay, true);
+
+    try {
+      await program.methods
+        .createParlay(
+          [{ market, outcome: 1 }], // only 1 leg
+          new anchor.BN(1_000_000),
+          pNonce
+        )
+        .accounts({
+          parlay,
+          parlayVault,
+          creatorAta: getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey),
+          usdcMint: USDC_MINT,
+          creator: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected InvalidParlayLegs error");
+    } catch (e: any) {
+      assert.include(e.message, "InvalidParlayLegs");
+    }
+  });
+
+  it.skip("creates a 2-leg parlay and settles it (requires funded USDC ATA)", async () => {
+    // Prerequisites: two settled markets + a funded creator USDC ATA.
+    const pNonce = new anchor.BN(100);
+    const [parlay] = parlayPda(program, creator.publicKey, pNonce);
+    const parlayVault = getAssociatedTokenAddressSync(USDC_MINT, parlay, true);
+
+    // Need a second market for the second leg — use nonce=2
+    const nonce2 = new anchor.BN(2);
+    const [market2] = marketPda(program, creator.publicKey, nonce2);
+
+    const legs = [
+      { market, outcome: 1 },  // Yes on first market
+      { market: market2, outcome: 0 }, // No on second market
+    ];
+
+    await program.methods
+      .createParlay(legs, new anchor.BN(2_000_000), pNonce)
+      .accounts({
+        parlay,
+        parlayVault,
+        creatorAta: getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey),
+        usdcMint: USDC_MINT,
+        creator: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    const p = await program.account.parlay.fetch(parlay);
+    assert.equal(p.legs.length, 2);
+    assert.equal(p.stakeUsdc.toNumber(), 2_000_000);
+    assert.deepEqual(p.status, { open: {} });
+
+    // Settle after both markets resolve
+    await program.methods
+      .settleParlay()
+      .accounts({ parlay })
+      .remainingAccounts([
+        { pubkey: market, isWritable: false, isSigner: false },
+        { pubkey: market2, isWritable: false, isSigner: false },
+      ])
+      .rpc();
+
+    const settled = await program.account.parlay.fetch(parlay);
+    // Outcome depends on which side each market settled on
+    assert.oneOf(Object.keys(settled.status)[0], ["won", "lost"]);
+  });
+
+  it.skip("rejects settling a parlay with wrong market order", async () => {
+    // If remaining_accounts don't match parlay.legs order → MarketMismatch
+    const pNonce = new anchor.BN(101);
+    const [parlay] = parlayPda(program, creator.publicKey, pNonce);
+    const nonce2 = new anchor.BN(2);
+    const [market2] = marketPda(program, creator.publicKey, nonce2);
+
+    try {
+      await program.methods
+        .settleParlay()
+        .accounts({ parlay })
+        .remainingAccounts([
+          { pubkey: market2, isWritable: false, isSigner: false }, // wrong order
+          { pubkey: market, isWritable: false, isSigner: false },
+        ])
+        .rpc();
+      assert.fail("Expected MarketMismatch error");
+    } catch (e: any) {
+      assert.include(e.message, "MarketMismatch");
+    }
+  });
 });
