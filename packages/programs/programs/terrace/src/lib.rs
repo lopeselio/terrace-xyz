@@ -4,7 +4,7 @@ use anchor_spl::{
     token::{self, Mint, Token, TokenAccount, Transfer},
 };
 
-declare_id!("9TERRACExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+declare_id!("8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF");
 
 const MAX_QUESTION_LEN: usize = 200;
 const USDC_DECIMALS: u64 = 1_000_000; // 1 USDC = 1_000_000 lamports (6 dp)
@@ -37,6 +37,8 @@ pub mod terrace {
         market.creator = ctx.accounts.creator.key();
         market.outcome = None;
         market.total_volume = 0;
+        market.yes_volume = 0;
+        market.no_volume = 0;
         market.vault = ctx.accounts.vault.key();
         market.status = MarketStatus::Open;
         market.nonce = nonce;
@@ -87,16 +89,26 @@ pub mod terrace {
             .checked_add(amount)
             .ok_or(TerracError::Overflow)?;
 
+        if outcome == 1 {
+            market.yes_volume = market
+                .yes_volume
+                .checked_add(amount)
+                .ok_or(TerracError::Overflow)?;
+        } else {
+            market.no_volume = market
+                .no_volume
+                .checked_add(amount)
+                .ok_or(TerracError::Overflow)?;
+        }
+
         let bet = &mut ctx.accounts.bet;
-        // If this is the first bet for this (market, bettor) the account is freshly init'd.
-        // If init_if_needed fires again on a re-bet the values are overwritten — see constraint below.
         if bet.amount == 0 {
             bet.market = market.key();
             bet.bettor = ctx.accounts.bettor.key();
             bet.outcome = outcome;
             bet.bump = ctx.bumps.bet;
         } else {
-            // Accumulate only if same outcome; reject mixed-outcome top-ups to keep accounting simple.
+            // Accumulate only if same outcome — reject mixed-outcome top-ups.
             require!(bet.outcome == outcome, TerracError::OutcomeMismatch);
         }
 
@@ -116,7 +128,7 @@ pub mod terrace {
     }
 
     /// Settle the market by recording the winning outcome.
-    /// Only the market creator can settle. Claim logic (pro-rata payout) is Phase 2.
+    /// Only the market creator can settle.
     pub fn settle_market(
         ctx: Context<SettleMarket>,
         winning_outcome: u8,
@@ -135,6 +147,160 @@ pub mod terrace {
         });
 
         Ok(())
+    }
+
+    /// Pro-rata USDC payout for the winning side.
+    /// payout = bet_amount * total_volume / winning_side_volume
+    /// Also initialises (or updates) the bettor's Reputation PDA (win).
+    pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
+        let (payout, creator, nonce_le, market_bump, market_key, bettor_key) = {
+            let market = &ctx.accounts.market;
+            let bet = &ctx.accounts.bet;
+
+            require!(market.status == MarketStatus::Settled, TerracError::MarketNotSettled);
+            require!(!bet.claimed, TerracError::AlreadyClaimed);
+
+            let winning_outcome = market.outcome.ok_or(TerracError::MarketNotSettled)?;
+            require!(bet.outcome == winning_outcome, TerracError::BetDidNotWin);
+
+            let winning_volume = if winning_outcome == 1 {
+                market.yes_volume
+            } else {
+                market.no_volume
+            };
+            require!(winning_volume > 0, TerracError::ZeroWinningVolume);
+
+            // u128 prevents overflow during multiplication before division
+            let payout = (bet.amount as u128)
+                .checked_mul(market.total_volume as u128)
+                .ok_or(TerracError::Overflow)?
+                .checked_div(winning_volume as u128)
+                .ok_or(TerracError::Overflow)? as u64;
+
+            (
+                payout,
+                market.creator,
+                market.nonce.to_le_bytes(),
+                market.bump,
+                market.key(),
+                ctx.accounts.bettor.key(),
+            )
+        };
+
+        // Transfer USDC: vault (PDA-owned) → bettor ATA
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.vault.to_account_info(),
+                    to: ctx.accounts.bettor_ata.to_account_info(),
+                    authority: ctx.accounts.market.to_account_info(),
+                },
+                &[&[b"market", creator.as_ref(), &nonce_le, &[market_bump]]],
+            ),
+            payout,
+        )?;
+
+        ctx.accounts.bet.claimed = true;
+        ctx.accounts.bet.result_recorded = true;
+
+        // Update reputation — win
+        let rep = &mut ctx.accounts.reputation;
+        rep.owner = bettor_key;
+        rep.bump = ctx.bumps.reputation;
+        rep.total_bets = rep.total_bets.checked_add(1).ok_or(TerracError::Overflow)?;
+        rep.winning_bets = rep.winning_bets.checked_add(1).ok_or(TerracError::Overflow)?;
+        rep.win_rate_bps = ((rep.winning_bets as u64)
+            .checked_mul(10_000)
+            .ok_or(TerracError::Overflow)?
+            / rep.total_bets as u64) as u16;
+        rep.current_streak = if rep.current_streak >= 0 {
+            rep.current_streak.saturating_add(1)
+        } else {
+            1
+        };
+        rep.badge_tier = compute_badge(rep.total_bets, rep.win_rate_bps);
+
+        emit!(WinningsClaimed {
+            market: market_key,
+            bettor: bettor_key,
+            payout,
+        });
+        emit!(ReputationUpdated {
+            owner: bettor_key,
+            total_bets: rep.total_bets,
+            winning_bets: rep.winning_bets,
+            win_rate_bps: rep.win_rate_bps,
+            badge_tier: rep.badge_tier.clone(),
+        });
+
+        Ok(())
+    }
+
+    /// Records a loss on the bettor's Reputation PDA.
+    /// Must be called by the bettor after the market settles to keep their record current.
+    pub fn record_loss(ctx: Context<RecordLoss>) -> Result<()> {
+        let (market_key, bettor_key) = {
+            let market = &ctx.accounts.market;
+            let bet = &ctx.accounts.bet;
+
+            require!(market.status == MarketStatus::Settled, TerracError::MarketNotSettled);
+            require!(!bet.result_recorded, TerracError::AlreadyRecorded);
+
+            let winning_outcome = market.outcome.ok_or(TerracError::MarketNotSettled)?;
+            // Ensure this bet actually lost — winners must use claim_winnings.
+            require!(bet.outcome != winning_outcome, TerracError::BetWasWinner);
+
+            (market.key(), ctx.accounts.bettor.key())
+        };
+
+        ctx.accounts.bet.result_recorded = true;
+
+        // Update reputation — loss
+        let rep = &mut ctx.accounts.reputation;
+        rep.owner = bettor_key;
+        rep.bump = ctx.bumps.reputation;
+        rep.total_bets = rep.total_bets.checked_add(1).ok_or(TerracError::Overflow)?;
+        // winning_bets unchanged
+        rep.win_rate_bps = if rep.total_bets > 0 {
+            ((rep.winning_bets as u64)
+                .checked_mul(10_000)
+                .ok_or(TerracError::Overflow)?
+                / rep.total_bets as u64) as u16
+        } else {
+            0
+        };
+        rep.current_streak = if rep.current_streak <= 0 {
+            rep.current_streak.saturating_sub(1)
+        } else {
+            -1
+        };
+        rep.badge_tier = compute_badge(rep.total_bets, rep.win_rate_bps);
+
+        emit!(ReputationUpdated {
+            owner: bettor_key,
+            total_bets: rep.total_bets,
+            winning_bets: rep.winning_bets,
+            win_rate_bps: rep.win_rate_bps,
+            badge_tier: rep.badge_tier.clone(),
+        });
+
+        let _ = market_key; // used in future events; suppress warning for now
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+
+fn compute_badge(total_bets: u32, win_rate_bps: u16) -> BadgeTier {
+    if total_bets >= 50 && win_rate_bps >= 6500 {
+        BadgeTier::Legend
+    } else if total_bets >= 10 && win_rate_bps >= 5500 {
+        BadgeTier::Sharp
+    } else {
+        BadgeTier::Casual
     }
 }
 
@@ -199,7 +365,7 @@ pub struct PlaceBet<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
 
-    /// Bettor's USDC token account (must have enough balance)
+    /// Bettor's USDC ATA (must have sufficient balance)
     #[account(
         mut,
         associated_token::mint = usdc_mint,
@@ -230,6 +396,91 @@ pub struct SettleMarket<'info> {
     pub creator: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct ClaimWinnings<'info> {
+    /// Market PDA — read-only; vault authority
+    #[account(
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, Market>,
+
+    #[account(
+        mut,
+        seeds = [b"bet", market.key().as_ref(), bettor.key().as_ref()],
+        bump = bet.bump,
+        has_one = market,
+        has_one = bettor,
+    )]
+    pub bet: Account<'info, Bet>,
+
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        space = Reputation::SPACE,
+        seeds = [b"reputation", bettor.key().as_ref()],
+        bump,
+    )]
+    pub reputation: Account<'info, Reputation>,
+
+    /// Market's USDC vault — source of payout
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = market,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    /// Bettor's USDC ATA — destination of payout
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = bettor,
+    )]
+    pub bettor_ata: Account<'info, TokenAccount>,
+
+    pub usdc_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RecordLoss<'info> {
+    #[account(
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, Market>,
+
+    #[account(
+        mut,
+        seeds = [b"bet", market.key().as_ref(), bettor.key().as_ref()],
+        bump = bet.bump,
+        has_one = market,
+        has_one = bettor,
+    )]
+    pub bet: Account<'info, Bet>,
+
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        space = Reputation::SPACE,
+        seeds = [b"reputation", bettor.key().as_ref()],
+        bump,
+    )]
+    pub reputation: Account<'info, Reputation>,
+
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -241,6 +492,8 @@ pub struct Market {
     pub creator: Pubkey,       // 32
     pub outcome: Option<u8>,   // 1 + 1
     pub total_volume: u64,     // 8
+    pub yes_volume: u64,       // 8  — sum of all Yes bets
+    pub no_volume: u64,        // 8  — sum of all No bets
     pub vault: Pubkey,         // 32
     pub status: MarketStatus,  // 1
     pub nonce: u64,            // 8
@@ -248,31 +501,49 @@ pub struct Market {
 }
 
 impl Market {
-    pub const SPACE: usize = 8          // discriminator
-        + 4 + MAX_QUESTION_LEN          // question
-        + 8                             // expiry
-        + 32                            // creator
-        + 1 + 1                         // outcome (Option<u8>)
-        + 8                             // total_volume
-        + 32                            // vault
-        + 1                             // status
-        + 8                             // nonce
-        + 1                             // bump
-        + 32;                           // padding
+    pub const SPACE: usize = 8           // discriminator
+        + 4 + MAX_QUESTION_LEN           // question
+        + 8                              // expiry
+        + 32                             // creator
+        + 1 + 1                          // outcome Option<u8>
+        + 8                              // total_volume
+        + 8                              // yes_volume
+        + 8                              // no_volume
+        + 32                             // vault
+        + 1                              // status
+        + 8                              // nonce
+        + 1                              // bump
+        + 16;                            // padding
 }
 
 #[account]
 pub struct Bet {
-    pub market: Pubkey,   // 32
-    pub bettor: Pubkey,   // 32
-    pub outcome: u8,      // 1
-    pub amount: u64,      // 8
-    pub claimed: bool,    // 1
-    pub bump: u8,         // 1
+    pub market: Pubkey,          // 32
+    pub bettor: Pubkey,          // 32
+    pub outcome: u8,             // 1
+    pub amount: u64,             // 8
+    pub claimed: bool,           // 1
+    pub result_recorded: bool,   // 1  — true once reputation was updated (win or loss)
+    pub bump: u8,                // 1
 }
 
 impl Bet {
-    pub const SPACE: usize = 8 + 32 + 32 + 1 + 8 + 1 + 1 + 16; // 16 padding
+    pub const SPACE: usize = 8 + 32 + 32 + 1 + 8 + 1 + 1 + 1 + 15; // 15 padding
+}
+
+#[account]
+pub struct Reputation {
+    pub owner: Pubkey,            // 32
+    pub total_bets: u32,          // 4
+    pub winning_bets: u32,        // 4
+    pub win_rate_bps: u16,        // 2  — basis points, e.g. 6500 = 65%
+    pub current_streak: i16,      // 2  — positive = win streak, negative = loss streak
+    pub badge_tier: BadgeTier,    // 1
+    pub bump: u8,                 // 1
+}
+
+impl Reputation {
+    pub const SPACE: usize = 8 + 32 + 4 + 4 + 2 + 2 + 1 + 1 + 16; // 16 padding
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -280,6 +551,14 @@ pub enum MarketStatus {
     Open,
     Closed,
     Settled,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Default)]
+pub enum BadgeTier {
+    #[default]
+    Casual,  // < 10 bets or < 55% win rate
+    Sharp,   // >= 10 bets and >= 55% win rate
+    Legend,  // >= 50 bets and >= 65% win rate
 }
 
 // ---------------------------------------------------------------------------
@@ -308,6 +587,22 @@ pub struct MarketSettled {
     pub winning_outcome: u8,
 }
 
+#[event]
+pub struct WinningsClaimed {
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    pub payout: u64,
+}
+
+#[event]
+pub struct ReputationUpdated {
+    pub owner: Pubkey,
+    pub total_bets: u32,
+    pub winning_bets: u32,
+    pub win_rate_bps: u16,
+    pub badge_tier: BadgeTier,
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -332,4 +627,16 @@ pub enum TerracError {
     Overflow,
     #[msg("Only the market creator can perform this action")]
     Unauthorized,
+    #[msg("Market is not settled yet")]
+    MarketNotSettled,
+    #[msg("Winnings already claimed")]
+    AlreadyClaimed,
+    #[msg("This bet did not win")]
+    BetDidNotWin,
+    #[msg("No volume on the winning side — nothing to claim")]
+    ZeroWinningVolume,
+    #[msg("Reputation already recorded for this bet")]
+    AlreadyRecorded,
+    #[msg("Bet was a winner — use claim_winnings instead")]
+    BetWasWinner,
 }

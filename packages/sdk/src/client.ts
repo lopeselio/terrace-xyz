@@ -15,12 +15,27 @@ import {
   sendAndConfirmTransactionFactory,
   getSignatureFromTransaction,
 } from "@solana/kit";
-import type { CreateMarketParams, PlaceBetParams, SettleMarketParams, Market, MarketStatus } from "./types";
-import { getMarketPda, getBetPda, TERRACE_PROGRAM_ID } from "./pda";
-import { buildCreateMarketInstruction, buildPlaceBetInstruction, buildSettleMarketInstruction } from "./instructions";
+import type {
+  CreateMarketParams,
+  PlaceBetParams,
+  SettleMarketParams,
+  ClaimWinningsParams,
+  RecordLossParams,
+  Market,
+  Reputation,
+  BadgeTier,
+  MarketStatus,
+} from "./types";
+import { getMarketPda, getBetPda, getReputationPda, TERRACE_PROGRAM_ID } from "./pda";
+import {
+  buildCreateMarketInstruction,
+  buildPlaceBetInstruction,
+  buildSettleMarketInstruction,
+  buildClaimWinningsInstruction,
+  buildRecordLossInstruction,
+} from "./instructions";
 
-// Minimal base58 encoder — used to convert raw Pubkey bytes to Address strings.
-// Keeps the deserializer dependency-free (no @solana/addresses import uncertainty).
+// Minimal base58 encoder — keeps the deserializers dependency-free.
 function pubkeyBytesToAddress(bytes: Uint8Array): Address {
   const ALPHABET =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -40,22 +55,23 @@ function pubkeyBytesToAddress(bytes: Uint8Array): Address {
 
 /**
  * Deserialises a raw Market account buffer (Anchor borsh layout) into a typed Market.
- * Exported so the useMarkets hook can use it without instantiating TerraceSdk.
  *
  * Layout (after 8-byte discriminator):
- *   question  — u32 LE length prefix + UTF-8 bytes
- *   expiry    — i64 LE
- *   creator   — 32-byte Pubkey
- *   outcome   — u8 tag (0=None, 1=Some) + u8 value if Some
+ *   question     — u32 LE length prefix + UTF-8 bytes
+ *   expiry       — i64 LE
+ *   creator      — 32-byte Pubkey
+ *   outcome      — u8 tag (0=None, 1=Some) + u8 value if Some
  *   total_volume — u64 LE
- *   vault     — 32-byte Pubkey
- *   status    — u8 enum (0=Open, 1=Closed, 2=Settled)
- *   nonce     — u64 LE
- *   bump      — u8
+ *   yes_volume   — u64 LE
+ *   no_volume    — u64 LE
+ *   vault        — 32-byte Pubkey
+ *   status       — u8 enum (0=Open, 1=Closed, 2=Settled)
+ *   nonce        — u64 LE
+ *   bump         — u8
  */
 export function deserializeMarketAccount(data: Uint8Array, address: Address): Market {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  let o = 8; // skip 8-byte discriminator
+  let o = 8; // skip discriminator
 
   const qLen = view.getUint32(o, true);
   o += 4;
@@ -79,6 +95,12 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
   const totalVolume = view.getBigUint64(o, true);
   o += 8;
 
+  const yesVolume = view.getBigUint64(o, true);
+  o += 8;
+
+  const noVolume = view.getBigUint64(o, true);
+  o += 8;
+
   const vault = pubkeyBytesToAddress(data.slice(o, o + 32));
   o += 32;
 
@@ -92,7 +114,65 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
 
   const bump = view.getUint8(o);
 
-  return { address, question, expiry, creator, outcome, totalVolume, vault, status, nonce, bump };
+  return {
+    address,
+    question,
+    expiry,
+    creator,
+    outcome,
+    totalVolume,
+    yesVolume,
+    noVolume,
+    vault,
+    status,
+    nonce,
+    bump,
+  };
+}
+
+const BADGE_MAP: BadgeTier[] = ["Casual", "Sharp", "Legend"];
+
+/**
+ * Deserialises a raw Reputation account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   owner          — 32-byte Pubkey
+ *   total_bets     — u32 LE
+ *   winning_bets   — u32 LE
+ *   win_rate_bps   — u16 LE
+ *   current_streak — i16 LE
+ *   badge_tier     — u8 enum (0=Casual, 1=Sharp, 2=Legend)
+ *   bump           — u8
+ */
+export function deserializeReputationAccount(
+  data: Uint8Array,
+  address: Address
+): Reputation {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8;
+
+  const owner = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+
+  const totalBets = view.getUint32(o, true);
+  o += 4;
+
+  const winningBets = view.getUint32(o, true);
+  o += 4;
+
+  const winRateBps = view.getUint16(o, true);
+  o += 2;
+
+  const currentStreak = view.getInt16(o, true);
+  o += 2;
+
+  const badgeByte = view.getUint8(o);
+  o += 1;
+  const badgeTier: BadgeTier = BADGE_MAP[badgeByte] ?? "Casual";
+
+  const bump = view.getUint8(o);
+
+  return { address, owner, totalBets, winningBets, winRateBps, currentStreak, badgeTier, bump };
 }
 
 export class TerraceSdk {
@@ -146,6 +226,43 @@ export class TerraceSdk {
     return this._sendTx([ix]);
   }
 
+  async claimWinnings(params: ClaimWinningsParams): Promise<string> {
+    const bettor = this.signer.address;
+    const [betAddress] = await getBetPda(params.market, bettor, this.programId);
+    const [reputationAddress] = await getReputationPda(bettor, this.programId);
+
+    // We need the market creator to derive market PDA for the vault authority check.
+    const market = await this.fetchMarket(params.market);
+
+    const ix = await buildClaimWinningsInstruction({
+      market: params.market,
+      marketCreator: market.creator,
+      betAddress,
+      reputationAddress,
+      usdcMint: params.usdcMint,
+      bettor,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async recordLoss(params: RecordLossParams): Promise<string> {
+    const bettor = this.signer.address;
+    const [betAddress] = await getBetPda(params.market, bettor, this.programId);
+    const [reputationAddress] = await getReputationPda(bettor, this.programId);
+
+    const ix = buildRecordLossInstruction({
+      market: params.market,
+      betAddress,
+      reputationAddress,
+      bettor,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
   async fetchMarket(address: Address): Promise<Market> {
     const accountInfo = await this.rpc
       .getAccountInfo(address, { encoding: "base64" })
@@ -154,9 +271,21 @@ export class TerraceSdk {
     if (!accountInfo.value) throw new Error(`Market not found: ${address}`);
 
     const [b64] = accountInfo.value.data as [string, string];
-    // Buffer.from works in both Node (tests) and React Native; atob is browser-only
     const raw = new Uint8Array(Buffer.from(b64, "base64"));
     return deserializeMarketAccount(raw, address);
+  }
+
+  async fetchReputation(owner: Address): Promise<Reputation | null> {
+    const [repAddress] = await getReputationPda(owner, this.programId);
+    const accountInfo = await this.rpc
+      .getAccountInfo(repAddress, { encoding: "base64" })
+      .send();
+
+    if (!accountInfo.value) return null;
+
+    const [b64] = accountInfo.value.data as [string, string];
+    const raw = new Uint8Array(Buffer.from(b64, "base64"));
+    return deserializeReputationAccount(raw, repAddress);
   }
 
   private async _sendTx(instructions: any[]): Promise<string> {
@@ -166,7 +295,6 @@ export class TerraceSdk {
 
     const tx = await pipe(
       createTransactionMessage({ version: 0 }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (msg: any) => setTransactionMessageFeePayerSigner(this.signer, msg),
       (msg: any) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, msg),
       (msg: any) => appendTransactionMessageInstructions(instructions, msg),

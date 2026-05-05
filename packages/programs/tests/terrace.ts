@@ -13,6 +13,42 @@ const USDC_MINT = new anchor.web3.PublicKey(
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
 );
 
+function marketPda(
+  program: Program<Terrace>,
+  creator: anchor.web3.PublicKey,
+  nonce: anchor.BN
+): [anchor.web3.PublicKey, number] {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("market"),
+      creator.toBuffer(),
+      nonce.toArrayLike(Buffer, "le", 8),
+    ],
+    program.programId
+  );
+}
+
+function betPda(
+  program: Program<Terrace>,
+  market: anchor.web3.PublicKey,
+  bettor: anchor.web3.PublicKey
+): [anchor.web3.PublicKey, number] {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("bet"), market.toBuffer(), bettor.toBuffer()],
+    program.programId
+  );
+}
+
+function reputationPda(
+  program: Program<Terrace>,
+  owner: anchor.web3.PublicKey
+): [anchor.web3.PublicKey, number] {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("reputation"), owner.toBuffer()],
+    program.programId
+  );
+}
+
 describe("terrace", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -20,26 +56,20 @@ describe("terrace", () => {
   const program = anchor.workspace.Terrace as Program<Terrace>;
   const creator = provider.wallet as anchor.Wallet;
 
-  const nonce = BigInt(1);
+  const nonce = new anchor.BN(1);
   const question = "Will Arsenal win the Premier League 2025/26?";
   const expiry = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24h from now
 
-  const [marketPda] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("market"),
-      creator.publicKey.toBuffer(),
-      Buffer.from(new anchor.BN(nonce.toString()).toArrayLike(Buffer, "le", 8)),
-    ],
-    program.programId
-  );
+  const [market] = marketPda(program, creator.publicKey, nonce);
+  const vault = getAssociatedTokenAddressSync(USDC_MINT, market, true);
 
-  const vault = getAssociatedTokenAddressSync(USDC_MINT, marketPda, true);
+  // ── create_market ──────────────────────────────────────────────────────────
 
   it("creates a market", async () => {
     const tx = await program.methods
-      .createMarket(question, new anchor.BN(expiry), new anchor.BN(nonce.toString()))
+      .createMarket(question, new anchor.BN(expiry), nonce)
       .accounts({
-        market: marketPda,
+        market,
         vault,
         usdcMint: USDC_MINT,
         creator: creator.publicKey,
@@ -51,35 +81,27 @@ describe("terrace", () => {
 
     console.log("create_market tx:", tx);
 
-    const market = await program.account.market.fetch(marketPda);
-    assert.equal(market.question, question);
-    assert.equal(market.creator.toBase58(), creator.publicKey.toBase58());
-    assert.isNull(market.outcome);
-    assert.equal(market.totalVolume.toNumber(), 0);
+    const m = await program.account.market.fetch(market);
+    assert.equal(m.question, question);
+    assert.equal(m.creator.toBase58(), creator.publicKey.toBase58());
+    assert.isNull(m.outcome);
+    assert.equal(m.totalVolume.toNumber(), 0);
+    assert.equal(m.yesVolume.toNumber(), 0);
+    assert.equal(m.noVolume.toNumber(), 0);
   });
 
   it("rejects a market with expiry in the past", async () => {
     const pastExpiry = Math.floor(Date.now() / 1000) - 1;
+    const badNonce = new anchor.BN(999);
+    const [badMarket] = marketPda(program, creator.publicKey, badNonce);
+    const badVault = getAssociatedTokenAddressSync(USDC_MINT, badMarket, true);
+
     try {
       await program.methods
-        .createMarket("Bad market", new anchor.BN(pastExpiry), new anchor.BN(999))
+        .createMarket("Bad market", new anchor.BN(pastExpiry), badNonce)
         .accounts({
-          market: anchor.web3.PublicKey.findProgramAddressSync(
-            [
-              Buffer.from("market"),
-              creator.publicKey.toBuffer(),
-              Buffer.from(new anchor.BN(999).toArrayLike(Buffer, "le", 8)),
-            ],
-            program.programId
-          )[0],
-          vault: getAssociatedTokenAddressSync(
-            USDC_MINT,
-            anchor.web3.PublicKey.findProgramAddressSync(
-              [Buffer.from("market"), creator.publicKey.toBuffer(), Buffer.from(new anchor.BN(999).toArrayLike(Buffer, "le", 8))],
-              program.programId
-            )[0],
-            true
-          ),
+          market: badMarket,
+          vault: badVault,
           usdcMint: USDC_MINT,
           creator: creator.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -87,31 +109,195 @@ describe("terrace", () => {
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .rpc();
-      assert.fail("Expected error");
+      assert.fail("Expected ExpiryInPast error");
     } catch (e: any) {
       assert.include(e.message, "ExpiryInPast");
     }
   });
 
-  // place_bet and settle_market tests require a funded USDC ATA on devnet.
-  // Run `anchor test --skip-local-validator` against a funded wallet.
-  it.skip("places a bet", async () => {
-    // TODO: fund bettor ATA with devnet USDC before running
+  // ── place_bet (requires funded devnet USDC ATA) ────────────────────────────
+
+  it.skip("places a bet on Yes", async () => {
+    // Run with `anchor test --skip-local-validator` against a funded wallet.
+    const [bet] = betPda(program, market, creator.publicKey);
+    const bettorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+    const amountLamports = new anchor.BN(1_000_000); // 1 USDC
+
+    const tx = await program.methods
+      .placeBet(1, amountLamports)
+      .accounts({
+        market,
+        bet,
+        vault,
+        bettorAta,
+        usdcMint: USDC_MINT,
+        bettor: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    console.log("place_bet tx:", tx);
+
+    const b = await program.account.bet.fetch(bet);
+    assert.equal(b.outcome, 1);
+    assert.equal(b.amount.toNumber(), 1_000_000);
+    assert.isFalse(b.claimed);
+    assert.isFalse(b.resultRecorded);
+
+    const m = await program.account.market.fetch(market);
+    assert.equal(m.totalVolume.toNumber(), 1_000_000);
+    assert.equal(m.yesVolume.toNumber(), 1_000_000);
+    assert.equal(m.noVolume.toNumber(), 0);
   });
+
+  // ── settle_market ──────────────────────────────────────────────────────────
 
   it("settles a market", async () => {
     const tx = await program.methods
       .settleMarket(1)
       .accounts({
-        market: marketPda,
+        market,
         creator: creator.publicKey,
       })
       .rpc();
 
     console.log("settle_market tx:", tx);
 
-    const market = await program.account.market.fetch(marketPda);
-    assert.equal(market.outcome, 1);
-    assert.deepEqual(market.status, { settled: {} });
+    const m = await program.account.market.fetch(market);
+    assert.equal(m.outcome, 1);
+    assert.deepEqual(m.status, { settled: {} });
+  });
+
+  it("rejects settling an already-settled market", async () => {
+    try {
+      await program.methods
+        .settleMarket(0)
+        .accounts({ market, creator: creator.publicKey })
+        .rpc();
+      assert.fail("Expected MarketNotOpen error");
+    } catch (e: any) {
+      assert.include(e.message, "MarketNotOpen");
+    }
+  });
+
+  // ── claim_winnings (requires funded devnet USDC ATA + placed bets) ─────────
+
+  it.skip("claims winnings for the Yes side", async () => {
+    // Prerequisites: market settled with outcome=1, bettor has a Yes bet.
+    const [bet] = betPda(program, market, creator.publicKey);
+    const [reputation] = reputationPda(program, creator.publicKey);
+    const bettorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    const tx = await program.methods
+      .claimWinnings()
+      .accounts({
+        market,
+        bet,
+        reputation,
+        vault,
+        bettorAta,
+        usdcMint: USDC_MINT,
+        bettor: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    console.log("claim_winnings tx:", tx);
+
+    const b = await program.account.bet.fetch(bet);
+    assert.isTrue(b.claimed);
+    assert.isTrue(b.resultRecorded);
+
+    const rep = await program.account.reputation.fetch(reputation);
+    assert.equal(rep.totalBets, 1);
+    assert.equal(rep.winningBets, 1);
+    assert.equal(rep.winRateBps, 10_000); // 100%
+    assert.equal(rep.currentStreak, 1);
+    assert.deepEqual(rep.badgeTier, { casual: {} }); // 1 bet, not yet Sharp
+  });
+
+  it.skip("rejects a double-claim", async () => {
+    const [bet] = betPda(program, market, creator.publicKey);
+    const [reputation] = reputationPda(program, creator.publicKey);
+    const bettorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    try {
+      await program.methods
+        .claimWinnings()
+        .accounts({
+          market,
+          bet,
+          reputation,
+          vault,
+          bettorAta,
+          usdcMint: USDC_MINT,
+          bettor: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected AlreadyClaimed error");
+    } catch (e: any) {
+      assert.include(e.message, "AlreadyClaimed");
+    }
+  });
+
+  // ── record_loss (requires a settled market + a losing bet) ─────────────────
+
+  it.skip("records a loss on the bettor's reputation", async () => {
+    // Prerequisites: market settled with outcome=1, bettor has a No bet (lost).
+    const loser = anchor.web3.Keypair.generate();
+    const [bet] = betPda(program, market, loser.publicKey);
+    const [reputation] = reputationPda(program, loser.publicKey);
+
+    const tx = await program.methods
+      .recordLoss()
+      .accounts({
+        market,
+        bet,
+        reputation,
+        bettor: loser.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([loser])
+      .rpc();
+
+    console.log("record_loss tx:", tx);
+
+    const b = await program.account.bet.fetch(bet);
+    assert.isTrue(b.resultRecorded);
+    assert.isFalse(b.claimed);
+
+    const rep = await program.account.reputation.fetch(reputation);
+    assert.equal(rep.totalBets, 1);
+    assert.equal(rep.winningBets, 0);
+    assert.equal(rep.winRateBps, 0);
+    assert.equal(rep.currentStreak, -1);
+  });
+
+  it.skip("rejects recording a loss for a winning bet", async () => {
+    const [bet] = betPda(program, market, creator.publicKey);
+    const [reputation] = reputationPda(program, creator.publicKey);
+
+    try {
+      await program.methods
+        .recordLoss()
+        .accounts({
+          market,
+          bet,
+          reputation,
+          bettor: creator.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected BetWasWinner error");
+    } catch (e: any) {
+      assert.include(e.message, "BetWasWinner");
+    }
   });
 });

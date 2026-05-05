@@ -45,3 +45,17 @@ export async function getBetPda(
     ],
   });
 }
+
+export async function getReputationPda(
+  owner: Address,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<[Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [
+      new TextEncoder().encode("reputation"),
+      enc.encode(owner),
+    ],
+  });
+}

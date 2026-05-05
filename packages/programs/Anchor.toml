@@ -2,17 +2,16 @@
 anchor_version = "0.30.0"
 
 [features]
-seeds = true
+resolution = true
 skip-lint = false
 
 [programs.devnet]
-terrace = "9TERRACExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+terrace = "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-# Replace YOUR_HELIUS_API_KEY or set HELIUS_RPC_URL env var
 cluster = "https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY"
 wallet = "~/.config/solana/id.json"
 

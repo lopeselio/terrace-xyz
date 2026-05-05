@@ -1,6 +1,7 @@
 import type { Address } from "@solana/kit";
 
 export type MarketStatus = "Open" | "Closed" | "Settled";
+export type BadgeTier = "Casual" | "Sharp" | "Legend";
 
 export interface Market {
   address: Address;
@@ -9,6 +10,8 @@ export interface Market {
   creator: Address;
   outcome: number | null;
   totalVolume: bigint;
+  yesVolume: bigint;
+  noVolume: bigint;
   vault: Address;
   status: MarketStatus;
   nonce: bigint;
@@ -22,6 +25,18 @@ export interface Bet {
   outcome: number;
   amount: bigint;
   claimed: boolean;
+  resultRecorded: boolean;
+  bump: number;
+}
+
+export interface Reputation {
+  address: Address;
+  owner: Address;
+  totalBets: number;
+  winningBets: number;
+  winRateBps: number;
+  currentStreak: number;
+  badgeTier: BadgeTier;
   bump: number;
 }
 
@@ -42,6 +57,15 @@ export interface PlaceBetParams {
 export interface SettleMarketParams {
   market: Address;
   winningOutcome: 0 | 1;
+}
+
+export interface ClaimWinningsParams {
+  market: Address;
+  usdcMint: Address;
+}
+
+export interface RecordLossParams {
+  market: Address;
 }
 
 export const USDC_DEVNET_MINT =

@@ -11,3 +11,10 @@ codegen-units = 1
 opt-level = 3
 incremental = false
 codegen-units = 1
+
+# blake3 1.8+ pulls in digest 0.11 → crypto-common 0.2.1 (requires Rust
+# edition2024), which breaks Solana platform-tools Cargo 1.79.0. Force
+# resolution to 1.5.5 (digest 0.10 / crypto-common 0.1) via a shared
+# workspace dependency so solana-program's "blake3 = 1" constraint is met.
+[workspace.dependencies]
+blake3 = "=1.5.5"
