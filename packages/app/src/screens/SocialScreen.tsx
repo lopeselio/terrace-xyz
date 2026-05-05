@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   RefreshControl,
 } from "react-native";
 import { avatarColorFromPubkey, truncatePubkey, type BadgeTier } from "../hooks/useLeaderboard";
+import { useHeliusEvents, type LiveEvent } from "../hooks/useHeliusEvents";
 
 // ---------------------------------------------------------------------------
-// Feed event types
+// Feed event types — superset of LiveEventType + mock-only types
 // ---------------------------------------------------------------------------
 
 type FeedEventType =
@@ -19,7 +20,9 @@ type FeedEventType =
   | "PARLAY_WON"
   | "PARLAY_LOST"
   | "MARKET_CREATED"
-  | "MARKET_SETTLED";
+  | "MARKET_SETTLED"
+  | "MATCHUP_CREATED"
+  | "MATCHUP_SETTLED";
 
 interface FeedActor {
   pubkey: string;
@@ -38,6 +41,20 @@ interface FeedEvent {
   legs?: string[];
   profitUsdc?: number;
   timestamp: Date;
+}
+
+function liveEventToFeed(ev: LiveEvent): FeedEvent {
+  return {
+    id: ev.id,
+    type: ev.type as FeedEventType,
+    actor: { pubkey: ev.actorPubkey, displayName: ev.actorDisplay, badge: ev.badge },
+    market: ev.market,
+    outcome: ev.outcome,
+    amountUsdc: ev.amountUsdc,
+    profitUsdc: ev.profitUsdc,
+    legs: ev.legs,
+    timestamp: ev.timestamp,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -242,13 +259,39 @@ function MarketSettledCard({ event }: { event: FeedEvent }) {
   );
 }
 
+function MatchupCard({ event }: { event: FeedEvent }) {
+  const isCreated = event.type === "MATCHUP_CREATED";
+  return (
+    <View style={styles.feedCard}>
+      <ActorHeader actor={event.actor} timeStr={formatTime(event.timestamp)} />
+      <View style={styles.cardBody}>
+        <Text style={styles.cardAction}>
+          {isCreated ? "⚔️ Challenge issued" : "⚔️ Matchup settled"}
+        </Text>
+        {event.market && (
+          <Text style={styles.betMarket} numberOfLines={1}>{event.market}</Text>
+        )}
+        {event.amountUsdc != null && (
+          <Text style={styles.parlayStake}>
+            {isCreated
+              ? `Stake: $${event.amountUsdc.toFixed(2)} USDC each`
+              : `Winner takes: $${event.amountUsdc.toFixed(2)} USDC`}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function FeedCard({ event }: { event: FeedEvent }) {
   switch (event.type) {
-    case "BET_PLACED":     return <BetPlacedCard event={event} />;
+    case "BET_PLACED":       return <BetPlacedCard event={event} />;
     case "PARLAY_WON":
-    case "PARLAY_LOST":    return <ParlayCard event={event} />;
-    case "MARKET_CREATED": return <MarketCreatedCard event={event} />;
-    case "MARKET_SETTLED": return <MarketSettledCard event={event} />;
+    case "PARLAY_LOST":      return <ParlayCard event={event} />;
+    case "MARKET_CREATED":   return <MarketCreatedCard event={event} />;
+    case "MARKET_SETTLED":   return <MarketSettledCard event={event} />;
+    case "MATCHUP_CREATED":
+    case "MATCHUP_SETTLED":  return <MatchupCard event={event} />;
   }
 }
 
@@ -274,15 +317,21 @@ interface Props {
 export function SocialScreen({ walletPubkey }: Props) {
   const [activeTab, setActiveTab] = useState<FeedTab>("global");
   const [refreshing, setRefreshing] = useState(false);
+  const { events: liveEvents, connected } = useHeliusEvents(100);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    // TODO: re-fetch Helius WebSocket events
-    setTimeout(() => setRefreshing(false), 800);
+    setTimeout(() => setRefreshing(false), 600);
   };
 
-  // Filter mock feed by tab (placeholder logic — replace with real data)
-  const feed = MOCK_FEED.filter((e) => {
+  // Merge live Helius events with mock fallback (mock shown when no live events yet)
+  const liveFeed: FeedEvent[] = useMemo(
+    () => liveEvents.map(liveEventToFeed),
+    [liveEvents]
+  );
+  const baseFeed = liveFeed.length > 0 ? liveFeed : MOCK_FEED;
+
+  const feed = baseFeed.filter((e) => {
     if (activeTab === "sharps") return e.actor.badge === "Sharp" || e.actor.badge === "Legend";
     return true;
   });
@@ -343,7 +392,9 @@ export function SocialScreen({ walletPubkey }: Props) {
         {/* Helius live indicator stub */}
         <View style={styles.liveRow}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>Live · Helius WebSocket</Text>
+          <Text style={styles.liveText}>
+            {connected ? "⬤ Live · Helius WebSocket" : "◯ Connecting…"}
+          </Text>
         </View>
 
         <View style={{ height: 80 }} />

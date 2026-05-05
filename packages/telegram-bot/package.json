@@ -1,0 +1,21 @@
+{
+  "name": "@terrace/telegram-bot",
+  "version": "0.1.0",
+  "description": "Terrace Telegram bot — market alerts, odds, and deep links",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "grammy": "^1.26.0",
+    "@terrace/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0"
+  }
+}
