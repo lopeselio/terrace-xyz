@@ -1,5 +1,5 @@
-export { TerraceSdk, deserializeMarketAccount, deserializeReputationAccount, deserializeParlayAccount } from "./client";
-export { getMarketPda, getBetPda, getReputationPda, getParlayPda, TERRACE_PROGRAM_ID } from "./pda";
+export { TerraceSdk, deserializeMarketAccount, deserializeReputationAccount, deserializeParlayAccount, deserializeMatchupAccount } from "./client";
+export { getMarketPda, getBetPda, getReputationPda, getParlayPda, getMatchupPda, TERRACE_PROGRAM_ID } from "./pda";
 export {
   buildCreateMarketInstruction,
   buildPlaceBetInstruction,
@@ -10,12 +10,17 @@ export {
   buildCreateParlayInstruction,
   buildSettleParlayInstruction,
   buildClaimParlayInstruction,
+  buildCreateMatchupInstruction,
+  buildAcceptMatchupInstruction,
+  buildSettleMatchupInstruction,
+  buildDeclineMatchupInstruction,
 } from "./instructions";
 export type {
   Market,
   Bet,
   Reputation,
   Parlay,
+  Matchup,
   ParlayLeg,
   CreateMarketParams,
   PlaceBetParams,
@@ -26,9 +31,14 @@ export type {
   CreateParlayParams,
   SettleParlayParams,
   ClaimParlayParams,
+  CreateMatchupParams,
+  AcceptMatchupParams,
+  SettleMatchupParams,
+  DeclineMatchupParams,
   MarketStatus,
   BadgeTier,
   ParlayStatus,
+  MatchupStatus,
 } from "./types";
 export { USDC_DEVNET_MINT, MIN_BET_LAMPORTS } from "./types";
 export { JupiterMarketsClient } from "./jupiter";

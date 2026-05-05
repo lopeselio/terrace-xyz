@@ -67,7 +67,7 @@ describe("terrace", () => {
 
   it("creates a market", async () => {
     const tx = await program.methods
-      .createMarket(question, new anchor.BN(expiry), 200, nonce, null) // 2% creator fee, no oracle
+      .createMarket(question, new anchor.BN(expiry), 200, nonce, null, false, false) // 2% fee, public, not flash
       .accounts({
         market,
         vault,
@@ -97,7 +97,7 @@ describe("terrace", () => {
 
     try {
       await program.methods
-        .createMarket(question, new anchor.BN(expiry), 501, badNonce2, null) // 5.01% — over limit
+        .createMarket(question, new anchor.BN(expiry), 501, badNonce2, null, false, false) // 5.01% — over limit
         .accounts({
           market: badMarket2,
           vault: badVault2,
@@ -122,7 +122,7 @@ describe("terrace", () => {
 
     try {
       await program.methods
-        .createMarket("Bad market", new anchor.BN(pastExpiry), 0, badNonce, null)
+        .createMarket("Bad market", new anchor.BN(pastExpiry), 0, badNonce, null, false, false)
         .accounts({
           market: badMarket,
           vault: badVault,
@@ -203,7 +203,7 @@ describe("terrace", () => {
     const oracleVault = getAssociatedTokenAddressSync(USDC_MINT, oracleMarket, true);
 
     await program.methods
-      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, oracleKeypair.publicKey)
+      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, oracleKeypair.publicKey, false, false)
       .accounts({
         market: oracleMarket,
         vault: oracleVault,
@@ -243,7 +243,7 @@ describe("terrace", () => {
     const realOracle = anchor.web3.Keypair.generate();
 
     await program.methods
-      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, realOracle.publicKey)
+      .createMarket(question, new anchor.BN(expiry), 0, oracleNonce, realOracle.publicKey, false, false)
       .accounts({
         market: oracleMarket,
         vault: oracleVault,

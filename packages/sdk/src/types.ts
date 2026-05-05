@@ -17,6 +17,10 @@ export interface Market {
   creatorFeeBps: number;
   /** Switchboard Function oracle pubkey. null = creator-only settlement. */
   oracle: Address | null;
+  /** Private group market — positions hidden (Light Protocol Phase 4). */
+  isPrivate: boolean;
+  /** Flash market — very short expiry for in-match micro-markets. */
+  isFlash: boolean;
   nonce: bigint;
   bump: number;
 }
@@ -52,11 +56,55 @@ export interface CreateMarketParams {
   usdcMint: Address;
   /** Switchboard Function pubkey allowed to call settle_market_oracle. null = creator-only. */
   oracle?: Address | null;
+  isPrivate?: boolean;
+  isFlash?: boolean;
 }
 
 export interface SettleMarketOracleParams {
   market: Address;
   winningOutcome: 0 | 1;
+}
+
+export type MatchupStatus = "Pending" | "Accepted" | "Settled" | "Declined";
+
+export interface Matchup {
+  address: Address;
+  challenger: Address;
+  opponent: Address;
+  market: Address;
+  challengerOutcome: 0 | 1;
+  stakeUsdc: bigint;
+  status: MatchupStatus;
+  nonce: bigint;
+  bump: number;
+}
+
+export interface CreateMatchupParams {
+  market: Address;
+  opponent: Address;
+  challengerOutcome: 0 | 1;
+  stakeUsdc: bigint;
+  nonce: bigint;
+  usdcMint: Address;
+}
+
+export interface AcceptMatchupParams {
+  matchup: Address;
+  usdcMint: Address;
+}
+
+export interface SettleMatchupParams {
+  matchup: Address;
+  market: Address;
+  challenger: Address;
+  opponent: Address;
+  usdcMint: Address;
+}
+
+export interface DeclineMatchupParams {
+  matchup: Address;
+  challenger: Address;
+  usdcMint: Address;
 }
 
 export interface PlaceBetParams {

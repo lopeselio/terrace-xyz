@@ -8,7 +8,7 @@ import {
 
 // Instruction discriminators: sha256("global:<ix_name>")[0..8]
 // Regenerate from IDL after `anchor build` if the program is redeployed.
-const IX_CREATE_MARKET         = Buffer.from([162, 93, 19, 147, 76, 203, 184, 147]);
+const IX_CREATE_MARKET          = Buffer.from([162, 93, 19, 147, 76, 203, 184, 147]);
 const IX_PLACE_BET             = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
 const IX_SETTLE_MARKET         = Buffer.from([130, 125, 241, 173, 147, 184, 200, 93]);
 const IX_SETTLE_MARKET_ORACLE  = Buffer.from([48, 254, 79, 182, 3, 109, 22, 4]); // sha256("global:settle_market_oracle")[0..8]
@@ -17,6 +17,11 @@ const IX_RECORD_LOSS           = Buffer.from([88, 12, 193, 242, 198, 165, 0, 195
 const IX_CREATE_PARLAY         = Buffer.from([127, 36, 125, 173, 162, 128, 246, 207]);
 const IX_SETTLE_PARLAY         = Buffer.from([51, 60, 177, 79, 214, 52, 6, 22]);
 const IX_CLAIM_PARLAY          = Buffer.from([47, 40, 30, 204, 201, 172, 97, 250]);
+// Matchup discriminators — update from IDL after anchor build
+const IX_CREATE_MATCHUP        = Buffer.from([218, 134, 88, 206, 163, 134, 99, 95]);
+const IX_ACCEPT_MATCHUP        = Buffer.from([12, 118, 57, 228, 167, 193, 46, 70]);
+const IX_SETTLE_MATCHUP        = Buffer.from([194, 55, 3, 119, 38, 144, 197, 246]);
+const IX_DECLINE_MATCHUP       = Buffer.from([107, 211, 250, 207, 189, 226, 3, 230]);
 
 const TOKEN_PROGRAM_ID       = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
 const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
@@ -65,12 +70,14 @@ export async function buildCreateMarketInstruction(params: {
   creatorFeeBps: number;
   nonce: bigint;
   oracle?: Address | null;
+  isPrivate?: boolean;
+  isFlash?: boolean;
   usdcMint: Address;
   marketAddress: Address;
   creator: Address;
   programId: Address;
 }): Promise<IInstruction> {
-  const { question, expiry, creatorFeeBps, nonce, oracle, usdcMint, marketAddress, creator, programId } = params;
+  const { question, expiry, creatorFeeBps, nonce, oracle, isPrivate, isFlash, usdcMint, marketAddress, creator, programId } = params;
   const vaultAddress = await deriveAta(usdcMint, marketAddress);
 
   const data = Buffer.concat([
@@ -80,6 +87,8 @@ export async function buildCreateMarketInstruction(params: {
     encodeU16LE(creatorFeeBps),
     encodeU64LE(nonce),
     encodeOptionPubkey(oracle),
+    Buffer.from([isPrivate ? 1 : 0]),
+    Buffer.from([isFlash ? 1 : 0]),
   ]);
 
   return {
@@ -328,6 +337,136 @@ export async function buildClaimParlayInstruction(params: {
       { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
     ],
     data: new Uint8Array(IX_CLAIM_PARLAY),
+  };
+}
+
+export async function buildCreateMatchupInstruction(params: {
+  market: Address;
+  opponent: Address;
+  challengerOutcome: 0 | 1;
+  stakeUsdc: bigint;
+  nonce: bigint;
+  usdcMint: Address;
+  matchupAddress: Address;
+  challenger: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { market, opponent, challengerOutcome, stakeUsdc, nonce, usdcMint, matchupAddress, challenger, programId } = params;
+  const challengerAta = await deriveAta(usdcMint, challenger);
+  const matchupVault = await deriveAta(usdcMint, matchupAddress);
+  const enc = getAddressEncoder();
+
+  const data = Buffer.concat([
+    IX_CREATE_MATCHUP,
+    Buffer.from(enc.encode(opponent)),      // opponent: Pubkey
+    Buffer.from([challengerOutcome]),        // challenger_outcome: u8
+    encodeU64LE(stakeUsdc),                 // stake_usdc: u64
+    encodeU64LE(nonce),                     // nonce: u64
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: matchupAddress, role: AccountRole.WRITABLE },
+      { address: matchupVault, role: AccountRole.WRITABLE },
+      { address: challengerAta, role: AccountRole.WRITABLE },
+      { address: market, role: AccountRole.READONLY },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: challenger, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+export async function buildAcceptMatchupInstruction(params: {
+  matchupAddress: Address;
+  challenger: Address;
+  market: Address;
+  nonce: bigint;
+  usdcMint: Address;
+  opponent: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { matchupAddress, usdcMint, opponent, programId } = params;
+  const matchupVault = await deriveAta(usdcMint, matchupAddress);
+  const opponentAta = await deriveAta(usdcMint, opponent);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: matchupAddress, role: AccountRole.WRITABLE },
+      { address: matchupVault, role: AccountRole.WRITABLE },
+      { address: opponentAta, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: opponent, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_ACCEPT_MATCHUP),
+  };
+}
+
+export async function buildSettleMatchupInstruction(params: {
+  matchupAddress: Address;
+  market: Address;
+  challenger: Address;
+  opponent: Address;
+  usdcMint: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { matchupAddress, market, challenger, opponent, usdcMint, programId } = params;
+  const matchupVault = await deriveAta(usdcMint, matchupAddress);
+  const challengerAta = await deriveAta(usdcMint, challenger);
+  const opponentAta = await deriveAta(usdcMint, opponent);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: matchupAddress, role: AccountRole.WRITABLE },
+      { address: market, role: AccountRole.READONLY },
+      { address: matchupVault, role: AccountRole.WRITABLE },
+      { address: challengerAta, role: AccountRole.WRITABLE },
+      { address: opponentAta, role: AccountRole.WRITABLE },
+      { address: challenger, role: AccountRole.READONLY },
+      { address: opponent, role: AccountRole.READONLY },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_SETTLE_MATCHUP),
+  };
+}
+
+export async function buildDeclineMatchupInstruction(params: {
+  matchupAddress: Address;
+  challenger: Address;
+  signer: Address;
+  usdcMint: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { matchupAddress, challenger, signer, usdcMint, programId } = params;
+  const matchupVault = await deriveAta(usdcMint, matchupAddress);
+  const challengerAta = await deriveAta(usdcMint, challenger);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: matchupAddress, role: AccountRole.WRITABLE },
+      { address: matchupVault, role: AccountRole.WRITABLE },
+      { address: challengerAta, role: AccountRole.WRITABLE },
+      { address: challenger, role: AccountRole.READONLY },
+      { address: signer, role: AccountRole.WRITABLE_SIGNER },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_DECLINE_MATCHUP),
   };
 }
 

@@ -60,6 +60,24 @@ export async function getReputationPda(
   });
 }
 
+export async function getMatchupPda(
+  challenger: Address,
+  market: Address,
+  nonce: bigint,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<[Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [
+      new TextEncoder().encode("matchup"),
+      enc.encode(challenger),
+      enc.encode(market),
+      u64LeBytes(nonce),
+    ],
+  });
+}
+
 export async function getParlayPda(
   creator: Address,
   nonce: bigint,

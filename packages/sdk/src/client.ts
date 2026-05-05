@@ -25,15 +25,21 @@ import type {
   CreateParlayParams,
   SettleParlayParams,
   ClaimParlayParams,
+  CreateMatchupParams,
+  AcceptMatchupParams,
+  SettleMatchupParams,
+  DeclineMatchupParams,
   Market,
   Reputation,
   Parlay,
+  Matchup,
   ParlayLeg,
   ParlayStatus,
+  MatchupStatus,
   BadgeTier,
   MarketStatus,
 } from "./types";
-import { getMarketPda, getBetPda, getReputationPda, getParlayPda, TERRACE_PROGRAM_ID } from "./pda";
+import { getMarketPda, getBetPda, getReputationPda, getParlayPda, getMatchupPda, TERRACE_PROGRAM_ID } from "./pda";
 import {
   buildCreateMarketInstruction,
   buildPlaceBetInstruction,
@@ -44,6 +50,10 @@ import {
   buildCreateParlayInstruction,
   buildSettleParlayInstruction,
   buildClaimParlayInstruction,
+  buildCreateMatchupInstruction,
+  buildAcceptMatchupInstruction,
+  buildSettleMatchupInstruction,
+  buildDeclineMatchupInstruction,
 } from "./instructions";
 
 // Minimal base58 encoder — keeps the deserializers dependency-free.
@@ -131,6 +141,12 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
     o += 32;
   }
 
+  const isPrivate = view.getUint8(o) === 1;
+  o += 1;
+
+  const isFlash = view.getUint8(o) === 1;
+  o += 1;
+
   const nonce = view.getBigUint64(o, true);
   o += 8;
 
@@ -149,6 +165,8 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
     status,
     creatorFeeBps,
     oracle,
+    isPrivate,
+    isFlash,
     nonce,
     bump,
   };
@@ -245,6 +263,46 @@ export function deserializeReputationAccount(
   return { address, owner, totalBets, winningBets, winRateBps, currentStreak, badgeTier, bump };
 }
 
+const MATCHUP_STATUS_MAP: MatchupStatus[] = ["Pending", "Accepted", "Settled", "Declined"];
+
+/**
+ * Deserialises a raw Matchup account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   challenger         — 32-byte Pubkey
+ *   opponent           — 32-byte Pubkey
+ *   market             — 32-byte Pubkey
+ *   challenger_outcome — u8
+ *   stake_usdc         — u64 LE
+ *   status             — u8 enum
+ *   nonce              — u64 LE
+ *   bump               — u8
+ */
+export function deserializeMatchupAccount(data: Uint8Array, address: Address): Matchup {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8;
+
+  const challenger = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const opponent = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const market = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+
+  const challengerOutcome = view.getUint8(o) as 0 | 1;
+  o += 1;
+  const stakeUsdc = view.getBigUint64(o, true);
+  o += 8;
+  const statusByte = view.getUint8(o);
+  o += 1;
+  const status: MatchupStatus = MATCHUP_STATUS_MAP[statusByte] ?? "Pending";
+  const nonce = view.getBigUint64(o, true);
+  o += 8;
+  const bump = view.getUint8(o);
+
+  return { address, challenger, opponent, market, challengerOutcome, stakeUsdc, status, nonce, bump };
+}
+
 export class TerraceSdk {
   constructor(
     private readonly rpc: Rpc<SolanaRpcApi>,
@@ -263,6 +321,8 @@ export class TerraceSdk {
       ...params,
       creatorFeeBps: params.creatorFeeBps ?? 0,
       oracle: params.oracle ?? null,
+      isPrivate: params.isPrivate ?? false,
+      isFlash: params.isFlash ?? false,
       marketAddress,
       creator: this.signer.address,
       programId: this.programId,
@@ -424,6 +484,82 @@ export class TerraceSdk {
     const [b64] = accountInfo.value.data as [string, string];
     const raw = new Uint8Array(Buffer.from(b64, "base64"));
     return deserializeMarketAccount(raw, address);
+  }
+
+  async createMatchup(params: CreateMatchupParams): Promise<string> {
+    const [matchupAddress] = await getMatchupPda(
+      this.signer.address,
+      params.market,
+      params.nonce,
+      this.programId
+    );
+
+    const ix = await buildCreateMatchupInstruction({
+      market: params.market,
+      opponent: params.opponent,
+      challengerOutcome: params.challengerOutcome,
+      stakeUsdc: params.stakeUsdc,
+      nonce: params.nonce,
+      usdcMint: params.usdcMint,
+      matchupAddress,
+      challenger: this.signer.address,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async acceptMatchup(params: AcceptMatchupParams): Promise<string> {
+    const matchup = await this.fetchMatchup(params.matchup);
+
+    const ix = await buildAcceptMatchupInstruction({
+      matchupAddress: params.matchup,
+      challenger: matchup.challenger,
+      market: matchup.market,
+      nonce: matchup.nonce,
+      usdcMint: params.usdcMint,
+      opponent: this.signer.address,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async settleMatchup(params: SettleMatchupParams): Promise<string> {
+    const ix = await buildSettleMatchupInstruction({
+      matchupAddress: params.matchup,
+      market: params.market,
+      challenger: params.challenger,
+      opponent: params.opponent,
+      usdcMint: params.usdcMint,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async declineMatchup(params: DeclineMatchupParams): Promise<string> {
+    const ix = await buildDeclineMatchupInstruction({
+      matchupAddress: params.matchup,
+      challenger: params.challenger,
+      signer: this.signer.address,
+      usdcMint: params.usdcMint,
+      programId: this.programId,
+    });
+
+    return this._sendTx([ix]);
+  }
+
+  async fetchMatchup(address: Address): Promise<Matchup> {
+    const accountInfo = await this.rpc
+      .getAccountInfo(address, { encoding: "base64" })
+      .send();
+
+    if (!accountInfo.value) throw new Error(`Matchup not found: ${address}`);
+
+    const [b64] = accountInfo.value.data as [string, string];
+    const raw = new Uint8Array(Buffer.from(b64, "base64"));
+    return deserializeMatchupAccount(raw, address);
   }
 
   async fetchReputation(owner: Address): Promise<Reputation | null> {
