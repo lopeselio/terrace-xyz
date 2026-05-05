@@ -29,6 +29,12 @@ function encodeString(s: string): Buffer {
   return buf;
 }
 
+function encodeU16LE(n: number): Buffer {
+  const buf = Buffer.alloc(2);
+  buf.writeUInt16LE(n, 0);
+  return buf;
+}
+
 function encodeU64LE(n: bigint): Buffer {
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64LE(n, 0);
@@ -44,19 +50,21 @@ function encodeI64LE(n: bigint): Buffer {
 export async function buildCreateMarketInstruction(params: {
   question: string;
   expiry: bigint;
+  creatorFeeBps: number;
   nonce: bigint;
   usdcMint: Address;
   marketAddress: Address;
   creator: Address;
   programId: Address;
 }): Promise<IInstruction> {
-  const { question, expiry, nonce, usdcMint, marketAddress, creator, programId } = params;
+  const { question, expiry, creatorFeeBps, nonce, usdcMint, marketAddress, creator, programId } = params;
   const vaultAddress = await deriveAta(usdcMint, marketAddress);
 
   const data = Buffer.concat([
     IX_CREATE_MARKET,
     encodeString(question),
     encodeI64LE(expiry),
+    encodeU16LE(creatorFeeBps),
     encodeU64LE(nonce),
   ]);
 
@@ -143,9 +151,10 @@ export async function buildClaimWinningsInstruction(params: {
   bettor: Address;
   programId: Address;
 }): Promise<IInstruction> {
-  const { market, betAddress, reputationAddress, usdcMint, bettor, programId } = params;
+  const { market, marketCreator, betAddress, reputationAddress, usdcMint, bettor, programId } = params;
   const vaultAddress = await deriveAta(usdcMint, market);
   const bettorAta = await deriveAta(usdcMint, bettor);
+  const creatorAta = await deriveAta(usdcMint, marketCreator);
 
   return {
     programAddress: programId,
@@ -155,6 +164,8 @@ export async function buildClaimWinningsInstruction(params: {
       { address: reputationAddress, role: AccountRole.WRITABLE },
       { address: vaultAddress, role: AccountRole.WRITABLE },
       { address: bettorAta, role: AccountRole.WRITABLE },
+      { address: marketCreator, role: AccountRole.READONLY },
+      { address: creatorAta, role: AccountRole.WRITABLE },
       { address: usdcMint, role: AccountRole.READONLY },
       { address: bettor, role: AccountRole.WRITABLE_SIGNER },
       { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },

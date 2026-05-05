@@ -14,6 +14,7 @@ export interface Market {
   noVolume: bigint;
   vault: Address;
   status: MarketStatus;
+  creatorFeeBps: number;
   nonce: bigint;
   bump: number;
 }
@@ -43,6 +44,8 @@ export interface Reputation {
 export interface CreateMarketParams {
   question: string;
   expiry: bigint;
+  /** Creator fee in basis points (0–500). Defaults to 0. */
+  creatorFeeBps?: number;
   nonce: bigint;
   usdcMint: Address;
 }

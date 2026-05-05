@@ -118,6 +118,9 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
   const STATUS_MAP: MarketStatus[] = ["Open", "Closed", "Settled"];
   const status: MarketStatus = STATUS_MAP[statusByte] ?? "Open";
 
+  const creatorFeeBps = view.getUint16(o, true);
+  o += 2;
+
   const nonce = view.getBigUint64(o, true);
   o += 8;
 
@@ -134,6 +137,7 @@ export function deserializeMarketAccount(data: Uint8Array, address: Address): Ma
     noVolume,
     vault,
     status,
+    creatorFeeBps,
     nonce,
     bump,
   };
@@ -246,6 +250,7 @@ export class TerraceSdk {
 
     const ix = await buildCreateMarketInstruction({
       ...params,
+      creatorFeeBps: params.creatorFeeBps ?? 0,
       marketAddress,
       creator: this.signer.address,
       programId: this.programId,

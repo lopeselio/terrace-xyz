@@ -67,7 +67,7 @@ describe("terrace", () => {
 
   it("creates a market", async () => {
     const tx = await program.methods
-      .createMarket(question, new anchor.BN(expiry), nonce)
+      .createMarket(question, new anchor.BN(expiry), 200, nonce) // 2% creator fee
       .accounts({
         market,
         vault,
@@ -90,6 +90,30 @@ describe("terrace", () => {
     assert.equal(m.noVolume.toNumber(), 0);
   });
 
+  it("rejects a market with creator fee above 5%", async () => {
+    const badNonce2 = new anchor.BN(998);
+    const [badMarket2] = marketPda(program, creator.publicKey, badNonce2);
+    const badVault2 = getAssociatedTokenAddressSync(USDC_MINT, badMarket2, true);
+
+    try {
+      await program.methods
+        .createMarket(question, new anchor.BN(expiry), 501, badNonce2) // 5.01% — over limit
+        .accounts({
+          market: badMarket2,
+          vault: badVault2,
+          usdcMint: USDC_MINT,
+          creator: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected FeeTooHigh error");
+    } catch (e: any) {
+      assert.include(e.message, "FeeTooHigh");
+    }
+  });
+
   it("rejects a market with expiry in the past", async () => {
     const pastExpiry = Math.floor(Date.now() / 1000) - 1;
     const badNonce = new anchor.BN(999);
@@ -98,7 +122,7 @@ describe("terrace", () => {
 
     try {
       await program.methods
-        .createMarket("Bad market", new anchor.BN(pastExpiry), badNonce)
+        .createMarket("Bad market", new anchor.BN(pastExpiry), 0, badNonce)
         .accounts({
           market: badMarket,
           vault: badVault,
@@ -189,6 +213,8 @@ describe("terrace", () => {
     const [bet] = betPda(program, market, creator.publicKey);
     const [reputation] = reputationPda(program, creator.publicKey);
     const bettorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+    // creator_ata same address since bettor == creator in this test
+    const creatorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
 
     const tx = await program.methods
       .claimWinnings()
@@ -198,6 +224,8 @@ describe("terrace", () => {
         reputation,
         vault,
         bettorAta,
+        creator: creator.publicKey,
+        creatorAta,
         usdcMint: USDC_MINT,
         bettor: creator.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -224,6 +252,7 @@ describe("terrace", () => {
     const [bet] = betPda(program, market, creator.publicKey);
     const [reputation] = reputationPda(program, creator.publicKey);
     const bettorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+    const creatorAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
 
     try {
       await program.methods
@@ -234,6 +263,8 @@ describe("terrace", () => {
           reputation,
           vault,
           bettorAta,
+          creator: creator.publicKey,
+          creatorAta,
           usdcMint: USDC_MINT,
           bettor: creator.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,

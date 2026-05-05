@@ -8,6 +8,7 @@ declare_id!("8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF");
 
 const MAX_QUESTION_LEN: usize = 200;
 const MAX_PARLAY_LEGS: usize = 8;
+const MAX_CREATOR_FEE_BPS: u16 = 500; // 5% ceiling on creator fees
 const USDC_DECIMALS: u64 = 1_000_000; // 1 USDC = 1_000_000 lamports (6 dp)
 const MIN_BET: u64 = USDC_DECIMALS / 10; // 0.1 USDC minimum
 
@@ -17,10 +18,12 @@ pub mod terrace {
 
     /// Create a binary-outcome prediction market.
     /// nonce lets one creator own many markets: PDA = [b"market", creator, nonce_le].
+    /// creator_fee_bps: cut of each winning payout sent to the creator (max 500 = 5%).
     pub fn create_market(
         ctx: Context<CreateMarket>,
         question: String,
         expiry: i64,
+        creator_fee_bps: u16,
         nonce: u64,
     ) -> Result<()> {
         require!(
@@ -30,6 +33,10 @@ pub mod terrace {
         require!(
             expiry > Clock::get()?.unix_timestamp,
             TerracError::ExpiryInPast
+        );
+        require!(
+            creator_fee_bps <= MAX_CREATOR_FEE_BPS,
+            TerracError::FeeTooHigh
         );
 
         let market = &mut ctx.accounts.market;
@@ -42,6 +49,7 @@ pub mod terrace {
         market.no_volume = 0;
         market.vault = ctx.accounts.vault.key();
         market.status = MarketStatus::Open;
+        market.creator_fee_bps = creator_fee_bps;
         market.nonce = nonce;
         market.bump = ctx.bumps.market;
 
@@ -151,10 +159,12 @@ pub mod terrace {
     }
 
     /// Pro-rata USDC payout for the winning side.
-    /// payout = bet_amount * total_volume / winning_side_volume
+    /// gross_payout = bet_amount * total_volume / winning_side_volume
+    /// fee          = gross_payout * creator_fee_bps / 10_000  → creator ATA
+    /// net_payout   = gross_payout - fee                       → bettor ATA
     /// Also initialises (or updates) the bettor's Reputation PDA (win).
     pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
-        let (payout, creator, nonce_le, market_bump, market_key, bettor_key) = {
+        let (gross_payout, creator_fee_bps, creator, nonce_le, market_bump, market_key, bettor_key) = {
             let market = &ctx.accounts.market;
             let bet = &ctx.accounts.bet;
 
@@ -172,14 +182,15 @@ pub mod terrace {
             require!(winning_volume > 0, TerracError::ZeroWinningVolume);
 
             // u128 prevents overflow during multiplication before division
-            let payout = (bet.amount as u128)
+            let gross_payout = (bet.amount as u128)
                 .checked_mul(market.total_volume as u128)
                 .ok_or(TerracError::Overflow)?
                 .checked_div(winning_volume as u128)
                 .ok_or(TerracError::Overflow)? as u64;
 
             (
-                payout,
+                gross_payout,
+                market.creator_fee_bps,
                 market.creator,
                 market.nonce.to_le_bytes(),
                 market.bump,
@@ -188,7 +199,16 @@ pub mod terrace {
             )
         };
 
-        // Transfer USDC: vault (PDA-owned) → bettor ATA
+        let fee = (gross_payout as u128)
+            .checked_mul(creator_fee_bps as u128)
+            .ok_or(TerracError::Overflow)?
+            .checked_div(10_000)
+            .ok_or(TerracError::Overflow)? as u64;
+        let net_payout = gross_payout.checked_sub(fee).ok_or(TerracError::Overflow)?;
+
+        let signer_seeds: &[&[&[u8]]] = &[&[b"market", creator.as_ref(), &nonce_le, &[market_bump]]];
+
+        // Transfer net payout: vault → bettor ATA
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -197,10 +217,26 @@ pub mod terrace {
                     to: ctx.accounts.bettor_ata.to_account_info(),
                     authority: ctx.accounts.market.to_account_info(),
                 },
-                &[&[b"market", creator.as_ref(), &nonce_le, &[market_bump]]],
+                signer_seeds,
             ),
-            payout,
+            net_payout,
         )?;
+
+        // Transfer creator fee: vault → creator ATA (skip if zero)
+        if fee > 0 {
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.vault.to_account_info(),
+                        to: ctx.accounts.creator_ata.to_account_info(),
+                        authority: ctx.accounts.market.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                fee,
+            )?;
+        }
 
         ctx.accounts.bet.claimed = true;
         ctx.accounts.bet.result_recorded = true;
@@ -225,7 +261,8 @@ pub mod terrace {
         emit!(WinningsClaimed {
             market: market_key,
             bettor: bettor_key,
-            payout,
+            payout: net_payout,
+            fee,
         });
         emit!(ReputationUpdated {
             owner: bettor_key,
@@ -469,7 +506,7 @@ fn compute_badge(total_bets: u32, win_rate_bps: u16) -> BadgeTier {
 // ---------------------------------------------------------------------------
 
 #[derive(Accounts)]
-#[instruction(question: String, expiry: i64, nonce: u64)]
+#[instruction(question: String, expiry: i64, creator_fee_bps: u16, nonce: u64)]
 pub struct CreateMarket<'info> {
     #[account(
         init,
@@ -591,13 +628,30 @@ pub struct ClaimWinnings<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
 
-    /// Bettor's USDC ATA — destination of payout
+    /// Bettor's USDC ATA — destination of net payout
     #[account(
         mut,
         associated_token::mint = usdc_mint,
         associated_token::authority = bettor,
     )]
     pub bettor_ata: Account<'info, TokenAccount>,
+
+    /// Market creator — used only as ATA authority; key checked against market.creator.
+    /// CHECK: key is constrained to market.creator; no other trust assumption needed.
+    #[account(
+        constraint = creator.key() == market.creator @ TerracError::Unauthorized
+    )]
+    pub creator: UncheckedAccount<'info>,
+
+    /// Market creator's USDC ATA — receives the creator fee.
+    /// init_if_needed: bettor covers the ~0.002 SOL rent once per creator wallet.
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = creator,
+    )]
+    pub creator_ata: Account<'info, TokenAccount>,
 
     pub usdc_mint: Account<'info, Mint>,
 
@@ -729,17 +783,18 @@ pub struct ClaimParlay<'info> {
 
 #[account]
 pub struct Market {
-    pub question: String,      // 4 + MAX_QUESTION_LEN
-    pub expiry: i64,           // 8
-    pub creator: Pubkey,       // 32
-    pub outcome: Option<u8>,   // 1 + 1
-    pub total_volume: u64,     // 8
-    pub yes_volume: u64,       // 8  — sum of all Yes bets
-    pub no_volume: u64,        // 8  — sum of all No bets
-    pub vault: Pubkey,         // 32
-    pub status: MarketStatus,  // 1
-    pub nonce: u64,            // 8
-    pub bump: u8,              // 1
+    pub question: String,          // 4 + MAX_QUESTION_LEN
+    pub expiry: i64,               // 8
+    pub creator: Pubkey,           // 32
+    pub outcome: Option<u8>,       // 1 + 1
+    pub total_volume: u64,         // 8
+    pub yes_volume: u64,           // 8  — sum of all Yes bets
+    pub no_volume: u64,            // 8  — sum of all No bets
+    pub vault: Pubkey,             // 32
+    pub status: MarketStatus,      // 1
+    pub creator_fee_bps: u16,      // 2  — basis points taken on each winning claim
+    pub nonce: u64,                // 8
+    pub bump: u8,                  // 1
 }
 
 impl Market {
@@ -753,9 +808,10 @@ impl Market {
         + 8                              // no_volume
         + 32                             // vault
         + 1                              // status
+        + 2                              // creator_fee_bps
         + 8                              // nonce
         + 1                              // bump
-        + 16;                            // padding
+        + 14;                            // padding
 }
 
 #[account]
@@ -870,6 +926,7 @@ pub struct WinningsClaimed {
     pub market: Pubkey,
     pub bettor: Pubkey,
     pub payout: u64,
+    pub fee: u64,
 }
 
 #[event]
@@ -939,6 +996,8 @@ pub enum TerracError {
     AlreadyRecorded,
     #[msg("Bet was a winner — use claim_winnings instead")]
     BetWasWinner,
+    #[msg("Creator fee exceeds the 5% maximum (500 bps)")]
+    FeeTooHigh,
     #[msg("Parlay must have 2–8 legs")]
     InvalidParlayLegs,
     #[msg("Parlay is not open")]
