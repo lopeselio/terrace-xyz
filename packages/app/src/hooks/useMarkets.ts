@@ -50,14 +50,17 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
       if (market.status === "Settled") statusMapped = "Settled";
       else if (market.status === "Closed") statusMapped = "Closed";
 
+      const totalVol = Number(market.totalVolume);
+      const yesVol = Number(market.yesVolume);
+      const yesPrice = totalVol > 0 ? yesVol / totalVol : 0.5;
+
       return {
         source: "native" as const,
         id: pubkey,
         question: market.question,
-        // Native markets don't have an AMM yet — show 50/50 until Meteora is wired
-        yesPrice: 0.5,
-        noPrice: 0.5,
-        totalVolumeUsdc: Number(market.totalVolume) / 1_000_000,
+        yesPrice,
+        noPrice: 1 - yesPrice,
+        totalVolumeUsdc: totalVol / 1_000_000,
         expiry: new Date(Number(market.expiry) * 1000),
         status: statusMapped,
       };

@@ -7,28 +7,15 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-
-interface MarketItem {
-  address: string;
-  question: string;
-  totalVolume: bigint;
-  expiry: bigint;
-  status: "Open" | "Closed" | "Settled";
-  outcome: number | null;
-  /** Differentiates native Terrace markets from Jupiter-bridged Polymarket/Kalshi */
-  source?: "native" | "jupiter";
-  /** Current YES buy price 0–1, e.g. 0.62 = 62¢ */
-  yesPrice?: number;
-  noPrice?: number;
-}
+import type { UnifiedMarket } from "@terrace/sdk";
 
 interface Props {
-  markets: MarketItem[];
+  markets: UnifiedMarket[];
   loading: boolean;
-  onSelectMarket: (address: string) => void;
+  onSelectMarket: (id: string) => void;
 }
 
-const STATUS_COLOR: Record<MarketItem["status"], string> = {
+const STATUS_COLOR: Record<UnifiedMarket["status"], string> = {
   Open: "#22c55e",
   Closed: "#f59e0b",
   Settled: "#6b7280",
@@ -54,12 +41,12 @@ export function MarketListScreen({ markets, loading, onSelectMarket }: Props) {
   return (
     <FlatList
       data={markets}
-      keyExtractor={(m) => m.address}
+      keyExtractor={(m) => m.id}
       contentContainerStyle={styles.list}
       renderItem={({ item }) => (
         <TouchableOpacity
           style={styles.card}
-          onPress={() => onSelectMarket(item.address)}
+          onPress={() => onSelectMarket(item.id)}
           activeOpacity={0.75}
         >
           <View style={styles.cardHeader}>
@@ -76,30 +63,26 @@ export function MarketListScreen({ markets, loading, onSelectMarket }: Props) {
             </View>
           </View>
 
-          {/* YES / NO odds bar — only shown when price data is available */}
-          {item.yesPrice !== undefined && item.status === "Open" && (
+          {/* YES / NO odds bar — only shown for Open markets */}
+          {item.status === "Open" && (
             <View style={styles.oddsRow}>
               <View style={[styles.oddsBtn, styles.yesBg]}>
                 <Text style={styles.oddsLabel}>YES</Text>
-                <Text style={styles.oddsPrice}>
-                  {Math.round(item.yesPrice * 100)}¢
-                </Text>
+                <Text style={styles.oddsPrice}>{Math.round(item.yesPrice * 100)}¢</Text>
               </View>
               <View style={[styles.oddsBtn, styles.noBg]}>
                 <Text style={styles.oddsLabel}>NO</Text>
-                <Text style={styles.oddsPrice}>
-                  {Math.round((item.noPrice ?? 1 - item.yesPrice) * 100)}¢
-                </Text>
+                <Text style={styles.oddsPrice}>{Math.round(item.noPrice * 100)}¢</Text>
               </View>
             </View>
           )}
 
           <View style={styles.cardFooter}>
             <Text style={styles.volume}>
-              Vol: {(Number(item.totalVolume) / 1_000_000).toFixed(2)} USDC
+              Vol: {item.totalVolumeUsdc.toFixed(2)} USDC
             </Text>
             <Text style={styles.expiry}>
-              Expires: {new Date(Number(item.expiry) * 1000).toLocaleDateString()}
+              Expires: {item.expiry ? item.expiry.toLocaleDateString() : "—"}
             </Text>
           </View>
 
@@ -121,12 +104,6 @@ export function MarketListScreen({ markets, loading, onSelectMarket }: Props) {
               {item.source === "jupiter" ? "$1 / contract" : "Pro-rata payout"}
             </Text>
           </View>
-
-          {item.status === "Settled" && item.outcome !== null && (
-            <Text style={styles.outcome}>
-              Result: {item.outcome === 1 ? "Yes" : "No"}
-            </Text>
-          )}
         </TouchableOpacity>
       )}
     />

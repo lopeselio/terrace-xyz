@@ -303,7 +303,13 @@ export function HomeScreen({ walletPubkey, winRate, onSelectMarket }: Props) {
 
   const handleConfirmBet = async (amountUsdc: number) => {
     if (!selectedBet) return;
-    await placeBet({ marketId: selectedBet.marketId, isYes: true, amountUsdc });
+    const market = markets.find((m) => m.id === selectedBet.marketId);
+    await placeBet({
+      marketId: selectedBet.marketId,
+      isYes: true,
+      amountUsdc,
+      source: market?.source ?? "jupiter",
+    });
   };
 
   return (

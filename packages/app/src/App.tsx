@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { useWallet } from "./hooks/useWallet";
+import { useMarkets } from "./hooks/useMarkets";
 import { HomeScreen } from "./screens/HomeScreen";
+import { MarketListScreen } from "./screens/MarketListScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
 
@@ -28,24 +30,12 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Stub screens for non-Home tabs
+// Markets tab — live feed from on-chain + Jupiter
 // ---------------------------------------------------------------------------
-function StubScreen({ label, emoji }: { label: string; emoji: string }) {
-  return (
-    <View style={stub.root}>
-      <Text style={stub.emoji}>{emoji}</Text>
-      <Text style={stub.label}>{label}</Text>
-      <Text style={stub.sub}>Coming soon</Text>
-    </View>
-  );
+function MarketsTab({ onSelectMarket }: { onSelectMarket: (id: string) => void }) {
+  const { markets, loading } = useMarkets();
+  return <MarketListScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
 }
-
-const stub = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: "#0a0a0a", alignItems: "center", justifyContent: "center", gap: 10 },
-  emoji: { fontSize: 40 },
-  label: { fontSize: 20, fontWeight: "600", color: "#fff" },
-  sub:   { fontSize: 14, color: "#6b7280" },
-});
 
 // ---------------------------------------------------------------------------
 // Connect wallet overlay — shown on first open if not connected
@@ -158,7 +148,7 @@ export default function App() {
           />
         );
       case "Markets":
-        return <StubScreen label="All Markets" emoji="📋" />;
+        return <MarketsTab onSelectMarket={(id) => console.log("open market:", id)} />;
       case "Social":
         return <SocialScreen walletPubkey={publicKey} />;
       case "Profile":

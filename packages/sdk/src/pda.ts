@@ -6,7 +6,7 @@ import {
 
 export const TERRACE_PROGRAM_ID =
   (process.env.TERRACE_PROGRAM_ID ??
-    "9TERRACExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") as Address;
+    "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF") as Address;
 
 function u64LeBytes(n: bigint): Uint8Array {
   const buf = new ArrayBuffer(8);
