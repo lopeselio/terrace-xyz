@@ -12,7 +12,7 @@ terrace = "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY"
+cluster = "https://devnet.helius-rpc.com/?api-key=365d296a-8d5d-4e5e-aef6-6adae2aaff92"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

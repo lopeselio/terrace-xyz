@@ -879,7 +879,7 @@ pub struct ClaimWinnings<'info> {
         associated_token::mint = usdc_mint,
         associated_token::authority = market,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<Account<'info, TokenAccount>>,
 
     /// Bettor's USDC ATA — destination of net payout
     #[account(
@@ -887,7 +887,7 @@ pub struct ClaimWinnings<'info> {
         associated_token::mint = usdc_mint,
         associated_token::authority = bettor,
     )]
-    pub bettor_ata: Account<'info, TokenAccount>,
+    pub bettor_ata: Box<Account<'info, TokenAccount>>,
 
     /// Market creator — used only as ATA authority; key checked against market.creator.
     /// CHECK: key is constrained to market.creator; no other trust assumption needed.
@@ -904,7 +904,7 @@ pub struct ClaimWinnings<'info> {
         associated_token::mint = usdc_mint,
         associated_token::authority = creator,
     )]
-    pub creator_ata: Account<'info, TokenAccount>,
+    pub creator_ata: Box<Account<'info, TokenAccount>>,
 
     pub usdc_mint: Account<'info, Mint>,
 

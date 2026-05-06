@@ -29,13 +29,12 @@ export interface LiveEvent {
 }
 
 // Anchor event discriminators: sha256("event:<EventName>")[0..8]
-// These are placeholder values — update from target/idl/terrace.json after anchor build.
-const DISC_BET_PLACED       = new Uint8Array([253, 99,  154, 84,  221, 176, 6,   244]);
-const DISC_MARKET_CREATED   = new Uint8Array([155, 102, 165, 10,  159, 225, 134, 89 ]);
-const DISC_MARKET_SETTLED   = new Uint8Array([183, 2,   34,  178, 65,  76,  96,  243]);
-const DISC_PARLAY_SETTLED   = new Uint8Array([37,  217, 43,  108, 180, 84,  196, 25 ]);
-const DISC_MATCHUP_CREATED  = new Uint8Array([114, 88,  99,  12,  200, 44,  178, 61 ]);
-const DISC_MATCHUP_SETTLED  = new Uint8Array([78,  12,  145, 214, 88,  201, 34,  177]);
+const DISC_BET_PLACED       = new Uint8Array([88,  88,  145, 226, 126, 206, 32,  0  ]);
+const DISC_MARKET_CREATED   = new Uint8Array([88,  184, 130, 231, 226, 84,  6,   58 ]);
+const DISC_MARKET_SETTLED   = new Uint8Array([237, 212, 22,  175, 201, 117, 215, 99 ]);
+const DISC_PARLAY_SETTLED   = new Uint8Array([143, 27,  37,  15,  205, 154, 47,  216]);
+const DISC_MATCHUP_CREATED  = new Uint8Array([71,  18,  182, 244, 233, 167, 83,  100]);
+const DISC_MATCHUP_SETTLED  = new Uint8Array([176, 18,  180, 132, 254, 148, 85,  79 ]);
 
 function discMatch(data: Uint8Array, disc: Uint8Array): boolean {
   for (let i = 0; i < 8; i++) if (data[i] !== disc[i]) return false;
