@@ -18,3 +18,10 @@ codegen-units = 1
 # workspace dependency so solana-program's "blake3 = 1" constraint is met.
 [workspace.dependencies]
 blake3 = "=1.5.5"
+
+# anchor-syn 0.30.1 calls proc_macro2::Span::source_file() inside a
+# #[cfg(procmacro2_semver_exempt)] block; proc-macro2 1.0.106 sets that cfg
+# unconditionally, but source_file() is only available on nightly. Patch to
+# gate the block on proc_macro_span (nightly-only) so stable builds work.
+[patch.crates-io]
+anchor-syn = { path = "anchor-syn-patched" }

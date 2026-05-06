@@ -12,7 +12,9 @@ terrace = "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://devnet.helius-rpc.com/?api-key=365d296a-8d5d-4e5e-aef6-6adae2aaff92"
+# Real endpoint: export ANCHOR_PROVIDER_URL=https://devnet.helius-rpc.com/?api-key=<key>
+# Fallback used only when ANCHOR_PROVIDER_URL is not set
+cluster = "https://api.devnet.solana.com"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
