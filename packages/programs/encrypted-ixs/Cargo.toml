@@ -1,0 +1,17 @@
+[package]
+name = "terrace-encrypted-ixs"
+version = "0.1.0"
+edition = "2021"
+
+# This crate is compiled to Arcium MPC bytecode — NOT to BPF.
+# It must never be added to the Solana program binary.
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+# Pin blake3 to 1.8.2 as required by arcis 0.8.5.
+# Safe here because this crate is compiled natively (not to BPF).
+arcis = "0.8.5"
+blake3 = "=1.8.2"
+proc-macro-crate = "=3.3.0"

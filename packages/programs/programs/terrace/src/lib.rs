@@ -3,8 +3,18 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{self, Mint, Token, TokenAccount, Transfer},
 };
+use arcium_anchor::prelude::*;
+use arcium_client::idl::arcium::types::CallbackAccount;
+use arcium_macros::{
+    arcium_callback, arcium_program, callback_accounts, init_computation_definition_accounts,
+    queue_computation_accounts,
+};
 
 declare_id!("8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF");
+
+// arcium-macros callback_accounts generates `ErrorCode::ClusterNotSet` — alias our error type
+#[allow(dead_code)]
+type ErrorCode = TerracError;
 
 const MAX_QUESTION_LEN: usize = 200;
 const MAX_PARLAY_LEGS: usize = 8;
@@ -12,7 +22,17 @@ const MAX_CREATOR_FEE_BPS: u16 = 500; // 5% ceiling on creator fees
 const USDC_DECIMALS: u64 = 1_000_000; // 1 USDC = 1_000_000 lamports (6 dp)
 const MIN_BET: u64 = USDC_DECIMALS / 10; // 0.1 USDC minimum
 
-#[program]
+// Arcium computation definition offsets — sha256-derived identifiers for each circuit.
+const COMP_DEF_OFFSET_INIT: u32 = comp_def_offset("init_private_market_state");
+const COMP_DEF_OFFSET_BET: u32 = comp_def_offset("place_private_bet");
+const COMP_DEF_OFFSET_REVEAL: u32 = comp_def_offset("reveal_private_market");
+
+// Byte offset of `encrypted_totals` inside a serialised PrivateMarketState account.
+// Used by ArgBuilder::account() to tell Arcium nodes where to read the ciphertext.
+// Layout: 8 (discriminator) + 32 (market Pubkey) = 40.
+const PRIVATE_STATE_TOTALS_OFFSET: u32 = (8 + 32) as u32;
+
+#[arcium_program]
 pub mod terrace {
     use super::*;
 
@@ -82,6 +102,7 @@ pub mod terrace {
 
         let market = &mut ctx.accounts.market;
         require!(market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+        require!(!market.is_private, TerracError::MarketIsPrivate);
         require!(
             Clock::get()?.unix_timestamp < market.expiry,
             TerracError::MarketExpired
@@ -692,6 +713,371 @@ pub mod terrace {
         let _ = market_key; // used in future events; suppress warning for now
         Ok(())
     }
+
+    // -----------------------------------------------------------------------
+    // Private markets — Arcium MPC integration
+    // One-time setup: call each init_*_comp_def once after deploying.
+    // -----------------------------------------------------------------------
+
+    pub fn init_init_private_market_state_comp_def(
+        ctx: Context<InitInitPrivateMarketStateCompDef>,
+    ) -> Result<()> {
+        init_comp_def(ctx.accounts, None, None)?;
+        Ok(())
+    }
+
+    pub fn init_place_private_bet_comp_def(
+        ctx: Context<InitPlacePrivateBetCompDef>,
+    ) -> Result<()> {
+        init_comp_def(ctx.accounts, None, None)?;
+        Ok(())
+    }
+
+    pub fn init_reveal_private_market_comp_def(
+        ctx: Context<InitRevealPrivateMarketCompDef>,
+    ) -> Result<()> {
+        init_comp_def(ctx.accounts, None, None)?;
+        Ok(())
+    }
+
+    /// Initialise the encrypted BetTotals PDA for a private market.
+    /// Creator pays; queues the `init_private_market_state` MPC circuit.
+    /// `nonce` is a random u128 that seeds the initial MXE ciphertext.
+    pub fn init_private_market_state(
+        ctx: Context<InitPrivateMarketState>,
+        computation_offset: u64,
+        nonce: u128,
+    ) -> Result<()> {
+        require!(ctx.accounts.market.is_private, TerracError::MarketNotPrivate);
+        require!(ctx.accounts.market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+
+        let state = &mut ctx.accounts.private_state;
+        state.market = ctx.accounts.market.key();
+        state.nonce = nonce;
+        state.bump = ctx.bumps.private_state;
+
+        let args = ArgBuilder::new()
+            .plaintext_u128(nonce)
+            .build();
+
+        queue_computation(
+            ctx.accounts,
+            computation_offset,
+            args,
+            vec![InitPrivateMarketStateCallback::callback_ix(
+                computation_offset,
+                &ctx.accounts.mxe_account,
+                &[CallbackAccount {
+                    pubkey: ctx.accounts.private_state.key(),
+                    is_writable: true,
+                }],
+            )?],
+            1,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[arcium_callback(encrypted_ix = "init_private_market_state")]
+    pub fn init_private_market_state_callback(
+        ctx: Context<InitPrivateMarketStateCallback>,
+        output: SignedComputationOutputs<InitPrivateMarketStateOutput>,
+    ) -> Result<()> {
+        let o = match output.verify_output(
+            &ctx.accounts.cluster_account,
+            &ctx.accounts.computation_account,
+        ) {
+            Ok(o) => o,
+            Err(_) => return Err(TerracError::AbortedComputation.into()),
+        };
+
+        let state = &mut ctx.accounts.private_state;
+        state.encrypted_totals = o.field_0.ciphertexts;
+        state.nonce = o.field_0.nonce;
+        Ok(())
+    }
+
+    /// Place an encrypted bet on a private market.
+    /// The bettor encrypts `{outcome, amount}` client-side via X25519 + RescueCipher
+    /// before submitting. USDC transfer is public; only the chosen side is hidden.
+    /// `outcome_commitment` = blake3(outcome_byte || secret_32_bytes) — stored so
+    /// the bettor can prove their side at claim time without revealing it early.
+    pub fn place_private_bet(
+        ctx: Context<PlacePrivateBet>,
+        computation_offset: u64,
+        outcome_ct: [u8; 32],
+        amount_ct: [u8; 32],
+        encryption_pubkey: [u8; 32],
+        bet_nonce: u128,
+        amount: u64,
+        outcome_commitment: [u8; 32],
+    ) -> Result<()> {
+        require!(amount >= MIN_BET, TerracError::BetTooSmall);
+        let market = &ctx.accounts.market;
+        require!(market.is_private, TerracError::MarketNotPrivate);
+        require!(market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+        require!(
+            Clock::get()?.unix_timestamp < market.expiry,
+            TerracError::MarketExpired
+        );
+        require!(!ctx.accounts.private_state.is_revealed, TerracError::AlreadyRevealed);
+
+        // Transfer USDC: bettor ATA → market vault (amount is public)
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.bettor_ata.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                    authority: ctx.accounts.bettor.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+
+        let record = &mut ctx.accounts.private_bet_record;
+        record.market = market.key();
+        record.bettor = ctx.accounts.bettor.key();
+        record.amount = amount;
+        record.outcome_commitment = outcome_commitment;
+        record.claimed = false;
+        record.bump = ctx.bumps.private_bet_record;
+
+        let state_nonce = ctx.accounts.private_state.nonce;
+        let args = ArgBuilder::new()
+            .x25519_pubkey(encryption_pubkey)
+            .plaintext_u128(bet_nonce)
+            .encrypted_bool(outcome_ct)  // Enc<Shared> field 0: outcome
+            .encrypted_bool(amount_ct)   // Enc<Shared> field 1: amount
+            .plaintext_u128(state_nonce)
+            .account(
+                ctx.accounts.private_state.key(),
+                PRIVATE_STATE_TOTALS_OFFSET,
+                64, // 2 × 32-byte ciphertexts
+            )
+            .build();
+
+        queue_computation(
+            ctx.accounts,
+            computation_offset,
+            args,
+            vec![PlacePrivateBetCallback::callback_ix(
+                computation_offset,
+                &ctx.accounts.mxe_account,
+                &[CallbackAccount {
+                    pubkey: ctx.accounts.private_state.key(),
+                    is_writable: true,
+                }],
+            )?],
+            1,
+            0,
+        )?;
+
+        emit!(PrivateBetPlaced {
+            market: market.key(),
+            bettor: ctx.accounts.bettor.key(),
+            amount,
+        });
+
+        Ok(())
+    }
+
+    #[arcium_callback(encrypted_ix = "place_private_bet")]
+    pub fn place_private_bet_callback(
+        ctx: Context<PlacePrivateBetCallback>,
+        output: SignedComputationOutputs<PlacePrivateBetOutput>,
+    ) -> Result<()> {
+        let o = match output.verify_output(
+            &ctx.accounts.cluster_account,
+            &ctx.accounts.computation_account,
+        ) {
+            Ok(o) => o,
+            Err(_) => return Err(TerracError::AbortedComputation.into()),
+        };
+
+        let state = &mut ctx.accounts.private_state;
+        state.encrypted_totals = o.field_0.ciphertexts;
+        state.nonce = o.field_0.nonce;
+        Ok(())
+    }
+
+    /// Reveal the encrypted bet totals and settle the market in one atomic callback.
+    /// Only the market creator can trigger the reveal (signer check in accounts struct).
+    pub fn reveal_private_market(
+        ctx: Context<RevealPrivateMarket>,
+        computation_offset: u64,
+    ) -> Result<()> {
+        require!(ctx.accounts.market.is_private, TerracError::MarketNotPrivate);
+        require!(ctx.accounts.market.status == MarketStatus::Open, TerracError::MarketNotOpen);
+        require!(!ctx.accounts.private_state.is_revealed, TerracError::AlreadyRevealed);
+
+        let state_nonce = ctx.accounts.private_state.nonce;
+        let args = ArgBuilder::new()
+            .plaintext_u128(state_nonce)
+            .account(
+                ctx.accounts.private_state.key(),
+                PRIVATE_STATE_TOTALS_OFFSET,
+                64,
+            )
+            .build();
+
+        queue_computation(
+            ctx.accounts,
+            computation_offset,
+            args,
+            vec![RevealPrivateMarketCallback::callback_ix(
+                computation_offset,
+                &ctx.accounts.mxe_account,
+                &[
+                    CallbackAccount {
+                        pubkey: ctx.accounts.private_state.key(),
+                        is_writable: true,
+                    },
+                    CallbackAccount {
+                        pubkey: ctx.accounts.market.key(),
+                        is_writable: true,
+                    },
+                ],
+            )?],
+            1,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[arcium_callback(encrypted_ix = "reveal_private_market")]
+    pub fn reveal_private_market_callback(
+        ctx: Context<RevealPrivateMarketCallback>,
+        output: SignedComputationOutputs<RevealPrivateMarketOutput>,
+    ) -> Result<()> {
+        let o = match output.verify_output(
+            &ctx.accounts.cluster_account,
+            &ctx.accounts.computation_account,
+        ) {
+            Ok(o) => o,
+            Err(_) => return Err(TerracError::AbortedComputation.into()),
+        };
+
+        let no_vol = o.field_0;
+        let yes_vol = o.field_1;
+
+        let state = &mut ctx.accounts.private_state;
+        state.no_volume_revealed = no_vol;
+        state.yes_volume_revealed = yes_vol;
+        state.is_revealed = true;
+
+        let market = &mut ctx.accounts.market;
+        market.no_volume = no_vol;
+        market.yes_volume = yes_vol;
+        market.total_volume = no_vol.saturating_add(yes_vol);
+        let winning_outcome: u8 = if yes_vol >= no_vol { 1 } else { 0 };
+        market.outcome = Some(winning_outcome);
+        market.status = MarketStatus::Settled;
+
+        emit!(PrivateMarketRevealed {
+            market: market.key(),
+            yes_volume: yes_vol,
+            no_volume: no_vol,
+            winning_outcome,
+        });
+
+        Ok(())
+    }
+
+    /// Claim winnings from a settled private market.
+    /// The bettor reveals their `outcome` and the `secret` used in the commitment.
+    /// Program verifies: blake3(outcome || secret) == stored commitment.
+    pub fn claim_private_winnings(
+        ctx: Context<ClaimPrivateWinnings>,
+        outcome: u8,
+        secret: [u8; 32],
+    ) -> Result<()> {
+        let market = &ctx.accounts.market;
+        let state = &ctx.accounts.private_state;
+        let record = &mut ctx.accounts.private_bet_record;
+
+        require!(market.status == MarketStatus::Settled, TerracError::MarketNotSettled);
+        require!(state.is_revealed, TerracError::NotYetRevealed);
+        require!(!record.claimed, TerracError::AlreadyClaimed);
+
+        // Verify commitment: only the bettor who placed the bet knows their secret.
+        let mut preimage = Vec::with_capacity(33);
+        preimage.push(outcome);
+        preimage.extend_from_slice(&secret);
+        let commitment: [u8; 32] = blake3::hash(&preimage).into();
+        require!(commitment == record.outcome_commitment, TerracError::InvalidCommitment);
+
+        let winning_outcome = market.outcome.ok_or(TerracError::MarketNotSettled)?;
+        require!(outcome == winning_outcome, TerracError::BetDidNotWin);
+
+        let winning_vol = if winning_outcome == 1 {
+            state.yes_volume_revealed
+        } else {
+            state.no_volume_revealed
+        };
+        require!(winning_vol > 0, TerracError::ZeroWinningVolume);
+
+        let gross_payout = (record.amount as u128)
+            .checked_mul(market.total_volume as u128)
+            .ok_or(TerracError::Overflow)?
+            .checked_div(winning_vol as u128)
+            .ok_or(TerracError::Overflow)? as u64;
+
+        let fee = (gross_payout as u128)
+            .checked_mul(market.creator_fee_bps as u128)
+            .ok_or(TerracError::Overflow)?
+            .checked_div(10_000)
+            .ok_or(TerracError::Overflow)? as u64;
+        let net_payout = gross_payout.checked_sub(fee).ok_or(TerracError::Overflow)?;
+
+        let (creator, nonce_le, market_bump) = (
+            market.creator,
+            market.nonce.to_le_bytes(),
+            market.bump,
+        );
+        let signer_seeds: &[&[&[u8]]] =
+            &[&[b"market", creator.as_ref(), &nonce_le, &[market_bump]]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.vault.to_account_info(),
+                    to: ctx.accounts.bettor_ata.to_account_info(),
+                    authority: ctx.accounts.market.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            net_payout,
+        )?;
+
+        if fee > 0 {
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.vault.to_account_info(),
+                        to: ctx.accounts.creator_ata.to_account_info(),
+                        authority: ctx.accounts.market.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                fee,
+            )?;
+        }
+
+        record.claimed = true;
+
+        emit!(PrivateWinningsClaimed {
+            market: market.key(),
+            bettor: ctx.accounts.bettor.key(),
+            payout: net_payout,
+        });
+
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1215,6 +1601,368 @@ pub struct DeclineMatchup<'info> {
 }
 
 // ---------------------------------------------------------------------------
+// Private market instruction contexts (Arcium)
+// ---------------------------------------------------------------------------
+
+#[init_computation_definition_accounts("init_private_market_state", creator)]
+#[derive(Accounts)]
+pub struct InitInitPrivateMarketStateCompDef<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    #[account(mut, address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+    #[account(mut)]
+    /// CHECK: comp_def_account will be initialised by the arcium program.
+    pub comp_def_account: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: address lookup table for Arcium CPI calls.
+    pub address_lookup_table: UncheckedAccount<'info>,
+    /// CHECK: Solana address lookup table program.
+    pub lut_program: UncheckedAccount<'info>,
+    pub arcium_program: Program<'info, Arcium>,
+    pub system_program: Program<'info, System>,
+}
+
+#[init_computation_definition_accounts("place_private_bet", payer)]
+#[derive(Accounts)]
+pub struct InitPlacePrivateBetCompDef<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut, address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+    #[account(mut)]
+    /// CHECK: comp_def_account will be initialised by the arcium program.
+    pub comp_def_account: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: address lookup table for Arcium CPI calls.
+    pub address_lookup_table: UncheckedAccount<'info>,
+    /// CHECK: Solana address lookup table program.
+    pub lut_program: UncheckedAccount<'info>,
+    pub arcium_program: Program<'info, Arcium>,
+    pub system_program: Program<'info, System>,
+}
+
+#[init_computation_definition_accounts("reveal_private_market", creator)]
+#[derive(Accounts)]
+pub struct InitRevealPrivateMarketCompDef<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    #[account(mut, address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+    #[account(mut)]
+    /// CHECK: comp_def_account will be initialised by the arcium program.
+    pub comp_def_account: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: address lookup table for Arcium CPI calls.
+    pub address_lookup_table: UncheckedAccount<'info>,
+    /// CHECK: Solana address lookup table program.
+    pub lut_program: UncheckedAccount<'info>,
+    pub arcium_program: Program<'info, Arcium>,
+    pub system_program: Program<'info, System>,
+}
+
+#[queue_computation_accounts("init_private_market_state", creator)]
+#[derive(Accounts)]
+#[instruction(computation_offset: u64)]
+pub struct InitPrivateMarketState<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    #[account(address = derive_sign_pda!())]
+    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium mempool PDA.
+    pub mempool_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium executing pool PDA.
+    pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: computation account, initialised by queue_computation CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(mut, address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    pub pool_account: Account<'info, FeePool>,
+    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    pub clock_account: Account<'info, ClockAccount>,
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+
+    #[account(
+        seeds = [b"market", creator.key().as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+        constraint = market.creator == creator.key() @ TerracError::Unauthorized,
+    )]
+    pub market: Account<'info, Market>,
+
+    #[account(
+        init,
+        payer = creator,
+        space = PrivateMarketState::SPACE,
+        seeds = [b"private-state", market.key().as_ref()],
+        bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+}
+
+#[callback_accounts("init_private_market_state")]
+#[derive(Accounts)]
+pub struct InitPrivateMarketStateCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium; verified by the callback CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar, address-constrained above.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"private-state", private_state.market.as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+}
+
+#[queue_computation_accounts("place_private_bet", bettor)]
+#[derive(Accounts)]
+#[instruction(computation_offset: u64)]
+pub struct PlacePrivateBet<'info> {
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+    #[account(address = derive_sign_pda!())]
+    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium mempool PDA.
+    pub mempool_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium executing pool PDA.
+    pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: computation account, initialised by queue_computation CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_BET))]
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+    #[account(mut, address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Box<Account<'info, Cluster>>,
+    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    pub pool_account: Box<Account<'info, FeePool>>,
+    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+
+    #[account(
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Box<Account<'info, Market>>,
+
+    #[account(
+        mut,
+        seeds = [b"private-state", market.key().as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+
+    #[account(
+        init,
+        payer = bettor,
+        space = PrivateBetRecord::SPACE,
+        seeds = [b"private-bet", market.key().as_ref(), bettor.key().as_ref()],
+        bump,
+    )]
+    pub private_bet_record: Account<'info, PrivateBetRecord>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = market,
+    )]
+    pub vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = bettor,
+    )]
+    pub bettor_ata: Box<Account<'info, TokenAccount>>,
+
+    pub usdc_mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[callback_accounts("place_private_bet")]
+#[derive(Accounts)]
+pub struct PlacePrivateBetCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_BET))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium; verified by the callback CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar, address-constrained above.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"private-state", private_state.market.as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+}
+
+#[queue_computation_accounts("reveal_private_market", creator)]
+#[derive(Accounts)]
+#[instruction(computation_offset: u64)]
+pub struct RevealPrivateMarket<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    #[account(address = derive_sign_pda!())]
+    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium mempool PDA.
+    pub mempool_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, TerracError::ClusterNotSet))]
+    /// CHECK: Arcium executing pool PDA.
+    pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: computation account, initialised by queue_computation CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(mut, address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    pub pool_account: Account<'info, FeePool>,
+    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    pub clock_account: Account<'info, ClockAccount>,
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+
+    #[account(
+        mut,
+        seeds = [b"market", creator.key().as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+        constraint = market.creator == creator.key() @ TerracError::Unauthorized,
+    )]
+    pub market: Account<'info, Market>,
+
+    #[account(
+        mut,
+        seeds = [b"private-state", market.key().as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+}
+
+#[callback_accounts("reveal_private_market")]
+#[derive(Accounts)]
+pub struct RevealPrivateMarketCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium; verified by the callback CPI.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar, address-constrained above.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"private-state", private_state.market.as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+    #[account(
+        mut,
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, Market>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimPrivateWinnings<'info> {
+    #[account(
+        seeds = [b"market", market.creator.as_ref(), &market.nonce.to_le_bytes()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, Market>,
+
+    #[account(
+        seeds = [b"private-state", market.key().as_ref()],
+        bump = private_state.bump,
+    )]
+    pub private_state: Account<'info, PrivateMarketState>,
+
+    #[account(
+        mut,
+        seeds = [b"private-bet", market.key().as_ref(), bettor.key().as_ref()],
+        bump = private_bet_record.bump,
+        has_one = market,
+        has_one = bettor,
+    )]
+    pub private_bet_record: Account<'info, PrivateBetRecord>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = market,
+    )]
+    pub vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = bettor,
+    )]
+    pub bettor_ata: Box<Account<'info, TokenAccount>>,
+
+    /// CHECK: key constrained to market.creator; receives creator fee.
+    #[account(constraint = creator.key() == market.creator @ TerracError::Unauthorized)]
+    pub creator: UncheckedAccount<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = creator,
+    )]
+    pub creator_ata: Box<Account<'info, TokenAccount>>,
+
+    pub usdc_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -1363,6 +2111,47 @@ pub enum BadgeTier {
 }
 
 // ---------------------------------------------------------------------------
+// Private-market state accounts
+// ---------------------------------------------------------------------------
+
+#[account]
+pub struct PrivateMarketState {
+    pub market: Pubkey,                  // 32 — links to the Market PDA
+    pub encrypted_totals: [[u8; 32]; 2], // 64 — MXE ciphertext: [no_total, yes_total]
+    pub nonce: u128,                     // 16 — MXE nonce for next re-encryption
+    pub is_revealed: bool,               // 1
+    pub no_volume_revealed: u64,         // 8 — set after reveal_private_market callback
+    pub yes_volume_revealed: u64,        // 8
+    pub bump: u8,                        // 1
+}
+
+impl PrivateMarketState {
+    pub const SPACE: usize = 8   // discriminator
+        + 32                     // market
+        + 64                     // encrypted_totals [[u8;32]; 2]
+        + 16                     // nonce u128
+        + 1                      // is_revealed
+        + 8                      // no_volume_revealed
+        + 8                      // yes_volume_revealed
+        + 1                      // bump
+        + 22;                    // padding → 160
+}
+
+#[account]
+pub struct PrivateBetRecord {
+    pub market: Pubkey,               // 32
+    pub bettor: Pubkey,               // 32
+    pub amount: u64,                  // 8
+    pub outcome_commitment: [u8; 32], // 32 — blake3(outcome_byte || secret_32_bytes)
+    pub claimed: bool,                // 1
+    pub bump: u8,                     // 1
+}
+
+impl PrivateBetRecord {
+    pub const SPACE: usize = 8 + 32 + 32 + 8 + 32 + 1 + 1 + 14; // 128 total
+}
+
+// ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
 
@@ -1456,6 +2245,28 @@ pub struct MatchupDeclined {
     pub signer: Pubkey,
 }
 
+#[event]
+pub struct PrivateBetPlaced {
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct PrivateMarketRevealed {
+    pub market: Pubkey,
+    pub yes_volume: u64,
+    pub no_volume: u64,
+    pub winning_outcome: u8,
+}
+
+#[event]
+pub struct PrivateWinningsClaimed {
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    pub payout: u64,
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -1508,4 +2319,18 @@ pub enum TerracError {
     MatchupNotPending,
     #[msg("Matchup is not in Accepted status")]
     MatchupNotAccepted,
+    #[msg("Market is private — use place_private_bet instead")]
+    MarketIsPrivate,
+    #[msg("Market is not a private market")]
+    MarketNotPrivate,
+    #[msg("Private market totals already revealed")]
+    AlreadyRevealed,
+    #[msg("MPC computation failed or was aborted")]
+    AbortedComputation,
+    #[msg("Private market totals not yet revealed")]
+    NotYetRevealed,
+    #[msg("Outcome commitment verification failed")]
+    InvalidCommitment,
+    #[msg("No Arcium cluster configured for this MXE")]
+    ClusterNotSet,
 }
