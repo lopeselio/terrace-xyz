@@ -3,10 +3,14 @@ import { Program } from "@coral-xyz/anchor";
 import { Terrace } from "../target/types/terrace";
 import {
   getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountIdempotent,
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { assert } from "chai";
+
+// Unique base per run — shared across all describe blocks so re-runs don't hit "account already exists"
+const RUN = new anchor.BN(Date.now());
 
 // USDC devnet mint
 const USDC_MINT = new anchor.web3.PublicKey(
@@ -56,7 +60,7 @@ describe("terrace", () => {
   const program = anchor.workspace.Terrace as Program<Terrace>;
   const creator = provider.wallet as anchor.Wallet;
 
-  const nonce = new anchor.BN(1);
+  const nonce = RUN;
   const question = "Will Arsenal win the Premier League 2025/26?";
   const expiry = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24h from now
 
@@ -91,7 +95,7 @@ describe("terrace", () => {
   });
 
   it("rejects a market with creator fee above 5%", async () => {
-    const badNonce2 = new anchor.BN(998);
+    const badNonce2 = RUN.addn(998);
     const [badMarket2] = marketPda(program, creator.publicKey, badNonce2);
     const badVault2 = getAssociatedTokenAddressSync(USDC_MINT, badMarket2, true);
 
@@ -116,7 +120,7 @@ describe("terrace", () => {
 
   it("rejects a market with expiry in the past", async () => {
     const pastExpiry = Math.floor(Date.now() / 1000) - 1;
-    const badNonce = new anchor.BN(999);
+    const badNonce = RUN.addn(999);
     const [badMarket] = marketPda(program, creator.publicKey, badNonce);
     const badVault = getAssociatedTokenAddressSync(USDC_MINT, badMarket, true);
 
@@ -198,7 +202,7 @@ describe("terrace", () => {
 
   it("creates a market with an oracle and settles it via the oracle", async () => {
     const oracleKeypair = anchor.web3.Keypair.generate();
-    const oracleNonce = new anchor.BN(50);
+    const oracleNonce = RUN.addn(50);
     const [oracleMarket] = marketPda(program, creator.publicKey, oracleNonce);
     const oracleVault = getAssociatedTokenAddressSync(USDC_MINT, oracleMarket, true);
 
@@ -237,7 +241,7 @@ describe("terrace", () => {
 
   it("rejects oracle settlement with wrong keypair", async () => {
     const wrongOracle = anchor.web3.Keypair.generate();
-    const oracleNonce = new anchor.BN(51);
+    const oracleNonce = RUN.addn(51);
     const [oracleMarket] = marketPda(program, creator.publicKey, oracleNonce);
     const oracleVault = getAssociatedTokenAddressSync(USDC_MINT, oracleMarket, true);
     const realOracle = anchor.web3.Keypair.generate();
@@ -268,12 +272,26 @@ describe("terrace", () => {
   });
 
   it("rejects oracle settlement on a market with no oracle configured", async () => {
-    // market (nonce=1) was created with oracle=null; any signer is rejected
+    // Use a fresh Open market with oracle=null (nonce=1 is already settled)
+    const noOracleNonce = RUN.addn(60);
+    const [noOracleMarket] = marketPda(program, creator.publicKey, noOracleNonce);
+    const noOracleVault = getAssociatedTokenAddressSync(USDC_MINT, noOracleMarket, true);
+
+    await program.methods
+      .createMarket(question, new anchor.BN(expiry), 0, noOracleNonce, null, false, false)
+      .accounts({
+        market: noOracleMarket, vault: noOracleVault, usdcMint: USDC_MINT,
+        creator: creator.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
     const anyKey = anchor.web3.Keypair.generate();
     try {
       await program.methods
         .settleMarketOracle(0)
-        .accounts({ market, oracle: anyKey.publicKey })
+        .accounts({ market: noOracleMarket, oracle: anyKey.publicKey })
         .signers([anyKey])
         .rpc();
       assert.fail("Expected OracleNotSet error");
@@ -438,7 +456,7 @@ describe("terrace", () => {
   }
 
   it("rejects a parlay with fewer than 2 legs", async () => {
-    const pNonce = new anchor.BN(42);
+    const pNonce = RUN.addn(42);
     const [parlay] = parlayPda(program, creator.publicKey, pNonce);
     const parlayVault = getAssociatedTokenAddressSync(USDC_MINT, parlay, true);
 
@@ -468,12 +486,12 @@ describe("terrace", () => {
 
   it.skip("creates a 2-leg parlay and settles it (requires funded USDC ATA)", async () => {
     // Prerequisites: two settled markets + a funded creator USDC ATA.
-    const pNonce = new anchor.BN(100);
+    const pNonce = RUN.addn(100);
     const [parlay] = parlayPda(program, creator.publicKey, pNonce);
     const parlayVault = getAssociatedTokenAddressSync(USDC_MINT, parlay, true);
 
     // Need a second market for the second leg — use nonce=2
-    const nonce2 = new anchor.BN(2);
+    const nonce2 = RUN.addn(2);
     const [market2] = marketPda(program, creator.publicKey, nonce2);
 
     const legs = [
@@ -515,11 +533,11 @@ describe("terrace", () => {
     assert.oneOf(Object.keys(settled.status)[0], ["won", "lost"]);
   });
 
-  it.skip("rejects settling a parlay with wrong market order", async () => {
+  it.skip("rejects settling a parlay with wrong market order (requires funded USDC ATA)", async () => {
     // If remaining_accounts don't match parlay.legs order → MarketMismatch
-    const pNonce = new anchor.BN(101);
+    const pNonce = RUN.addn(101);
     const [parlay] = parlayPda(program, creator.publicKey, pNonce);
-    const nonce2 = new anchor.BN(2);
+    const nonce2 = RUN.addn(2);
     const [market2] = marketPda(program, creator.publicKey, nonce2);
 
     try {
@@ -534,6 +552,331 @@ describe("terrace", () => {
       assert.fail("Expected MarketMismatch error");
     } catch (e: any) {
       assert.include(e.message, "MarketMismatch");
+    }
+  });
+});
+
+// ── Matchup ─────────────────────────────────────────────────────────────────
+
+describe("Matchup", () => {
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+  const program = anchor.workspace.Terrace as Program<Terrace>;
+  const creator = provider.wallet as anchor.Wallet;
+
+  // Dedicated open market for matchup tests (nonce=200, never settled)
+  const mMarketNonce = RUN.addn(200);
+  const [mMarket] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("market"),
+      creator.publicKey.toBuffer(),
+      mMarketNonce.toArrayLike(Buffer, "le", 8),
+    ],
+    anchor.workspace.Terrace.programId
+  );
+  const mVault = getAssociatedTokenAddressSync(USDC_MINT, mMarket, true);
+
+  const opponent = anchor.web3.Keypair.generate();
+
+  function matchupPda(
+    challenger: anchor.web3.PublicKey,
+    mkt: anchor.web3.PublicKey,
+    nonce: anchor.BN
+  ): [anchor.web3.PublicKey, number] {
+    return anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("matchup"),
+        challenger.toBuffer(),
+        mkt.toBuffer(),
+        nonce.toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+  }
+
+  before("create open market + challenger USDC ATA for matchup tests", async () => {
+    await program.methods
+      .createMarket(
+        "Will Man City win the title?",
+        new anchor.BN(Math.floor(Date.now() / 1000) + 86400),
+        0,
+        mMarketNonce,
+        null,
+        false,
+        false
+      )
+      .accounts({
+        market: mMarket,
+        vault: mVault,
+        usdcMint: USDC_MINT,
+        creator: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Idempotently create the challenger's USDC ATA (empty is fine for validation tests)
+    await createAssociatedTokenAccountIdempotent(
+      provider.connection,
+      (provider.wallet as any).payer,
+      USDC_MINT,
+      creator.publicKey
+    );
+  });
+
+  // ── Validation tests (no funded USDC needed) ────────────────────────────
+
+  it("rejects create_matchup with outcome > 1", async () => {
+    const muNonce = RUN.addn(201);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    try {
+      await program.methods
+        .createMatchup(opponent.publicKey, 2, new anchor.BN(1_000_000), muNonce)
+        .accounts({
+          matchup,
+          matchupVault,
+          challengerAta,
+          market: mMarket,
+          usdcMint: USDC_MINT,
+          challenger: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected InvalidOutcome error");
+    } catch (e: any) {
+      assert.include(e.message, "InvalidOutcome");
+    }
+  });
+
+  it("rejects create_matchup with stake below 0.1 USDC minimum", async () => {
+    const muNonce = RUN.addn(202);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    try {
+      await program.methods
+        .createMatchup(opponent.publicKey, 1, new anchor.BN(50_000), muNonce) // 0.05 USDC
+        .accounts({
+          matchup,
+          matchupVault,
+          challengerAta,
+          market: mMarket,
+          usdcMint: USDC_MINT,
+          challenger: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected BetTooSmall error");
+    } catch (e: any) {
+      assert.include(e.message, "BetTooSmall");
+    }
+  });
+
+  it("rejects create_matchup against a non-Open (settled) market", async () => {
+    // RUN market was settled by the terrace suite above
+    const [settledMarket] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("market"),
+        creator.publicKey.toBuffer(),
+        RUN.toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+    const muNonce = RUN.addn(203);
+    const [matchup] = matchupPda(creator.publicKey, settledMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    try {
+      await program.methods
+        .createMatchup(opponent.publicKey, 1, new anchor.BN(1_000_000), muNonce)
+        .accounts({
+          matchup,
+          matchupVault,
+          challengerAta,
+          market: settledMarket,
+          usdcMint: USDC_MINT,
+          challenger: creator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("Expected MarketNotOpen error");
+    } catch (e: any) {
+      assert.include(e.message, "MarketNotOpen");
+    }
+  });
+
+  // ── Happy-path + edge cases (require funded USDC ATAs) ──────────────────
+
+  it.skip("full flow: create → accept → settle, challenger wins (requires funded USDC)", async () => {
+    const muNonce = RUN.addn(210);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+    const opponentAta = getAssociatedTokenAddressSync(USDC_MINT, opponent.publicKey);
+    const stake = new anchor.BN(1_000_000);
+
+    await program.methods
+      .createMatchup(opponent.publicKey, 1, stake, muNonce)
+      .accounts({
+        matchup, matchupVault, challengerAta, market: mMarket,
+        usdcMint: USDC_MINT, challenger: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    const created = await program.account.matchup.fetch(matchup);
+    assert.deepEqual(created.status, { pending: {} });
+    assert.equal(created.challengerOutcome, 1);
+    assert.equal(created.stakeUsdc.toNumber(), 1_000_000);
+
+    await program.methods
+      .acceptMatchup()
+      .accounts({
+        matchup, matchupVault, opponentAta,
+        usdcMint: USDC_MINT, opponent: opponent.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([opponent])
+      .rpc();
+
+    assert.deepEqual((await program.account.matchup.fetch(matchup)).status, { accepted: {} });
+
+    // Settle underlying market with outcome=1 (challenger picked Yes → wins)
+    await program.methods
+      .settleMarket(1)
+      .accounts({ market: mMarket, creator: creator.publicKey })
+      .rpc();
+
+    const balBefore = (await provider.connection.getTokenAccountBalance(challengerAta)).value.uiAmount!;
+
+    await program.methods
+      .settleMatchup()
+      .accounts({
+        matchup, market: mMarket, matchupVault, challengerAta, opponentAta,
+        challenger: creator.publicKey, opponent: opponent.publicKey,
+        usdcMint: USDC_MINT, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    assert.deepEqual((await program.account.matchup.fetch(matchup)).status, { settled: {} });
+    const balAfter = (await provider.connection.getTokenAccountBalance(challengerAta)).value.uiAmount!;
+    assert.approximately(balAfter - balBefore, 1.0, 0.001); // net +1 USDC (received 2×, spent 1×)
+  });
+
+  it.skip("opponent declines pending matchup — challenger gets full refund (requires funded USDC)", async () => {
+    const muNonce = RUN.addn(211);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    await program.methods
+      .createMatchup(opponent.publicKey, 1, new anchor.BN(1_000_000), muNonce)
+      .accounts({
+        matchup, matchupVault, challengerAta, market: mMarket,
+        usdcMint: USDC_MINT, challenger: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    const balBefore = (await provider.connection.getTokenAccountBalance(challengerAta)).value.uiAmount!;
+
+    await program.methods
+      .declineMatchup()
+      .accounts({
+        matchup, matchupVault, challengerAta,
+        challenger: creator.publicKey, signer: opponent.publicKey,
+        usdcMint: USDC_MINT, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([opponent])
+      .rpc();
+
+    assert.deepEqual((await program.account.matchup.fetch(matchup)).status, { declined: {} });
+    const balAfter = (await provider.connection.getTokenAccountBalance(challengerAta)).value.uiAmount!;
+    assert.approximately(balAfter - balBefore, 1.0, 0.001);
+  });
+
+  it.skip("challenger self-cancels a pending matchup (requires funded USDC)", async () => {
+    const muNonce = RUN.addn(212);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    await program.methods
+      .createMatchup(opponent.publicKey, 0, new anchor.BN(1_000_000), muNonce)
+      .accounts({
+        matchup, matchupVault, challengerAta, market: mMarket,
+        usdcMint: USDC_MINT, challenger: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    await program.methods
+      .declineMatchup()
+      .accounts({
+        matchup, matchupVault, challengerAta,
+        challenger: creator.publicKey, signer: creator.publicKey,
+        usdcMint: USDC_MINT, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    assert.deepEqual((await program.account.matchup.fetch(matchup)).status, { declined: {} });
+  });
+
+  it.skip("rejects accept_matchup from wrong opponent key (requires funded USDC)", async () => {
+    const muNonce = RUN.addn(213);
+    const [matchup] = matchupPda(creator.publicKey, mMarket, muNonce);
+    const matchupVault = getAssociatedTokenAddressSync(USDC_MINT, matchup, true);
+    const challengerAta = getAssociatedTokenAddressSync(USDC_MINT, creator.publicKey);
+
+    await program.methods
+      .createMatchup(opponent.publicKey, 1, new anchor.BN(1_000_000), muNonce)
+      .accounts({
+        matchup, matchupVault, challengerAta, market: mMarket,
+        usdcMint: USDC_MINT, challenger: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    const wrongOpponent = anchor.web3.Keypair.generate();
+    const wrongOpponentAta = getAssociatedTokenAddressSync(USDC_MINT, wrongOpponent.publicKey);
+
+    try {
+      await program.methods
+        .acceptMatchup()
+        .accounts({
+          matchup, matchupVault, opponentAta: wrongOpponentAta,
+          usdcMint: USDC_MINT, opponent: wrongOpponent.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([wrongOpponent])
+        .rpc();
+      assert.fail("Expected Unauthorized error");
+    } catch (e: any) {
+      assert.include(e.message, "Unauthorized");
     }
   });
 });
