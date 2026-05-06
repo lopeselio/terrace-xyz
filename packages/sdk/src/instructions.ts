@@ -470,6 +470,339 @@ export async function buildDeclineMatchupInstruction(params: {
   };
 }
 
+// ── Private market discriminators (from IDL) ─────────────────────────────────
+const IX_INIT_PRIVATE_MKT_STATE_COMP_DEF  = Buffer.from([47, 75, 30, 151, 239, 113, 97, 109]);
+const IX_INIT_PLACE_PRIVATE_BET_COMP_DEF  = Buffer.from([169, 187, 202, 154, 108, 57, 212, 111]);
+const IX_INIT_REVEAL_PRIVATE_MKT_COMP_DEF = Buffer.from([167, 238, 158, 68, 19, 210, 75, 132]);
+const IX_INIT_PRIVATE_MARKET_STATE        = Buffer.from([207, 45, 109, 215, 67, 105, 201, 202]);
+const IX_PLACE_PRIVATE_BET                = Buffer.from([125, 166, 81, 218, 164, 175, 87, 180]);
+const IX_REVEAL_PRIVATE_MARKET            = Buffer.from([234, 7, 105, 16, 4, 40, 145, 25]);
+const IX_CLAIM_PRIVATE_WINNINGS           = Buffer.from([52, 22, 36, 153, 253, 239, 248, 160]);
+
+const ARCIUM_PROGRAM_ID = "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ" as Address;
+const LUT_PROGRAM_ID    = "AddressLookupTab1e1111111111111111111111111" as Address;
+
+function encodeU128LE(n: bigint): Buffer {
+  const buf = Buffer.alloc(16);
+  buf.writeBigUInt64LE(n & 0xFFFFFFFFFFFFFFFFn, 0);
+  buf.writeBigUInt64LE(n >> 64n, 8);
+  return buf;
+}
+
+/** One-time setup: registers the init_private_market_state computation definition with Arcium. */
+export function buildInitPrivateMarketStateCompDefInstruction(params: {
+  creator: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): IInstruction {
+  const { creator, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: LUT_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_PRIVATE_MKT_STATE_COMP_DEF),
+  };
+}
+
+/** One-time setup: registers the place_private_bet computation definition with Arcium. */
+export function buildInitPlacePrivateBetCompDefInstruction(params: {
+  payer: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): IInstruction {
+  const { payer, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: payer, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: LUT_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_PLACE_PRIVATE_BET_COMP_DEF),
+  };
+}
+
+/** One-time setup: registers the reveal_private_market computation definition with Arcium. */
+export function buildInitRevealPrivateMarketCompDefInstruction(params: {
+  creator: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): IInstruction {
+  const { creator, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: LUT_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_REVEAL_PRIVATE_MKT_COMP_DEF),
+  };
+}
+
+/**
+ * Queues the init_private_market_state MPC computation.
+ * Must be called once per private market to initialise the encrypted totals account.
+ */
+export function buildInitPrivateMarketStateInstruction(params: {
+  computationOffset: bigint;
+  nonce: bigint;
+  creator: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  market: Address;
+  privateState: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): IInstruction {
+  const {
+    computationOffset, nonce, creator, mxeAccount, signPdaAccount,
+    mempoolAccount, executingPool, computationAccount, compDefAccount,
+    clusterAccount, poolAccount, clockAccount, market, privateState, programId,
+  } = params;
+
+  const data = Buffer.concat([
+    IX_INIT_PRIVATE_MARKET_STATE,
+    encodeU64LE(computationOffset),
+    encodeU128LE(nonce),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: market, role: AccountRole.READONLY },
+      { address: privateState, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Queues an encrypted bet for MPC processing.
+ *
+ * `outcomeCt` and `amountCt` are 32-byte ciphertexts produced by X25519 ECDH encryption
+ * against the MXE node's public key. See usePrivateMarket.ts for the client-side helper.
+ * `outcomeCommitment` = blake3(outcome_byte || secret_32_bytes) — store secret for claim.
+ */
+export async function buildPlacePrivateBetInstruction(params: {
+  computationOffset: bigint;
+  outcomeCt: Uint8Array;
+  amountCt: Uint8Array;
+  encryptionPubkey: Uint8Array;
+  betNonce: bigint;
+  amount: bigint;
+  outcomeCommitment: Uint8Array;
+  bettor: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  market: Address;
+  privateState: Address;
+  privateBetRecord: Address;
+  usdcMint: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const {
+    computationOffset, outcomeCt, amountCt, encryptionPubkey, betNonce,
+    amount, outcomeCommitment, bettor, mxeAccount, signPdaAccount,
+    mempoolAccount, executingPool, computationAccount, compDefAccount,
+    clusterAccount, poolAccount, clockAccount, market, privateState,
+    privateBetRecord, usdcMint, programId,
+  } = params;
+
+  const vault = await deriveAta(usdcMint, market);
+  const bettorAta = await deriveAta(usdcMint, bettor);
+
+  const data = Buffer.concat([
+    IX_PLACE_PRIVATE_BET,
+    encodeU64LE(computationOffset),
+    Buffer.from(outcomeCt.slice(0, 32)),
+    Buffer.from(amountCt.slice(0, 32)),
+    Buffer.from(encryptionPubkey.slice(0, 32)),
+    encodeU128LE(betNonce),
+    encodeU64LE(amount),
+    Buffer.from(outcomeCommitment.slice(0, 32)),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: bettor, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: market, role: AccountRole.READONLY },
+      { address: privateState, role: AccountRole.WRITABLE },
+      { address: privateBetRecord, role: AccountRole.WRITABLE },
+      { address: vault, role: AccountRole.WRITABLE },
+      { address: bettorAta, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/** Queues the MPC computation that reveals yes/no totals and settles the market. */
+export function buildRevealPrivateMarketInstruction(params: {
+  computationOffset: bigint;
+  creator: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  market: Address;
+  privateState: Address;
+  arciumProgram?: Address;
+  programId: Address;
+}): IInstruction {
+  const {
+    computationOffset, creator, mxeAccount, signPdaAccount,
+    mempoolAccount, executingPool, computationAccount, compDefAccount,
+    clusterAccount, poolAccount, clockAccount, market, privateState, programId,
+  } = params;
+
+  const data = Buffer.concat([
+    IX_REVEAL_PRIVATE_MARKET,
+    encodeU64LE(computationOffset),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: market, role: AccountRole.WRITABLE },
+      { address: privateState, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Claims winnings from a settled private market.
+ * Bettor reveals their `outcome` and `secret` to prove their commitment.
+ */
+export async function buildClaimPrivateWinningsInstruction(params: {
+  outcome: 0 | 1;
+  secret: Uint8Array;
+  market: Address;
+  privateState: Address;
+  privateBetRecord: Address;
+  creator: Address;
+  usdcMint: Address;
+  bettor: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const {
+    outcome, secret, market, privateState, privateBetRecord,
+    creator, usdcMint, bettor, programId,
+  } = params;
+
+  const vault = await deriveAta(usdcMint, market);
+  const bettorAta = await deriveAta(usdcMint, bettor);
+  const creatorAta = await deriveAta(usdcMint, creator);
+
+  const data = Buffer.concat([
+    IX_CLAIM_PRIVATE_WINNINGS,
+    Buffer.from([outcome]),
+    Buffer.from(secret.slice(0, 32)),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: market, role: AccountRole.READONLY },
+      { address: privateState, role: AccountRole.READONLY },
+      { address: privateBetRecord, role: AccountRole.WRITABLE },
+      { address: vault, role: AccountRole.WRITABLE },
+      { address: bettorAta, role: AccountRole.WRITABLE },
+      { address: creator, role: AccountRole.READONLY },
+      { address: creatorAta, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: bettor, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
 // Derives the Associated Token Address for (owner, mint) off-chain.
 async function deriveAta(mint: Address, owner: Address): Promise<Address> {
   const { getProgramDerivedAddress, getAddressEncoder } = await import("@solana/kit");

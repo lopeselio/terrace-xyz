@@ -1,5 +1,36 @@
-export { TerraceSdk, deserializeMarketAccount, deserializeReputationAccount, deserializeParlayAccount, deserializeMatchupAccount } from "./client";
-export { getMarketPda, getBetPda, getReputationPda, getParlayPda, getMatchupPda, TERRACE_PROGRAM_ID } from "./pda";
+export {
+  TerraceSdk,
+  deserializeMarketAccount,
+  deserializeReputationAccount,
+  deserializeParlayAccount,
+  deserializeMatchupAccount,
+  deserializePrivateMarketStateAccount,
+  deserializePrivateBetRecordAccount,
+} from "./client";
+export {
+  getMarketPda,
+  getBetPda,
+  getReputationPda,
+  getParlayPda,
+  getMatchupPda,
+  getPrivateStatePda,
+  getPrivateBetRecordPda,
+  getArciumMxePda,
+  getArciumSignPda,
+  getArciumCompDefPda,
+  getArciumMempoolPda,
+  getArciumExecpoolPda,
+  getArciumComputationPda,
+  getArciumClusterPda,
+  getArciumFeePoolPda,
+  getArciumClockPda,
+  getArciumLutPda,
+  TERRACE_PROGRAM_ID,
+  ARCIUM_PROGRAM_ID,
+  COMP_DEF_OFFSET_INIT_PRIVATE_MARKET_STATE,
+  COMP_DEF_OFFSET_PLACE_PRIVATE_BET,
+  COMP_DEF_OFFSET_REVEAL_PRIVATE_MARKET,
+} from "./pda";
 export {
   buildCreateMarketInstruction,
   buildPlaceBetInstruction,
@@ -14,6 +45,13 @@ export {
   buildAcceptMatchupInstruction,
   buildSettleMatchupInstruction,
   buildDeclineMatchupInstruction,
+  buildInitPrivateMarketStateCompDefInstruction,
+  buildInitPlacePrivateBetCompDefInstruction,
+  buildInitRevealPrivateMarketCompDefInstruction,
+  buildInitPrivateMarketStateInstruction,
+  buildPlacePrivateBetInstruction as buildPlacePrivateBetEncryptedInstruction,
+  buildRevealPrivateMarketInstruction,
+  buildClaimPrivateWinningsInstruction,
 } from "./instructions";
 export type {
   Market,

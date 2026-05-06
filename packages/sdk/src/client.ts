@@ -303,6 +303,110 @@ export function deserializeMatchupAccount(data: Uint8Array, address: Address): M
   return { address, challenger, opponent, market, challengerOutcome, stakeUsdc, status, nonce, bump };
 }
 
+/**
+ * Deserialises a raw PrivateMarketState account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   market             — 32-byte Pubkey
+ *   encrypted_totals   — 2 × [u8; 32]  (yes_total_ct, no_total_ct)
+ *   nonce              — u128 LE
+ *   is_revealed        — u8 bool
+ *   no_volume_revealed — u64 LE
+ *   yes_volume_revealed— u64 LE
+ *   bump               — u8
+ */
+export function deserializePrivateMarketStateAccount(
+  data: Uint8Array,
+  address: Address
+): {
+  address: Address;
+  market: Address;
+  encryptedTotals: [Uint8Array, Uint8Array];
+  nonce: bigint;
+  isRevealed: boolean;
+  noVolumeRevealed: bigint;
+  yesVolumeRevealed: bigint;
+  bump: number;
+} {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8; // skip discriminator
+
+  const market = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+
+  const ct0 = data.slice(o, o + 32);
+  o += 32;
+  const ct1 = data.slice(o, o + 32);
+  o += 32;
+
+  // u128 LE — read as two u64s
+  const nonceLo = view.getBigUint64(o, true);
+  o += 8;
+  const nonceHi = view.getBigUint64(o, true);
+  o += 8;
+  const nonce = nonceLo | (nonceHi << 64n);
+
+  const isRevealed = view.getUint8(o) !== 0;
+  o += 1;
+  const noVolumeRevealed = view.getBigUint64(o, true);
+  o += 8;
+  const yesVolumeRevealed = view.getBigUint64(o, true);
+  o += 8;
+  const bump = view.getUint8(o);
+
+  return {
+    address,
+    market,
+    encryptedTotals: [ct0, ct1],
+    nonce,
+    isRevealed,
+    noVolumeRevealed,
+    yesVolumeRevealed,
+    bump,
+  };
+}
+
+/**
+ * Deserialises a raw PrivateBetRecord account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   market             — 32-byte Pubkey
+ *   bettor             — 32-byte Pubkey
+ *   amount             — u64 LE
+ *   outcome_commitment — [u8; 32]
+ *   claimed            — u8 bool
+ *   bump               — u8
+ */
+export function deserializePrivateBetRecordAccount(
+  data: Uint8Array,
+  address: Address
+): {
+  address: Address;
+  market: Address;
+  bettor: Address;
+  amount: bigint;
+  outcomeCommitment: Uint8Array;
+  claimed: boolean;
+  bump: number;
+} {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8;
+
+  const market = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const bettor = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const amount = view.getBigUint64(o, true);
+  o += 8;
+  const outcomeCommitment = data.slice(o, o + 32);
+  o += 32;
+  const claimed = view.getUint8(o) !== 0;
+  o += 1;
+  const bump = view.getUint8(o);
+
+  return { address, market, bettor, amount, outcomeCommitment, claimed, bump };
+}
+
 export class TerraceSdk {
   constructor(
     private readonly rpc: Rpc<SolanaRpcApi>,
