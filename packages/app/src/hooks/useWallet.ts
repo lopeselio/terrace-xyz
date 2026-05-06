@@ -189,7 +189,7 @@ export function useWallet(): UseWalletReturn {
 
       const txBytes = toUint8Array(base64Tx);
       const tx = VersionedTransaction.deserialize(txBytes);
-      const [signed] = await wallet.signTransactions([tx]);
+      const [signed] = await wallet.signTransactions({ transactions: [tx] });
       return fromUint8Array((signed as VersionedTransaction).serialize());
     });
   }, [state.track]);

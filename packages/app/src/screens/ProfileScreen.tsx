@@ -7,14 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import type { BadgeTier } from "@terrace/sdk";
+import { useReputation } from "../hooks/useReputation";
 
 // ---------------------------------------------------------------------------
 // Badge tier logic
 // ---------------------------------------------------------------------------
 
-export type BadgeTier = "Casual" | "Sharp" | "Legend";
-
-export function getBadgeTier(winRate: number): BadgeTier {
+function getBadgeTier(winRate: number): BadgeTier {
   if (winRate >= 0.70) return "Legend";
   if (winRate >= 0.50) return "Sharp";
   return "Casual";
@@ -71,13 +71,14 @@ function StatCell({
 // ---------------------------------------------------------------------------
 
 interface RepBarProps {
-  winRate: number;    // 0–1
-  streak: number;     // positive = win streak, negative = loss streak
+  winRate: number;      // 0–1
+  streak: number;       // positive = win streak, negative = loss streak
   totalCalls: number;
+  badgeTier?: BadgeTier; // on-chain value; falls back to local computation
 }
 
-function RepBar({ winRate, streak, totalCalls }: RepBarProps) {
-  const tier = getBadgeTier(winRate);
+function RepBar({ winRate, streak, totalCalls, badgeTier }: RepBarProps) {
+  const tier = badgeTier ?? getBadgeTier(winRate);
   const badge = BADGE_META[tier];
 
   return (
@@ -125,18 +126,13 @@ interface Props {
 
 export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
+  const { reputation, loading: repLoading } = useReputation(walletPubkey);
 
-  // Stub reputation data — will be wired to Jupiter profile API + on-chain
-  // Reputation PDA in Phase 2/3.
-  const STUB_REP = {
-    winRate: 0.68,
-    streak: 5,
-    totalCalls: 123,
-    winningCalls: 84,
-    volumeUsdc: 139.30,
-    trades: 40,
-    openPositions: 7,
-  };
+  // Derive display values from on-chain Reputation PDA; fall back to zeros for new users.
+  const winRate     = reputation ? reputation.winRateBps / 10_000 : 0;
+  const streak      = reputation?.currentStreak ?? 0;
+  const totalCalls  = reputation?.totalBets ?? 0;
+  const badgeTier   = reputation?.badgeTier;
 
   if (!walletPubkey) {
     return (
@@ -182,24 +178,28 @@ export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
       </View>
 
       {/* ── Reputation bar ──────────────────────── */}
-      <RepBar
-        winRate={STUB_REP.winRate}
-        streak={STUB_REP.streak}
-        totalCalls={STUB_REP.totalCalls}
-      />
+      {repLoading ? (
+        <View style={styles.repLoadingBox}>
+          <ActivityIndicator color="#22c55e" />
+        </View>
+      ) : (
+        <RepBar
+          winRate={winRate}
+          streak={streak}
+          totalCalls={totalCalls}
+          badgeTier={badgeTier}
+        />
+      )}
 
       {/* ── Performance stats ───────────────────── */}
       <View style={styles.perfSection}>
         <Text style={styles.sectionLabel}>PERFORMANCE</Text>
         <View style={styles.perfRow}>
+          <StatCell label="Wins" value={String(reputation?.winningBets ?? 0)} />
+          <StatCell label="Total" value={String(totalCalls)} />
           <StatCell
-            label="Volume"
-            value={`$${STUB_REP.volumeUsdc.toFixed(2)}`}
-          />
-          <StatCell label="Trades" value={String(STUB_REP.trades)} />
-          <StatCell
-            label="Open"
-            value={String(STUB_REP.openPositions)}
+            label="Win rate"
+            value={totalCalls > 0 ? `${Math.round(winRate * 100)}%` : "—"}
             valueColor="#22c55e"
           />
         </View>
@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
   address:       { fontSize: 11, color: "#6b7280" },
 
   // Reputation bar
+  repLoadingBox: { marginHorizontal: 18, marginBottom: 12, height: 88, alignItems: "center", justifyContent: "center", backgroundColor: "#111", borderRadius: 16 },
   repSection: { marginHorizontal: 18, marginBottom: 12 },
   sectionLabel: { fontSize: 10, fontWeight: "600", color: "#4b5563", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 },
   repRow: { flexDirection: "row", backgroundColor: "#111", borderRadius: 16, overflow: "hidden" },
