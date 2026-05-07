@@ -114,4 +114,8 @@ export interface UnifiedMarket {
   jupiterEventId?: string;
   /** Parent event title, e.g. "Sunderland vs Brighton" — used for match grouping */
   jupiterEventTitle?: string;
+  /** Native Terrace markets only */
+  nativeMarketAddress?: string;
+  isPrivate?: boolean;
+  isFlash?: boolean;
 }
