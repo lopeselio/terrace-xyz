@@ -15,6 +15,9 @@ import { HomeScreen } from "./screens/HomeScreen";
 import { MarketListScreen } from "./screens/MarketListScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
+import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
+import { MarketDetailSheet } from "./components/MarketDetailSheet";
+import type { UnifiedMarket } from "@terrace/sdk";
 
 // ---------------------------------------------------------------------------
 // Bottom navigation
@@ -35,6 +38,13 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 function MarketsTab({ onSelectMarket }: { onSelectMarket: (id: string) => void }) {
   const { markets, loading } = useMarkets();
   return <MarketListScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
+}
+
+// ---------------------------------------------------------------------------
+// Re-export markets for sub-screens that need the live feed
+// ---------------------------------------------------------------------------
+function useAppMarkets() {
+  return useMarkets();
 }
 
 // ---------------------------------------------------------------------------
@@ -109,12 +119,19 @@ const sheet = StyleSheet.create({
 // ---------------------------------------------------------------------------
 export default function App() {
   const { publicKey, connected, connecting, connectMWA, connectPrivy } = useWallet();
+  const { markets, loading: marketsLoading } = useAppMarkets();
   const [activeTab, setActiveTab] = useState<Tab>("Home");
   const [showConnect, setShowConnect] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<UnifiedMarket | null>(null);
+
+  const handleSelectMarket = (id: string) => {
+    const market = markets.find((m) => m.id === id) ?? null;
+    setSelectedMarket(market);
+  };
 
   // Tapping "Create" or "Profile" when not connected triggers the wallet sheet
   const handleTabPress = (tab: Tab) => {
-    if (!connected && (tab === "Create" || tab === "Profile")) {
+    if (!connected && tab === "Profile") {
       setShowConnect(true);
       return;
     }
@@ -144,11 +161,19 @@ export default function App() {
           <HomeScreen
             walletPubkey={publicKey}
             winRate={null}
-            onSelectMarket={(id) => console.log("open market:", id)}
+            onSelectMarket={handleSelectMarket}
           />
         );
       case "Markets":
-        return <MarketsTab onSelectMarket={(id) => console.log("open market:", id)} />;
+        return <MarketsTab onSelectMarket={handleSelectMarket} />;
+      case "Create":
+        return (
+          <ParlayBuilderScreen
+            markets={markets}
+            walletPubkey={publicKey}
+            onConnectWallet={() => setShowConnect(true)}
+          />
+        );
       case "Social":
         return <SocialScreen walletPubkey={publicKey} />;
       case "Profile":
@@ -180,6 +205,13 @@ export default function App() {
           connecting={connecting}
         />
       )}
+
+      {/* Market detail sheet — shown when user taps a market card */}
+      <MarketDetailSheet
+        market={selectedMarket}
+        visible={selectedMarket !== null}
+        onClose={() => setSelectedMarket(null)}
+      />
 
       {/* ── Bottom navigation ────────────────────────────── */}
       <View style={styles.bottomNav}>

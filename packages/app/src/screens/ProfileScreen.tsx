@@ -7,8 +7,10 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import type { BadgeTier } from "@terrace/sdk";
+import type { BadgeTier, Bet, Parlay } from "@terrace/sdk";
 import { useReputation } from "../hooks/useReputation";
+import { useBets } from "../hooks/useBets";
+import { useParlay } from "../hooks/useParlay";
 
 // ---------------------------------------------------------------------------
 // Badge tier logic
@@ -113,6 +115,155 @@ function RepBar({ winRate, streak, totalCalls, badgeTier }: RepBarProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Active & History position lists
+// ---------------------------------------------------------------------------
+
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function fmtUsdc(lamports: bigint) {
+  return (Number(lamports) / 1_000_000).toFixed(2);
+}
+
+function BetRow({ bet }: { bet: Bet }) {
+  return (
+    <View style={pos.row}>
+      <View style={pos.rowLeft}>
+        <Text style={pos.marketAddr}>{shortAddr(bet.market)}</Text>
+        <View style={[pos.outcomePill, bet.outcome === 0 ? pos.yesPill : pos.noPill]}>
+          <Text style={pos.outcomePillText}>{bet.outcome === 0 ? "YES" : "NO"}</Text>
+        </View>
+      </View>
+      <View style={pos.rowRight}>
+        <Text style={pos.amount}>{fmtUsdc(bet.amount)} USDC</Text>
+        {bet.claimed && <Text style={pos.claimedTag}>Claimed</Text>}
+      </View>
+    </View>
+  );
+}
+
+function ParlayRow({
+  parlay,
+  onSettle,
+  onClaim,
+}: {
+  parlay: Parlay;
+  onSettle?: () => void;
+  onClaim?: () => void;
+}) {
+  const statusColor: Record<string, string> = {
+    Open: "#6b7280", Won: "#22c55e", Lost: "#ef4444",
+    Claimed: "#9ca3af", Cancelled: "#9ca3af",
+  };
+  return (
+    <View style={pos.parlayRow}>
+      <View style={pos.parlayHeader}>
+        <Text style={pos.parlayTitle}>{parlay.legs.length}-leg parlay</Text>
+        <Text style={[pos.parlayStatus, { color: statusColor[parlay.status] ?? "#9ca3af" }]}>
+          {parlay.status}
+        </Text>
+      </View>
+      <Text style={pos.parlayStake}>Stake: {fmtUsdc(parlay.stakeUsdc)} USDC</Text>
+      <View style={pos.parlayLegs}>
+        {parlay.legs.map((l, i) => (
+          <Text key={i} style={pos.parlayLeg}>
+            {shortAddr(l.market)} → {l.outcome === 0 ? "YES" : "NO"}
+          </Text>
+        ))}
+      </View>
+      {parlay.status === "Open" && onSettle && (
+        <TouchableOpacity style={pos.actionBtn} onPress={onSettle}>
+          <Text style={pos.actionBtnText}>Settle</Text>
+        </TouchableOpacity>
+      )}
+      {parlay.status === "Won" && onClaim && (
+        <TouchableOpacity style={[pos.actionBtn, pos.actionBtnGreen]} onPress={onClaim}>
+          <Text style={pos.actionBtnText}>Claim winnings</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function ActivePositions({
+  bets,
+  parlays,
+  onSettleParlay,
+  onClaimParlay,
+}: {
+  bets: Bet[];
+  parlays: Parlay[];
+  onSettleParlay: (p: Parlay) => void;
+  onClaimParlay: (p: Parlay) => void;
+}) {
+  if (bets.length === 0 && parlays.length === 0) {
+    return (
+      <View style={styles.stubPositions}>
+        <Text style={styles.stubEmoji}>📊</Text>
+        <Text style={styles.stubTitle}>No open positions</Text>
+        <Text style={styles.stubSub}>Back a market to see your active positions here</Text>
+      </View>
+    );
+  }
+  return (
+    <View>
+      {bets.map((b) => <BetRow key={b.address} bet={b} />)}
+      {parlays.map((p) => (
+        <ParlayRow
+          key={p.address}
+          parlay={p}
+          onSettle={() => onSettleParlay(p)}
+          onClaim={() => onClaimParlay(p)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function HistoryPositions({ bets, parlays }: { bets: Bet[]; parlays: Parlay[] }) {
+  if (bets.length === 0 && parlays.length === 0) {
+    return (
+      <View style={styles.stubPositions}>
+        <Text style={styles.stubEmoji}>📈</Text>
+        <Text style={styles.stubTitle}>No history yet</Text>
+        <Text style={styles.stubSub}>Your settled bets will appear here</Text>
+      </View>
+    );
+  }
+  return (
+    <View>
+      {bets.map((b) => <BetRow key={b.address} bet={b} />)}
+      {parlays.map((p) => <ParlayRow key={p.address} parlay={p} />)}
+    </View>
+  );
+}
+
+const pos = StyleSheet.create({
+  row:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#111", borderRadius: 12, padding: 14, marginBottom: 8 },
+  rowLeft:    { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  rowRight:   { alignItems: "flex-end", gap: 3 },
+  marketAddr: { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  outcomePill:     { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  yesPill:         { backgroundColor: "#14532d" },
+  noPill:          { backgroundColor: "#7f1d1d" },
+  outcomePillText: { fontSize: 11, fontWeight: "700", color: "#f9fafb" },
+  amount:     { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
+  claimedTag: { fontSize: 10, color: "#22c55e" },
+
+  parlayRow:    { backgroundColor: "#111", borderRadius: 12, padding: 14, marginBottom: 8 },
+  parlayHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  parlayTitle:  { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
+  parlayStatus: { fontSize: 12, fontWeight: "600" },
+  parlayStake:  { fontSize: 12, color: "#9ca3af", marginBottom: 6 },
+  parlayLegs:   { gap: 2, marginBottom: 8 },
+  parlayLeg:    { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
+  actionBtn:       { backgroundColor: "#1a1a1a", borderRadius: 8, paddingVertical: 8, alignItems: "center", borderWidth: 0.5, borderColor: "#333" },
+  actionBtnGreen:  { backgroundColor: "#14532d", borderColor: "#22c55e" },
+  actionBtnText:   { fontSize: 12, fontWeight: "600", color: "#f9fafb" },
+});
+
+// ---------------------------------------------------------------------------
 // Profile screen
 // ---------------------------------------------------------------------------
 
@@ -127,6 +278,8 @@ interface Props {
 export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
+  const { bets, loading: betsLoading } = useBets(walletPubkey);
+  const { parlays, loadingParlays, settleParlay, claimParlay } = useParlay();
 
   // Derive display values from on-chain Reputation PDA; fall back to zeros for new users.
   const winRate     = reputation ? reputation.winRateBps / 10_000 : 0;
@@ -221,18 +374,24 @@ export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
           ))}
         </View>
 
-        {/* Stub position list */}
-        <View style={styles.stubPositions}>
-          <Text style={styles.stubEmoji}>📊</Text>
-          <Text style={styles.stubTitle}>
-            {tab === "Active" ? "No open positions" : "No history yet"}
-          </Text>
-          <Text style={styles.stubSub}>
-            {tab === "Active"
-              ? "Back a market to see your active positions here"
-              : "Your settled bets will appear here"}
-          </Text>
-        </View>
+        {/* Position list */}
+        {(betsLoading || loadingParlays) ? (
+          <View style={styles.stubPositions}>
+            <ActivityIndicator color="#22c55e" />
+          </View>
+        ) : tab === "Active" ? (
+          <ActivePositions
+            bets={bets.filter((b) => !b.claimed)}
+            parlays={parlays.filter((p) => p.status === "Open" || p.status === "Won")}
+            onSettleParlay={settleParlay}
+            onClaimParlay={claimParlay}
+          />
+        ) : (
+          <HistoryPositions
+            bets={bets.filter((b) => b.claimed || b.resultRecorded)}
+            parlays={parlays.filter((p) => p.status === "Won" || p.status === "Lost" || p.status === "Claimed" || p.status === "Cancelled")}
+          />
+        )}
       </View>
 
       <View style={{ height: 80 }} />

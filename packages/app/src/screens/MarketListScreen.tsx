@@ -88,6 +88,16 @@ export function MarketListScreen({ markets, loading, onSelectMarket }: Props) {
 
           {/* Source + settlement type — the key differentiator */}
           <View style={styles.metaRow}>
+            {item.isPrivate && (
+              <View style={styles.privateBadge}>
+                <Text style={styles.privateText}>🔒 Private</Text>
+              </View>
+            )}
+            {item.isFlash && (
+              <View style={styles.flashBadge}>
+                <Text style={styles.flashText}>⚡ Flash</Text>
+              </View>
+            )}
             <View
               style={[
                 styles.sourceBadge,
@@ -168,6 +178,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 2,
   },
+  privateBadge: { backgroundColor: "#1e3a5f", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  privateText:  { fontSize: 10, fontWeight: "700", color: "#60a5fa" },
+  flashBadge:   { backgroundColor: "#451a03", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  flashText:    { fontSize: 10, fontWeight: "700", color: "#f59e0b" },
   sourceBadge: {
     borderRadius: 4,
     paddingHorizontal: 6,

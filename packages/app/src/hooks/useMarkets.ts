@@ -63,6 +63,9 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
         totalVolumeUsdc: totalVol / 1_000_000,
         expiry: new Date(Number(market.expiry) * 1000),
         status: statusMapped,
+        nativeMarketAddress: pubkey,
+        isPrivate: market.isPrivate,
+        isFlash: market.isFlash,
       };
     });
   } catch (e) {
