@@ -43,7 +43,7 @@ const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 // bettor reveals (outcome, secret) in claim_private_winnings.
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { sha256 } = require("@noble/hashes/sha256") as { sha256: (data: Uint8Array) => Uint8Array };
+const { sha256 } = require("@noble/hashes/sha2") as { sha256: (data: Uint8Array) => Uint8Array };
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { x25519 } = require("@noble/curves/ed25519") as {
   x25519: {

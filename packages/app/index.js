@@ -1,6 +1,12 @@
 import "react-native-get-random-values";
 import { Buffer } from "buffer";
 global.Buffer = Buffer;
+// MWA requires window.isSecureContext and crypto.subtle (Web Crypto API).
+// Neither exists in React Native — polyfill both before any MWA code loads.
+if (typeof window !== "undefined" && !window.isSecureContext) {
+  // @ts-ignore
+  window.isSecureContext = true;
+}
 import { registerRootComponent } from "expo";
 import React from "react";
 import App from "./src/App";
