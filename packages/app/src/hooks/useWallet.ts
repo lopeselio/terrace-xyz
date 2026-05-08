@@ -47,7 +47,7 @@ export interface WalletState {
 
 export interface UseWalletReturn extends WalletState {
   /** Connect via Solana Mobile Wallet Adapter (Phantom, Solflare, Seeker) */
-  connectMWA: () => Promise<void>;
+  connectMWA: () => Promise<string | null>;
   /**
    * Connect via Privy embedded wallet (email / Google).
    * loginMethod: "email" | "google" — passed to Privy's login flow.
@@ -55,7 +55,7 @@ export interface UseWalletReturn extends WalletState {
    */
   connectPrivy: (loginMethod?: "email" | "google") => Promise<void>;
   /** Legacy alias — connects via MWA for backwards compat */
-  connect: () => Promise<void>;
+  connect: () => Promise<string | null>;
   disconnect: () => void;
   /** Signs a base64 VersionedTransaction; works for both tracks */
   signTransaction: (base64Tx: string) => Promise<string>;
@@ -80,9 +80,10 @@ export function useWallet(): UseWalletReturn {
   const privySigner = useRef<{ address: string; signTransaction: (tx: Uint8Array) => Promise<Uint8Array> } | null>(null);
 
   // ── MWA connect ──────────────────────────────────────────────────────
-  const connectMWA = useCallback(async () => {
+  const connectMWA = useCallback(async (): Promise<string | null> => {
     setState((s: WalletState) => ({ ...s, connecting: true }));
     try {
+      let resolvedPubkey: string | null = null;
       await transact(async (wallet: Web3MobileWallet) => {
         const result = await wallet.authorize({
           cluster: "devnet",
@@ -93,17 +94,29 @@ export function useWallet(): UseWalletReturn {
 
         authToken.current = result.auth_token;
 
-        const pubkeyBytes = toUint8Array(result.accounts[0].address);
+        // MWA v2 returns addresses as base64 (ends with '=') or base58.
+        // Buffer.from handles all base64 variants without throwing.
+        const raw = result.accounts[0].address;
+        let pubkey: string;
+        if (raw.endsWith("=")) {
+          const bytes = new Uint8Array(Buffer.from(raw, "base64"));
+          pubkey = bytes.length === 32 ? encodeBase58(bytes) : raw;
+        } else {
+          pubkey = raw;
+        }
+        resolvedPubkey = pubkey;
         setState({
-          publicKey: encodeBase58(pubkeyBytes),
+          publicKey: pubkey,
           connected: true,
           connecting: false,
           track: "mwa",
         });
       });
+      return resolvedPubkey;
     } catch (e) {
       console.error("MWA connect error:", e);
       setState({ publicKey: null, connected: false, connecting: false, track: null });
+      throw e; // re-throw so caller can handle/display
     }
   }, []);
 

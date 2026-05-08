@@ -271,11 +271,11 @@ type HistoryTab = "Active" | "History";
 
 interface Props {
   walletPubkey: string | null;
-  /** Call this to trigger wallet connect flow */
   onConnectWallet: () => void;
+  onDisconnect?: () => void;
 }
 
-export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
+export function ProfileScreen({ walletPubkey, onConnectWallet, onDisconnect }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
   const { bets, loading: betsLoading } = useBets(walletPubkey);
@@ -312,9 +312,6 @@ export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
       {/* ── Header ──────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.screenTitle}>Profile</Text>
-        <TouchableOpacity style={styles.settingsBtn}>
-          <Text>⚙️</Text>
-        </TouchableOpacity>
       </View>
 
       {/* ── Identity ────────────────────────────── */}
@@ -325,9 +322,18 @@ export function ProfileScreen({ walletPubkey, onConnectWallet }: Props) {
         <View style={styles.identityMeta}>
           <Text style={styles.username}>@{walletPubkey.slice(0, 8).toLowerCase()}</Text>
           <View style={styles.addressRow}>
-            <Text style={styles.address}>📋 {shortKey}</Text>
+            <Text style={styles.address}>{shortKey}</Text>
+          </View>
+          <View style={styles.connectedBadge}>
+            <View style={styles.connectedDot} />
+            <Text style={styles.connectedText}>Connected</Text>
           </View>
         </View>
+        {onDisconnect && (
+          <TouchableOpacity style={styles.disconnectBtn} onPress={onDisconnect}>
+            <Text style={styles.disconnectBtnText}>Disconnect</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Reputation bar ──────────────────────── */}
@@ -417,7 +423,6 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 20, paddingBottom: 8 },
   screenTitle: { fontSize: 24, fontWeight: "700", color: "#fff" },
-  settingsBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
 
   // Identity
   identityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16, backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 12 },
@@ -426,7 +431,12 @@ const styles = StyleSheet.create({
   identityMeta:  { flex: 1 },
   username:      { fontSize: 15, fontWeight: "600", color: "#fff" },
   addressRow:    { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  address:       { fontSize: 11, color: "#6b7280" },
+  address:       { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  connectedBadge: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
+  connectedDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: "#22c55e" },
+  connectedText:  { fontSize: 11, color: "#22c55e", fontWeight: "600" },
+  disconnectBtn:  { backgroundColor: "#1a1a1a", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 0.5, borderColor: "#ef4444" },
+  disconnectBtnText: { fontSize: 12, fontWeight: "600", color: "#ef4444" },
 
   // Reputation bar
   repLoadingBox: { marginHorizontal: 18, marginBottom: 12, height: 88, alignItems: "center", justifyContent: "center", backgroundColor: "#111", borderRadius: 16 },
