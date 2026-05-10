@@ -30,6 +30,20 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
+// @solana/* sub-packages (accounts, addresses, rpc, codecs, …) only exist as
+// symlinks inside the pnpm hash directory for @solana/kit — they have no
+// top-level entry in the app or monorepo node_modules.  Adding this hash's
+// node_modules lets Metro's default resolver find them directly.
+try {
+  const kitReal = fs.realpathSync(path.resolve(projectRoot, "node_modules/@solana/kit"));
+  // kitReal = .../terrace/node_modules/.pnpm/@solana+kit@<hash>/node_modules/@solana/kit
+  // Two levels up: .../terrace/node_modules/.pnpm/@solana+kit@<hash>/node_modules
+  const kitHashNm = path.resolve(kitReal, "../..");
+  if (fs.existsSync(path.join(kitHashNm, "@solana/accounts"))) {
+    config.resolver.nodeModulesPaths.push(kitHashNm);
+  }
+} catch (_) {}
+
 // pnpm uses symlinks — Metro must follow them to resolve packages
 config.resolver.unstable_enableSymlinks = true;
 // Required for packages that use the package.json "exports" field (e.g. @noble/hashes v2)
@@ -37,6 +51,14 @@ config.resolver.unstable_enablePackageExports = true;
 // react-native must come before browser so MWA resolves its .native.js build
 // (which uses Android native crypto). browser is still needed for jose.
 config.resolver.unstable_conditionNames = ["react-native", "browser", "require", "default"];
+
+// Allow Metro to bundle .cjs and .mjs files — needed for @solana/* packages that
+// ship conditional exports pointing to .cjs/.mjs rather than plain .js files.
+config.resolver.sourceExts = [
+  ...(config.resolver.sourceExts ?? ["js", "jsx", "ts", "tsx", "json"]),
+  "cjs",
+  "mjs",
+];
 
 // Packages that must resolve to their .native.js file (pnpm symlinks prevent
 // Metro's exports condition resolver from picking the right variant).

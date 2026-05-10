@@ -25,6 +25,7 @@ import { MarketListScreen } from "./screens/MarketListScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
 import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
+import { CreateMarketScreen } from "./screens/CreateMarketScreen";
 import { MarketDetailSheet } from "./components/MarketDetailSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 import {
@@ -279,10 +280,11 @@ export default function App() {
   const { sendCode, loginWithCode, state: otpState } = useLoginWithEmail();
   const solanaWallet = useEmbeddedSolanaWallet();
 
-  const { markets, loading: marketsLoading } = useMarkets();
+  const { markets, loading: marketsLoading, prependMarket } = useMarkets();
   const [activeTab, setActiveTab] = useState<Tab>("Home");
   const [pendingTab, setPendingTab] = useState<Tab>("Home");
   const [showConnect, setShowConnect] = useState(false);
+  const [showParlay, setShowParlay] = useState(false);
   const [mwaError, setMwaError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
@@ -330,6 +332,7 @@ export default function App() {
   // supports request({ method: 'signTransaction', params: { transaction } }).
   useEffect(() => {
     if (solanaWallet.status === "connected") {
+      const pubkey = solanaWallet.publicKey ?? linkedSolanaAddress;
       setPrivySigner(async (txBytes: Uint8Array) => {
         const wallet = solanaWalletRef.current;
         // getProvider() is available on connected/reconnecting states
@@ -340,7 +343,7 @@ export default function App() {
           params: { transaction: tx },
         });
         return Buffer.from((result.signedTransaction as VersionedTransaction).serialize());
-      });
+      }, pubkey);
     } else {
       setPrivySigner(null);
     }
@@ -466,16 +469,20 @@ export default function App() {
             marketsLoading={marketsLoading}
             onSelectMarket={handleSelectMarket}
             onNavigateProfile={() => setActiveTab("Profile")}
+            onNavigateParlay={() => setShowParlay(true)}
           />
         );
       case "Markets":
         return <MarketsTab markets={markets} loading={marketsLoading} onSelectMarket={handleSelectMarket} />;
       case "Create":
         return (
-          <ParlayBuilderScreen
-            markets={markets}
+          <CreateMarketScreen
             walletPubkey={effectivePublicKey}
             onConnectWallet={handleConnectWallet}
+            onMarketCreated={(market) => {
+              prependMarket(market);
+              setActiveTab("Markets");
+            }}
           />
         );
       case "Social":
@@ -524,6 +531,17 @@ export default function App() {
         onClose={() => setSelectedMarket(null)}
       />
 
+      {showParlay && (
+        <View style={styles.parlayOverlay}>
+          <ParlayBuilderScreen
+            markets={markets}
+            walletPubkey={effectivePublicKey}
+            onConnectWallet={handleConnectWallet}
+            onClose={() => setShowParlay(false)}
+          />
+        </View>
+      )}
+
       <View style={styles.bottomNav}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id && !showConnect;
@@ -549,6 +567,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: "#0a0a0a", paddingTop: StatusBar.currentHeight ?? 0 },
   content: { flex: 1 },
+  parlayOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0a0a0a", zIndex: 50 },
   bottomNav: {
     flexDirection: "row",
     alignItems: "center",
