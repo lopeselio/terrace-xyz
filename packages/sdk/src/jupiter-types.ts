@@ -3,36 +3,43 @@
 // Also accessible at: https://api.jup.ag/prediction/v1
 
 export interface JupiterMarketPricing {
-  buyYesPriceUsd: string;
-  buyNoPriceUsd: string;
-  sellYesPriceUsd: string;
-  sellNoPriceUsd: string;
+  /** Integer micro-units: divide by 1_000_000 to get 0–1 probability */
+  buyYesPriceUsd: number;
+  buyNoPriceUsd: number;
+  sellYesPriceUsd: number;
+  sellNoPriceUsd: number;
+  /** Market-level volume (micro-USDC) */
+  volume?: number;
 }
 
 export interface JupiterEventMarket {
-  id: string;
-  metadata: {
-    title: string;
-    description?: string;
-  };
+  /** e.g. "POLY-422415-0" */
+  marketId: string;
+  /** Outcome title e.g. "Arsenal FC", "Draw" */
+  title: string;
   pricing: JupiterMarketPricing;
-  volume24h?: string;
-  totalVolume?: string;
-  /** "active" | "closed" | "resolved" */
+  /** "open" | "closed" | "resolved" */
   status: string;
-  endDate?: string;
-  conditionId?: string;
+  /** Unix timestamp in seconds */
+  closeTime?: number;
+  outcomePrices?: string[];
+  sportsMarketType?: string;
 }
 
 export interface JupiterEvent {
-  id: string;
-  title: string;
-  description?: string;
+  eventId: string;
+  metadata: {
+    title: string;
+    subtitle?: string;
+    imageUrl?: string;
+  };
+  /** Total volume in micro-USDC */
+  volumeUsd?: number;
+  volume24hr?: number;
   category: string;
-  startDate?: string;
-  endDate?: string;
-  markets?: JupiterEventMarket[];
+  subcategory?: string;
   tags?: string[];
+  markets?: JupiterEventMarket[];
 }
 
 export interface JupiterPosition {

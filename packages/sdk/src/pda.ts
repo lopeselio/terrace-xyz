@@ -18,7 +18,7 @@ export async function getMarketPda(
   creator: Address,
   nonce: bigint,
   programId: Address = TERRACE_PROGRAM_ID
-): Promise<[Address, number]> {
+): Promise<readonly [Address, number]> {
   const enc = getAddressEncoder();
   return getProgramDerivedAddress({
     programAddress: programId,
@@ -34,7 +34,7 @@ export async function getBetPda(
   market: Address,
   bettor: Address,
   programId: Address = TERRACE_PROGRAM_ID
-): Promise<[Address, number]> {
+): Promise<readonly [Address, number]> {
   const enc = getAddressEncoder();
   return getProgramDerivedAddress({
     programAddress: programId,
@@ -49,7 +49,7 @@ export async function getBetPda(
 export async function getReputationPda(
   owner: Address,
   programId: Address = TERRACE_PROGRAM_ID
-): Promise<[Address, number]> {
+): Promise<readonly [Address, number]> {
   const enc = getAddressEncoder();
   return getProgramDerivedAddress({
     programAddress: programId,
@@ -65,7 +65,7 @@ export async function getMatchupPda(
   market: Address,
   nonce: bigint,
   programId: Address = TERRACE_PROGRAM_ID
-): Promise<[Address, number]> {
+): Promise<readonly [Address, number]> {
   const enc = getAddressEncoder();
   return getProgramDerivedAddress({
     programAddress: programId,
@@ -82,7 +82,7 @@ export async function getParlayPda(
   creator: Address,
   nonce: bigint,
   programId: Address = TERRACE_PROGRAM_ID
-): Promise<[Address, number]> {
+): Promise<readonly [Address, number]> {
   const enc = getAddressEncoder();
   return getProgramDerivedAddress({
     programAddress: programId,

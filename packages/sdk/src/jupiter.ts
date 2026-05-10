@@ -15,7 +15,7 @@ const JUPITER_BASE = "https://prediction-market-api.jup.ag/api/v1";
 export class JupiterMarketsClient {
   constructor(private readonly apiKey: string) {}
 
-  private get headers(): HeadersInit {
+  private get headers(): Record<string, string> {
     return {
       "x-api-key": this.apiKey,
       "Content-Type": "application/json",
@@ -25,7 +25,7 @@ export class JupiterMarketsClient {
   private async get<T>(path: string): Promise<T> {
     const res = await fetch(`${JUPITER_BASE}${path}`, { headers: this.headers });
     if (!res.ok) throw new Error(`Jupiter API ${path} → ${res.status} ${res.statusText}`);
-    return res.json();
+    return res.json() as Promise<T>;
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
@@ -35,7 +35,7 @@ export class JupiterMarketsClient {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Jupiter API POST ${path} → ${res.status} ${res.statusText}`);
-    return res.json();
+    return res.json() as Promise<T>;
   }
 
   private async del<T>(path: string, body?: unknown): Promise<T> {
@@ -45,18 +45,18 @@ export class JupiterMarketsClient {
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (!res.ok) throw new Error(`Jupiter API DELETE ${path} → ${res.status} ${res.statusText}`);
-    return res.json();
+    return res.json() as Promise<T>;
   }
 
   // ---------------------------------------------------------------------------
   // Events
   // ---------------------------------------------------------------------------
 
-  /** Fetch active sports events, optionally filtered to a football search term. */
+  /** Fetch active sports events, optionally filtered to a search term. Always includes markets. */
   async getSportsEvents(query?: string): Promise<JupiterEvent[]> {
     if (query) {
       const json = await this.get<{ data: JupiterEvent[] }>(
-        `/events/search?query=${encodeURIComponent(query)}&category=sports`
+        `/events/search?query=${encodeURIComponent(query)}&category=sports&includeMarkets=true`
       );
       return json.data ?? [];
     }
@@ -246,10 +246,13 @@ export class JupiterMarketsClient {
 
     for (const event of events) {
       for (const market of event.markets ?? []) {
-        const yesPrice = parseFloat(market.pricing?.buyYesPriceUsd ?? "0.5");
-        const noPrice = parseFloat(market.pricing?.buyNoPriceUsd ?? "0.5");
+        // Prices are integer micro-units (e.g. 630000 = 63¢)
+        const yesPrice = (market.pricing?.buyYesPriceUsd ?? 500_000) / 1_000_000;
+        const noPrice  = (market.pricing?.buyNoPriceUsd  ?? 500_000) / 1_000_000;
+        // Market volume in micro-USDC; fall back to event-level volume divided by market count
+        const marketCount = Math.max(1, event.markets?.length ?? 1);
         const totalVolumeUsdc =
-          parseFloat(market.totalVolume ?? "0") / 1_000_000;
+          (market.pricing?.volume ?? (event.volumeUsd ?? 0) / marketCount) / 1_000_000;
 
         let status: UnifiedMarket["status"] = "Open";
         if (market.status === "resolved") status = "Settled";
@@ -257,16 +260,16 @@ export class JupiterMarketsClient {
 
         markets.push({
           source: "jupiter",
-          id: market.id,
-          question: market.metadata?.title ?? event.title,
+          id: market.marketId,
+          question: market.title ?? event.metadata?.title ?? "",
           yesPrice,
           noPrice,
           totalVolumeUsdc,
-          expiry: market.endDate ? new Date(market.endDate) : null,
+          expiry: market.closeTime ? new Date(market.closeTime * 1000) : null,
           status,
-          jupiterMarketId: market.id,
-          jupiterEventId: event.id,
-          jupiterEventTitle: event.title,
+          jupiterMarketId: market.marketId,
+          jupiterEventId: event.eventId,
+          jupiterEventTitle: event.metadata?.title ?? "",
         });
       }
     }
