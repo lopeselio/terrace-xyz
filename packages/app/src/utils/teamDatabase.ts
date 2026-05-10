@@ -51,6 +51,50 @@ const RAW: Array<[string[], TeamEntry]> = [
   [["feyenoord"],                   { tla: "FEY", color: "#cc0000", crest: "https://crests.football-data.org/675.svg" }],
   [["sporting cp", "sporting"],     { tla: "SCP", color: "#008000", crest: "https://crests.football-data.org/498.svg" }],
 
+  // ── Championship (EFL) ─────────────────────────────────────────────
+  [["leeds", "leeds united"],          { tla: "LEE", color: "#ffcd00", crest: "https://crests.football-data.org/341.svg" }],
+  [["sheffield united", "sheff utd"],  { tla: "SHU", color: "#ee2737", crest: "https://crests.football-data.org/356.svg" }],
+  [["burnley"],                        { tla: "BUR", color: "#6c1d45", crest: "https://crests.football-data.org/328.svg" }],
+  [["middlesbrough", "boro"],          { tla: "MID", color: "#e41b17", crest: "https://crests.football-data.org/343.svg" }],
+  [["coventry"],                       { tla: "COV", color: "#44b4e4", crest: "https://crests.football-data.org/1076.svg" }],
+  [["norwich", "norwich city"],        { tla: "NOR", color: "#00a650", crest: "https://crests.football-data.org/68.svg" }],
+  [["west brom", "west bromwich"],     { tla: "WBA", color: "#122f67", crest: "https://crests.football-data.org/74.svg" }],
+  [["millwall"],                       { tla: "MIL", color: "#001d5e", crest: "https://crests.football-data.org/1059.svg" }],
+  [["swansea"],                        { tla: "SWA", color: "#000000", crest: "https://crests.football-data.org/72.svg" }],
+  [["preston", "preston north end"],   { tla: "PNE", color: "#002f6c", crest: "https://crests.football-data.org/1081.svg" }],
+  [["cardiff"],                        { tla: "CAR", color: "#0070b5", crest: "https://crests.football-data.org/715.svg" }],
+  [["derby", "derby county"],          { tla: "DER", color: "#000000", crest: "https://crests.football-data.org/342.svg" }],
+  [["blackburn", "blackburn rovers"],  { tla: "BBR", color: "#009ee0", crest: "https://crests.football-data.org/59.svg" }],
+  [["hull", "hull city"],              { tla: "HUL", color: "#f5a12d", crest: "https://crests.football-data.org/322.svg" }],
+  [["stoke", "stoke city"],            { tla: "STK", color: "#e03a3e", crest: "https://crests.football-data.org/70.svg" }],
+  [["sheffield wednesday", "sheff wed"], { tla: "SWE", color: "#003087", crest: "https://crests.football-data.org/345.svg" }],
+  [["watford"],                        { tla: "WAT", color: "#fbee23", crest: "https://crests.football-data.org/346.svg" }],
+  [["luton", "luton town"],            { tla: "LUT", color: "#f78f1e", crest: "https://crests.football-data.org/1031.svg" }],
+  [["oxford", "oxford united"],        { tla: "OXF", color: "#ffd100", crest: "https://crests.football-data.org/373.svg" }],
+  [["qpr", "queens park rangers"],     { tla: "QPR", color: "#1d5ba4", crest: "https://crests.football-data.org/69.svg" }],
+
+  // ── More European clubs ─────────────────────────────────────────────
+  [["sevilla"],                         { tla: "SEV", color: "#d91a21", crest: "https://crests.football-data.org/559.svg" }],
+  [["villarreal"],                      { tla: "VIL", color: "#ffdb00", crest: "https://crests.football-data.org/449.svg" }],
+  [["real sociedad", "sociedad"],       { tla: "RSO", color: "#0067b1", crest: "https://crests.football-data.org/92.svg" }],
+  [["athletic bilbao", "bilbao"],       { tla: "ATH", color: "#cc0000", crest: "https://crests.football-data.org/77.svg" }],
+  [["napoli"],                          { tla: "NAP", color: "#09afe0", crest: "https://crests.football-data.org/113.svg" }],
+  [["roma", "as roma"],                 { tla: "ROM", color: "#8b0000", crest: "https://crests.football-data.org/100.svg" }],
+  [["lazio"],                           { tla: "LAZ", color: "#87ceeb", crest: "https://crests.football-data.org/110.svg" }],
+  [["atalanta"],                        { tla: "ATA", color: "#1e3a8a", crest: "https://crests.football-data.org/102.svg" }],
+  [["fiorentina"],                      { tla: "FIO", color: "#6a0dad", crest: "https://crests.football-data.org/99.svg" }],
+  [["bayer leverkusen", "leverkusen"],  { tla: "B04", color: "#e32221", crest: "https://crests.football-data.org/3.svg" }],
+  [["rb leipzig", "leipzig"],           { tla: "RBL", color: "#cc0000", crest: "https://crests.football-data.org/721.svg" }],
+  [["eintracht frankfurt", "frankfurt"], { tla: "SGE", color: "#e1000f", crest: "https://crests.football-data.org/19.svg" }],
+  [["monaco"],                          { tla: "MON", color: "#cc0000", crest: "https://crests.football-data.org/548.svg" }],
+  [["lyon", "olympique lyonnais"],      { tla: "OLY", color: "#0033a0", crest: "https://crests.football-data.org/523.svg" }],
+  [["marseille", "olympique marseille"], { tla: "OM",  color: "#009ac7", crest: "https://crests.football-data.org/516.svg" }],
+  [["lille"],                           { tla: "LIL", color: "#c8102e", crest: "https://crests.football-data.org/521.svg" }],
+  [["galatasaray"],                     { tla: "GAL", color: "#f9a01b", crest: "https://crests.football-data.org/2281.svg" }],
+  [["fenerbahce"],                      { tla: "FEN", color: "#004d98", crest: "https://crests.football-data.org/2285.svg" }],
+  [["psv", "psv eindhoven"],            { tla: "PSV", color: "#cc0000", crest: "https://crests.football-data.org/677.svg" }],
+  [["shakhtar", "shakhtar donetsk"],    { tla: "SHA", color: "#f7a21b", crest: "https://crests.football-data.org/1887.svg" }],
+
   // ── National teams ─────────────────────────────────────────────────
   [["england"],   { tla: "ENG", color: "#003090", crest: "https://crests.football-data.org/770.svg" }],
   [["france"],    { tla: "FRA", color: "#003189", crest: "https://crests.football-data.org/773.svg" }],
@@ -61,14 +105,30 @@ const RAW: Array<[string[], TeamEntry]> = [
   [["portugal"],  { tla: "POR", color: "#cc0000", crest: "https://crests.football-data.org/765.svg" }],
   [["netherlands", "holland"], { tla: "NED", color: "#ff6600", crest: "https://crests.football-data.org/774.svg" }],
   [["italy"],     { tla: "ITA", color: "#003189", crest: "https://crests.football-data.org/784.svg" }],
+  [["usa", "united states"],  { tla: "USA", color: "#002868", crest: "https://crests.football-data.org/765.svg" }],
+  [["mexico"],    { tla: "MEX", color: "#006847", crest: "https://crests.football-data.org/764.svg" }],
+  [["morocco"],   { tla: "MAR", color: "#c1272d", crest: "https://crests.football-data.org/1030.svg" }],
 ];
 
 // Build flat lookup map: normalized alias → TeamEntry
 const DB = new Map<string, TeamEntry>();
+// Build preferred search name map: raw alias (lowercase) → longest alias (for TheSportsDB)
+const SEARCH_NAME_MAP = new Map<string, string>();
 for (const [aliases, entry] of RAW) {
+  const best = aliases.reduce((a, b) => (a.length >= b.length ? a : b));
   for (const alias of aliases) {
     DB.set(alias.toLowerCase().trim(), entry);
+    SEARCH_NAME_MAP.set(alias.toLowerCase().trim(), best);
   }
+}
+
+/**
+ * Return the best TheSportsDB search term for a team name.
+ * Expands abbreviations: "PSG" → "paris saint-germain", "BVB" → "borussia dortmund".
+ */
+export function getSearchName(name: string): string {
+  const lower = name.toLowerCase().trim().replace(/\s+(fc|afc)$/i, "");
+  return SEARCH_NAME_MAP.get(lower) ?? name.replace(/\s+(FC|AFC)$/i, "").trim();
 }
 
 /** Normalize a team name string for lookup */
