@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { VersionedTransaction } from "@solana/web3.js";
 import {
   View,
   Text,
@@ -11,8 +12,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
+import * as WebBrowser from "expo-web-browser";
+
+// Required for Privy OAuth to close the browser and complete the auth session
+// when the deep link redirects back to the app.
+WebBrowser.maybeCompleteAuthSession();
 import { useWallet } from "./hooks/useWallet";
 import { useMarkets } from "./hooks/useMarkets";
+import { useReputation } from "./hooks/useReputation";
 import { HomeScreen } from "./screens/HomeScreen";
 import { MarketListScreen } from "./screens/MarketListScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -22,10 +29,10 @@ import { MarketDetailSheet } from "./components/MarketDetailSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 import {
   usePrivy,
-  useOAuthFlow,
+  useLoginWithOAuth,
   useLoginWithEmail,
-  useEmbeddedWallet,
-  isConnected as privyIsConnected,
+  useEmbeddedSolanaWallet,
+  type OtpFlowState,
 } from "@privy-io/expo";
 
 // ---------------------------------------------------------------------------
@@ -44,13 +51,16 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 // ---------------------------------------------------------------------------
 // Markets tab
 // ---------------------------------------------------------------------------
-function MarketsTab({ onSelectMarket }: { onSelectMarket: (id: string) => void }) {
-  const { markets, loading } = useMarkets();
+function MarketsTab({
+  markets,
+  loading,
+  onSelectMarket,
+}: {
+  markets: UnifiedMarket[];
+  loading: boolean;
+  onSelectMarket: (id: string) => void;
+}) {
   return <MarketListScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
-}
-
-function useAppMarkets() {
-  return useMarkets();
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +74,10 @@ interface ConnectSheetProps {
   onLoginWithCode: (code: string) => Promise<void>;
   onConnectGoogle: () => Promise<void>;
   connecting: boolean;
+  privyReady: boolean;
   mwaError?: string | null;
+  oauthError?: string | null;
+  otpState: OtpFlowState;
 }
 
 function ConnectSheet({
@@ -73,7 +86,10 @@ function ConnectSheet({
   onLoginWithCode,
   onConnectGoogle,
   connecting,
+  privyReady,
   mwaError,
+  oauthError,
+  otpState,
 }: ConnectSheetProps) {
   const [step, setStep] = useState<SheetStep>("options");
   const [email, setEmail] = useState("");
@@ -81,29 +97,56 @@ function ConnectSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Drive step transitions from Privy's OTP state machine instead of
+  // assuming the promise resolved = email was sent. sendCode() never throws —
+  // it catches internally and sets otpState.status = "error". Without this
+  // effect the UI always advances to "otp-input" even when the send failed.
+  useEffect(() => {
+    if (otpState.status === "awaiting-code-input" && step === "email-input") {
+      setError(null);
+      setBusy(false);
+      setStep("otp-input");
+    } else if (otpState.status === "done") {
+      // parent handles navigation on login
+    } else if (otpState.status === "error") {
+      const msg = (otpState as any).error?.message ?? "Auth error";
+      setError(msg);
+      setBusy(false);
+    }
+  }, [otpState.status]);
+
   const handleSendCode = async () => {
-    if (!email.trim()) return;
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Enter a valid email address");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await onSendEmailCode(email.trim());
-      setStep("otp-input");
+      await onSendEmailCode(trimmed);
+      // Do NOT setStep here — the useEffect above advances the step only
+      // when otpState.status transitions to "awaiting-code-input".
     } catch (e: any) {
       setError(e?.message ?? "Failed to send code");
-    } finally {
       setBusy(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!code.trim()) return;
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    if (!/^\d{6}$/.test(trimmed)) {
+      setError("Enter the 6-digit code from your email");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await onLoginWithCode(code.trim());
+      await onLoginWithCode(trimmed);
     } catch (e: any) {
       setError(e?.message ?? "Invalid code");
-    } finally {
       setBusy(false);
     }
   };
@@ -179,19 +222,21 @@ function ConnectSheet({
         <TouchableOpacity
           style={sheet.socialBtn}
           onPress={() => setStep("email-input")}
-          disabled={connecting}
+          disabled={connecting || !privyReady}
         >
           <Text style={sheet.socialBtnText}>✉  Email</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={sheet.socialBtn}
           onPress={onConnectGoogle}
-          disabled={connecting}
+          disabled={connecting || !privyReady}
         >
           <Text style={sheet.socialBtnText}>G  Google</Text>
         </TouchableOpacity>
       </View>
 
+      {oauthError && <Text style={sheet.error}>{oauthError}</Text>}
+      {!privyReady && <Text style={sheet.error}>Initialising auth…</Text>}
       <Text style={sheet.note}>Powered by Solana · USDC settlement</Text>
     </View>
   );
@@ -220,38 +265,111 @@ const sheet = StyleSheet.create({
 // App root
 // ---------------------------------------------------------------------------
 export default function App() {
-  const { publicKey, connected, connecting, connectMWA, disconnect: disconnectMWA } = useWallet();
+  const { publicKey, connected, connecting, connectMWA, disconnect: disconnectMWA, setPrivySigner } = useWallet();
 
   // Privy hooks
-  const { logout: privyLogout, user: privyUser } = usePrivy();
-  const { start: startOAuth } = useOAuthFlow();
-  const { sendCode, loginWithCode } = useLoginWithEmail();
-  const privyWallet = useEmbeddedWallet();
+  const { logout: privyLogout, user: privyUser, isReady: privyReady } = usePrivy();
+  const { login: loginWithOAuth } = useLoginWithOAuth({
+    onError: (err: any) => {
+      const msg: string = err?.message ?? "Google sign-in failed";
+      setOauthError(msg);
+      console.error("[privy] OAuth error:", err);
+    },
+  });
+  const { sendCode, loginWithCode, state: otpState } = useLoginWithEmail();
+  const solanaWallet = useEmbeddedSolanaWallet();
 
-  const { markets } = useAppMarkets();
+  const { markets, loading: marketsLoading } = useMarkets();
   const [activeTab, setActiveTab] = useState<Tab>("Home");
   const [pendingTab, setPendingTab] = useState<Tab>("Home");
   const [showConnect, setShowConnect] = useState(false);
   const [mwaError, setMwaError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<UnifiedMarket | null>(null);
 
-  // Privy embedded Solana wallet address — from linked_accounts on the user object
-  const privyConnected = privyIsConnected(privyWallet);
-  const privySolanaAddress = (privyUser?.linked_accounts as any[])?.find(
-    (a) => a.type === "wallet" && a.wallet_client_type === "privy" && a.chain_type === "solana"
+  // publicKey from embedded Solana wallet.
+  // "connected" → use SDK publicKey directly.
+  // Any other status (connecting, reconnecting, not-created, error, etc.) →
+  // fall back to linked_accounts so returning users see their address while
+  // the SDK is still initialising or recovering the wallet.
+  const linkedSolanaAddress = (privyUser?.linked_accounts as any[])?.find(
+    (a: any) =>
+      a.type === "wallet" &&
+      a.chain_type === "solana" &&
+      a.wallet_client_type === "privy"
   )?.address ?? null;
+
+  const privySolanaAddress =
+    solanaWallet.status === "connected"
+      ? solanaWallet.publicKey
+      : linkedSolanaAddress;
 
   // Effective wallet — MWA takes priority, Privy embedded wallet as fallback
   const effectivePublicKey = publicKey ?? privySolanaAddress;
-  const effectiveConnected = connected || privyConnected;
+  const effectiveConnected = connected || !!privyUser;
 
-  // Navigate to pending tab once Privy wallet connects after login
+  const { reputation } = useReputation(effectivePublicKey ?? null);
+
+  // Navigate to pending tab once Privy user logs in (don't wait for wallet creation)
   useEffect(() => {
-    if (privyConnected && showConnect) {
+    if (privyUser && showConnect) {
       setShowConnect(false);
       setActiveTab(pendingTab);
     }
-  }, [privyConnected]);
+  }, [privyUser]);
+
+  // Keep refs so timeout callbacks read current state at fire-time, not captured closure values.
+  const solanaWalletRef = useRef(solanaWallet);
+  solanaWalletRef.current = solanaWallet;
+  const linkedSolanaRef = useRef(linkedSolanaAddress);
+  linkedSolanaRef.current = linkedSolanaAddress;
+
+  // Register the Privy signer once the embedded wallet is connected.
+  // solanaWallet.getProvider() returns PrivyEmbeddedSolanaWalletProvider which
+  // supports request({ method: 'signTransaction', params: { transaction } }).
+  useEffect(() => {
+    if (solanaWallet.status === "connected") {
+      setPrivySigner(async (txBytes: Uint8Array) => {
+        const wallet = solanaWalletRef.current;
+        // getProvider() is available on connected/reconnecting states
+        const provider = await (wallet as any).getProvider();
+        const tx = VersionedTransaction.deserialize(txBytes);
+        const result = await (provider as any).request({
+          method: "signTransaction",
+          params: { transaction: tx },
+        });
+        return Buffer.from((result.signedTransaction as VersionedTransaction).serialize());
+      });
+    } else {
+      setPrivySigner(null);
+    }
+  }, [solanaWallet.status]);
+
+  // Fallback wallet creation for edge cases where createOnLogin didn't fire
+  // (e.g. network interruption during login, or needsRecovery state).
+  // createOnLogin: 'users-without-wallets' handles the normal path automatically.
+  useEffect(() => {
+    if (!privyUser || solanaWallet.status !== "not-created") return;
+
+    const timer = setTimeout(() => {
+      const current = solanaWalletRef.current;
+      if (current.status !== "not-created") return;
+      if (linkedSolanaRef.current) return;
+      current.create?.().catch((createErr: any) => {
+        const msg: string = createErr?.message ?? "Unknown wallet error";
+        if (msg.includes("cannot have more than one")) {
+          console.warn("[wallet] wallet already exists on another device");
+          setWalletError("Wallet recovery unavailable. Connect a Solana wallet app or sign out.");
+          return;
+        }
+        console.error("[wallet] create failed:", msg);
+        setWalletError(msg);
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [privyUser, solanaWallet.status]);
 
   const handleSelectMarket = (id: string) => {
     const market = markets.find((m) => m.id === id) ?? null;
@@ -282,50 +400,80 @@ export default function App() {
   };
 
   const handleConnectGoogle = async () => {
+    setOauthError(null);
     try {
-      await startOAuth({ provider: "google" });
-      // useEffect above handles navigation once privyWallet connects
-    } catch (e) {
+      await loginWithOAuth({ provider: "google" });
+    } catch (e: any) {
+      const msg = e?.message ?? "Google sign-in failed";
+      setOauthError(msg);
       console.error("Google login error:", e);
     }
   };
 
   const handleSendEmailCode = async (email: string) => {
+    if (!privyReady) throw new Error("Privy not ready yet — try again");
     await sendCode({ email });
   };
 
   const handleLoginWithCode = async (code: string) => {
+    if (!privyReady) throw new Error("Privy not ready yet — try again");
     await loginWithCode({ code });
-    // useEffect above handles navigation once privyWallet connects
   };
 
   const handleDisconnect = async () => {
     disconnectMWA();
-    if (privyConnected) await privyLogout();
+    if (privyUser) await privyLogout();
     setActiveTab("Home");
+  };
+
+  const handleConnectWallet = () => {
+    // No Privy session, or logged in but wallet is broken/missing → open connect sheet.
+    // This lets users pick MWA (Phantom/Solflare) even when already auth'd via Privy.
+    if (!privyUser || !effectivePublicKey) {
+      setPendingTab(activeTab);
+      setShowConnect(true);
+      return;
+    }
+    setWalletError(null);
+    const wallet = solanaWalletRef.current;
+    if (linkedSolanaRef.current) return;
+    wallet.create?.().catch((createErr: any) => {
+      const msg: string = createErr?.message ?? "Unknown wallet error";
+      if (msg.includes("cannot have more than one")) {
+        setWalletError("Wallet already exists. Connect a Solana wallet app or sign out.");
+        return;
+      }
+      console.error("[wallet] create failed:", msg);
+      setWalletError(msg);
+    });
   };
 
   // ------ Render active tab content ------
   const renderContent = () => {
-    if (showConnect) return null;
+    // Only blank the content for unauthenticated users opening the connect sheet.
+    // Authenticated users should never see an empty screen even if showConnect
+    // is stale-true (e.g. after tapping "Connect wallet" from inside a screen).
+    if (showConnect && (!effectiveConnected || !effectivePublicKey)) return null;
 
     switch (activeTab) {
       case "Home":
         return (
           <HomeScreen
             walletPubkey={effectivePublicKey}
-            winRate={null}
+            winRate={reputation ? reputation.winRateBps / 10000 : null}
+            markets={markets}
+            marketsLoading={marketsLoading}
             onSelectMarket={handleSelectMarket}
           />
         );
       case "Markets":
-        return <MarketsTab onSelectMarket={handleSelectMarket} />;
+        return <MarketsTab markets={markets} loading={marketsLoading} onSelectMarket={handleSelectMarket} />;
       case "Create":
         return (
           <ParlayBuilderScreen
             markets={markets}
             walletPubkey={effectivePublicKey}
-            onConnectWallet={() => setShowConnect(true)}
+            onConnectWallet={handleConnectWallet}
           />
         );
       case "Social":
@@ -334,7 +482,9 @@ export default function App() {
         return (
           <ProfileScreen
             walletPubkey={effectivePublicKey}
-            onConnectWallet={() => setShowConnect(true)}
+            isLoggedIn={!!privyUser}
+            walletError={walletError}
+            onConnectWallet={handleConnectWallet}
             onDisconnect={handleDisconnect}
           />
         );
@@ -351,14 +501,17 @@ export default function App() {
         {renderContent()}
       </View>
 
-      {showConnect && !effectiveConnected && (
+      {showConnect && (!effectiveConnected || !effectivePublicKey) && (
         <ConnectSheet
           onConnectMWA={handleConnectMWA}
           onConnectGoogle={handleConnectGoogle}
           onSendEmailCode={handleSendEmailCode}
           onLoginWithCode={handleLoginWithCode}
           connecting={connecting}
+          privyReady={privyReady}
           mwaError={mwaError}
+          oauthError={oauthError}
+          otpState={otpState}
         />
       )}
 

@@ -9,7 +9,6 @@ import {
   Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMarkets } from "../hooks/useMarkets";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { useLeaderboard, avatarColorFromPubkey, type SharpEntry } from "../hooks/useLeaderboard";
 import { groupMarkets } from "../utils/groupMarkets";
@@ -269,9 +268,10 @@ function SharpsTab({ walletPubkey }: SharpsTabProps) {
 // ---------------------------------------------------------------------------
 
 interface Props {
-  /** Public key of connected wallet, null if not connected */
   walletPubkey: string | null;
   winRate: number | null;
+  markets: UnifiedMarket[];
+  marketsLoading: boolean;
   onSelectMarket: (id: string) => void;
 }
 
@@ -281,8 +281,7 @@ interface SelectedBet {
   yesPrice: number | null;
 }
 
-export function HomeScreen({ walletPubkey, winRate, onSelectMarket }: Props) {
-  const { markets, loading } = useMarkets();
+export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loading, onSelectMarket }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const { status, txSignature, error, placeBet, reset } = usePlaceBet();

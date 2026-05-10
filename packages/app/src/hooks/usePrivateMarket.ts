@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Buffer } from "buffer";
+import * as SecureStore from "expo-secure-store";
 import {
   PublicKey,
   TransactionInstruction,
@@ -248,8 +249,8 @@ export function usePrivateMarket() {
         crypto.getRandomValues(secret);
         const outcomeCommitment = computeOutcomeCommitment(params.outcome, secret);
 
-        // Persist secret so user can claim later
-        localStorage.setItem(
+        // Persist secret so user can claim later (SecureStore = device Keychain/Keystore)
+        await SecureStore.setItemAsync(
           `terrace:bet_secret:${privateBetRecord}`,
           Buffer.from(secret).toString("hex")
         );
@@ -369,7 +370,7 @@ export function usePrivateMarket() {
         const [privateState]  = await getPrivateStatePda(params.market, programId);
         const [privateBetRecord] = await getPrivateBetRecordPda(params.market, bettor, programId);
 
-        const secretHex = localStorage.getItem(`terrace:bet_secret:${privateBetRecord}`);
+        const secretHex = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
         if (!secretHex) throw new Error("Bet secret not found — cannot claim");
         const secret = new Uint8Array(Buffer.from(secretHex, "hex"));
 
@@ -387,7 +388,7 @@ export function usePrivateMarket() {
 
         setStatus("signing");
         const sig = await buildAndSend(publicKey, [ix], signTransaction);
-        localStorage.removeItem(`terrace:bet_secret:${privateBetRecord}`);
+        await SecureStore.deleteItemAsync(`terrace:bet_secret:${privateBetRecord}`);
         setTxSig(sig);
         setStatus("success");
         return sig;
