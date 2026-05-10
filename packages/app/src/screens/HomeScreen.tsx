@@ -33,6 +33,21 @@ const THUMB_EMOJIS = ["🏴󠁧󠁢󠁥󠁮󠁧󠁿", "⚽", "🔴", "🟣"];
 const TRENDING_TABS = ["Markets", "Leagues", "Sharps"] as const;
 type TrendingTab = (typeof TRENDING_TABS)[number];
 
+const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
+
+function matchesLeague(eventTitle: string, league: string): boolean {
+  if (league === "All") return true;
+  const t = eventTitle.toLowerCase();
+  if (league === "Premier League") return /man |arsenal|chelsea|liverpool|tottenham|newcastle|west ham|everton|crystal|wolves|fulham|brentford|brighton|nottingham|bournemouth|aston villa|ipswich|leicester|southampton/i.test(eventTitle);
+  if (league === "Champions League") return /champions league|ucl/i.test(t);
+  if (league === "La Liga") return /la liga|real madrid|barcelona|atletico|sevilla|villarreal|real sociedad|athletic bilbao/i.test(t);
+  if (league === "Bundesliga") return /bundesliga|bayern|dortmund|leverkusen|leipzig|frankfurt/i.test(t);
+  if (league === "Serie A") return /serie a|juventus|inter|milan|napoli|roma|lazio|atalanta|fiorentina/i.test(t);
+  if (league === "Ligue 1") return /ligue 1|psg|paris|lyon|marseille|monaco|lille/i.test(t);
+  if (league === "Europa League") return /europa league|uel/i.test(t);
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -270,6 +285,7 @@ function SharpsTab({ walletPubkey }: SharpsTabProps) {
 interface Props {
   walletPubkey: string | null;
   winRate: number | null;
+  repLoading?: boolean;
   markets: UnifiedMarket[];
   marketsLoading: boolean;
   onSelectMarket: (id: string) => void;
@@ -282,14 +298,15 @@ interface SelectedBet {
   yesPrice: number | null;
 }
 
-export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
+  const [leagueFilter, setLeagueFilter] = useState<string>("All");
   const { status, txSignature, error, placeBet, reset } = usePlaceBet();
 
   const repLabel = winRate !== null
     ? `${Math.round(winRate * 100)}% W`
-    : walletPubkey ? "-- W" : null;
+    : null;
 
   const handleSelectOutcome = (marketId: string, label: string, yesPrice: number | null) => {
     reset();
@@ -328,13 +345,17 @@ export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loa
           <View style={styles.navIconBtn}>
             <Text>🔔</Text>
           </View>
-          {repLabel && (
+          {walletPubkey && (
             <TouchableOpacity
               style={styles.repBadge}
               onPress={onNavigateProfile}
               activeOpacity={onNavigateProfile ? 0.7 : 1}
             >
-              <Text style={styles.repBadgeText}>{repLabel}</Text>
+              {repLoading && winRate === null ? (
+                <ActivityIndicator size="small" color="#22c55e" style={{ width: 32 }} />
+              ) : (
+                <Text style={styles.repBadgeText}>{repLabel ?? "-- W"}</Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -384,24 +405,50 @@ export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loa
             <View style={styles.comingSoon}>
               <Text style={styles.comingSoonTitle}>No markets yet</Text>
             </View>
-          ) : (
-            groupMarkets(markets).map((item, i) =>
-              item.type === "grouped" ? (
-                <MatchGroupCard
-                  key={item.eventId}
-                  match={item}
-                  onSelectOutcome={handleSelectOutcome}
-                />
-              ) : (
-                <MarketRow
-                  key={item.market.id}
-                  market={item.market}
-                  index={i}
-                  onPress={onSelectMarket}
-                />
-              )
-            )
-          )
+          ) : (() => {
+            const grouped = groupMarkets(markets);
+            const filteredGroups = grouped.filter((g) =>
+              matchesLeague(g.type === "grouped" ? g.eventTitle : g.market.jupiterEventTitle ?? g.market.question, leagueFilter)
+            );
+            return (
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.leagueChipsRow}
+                >
+                  {LEAGUE_CHIPS.map((chip) => (
+                    <TouchableOpacity
+                      key={chip}
+                      style={[styles.leagueChip, leagueFilter === chip && styles.leagueChipActive]}
+                      onPress={() => setLeagueFilter(chip)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.leagueChipText, leagueFilter === chip && styles.leagueChipTextActive]}>
+                        {chip}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {filteredGroups.map((item, i) =>
+                  item.type === "grouped" ? (
+                    <MatchGroupCard
+                      key={item.eventId}
+                      match={item}
+                      onSelectOutcome={handleSelectOutcome}
+                    />
+                  ) : (
+                    <MarketRow
+                      key={item.market.id}
+                      market={item.market}
+                      index={i}
+                      onPress={onSelectMarket}
+                    />
+                  )
+                )}
+              </>
+            );
+          })()
         )}
         {activeTab === "Leagues" && <LeaguesTab />}
         {activeTab === "Sharps"  && <SharpsTab walletPubkey={walletPubkey} />}
@@ -483,6 +530,13 @@ const styles = StyleSheet.create({
   tabText:         { fontSize: 11, fontWeight: "500" },
   tabTextActive:   { color: "#000" },
   tabTextInactive: { color: "#aaa" },
+
+  // League filter chips
+  leagueChipsRow: { paddingHorizontal: 14, paddingBottom: 10, gap: 6, flexDirection: "row" },
+  leagueChip: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 14, backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#2a2a2a" },
+  leagueChipActive: { backgroundColor: "#052e16", borderColor: "#22c55e" },
+  leagueChipText: { fontSize: 11, fontWeight: "500", color: "#888" },
+  leagueChipTextActive: { color: "#22c55e", fontWeight: "600" },
 
   // Market row
   loadingRow: { alignItems: "center", paddingVertical: 40 },

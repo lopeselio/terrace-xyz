@@ -32,7 +32,12 @@ function LegCard({ market, selected, outcome, onToggle, onOutcome }: LegCardProp
         <View style={leg.checkbox}>
           {selected && <Text style={leg.checkmark}>✓</Text>}
         </View>
-        <Text style={leg.question} numberOfLines={2}>{market.question}</Text>
+        <View style={leg.titleBlock}>
+          {market.jupiterEventTitle ? (
+            <Text style={leg.eventPrefix} numberOfLines={1}>{market.jupiterEventTitle}</Text>
+          ) : null}
+          <Text style={leg.question} numberOfLines={2}>{market.question}</Text>
+        </View>
       </View>
 
       {selected && (
@@ -61,7 +66,9 @@ const leg = StyleSheet.create({
   top:        { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   checkbox:   { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: "#333", alignItems: "center", justifyContent: "center", backgroundColor: "#1a1a1a" },
   checkmark:  { fontSize: 12, color: "#22c55e", fontWeight: "700" },
-  question:   { flex: 1, fontSize: 14, fontWeight: "600", color: "#f9fafb", lineHeight: 20 },
+  titleBlock: { flex: 1 },
+  eventPrefix: { fontSize: 10, color: "#6b7280", marginBottom: 2 },
+  question:   { fontSize: 14, fontWeight: "600", color: "#f9fafb", lineHeight: 20 },
   outcomeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   outcomeBtn: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", opacity: 0.5, borderWidth: 1.5, borderColor: "transparent" },
   outcomeSel: { opacity: 1, borderColor: "#fff" },

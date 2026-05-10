@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image, ActivityIndicator } from "react-native";
 import type { GroupedMatch } from "../utils/groupMarkets";
 import type { UnifiedMarket } from "@terrace/sdk";
 import { lookupTeam, fallbackColor } from "../utils/teamDatabase";
+import { useTeamCrest } from "../hooks/useTeamCrest";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,25 +48,27 @@ interface TeamBadgeProps {
 }
 
 function TeamBadge({ name, size = 28 }: TeamBadgeProps) {
-  const [imgError, setImgError] = useState(false);
   const team = lookupTeam(name);
+  const dynamicCrest = useTeamCrest(name);
+  // TheSportsDB (dynamicCrest) works without auth; football-data.org SVGs require a Bearer token
+  const crest = dynamicCrest ?? team?.crest;
   const bg = team?.color ?? fallbackColor(name);
   const radius = size * 0.28;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
 
-  if (team?.crest && !imgError) {
+  if (crest && crest !== failedUri) {
     return (
       <View style={[styles.teamBadgeWrap, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]}>
         <Image
-          source={{ uri: team.crest }}
+          source={{ uri: crest }}
           style={{ width: size * 0.8, height: size * 0.8 }}
           resizeMode="contain"
-          onError={() => setImgError(true)}
+          onError={() => setFailedUri(crest)}
         />
       </View>
     );
   }
 
-  // Fallback: colored circle with initial
   return (
     <View style={[styles.teamBadgeWrap, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]}>
       <Text style={[styles.teamInitial, { fontSize: size * 0.46 }]}>
@@ -109,6 +112,97 @@ function OutcomeBtn({ label, sublabel, price, selected, disabled, onPress }: Out
 }
 
 // ---------------------------------------------------------------------------
+// AI insights
+// ---------------------------------------------------------------------------
+
+const GEMINI_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
+
+interface InsightData {
+  form: string;
+  h2h: string;
+  angle: string;
+}
+
+async function fetchMatchInsights(
+  homeTeam: string,
+  awayTeam: string,
+  homeOdds: number | null,
+  drawOdds: number | null,
+  awayOdds: number | null,
+): Promise<InsightData> {
+  if (!GEMINI_KEY) throw new Error("EXPO_PUBLIC_GEMINI_API_KEY not set — restart Metro after adding to .env");
+
+  const prompt = `You are a football analyst. Return ONLY a JSON object — no markdown, no code fences, no extra text.
+
+Match: ${homeTeam} vs ${awayTeam}
+Odds: ${homeTeam} ${homeOdds !== null ? Math.round(homeOdds * 100) + "c" : "—"} | Draw ${drawOdds !== null ? Math.round(drawOdds * 100) + "c" : "—"} | ${awayTeam} ${awayOdds !== null ? Math.round(awayOdds * 100) + "c" : "—"}
+
+Respond with exactly this JSON shape (all values plain text strings, no bullet chars, no newlines inside values):
+{"form":"[Home abbr] last 5: W D W L W | [Away abbr] last 5: L W D W W","h2h":"[1 sentence: head-to-head record and one key stat]","angle":"[1 sentence: which side the odds favour and the betting case]"}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.4,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => res.statusText);
+    throw new Error(`Gemini ${res.status}: ${errBody}`);
+  }
+
+  const json = await res.json();
+  const raw = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!raw) {
+    const blockReason = json?.promptFeedback?.blockReason ?? json?.candidates?.[0]?.finishReason;
+    throw new Error(blockReason ? `Gemini blocked: ${blockReason}` : "Empty Gemini response");
+  }
+
+  try {
+    const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned) as InsightData;
+  } catch {
+    throw new Error(`Could not parse Gemini response: ${raw.slice(0, 120)}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// InsightsPanel — structured 3-row display
+// ---------------------------------------------------------------------------
+
+const INSIGHT_ROWS: { key: keyof InsightData; icon: string; label: string }[] = [
+  { key: "form",  icon: "📊", label: "Recent Form" },
+  { key: "h2h",   icon: "⚔️",  label: "Head to Head" },
+  { key: "angle", icon: "💰", label: "Betting Angle" },
+];
+
+function InsightsPanel({ data }: { data: InsightData }) {
+  return (
+    <View style={styles.insightRows}>
+      {INSIGHT_ROWS.map(({ key, icon, label }) => (
+        <View key={key} style={styles.insightRow}>
+          <View style={styles.insightRowHeader}>
+            <Text style={styles.insightIcon}>{icon}</Text>
+            <Text style={styles.insightLabel}>{label.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.insightValue}>{data[key]}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MatchGroupCard
 // ---------------------------------------------------------------------------
 
@@ -119,6 +213,9 @@ interface Props {
 
 export function MatchGroupCard({ match, onSelectOutcome }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insights, setInsights] = useState<InsightData | string | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const { eventTitle, outcomes, totalVolumeUsdc, expiry, status } = match;
   const [homeTeam, awayTeam] = splitEventTitle(eventTitle);
 
@@ -140,7 +237,7 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
     <View style={[styles.card, isSettled && styles.cardSettled]}>
       {/* ── Match header ──────────────────────────────── */}
       <View style={styles.matchHeader}>
-        {/* Team badges */}
+        {/* Team badges — use event title split (correct for head-to-head; letter fallback for futures) */}
         <View style={styles.teamsRow}>
           <TeamBadge name={homeTeam} size={28} />
           <Text style={styles.vsText}>vs</Text>
@@ -190,6 +287,48 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
         />
       </View>
 
+      {/* AI Insights toggle */}
+      {!isSettled && (
+        <TouchableOpacity
+          style={styles.insightsToggle}
+          onPress={async () => {
+            if (insightsOpen) { setInsightsOpen(false); return; }
+            setInsightsOpen(true);
+            if (insights) return;
+            setInsightsLoading(true);
+            try {
+              const text = await fetchMatchInsights(
+                homeTeam, awayTeam,
+                outcomes.home?.yesPrice ?? null,
+                outcomes.draw?.yesPrice ?? null,
+                outcomes.away?.yesPrice ?? null,
+              );
+              setInsights(text);
+            } catch (err) {
+              setInsights(`Error: ${err instanceof Error ? err.message : String(err)}`);
+            } finally {
+              setInsightsLoading(false);
+            }
+          }}
+        >
+          <Text style={styles.insightsToggleText}>
+            {insightsOpen ? "▴ Hide insights" : "▾ AI match insights"}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {insightsOpen && (
+        <View style={styles.insightsPanel}>
+          {insightsLoading ? (
+            <ActivityIndicator size="small" color="#22c55e" />
+          ) : typeof insights === "object" && insights !== null ? (
+            <InsightsPanel data={insights} />
+          ) : (
+            <Text style={styles.insightsText}>{insights}</Text>
+          )}
+        </View>
+      )}
+
       {/* Settled result */}
       {isSettled && (
         <Text style={styles.settledLabel}>
@@ -210,7 +349,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 18,
     marginBottom: 12,
-    overflow: "hidden",
     borderWidth: 0.5,
     borderColor: "#1e1e1e",
   },
@@ -269,4 +407,24 @@ const styles = StyleSheet.create({
   outcomePriceSelected: { color: "#22c55e" },
 
   settledLabel: { textAlign: "center", fontSize: 11, color: "#6b7280", paddingBottom: 10 },
+
+  insightsToggle: { borderTopWidth: 0.5, borderTopColor: "#1a1a1a", paddingVertical: 8, paddingHorizontal: 14, alignItems: "center" },
+  insightsToggleText: { fontSize: 11, color: "#4ade80", fontWeight: "600" },
+  insightsPanel: { paddingHorizontal: 12, paddingBottom: 14, paddingTop: 6 },
+  insightsText: { fontSize: 12, color: "#d1d5db", lineHeight: 18 },
+
+  // Structured insight rows
+  insightRows: { gap: 6 },
+  insightRow: {
+    backgroundColor: "#0d0d0d",
+    borderRadius: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: "#22c55e",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  insightRowHeader: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
+  insightIcon: { fontSize: 11 },
+  insightLabel: { fontSize: 9, fontWeight: "700", color: "#4ade80", letterSpacing: 0.8 },
+  insightValue: { fontSize: 12, color: "#e5e7eb", lineHeight: 17 },
 });
