@@ -93,11 +93,12 @@ interface Props {
   markets: UnifiedMarket[];
   walletPubkey: string | null;
   onConnectWallet: () => void;
+  onClose?: () => void;
 }
 
 type LegState = { outcome: 0 | 1 | null };
 
-export function ParlayBuilderScreen({ markets, walletPubkey, onConnectWallet }: Props) {
+export function ParlayBuilderScreen({ markets, walletPubkey, onConnectWallet, onClose }: Props) {
   const openMarkets = markets.filter((m) => m.status === "Open");
   const [selectedLegs, setSelectedLegs] = useState<Record<string, LegState>>({});
   const [stakeStr, setStakeStr] = useState("");
@@ -165,6 +166,11 @@ export function ParlayBuilderScreen({ markets, walletPubkey, onConnectWallet }: 
   return (
     <ScrollView style={s.root} showsVerticalScrollIndicator={false}>
       <View style={s.header}>
+        {onClose && (
+          <TouchableOpacity style={s.backBtn} onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+        )}
         <Text style={s.title}>Build Parlay</Text>
         <Text style={s.subtitle}>Pick 2–8 markets, choose outcomes, set your stake.</Text>
       </View>
@@ -270,7 +276,9 @@ const s = StyleSheet.create({
   connectBtn:        { backgroundColor: "#22c55e", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8 },
   connectBtnText:    { fontSize: 15, fontWeight: "700", color: "#000" },
 
-  header:   { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 14 },
+  header:      { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 14 },
+  backBtn:     { marginBottom: 10 },
+  backBtnText: { fontSize: 13, color: "#22c55e", fontWeight: "600" },
   title:    { fontSize: 24, fontWeight: "700", color: "#fff" },
   subtitle: { fontSize: 13, color: "#6b7280", marginTop: 4 },
 

@@ -17,6 +17,8 @@ export interface GroupedMatch {
   eventId: string;
   /** Parent event title, e.g. "Sunderland vs Brighton" */
   eventTitle: string;
+  /** Event thumbnail from Polymarket metadata — may be undefined */
+  imageUrl?: string;
   outcomes: MatchOutcomes;
   totalVolumeUsdc: number;
   expiry: Date | null;
@@ -136,6 +138,7 @@ export function groupMarkets(markets: UnifiedMarket[]): MarketListItem[] {
       type: "grouped",
       eventId,
       eventTitle,
+      imageUrl: bucket[0]?.imageUrl,
       outcomes: { home, draw, away, other },
       totalVolumeUsdc,
       expiry,

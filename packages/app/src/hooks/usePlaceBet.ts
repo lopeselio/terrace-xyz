@@ -151,8 +151,8 @@ async function placeNativeBet(params: {
     programId: new PublicKey(ix.programAddress),
     keys: (ix.accounts ?? []).map((a) => ({
       pubkey: new PublicKey(a.address),
-      isWritable: a.role === 0 || a.role === 2, // WRITABLE_SIGNER=0, WRITABLE=2
-      isSigner: a.role === 0 || a.role === 1,   // WRITABLE_SIGNER=0, READONLY_SIGNER=1
+      isWritable: (a.role & 1) !== 0,
+      isSigner: (a.role & 2) !== 0,
     })),
     data: Buffer.from(ix.data ?? []),
   });

@@ -50,20 +50,25 @@ interface TeamBadgeProps {
 function TeamBadge({ name, size = 28 }: TeamBadgeProps) {
   const team = lookupTeam(name);
   const dynamicCrest = useTeamCrest(name);
-  // TheSportsDB (dynamicCrest) works without auth; football-data.org SVGs require a Bearer token
-  const crest = dynamicCrest ?? team?.crest;
   const bg = team?.color ?? fallbackColor(name);
   const radius = size * 0.28;
-  const [failedUri, setFailedUri] = useState<string | null>(null);
+  // Track every URI that failed so we cascade: TheSportsDB → ESPN CDN → letter
+  const [failedUris, setFailedUris] = useState<ReadonlySet<string>>(new Set());
 
-  if (crest && crest !== failedUri) {
+  const candidates = [dynamicCrest, team?.crest].filter((c): c is string => !!c);
+  const activeCrest = candidates.find((c) => !failedUris.has(c));
+
+  const markFailed = (uri: string) =>
+    setFailedUris((prev) => new Set([...prev, uri]));
+
+  if (activeCrest) {
     return (
       <View style={[styles.teamBadgeWrap, { width: size, height: size, borderRadius: radius, backgroundColor: bg }]}>
         <Image
-          source={{ uri: crest }}
+          source={{ uri: activeCrest }}
           style={{ width: size * 0.8, height: size * 0.8 }}
           resizeMode="contain"
-          onError={() => setFailedUri(crest)}
+          onError={() => markFailed(activeCrest)}
         />
       </View>
     );
@@ -203,6 +208,23 @@ function InsightsPanel({ data }: { data: InsightData }) {
 }
 
 // ---------------------------------------------------------------------------
+// Event image thumbnail
+// ---------------------------------------------------------------------------
+
+function EventImage({ uri }: { uri: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.eventThumb}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MatchGroupCard
 // ---------------------------------------------------------------------------
 
@@ -217,7 +239,11 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
   const [insights, setInsights] = useState<InsightData | string | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const { eventTitle, outcomes, totalVolumeUsdc, expiry, status } = match;
-  const [homeTeam, awayTeam] = splitEventTitle(eventTitle);
+  const [homeTeamRaw, awayTeamRaw] = splitEventTitle(eventTitle);
+  // For futures markets the event title has no "vs" — use outcome questions for badge resolution
+  const isFutures = !awayTeamRaw;
+  const homeTeam = isFutures ? (outcomes.home?.question ?? homeTeamRaw) : homeTeamRaw;
+  const awayTeam = isFutures ? (outcomes.away?.question ?? awayTeamRaw) : awayTeamRaw;
 
   const homeEntry = lookupTeam(homeTeam);
   const awayEntry = lookupTeam(awayTeam);
@@ -252,6 +278,11 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
             {expiry && <Text style={styles.matchExpiry}> · {formatExpiry(expiry)}</Text>}
           </View>
         </View>
+
+        {/* Event image thumbnail (Polymarket) */}
+        {match.imageUrl && (
+          <EventImage uri={match.imageUrl} />
+        )}
 
         {/* Volume */}
         <View style={styles.volTag}>
@@ -373,6 +404,8 @@ const styles = StyleSheet.create({
   matchMetaRow: { flexDirection: "row" },
   matchSub:    { fontSize: 10, color: "#888" },
   matchExpiry: { fontSize: 10, color: "#555" },
+
+  eventThumb: { width: 36, height: 36, borderRadius: 6, marginLeft: 6 },
 
   volTag: { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   volTagText: { fontSize: 9, fontWeight: "500", color: "#4ade80" },

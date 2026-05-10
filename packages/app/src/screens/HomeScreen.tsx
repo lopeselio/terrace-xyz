@@ -17,13 +17,13 @@ import { BetSheet } from "./BetSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 
 // ---------------------------------------------------------------------------
-// Feature cards (horizontal scroll) — stub navigation for now
+// Feature cards (horizontal scroll)
 // ---------------------------------------------------------------------------
 const FEATURE_CARDS = [
-  { emoji: "⚽", title: "Matchups",      sub: "Settle group chat bets",   colors: ["#064e3b", "#16a34a"] as const },
-  { emoji: "🏆", title: "Parlays",       sub: "Chain your convictions",   colors: ["#1e3a5f", "#3b82f6"] as const },
-  { emoji: "⚡", title: "Flash markets", sub: "In-match, high urgency",   colors: ["#2d1b69", "#7c3aed"] as const },
-  { emoji: "📊", title: "Leagues",       sub: "FPL meets prediction",     colors: ["#7c2d12", "#ea580c"] as const },
+  { emoji: "⚽", title: "Matchups",      sub: "Settle group chat bets",   colors: ["#064e3b", "#16a34a"] as const, key: "Matchups" as const },
+  { emoji: "🏆", title: "Parlays",       sub: "Chain your convictions",   colors: ["#1e3a5f", "#3b82f6"] as const, key: "Parlays"  as const },
+  { emoji: "⚡", title: "Flash markets", sub: "In-match, high urgency",   colors: ["#2d1b69", "#7c3aed"] as const, key: "Flash"    as const },
+  { emoji: "📊", title: "Leagues",       sub: "FPL meets prediction",     colors: ["#7c2d12", "#ea580c"] as const, key: "Leagues"  as const },
 ];
 
 // Thumbnail colour palette — cycles by market index
@@ -73,7 +73,7 @@ function formatUsdc(val: number): string {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function FeatureCardRow() {
+function FeatureCardRow({ onParlayPress }: { onParlayPress?: () => void }) {
   return (
     <ScrollView
       horizontal
@@ -81,7 +81,11 @@ function FeatureCardRow() {
       contentContainerStyle={styles.featureRow}
     >
       {FEATURE_CARDS.map((card) => (
-        <TouchableOpacity key={card.title} activeOpacity={0.8}>
+        <TouchableOpacity
+          key={card.title}
+          activeOpacity={0.8}
+          onPress={card.key === "Parlays" ? onParlayPress : undefined}
+        >
           <LinearGradient colors={card.colors} style={styles.featureCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Text style={styles.featureEmoji}>{card.emoji}</Text>
             <View>
@@ -290,6 +294,7 @@ interface Props {
   marketsLoading: boolean;
   onSelectMarket: (id: string) => void;
   onNavigateProfile?: () => void;
+  onNavigateParlay?: () => void;
 }
 
 interface SelectedBet {
@@ -298,7 +303,7 @@ interface SelectedBet {
   yesPrice: number | null;
 }
 
-export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const [leagueFilter, setLeagueFilter] = useState<string>("All");
@@ -365,7 +370,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       <Text style={styles.heroLabel}>Back your take.</Text>
 
       {/* ── Feature cards ───────────────────────────────────── */}
-      <FeatureCardRow />
+      <FeatureCardRow onParlayPress={onNavigateParlay} />
 
       {/* Pagination dots */}
       <View style={styles.dotsRow}>
