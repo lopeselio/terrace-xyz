@@ -1,31 +1,38 @@
 import { useState, useEffect } from "react";
 import { getSearchName } from "../utils/teamDatabase";
 
-const cache = new Map<string, string | null>();
+// Only cache successes — never cache null so failures can retry
+const cache = new Map<string, string>();
+// Prevent duplicate in-flight requests for the same team
+const fetching = new Set<string>();
 
 export function useTeamCrest(teamName: string): string | null {
   const [crest, setCrest] = useState<string | null>(cache.get(teamName) ?? null);
 
   useEffect(() => {
-    if (!teamName.trim()) return;
-    if (cache.has(teamName)) {
-      setCrest(cache.get(teamName) ?? null);
-      return;
-    }
+    const name = teamName.trim();
+    if (!name) return;
+    if (cache.has(name)) { setCrest(cache.get(name)!); return; }
+    if (fetching.has(name)) return;
 
-    // Expand abbreviations: "PSG" → "paris saint-germain", strip "FC" suffix, etc.
-    const searchName = getSearchName(teamName);
+    fetching.add(name);
+    const searchName = getSearchName(name);
     fetch(
       `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(searchName)}`
     )
       .then((r) => r.json())
       .then((data) => {
-        const badge: string | null = data?.teams?.[0]?.strBadge ?? null;
-        cache.set(teamName, badge);
-        setCrest(badge);
+        fetching.delete(name);
+        const badge: string | undefined = data?.teams?.[0]?.strBadge;
+        if (badge) {
+          cache.set(name, badge);
+          setCrest(badge);
+        }
+        // Don't cache null — next render will retry
       })
       .catch(() => {
-        cache.set(teamName, null);
+        fetching.delete(name);
+        // No caching on error — will retry next time the component mounts
       });
   }, [teamName]);
 
