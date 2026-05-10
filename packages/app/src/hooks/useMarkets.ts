@@ -128,10 +128,27 @@ export function useMarkets(): UseMarketsResult {
     Promise.all([fetchNativeMarkets(), fetchJupiterMarkets()])
       .then(([native, jupiter]) => {
         if (cancelled) return;
-        // Merge and sort by volume descending; native markets float to top on tie
-        const merged = [...native, ...jupiter].sort(
-          (a, b) => b.totalVolumeUsdc - a.totalVolumeUsdc
-        );
+
+        const FOOTBALL_BLOCK = /eurovision|election|politic|grammy|oscar|award|music award|super bowl|nba|nfl|nhl|mlb|cricket|rugby|tennis|golf|boxing|ufc|mma|f1|formula/i;
+
+        const merged = [...native, ...jupiter]
+          .filter((m) => {
+            if (m.source !== "jupiter") return true;
+            const title = (m.jupiterEventTitle ?? m.question).toLowerCase();
+            if (FOOTBALL_BLOCK.test(title)) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            if (a.status === "Open" && b.status === "Open") {
+              if (a.expiry && b.expiry) return a.expiry.getTime() - b.expiry.getTime();
+              if (a.expiry) return -1;
+              if (b.expiry) return 1;
+            }
+            if (a.status === "Open" && b.status !== "Open") return -1;
+            if (a.status !== "Open" && b.status === "Open") return 1;
+            return b.totalVolumeUsdc - a.totalVolumeUsdc;
+          });
+
         setMarkets(merged);
       })
       .catch((e) => {

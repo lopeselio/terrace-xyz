@@ -37,7 +37,7 @@ export function BetSheet({
 
   const priceLabel = yesPrice !== null ? `${Math.round(yesPrice * 100)}¢` : "—";
   const amountNum = parseFloat(amount) || 0;
-  const potentialReturn = yesPrice && yesPrice > 0
+  const potentialReturn = yesPrice !== null && yesPrice >= 0.01
     ? (amountNum / yesPrice).toFixed(2)
     : "—";
 
@@ -116,7 +116,9 @@ export function BetSheet({
       {/* Payout estimate */}
       <View style={styles.estimateRow}>
         <Text style={styles.estimateLabel}>Max return</Text>
-        <Text style={styles.estimateValue}>${potentialReturn} USDC</Text>
+        <Text style={styles.estimateValue}>
+          {potentialReturn === "—" ? "—" : `$${potentialReturn} USDC`}
+        </Text>
       </View>
 
       {/* Error */}
