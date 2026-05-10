@@ -110,6 +110,7 @@ interface UseMarketsResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  prependMarket: (market: UnifiedMarket) => void;
 }
 
 export function useMarkets(): UseMarketsResult {
@@ -119,6 +120,10 @@ export function useMarkets(): UseMarketsResult {
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const prependMarket = useCallback(
+    (market: UnifiedMarket) => setMarkets((prev) => [market, ...prev]),
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -164,5 +169,5 @@ export function useMarkets(): UseMarketsResult {
     };
   }, [tick]);
 
-  return { markets, loading, error, refresh };
+  return { markets, loading, error, refresh, prependMarket };
 }
