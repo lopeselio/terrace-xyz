@@ -121,8 +121,13 @@ export interface UnifiedMarket {
   jupiterEventId?: string;
   /** Parent event title, e.g. "Sunderland vs Brighton" — used for match grouping */
   jupiterEventTitle?: string;
+  /** Polymarket/Jupiter event banner image */
+  imageUrl?: string;
   /** Native Terrace markets only */
   nativeMarketAddress?: string;
   isPrivate?: boolean;
   isFlash?: boolean;
+  /** Jupiter/Polymarket event category e.g. "sports", subcategory e.g. "soccer" */
+  jupiterCategory?: string;
+  jupiterSubcategory?: string;
 }

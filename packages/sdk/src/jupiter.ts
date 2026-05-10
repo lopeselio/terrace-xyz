@@ -270,6 +270,9 @@ export class JupiterMarketsClient {
           jupiterMarketId: market.marketId,
           jupiterEventId: event.eventId,
           jupiterEventTitle: event.metadata?.title ?? "",
+          imageUrl: event.metadata?.imageUrl,
+          jupiterCategory: event.category,
+          jupiterSubcategory: event.subcategory,
         });
       }
     }
