@@ -464,6 +464,7 @@ export default function App() {
             markets={markets}
             marketsLoading={marketsLoading}
             onSelectMarket={handleSelectMarket}
+            onNavigateProfile={() => setActiveTab("Profile")}
           />
         );
       case "Markets":
@@ -484,6 +485,7 @@ export default function App() {
             walletPubkey={effectivePublicKey}
             isLoggedIn={!!privyUser}
             walletError={walletError}
+            privyUser={privyUser}
             onConnectWallet={handleConnectWallet}
             onDisconnect={handleDisconnect}
           />

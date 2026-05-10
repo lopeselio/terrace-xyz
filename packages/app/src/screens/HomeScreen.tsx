@@ -273,6 +273,7 @@ interface Props {
   markets: UnifiedMarket[];
   marketsLoading: boolean;
   onSelectMarket: (id: string) => void;
+  onNavigateProfile?: () => void;
 }
 
 interface SelectedBet {
@@ -281,7 +282,7 @@ interface SelectedBet {
   yesPrice: number | null;
 }
 
-export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loading, onSelectMarket }: Props) {
+export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const { status, txSignature, error, placeBet, reset } = usePlaceBet();
@@ -328,9 +329,13 @@ export function HomeScreen({ walletPubkey, winRate, markets, marketsLoading: loa
             <Text>🔔</Text>
           </View>
           {repLabel && (
-            <View style={styles.repBadge}>
+            <TouchableOpacity
+              style={styles.repBadge}
+              onPress={onNavigateProfile}
+              activeOpacity={onNavigateProfile ? 0.7 : 1}
+            >
               <Text style={styles.repBadgeText}>{repLabel}</Text>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>

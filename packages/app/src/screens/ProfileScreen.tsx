@@ -2,15 +2,21 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ToastAndroid,
+  Platform,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import type { BadgeTier, Bet, Parlay } from "@terrace/sdk";
 import { useReputation } from "../hooks/useReputation";
 import { useBets } from "../hooks/useBets";
 import { useParlay } from "../hooks/useParlay";
+import { useWalletBalances } from "../hooks/useWalletBalances";
+import { useSnsName } from "../hooks/useSnsName";
 
 // ---------------------------------------------------------------------------
 // Badge tier logic
@@ -273,16 +279,37 @@ interface Props {
   walletPubkey: string | null;
   isLoggedIn?: boolean;
   walletError?: string | null;
+  privyUser?: any;
   onConnectWallet: () => void;
   onDisconnect?: () => void;
 }
 
-export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, onConnectWallet, onDisconnect }: Props) {
+export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser, onConnectWallet, onDisconnect }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
   const [walletTimedOut, setWalletTimedOut] = useState(false);
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
   const { bets, loading: betsLoading } = useBets(walletPubkey);
   const { parlays, loadingParlays, settleParlay, claimParlay } = useParlay();
+  const { mainnetSol, devnetSol, mainnetUsdc, devnetUsdc } = useWalletBalances(walletPubkey);
+  const { name: snsName } = useSnsName(walletPubkey);
+
+  const handleCopyAddress = async () => {
+    if (!walletPubkey) return;
+    await Clipboard.setStringAsync(walletPubkey);
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Address copied", ToastAndroid.SHORT);
+    }
+  };
+
+  const authAccounts = (privyUser?.linked_accounts as any[] | undefined) ?? [];
+  const emailAccount = authAccounts.find((a) => a.type === "email");
+  const googleAccount = authAccounts.find((a) => a.type === "google_oauth");
+  const authAccount = emailAccount ?? googleAccount;
+  const authLabel = authAccount?.type === "google_oauth"
+    ? `Google · ${authAccount.email ?? ""}`
+    : authAccount?.type === "email"
+    ? `Email · ${authAccount.address ?? ""}`
+    : null;
 
   // Safety net: if wallet never becomes available after login, stop spinning
   // and fall through to the connect-wallet UI so the user isn't stuck.
@@ -359,20 +386,66 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, onConnect
           <Text style={styles.avatarInitial}>{initial}</Text>
         </View>
         <View style={styles.identityMeta}>
-          <Text style={styles.username}>@{walletPubkey.slice(0, 8).toLowerCase()}</Text>
-          <View style={styles.addressRow}>
+          <Text style={styles.username} numberOfLines={1}>
+            {snsName ?? `@${walletPubkey.slice(0, 8).toLowerCase()}`}
+          </Text>
+          <TouchableOpacity style={styles.addressRow} onPress={handleCopyAddress} activeOpacity={0.7}>
             <Text style={styles.address}>{shortKey}</Text>
-          </View>
-          <View style={styles.connectedBadge}>
-            <View style={styles.connectedDot} />
-            <Text style={styles.connectedText}>Connected</Text>
-          </View>
+            <Text style={styles.copyIcon}>  📋</Text>
+          </TouchableOpacity>
+          {authLabel ? (
+            <Text style={styles.authLabel} numberOfLines={1}>{authLabel}</Text>
+          ) : (
+            <View style={styles.connectedBadge}>
+              <View style={styles.connectedDot} />
+              <Text style={styles.connectedText}>Connected</Text>
+            </View>
+          )}
         </View>
         {onDisconnect && (
           <TouchableOpacity style={styles.disconnectBtn} onPress={onDisconnect}>
             <Text style={styles.disconnectBtnText}>Disconnect</Text>
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* ── Balances ────────────────────────────── */}
+      <View style={styles.balanceCard}>
+        {/* Header row */}
+        <View style={styles.balanceHeaderRow}>
+          <View style={{ flex: 1 }} />
+          <View style={styles.balanceColHeader}>
+            <Image source={{ uri: "https://cryptologos.cc/logos/solana-sol-logo.png" }} style={styles.coinLogo} />
+            <Text style={styles.balanceColLabel}>SOL</Text>
+          </View>
+          <View style={styles.balanceDivider} />
+          <View style={styles.balanceColHeader}>
+            <Image source={{ uri: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png" }} style={styles.coinLogo} />
+            <Text style={styles.balanceColLabel}>USDC</Text>
+          </View>
+        </View>
+        {/* Mainnet row */}
+        <View style={styles.balanceNetRow}>
+          <Text style={styles.balanceNetLabel}>Mainnet</Text>
+          <Text style={styles.balanceNetValue}>
+            {mainnetSol !== null ? mainnetSol.toFixed(4) : "—"}
+          </Text>
+          <View style={styles.balanceDivider} />
+          <Text style={styles.balanceNetValue}>
+            {mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : "—"}
+          </Text>
+        </View>
+        {/* Devnet row */}
+        <View style={[styles.balanceNetRow, { borderTopWidth: 0.5, borderTopColor: "#1a1a1a" }]}>
+          <Text style={styles.balanceNetLabel}>Devnet</Text>
+          <Text style={styles.balanceNetValue}>
+            {devnetSol !== null ? devnetSol.toFixed(4) : "—"}
+          </Text>
+          <View style={styles.balanceDivider} />
+          <Text style={styles.balanceNetValue}>
+            {devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "—"}
+          </Text>
+        </View>
       </View>
 
       {/* ── Reputation bar ──────────────────────── */}
@@ -465,18 +538,31 @@ const styles = StyleSheet.create({
   screenTitle: { fontSize: 24, fontWeight: "700", color: "#fff" },
 
   // Identity
-  identityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16, backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 12 },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16, backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 8 },
   avatar:        { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1d4ed8", alignItems: "center", justifyContent: "center" },
   avatarInitial: { fontSize: 18, fontWeight: "700", color: "#fff" },
   identityMeta:  { flex: 1 },
   username:      { fontSize: 15, fontWeight: "600", color: "#fff" },
   addressRow:    { flexDirection: "row", alignItems: "center", marginTop: 2 },
   address:       { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  copyIcon:      { fontSize: 11, color: "#4b5563" },
+  authLabel:     { fontSize: 11, color: "#6b7280", marginTop: 4 },
   connectedBadge: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
   connectedDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: "#22c55e" },
   connectedText:  { fontSize: 11, color: "#22c55e", fontWeight: "600" },
   disconnectBtn:  { backgroundColor: "#1a1a1a", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 0.5, borderColor: "#ef4444" },
   disconnectBtnText: { fontSize: 12, fontWeight: "600", color: "#ef4444" },
+
+  // Balance grid (mainnet + devnet)
+  balanceCard:      { backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 12, overflow: "hidden" },
+  balanceHeaderRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 },
+  balanceColHeader: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  balanceColLabel:  { fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: "600" },
+  coinLogo:         { width: 13, height: 13, borderRadius: 7 },
+  balanceDivider:   { width: 0.5, backgroundColor: "#1e1e1e", marginVertical: 2, alignSelf: "stretch" },
+  balanceNetRow:    { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10 },
+  balanceNetLabel:  { width: 58, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: 0.4 },
+  balanceNetValue:  { flex: 1, textAlign: "center", fontSize: 14, fontWeight: "700", color: "#f9fafb" },
 
   // Reputation bar
   repLoadingBox: { marginHorizontal: 18, marginBottom: 12, height: 88, alignItems: "center", justifyContent: "center", backgroundColor: "#111", borderRadius: 16 },
