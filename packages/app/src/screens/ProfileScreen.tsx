@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -271,15 +271,31 @@ type HistoryTab = "Active" | "History";
 
 interface Props {
   walletPubkey: string | null;
+  isLoggedIn?: boolean;
+  walletError?: string | null;
   onConnectWallet: () => void;
   onDisconnect?: () => void;
 }
 
-export function ProfileScreen({ walletPubkey, onConnectWallet, onDisconnect }: Props) {
+export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, onConnectWallet, onDisconnect }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
+  const [walletTimedOut, setWalletTimedOut] = useState(false);
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
   const { bets, loading: betsLoading } = useBets(walletPubkey);
   const { parlays, loadingParlays, settleParlay, claimParlay } = useParlay();
+
+  // Safety net: if wallet never becomes available after login, stop spinning
+  // and fall through to the connect-wallet UI so the user isn't stuck.
+  useEffect(() => {
+    if (!isLoggedIn || walletPubkey) return;
+    const timer = setTimeout(() => setWalletTimedOut(true), 5000);
+    return () => clearTimeout(timer);
+  }, [isLoggedIn, walletPubkey]);
+
+  // Reset timeout flag whenever walletPubkey or login state changes.
+  useEffect(() => {
+    if (walletPubkey || !isLoggedIn) setWalletTimedOut(false);
+  }, [walletPubkey, isLoggedIn]);
 
   // Derive display values from on-chain Reputation PDA; fall back to zeros for new users.
   const winRate     = reputation ? reputation.winRateBps / 10_000 : 0;
@@ -288,17 +304,40 @@ export function ProfileScreen({ walletPubkey, onConnectWallet, onDisconnect }: P
   const badgeTier   = reputation?.badgeTier;
 
   if (!walletPubkey) {
+    // Logged in via Privy but embedded wallet still initialising — show spinner
+    // unless it has been more than 5 s (timed out → fall through to connect UI).
+    if (isLoggedIn && !walletTimedOut) {
+      return (
+        <View style={styles.root}>
+          <View style={styles.disconnectedHero}>
+            <ActivityIndicator color="#22c55e" size="large" />
+            <Text style={[styles.disconnectedSub, { marginTop: 16 }]}>Setting up your wallet…</Text>
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.root}>
         <View style={styles.disconnectedHero}>
           <Text style={styles.disconnectedEmoji}>👤</Text>
-          <Text style={styles.disconnectedTitle}>Your record lives here</Text>
+          <Text style={styles.disconnectedTitle}>
+            {isLoggedIn ? "Wallet setup failed" : "Your record lives here"}
+          </Text>
           <Text style={styles.disconnectedSub}>
-            Connect a wallet to track your win rate, badge tier, and prediction history.
+            {isLoggedIn
+              ? (walletError ?? "Your embedded wallet couldn't be created. Tap below to retry, or sign out and reconnect.")
+              : "Connect a wallet to track your win rate, badge tier, and prediction history."}
           </Text>
           <TouchableOpacity style={styles.connectBtn} onPress={onConnectWallet}>
-            <Text style={styles.connectBtnText}>Connect wallet</Text>
+            <Text style={styles.connectBtnText}>
+              {isLoggedIn ? "Retry wallet setup" : "Connect wallet"}
+            </Text>
           </TouchableOpacity>
+          {isLoggedIn && onDisconnect && (
+            <TouchableOpacity onPress={onDisconnect}>
+              <Text style={styles.signOutText}>Sign out</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -419,6 +458,7 @@ const styles = StyleSheet.create({
   disconnectedSub:   { fontSize: 14, color: "#9ca3af", textAlign: "center", lineHeight: 22 },
   connectBtn:        { backgroundColor: "#22c55e", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8 },
   connectBtnText:    { fontSize: 15, fontWeight: "700", color: "#000" },
+  signOutText:       { fontSize: 13, color: "#6b7280", marginTop: 12, textDecorationLine: "underline" },
 
   // Header
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 20, paddingBottom: 8 },

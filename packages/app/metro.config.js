@@ -5,6 +5,22 @@ const fs = require("fs");
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, "../..");
 
+// Load .env into process.env so Expo's EXPO_PUBLIC_* transform picks them up
+// during Gradle release builds (which run Metro without a shell env).
+const envFile = path.resolve(projectRoot, ".env");
+if (fs.existsSync(envFile)) {
+  const lines = fs.readFileSync(envFile, "utf8").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
+
 const config = getDefaultConfig(projectRoot);
 
 config.watchFolders = [monorepoRoot];
@@ -49,6 +65,21 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
+  // Resolve packages that pnpm symlinks but Metro fails to follow.
+  // Walk nodeModulePaths and resolve the symlink to its real path.
+  const PNPM_RESOLVE = ["fast-text-encoding"];
+  if (PNPM_RESOLVE.includes(moduleName)) {
+    for (const nodeModulesDir of config.resolver.nodeModulesPaths) {
+      const pkgDir = path.resolve(nodeModulesDir, moduleName);
+      try {
+        const real = fs.realpathSync(pkgDir);
+        const pkg = JSON.parse(fs.readFileSync(path.join(real, "package.json"), "utf8"));
+        const main = pkg.main || "index.js";
+        return { type: "sourceFile", filePath: path.resolve(real, main) };
+      } catch {}
+    }
+  }
+
   // Resolve @noble subpath imports by walking up to the real package dir.
   const nobleMatch = moduleName.match(/^(@noble\/[^/]+)\/(.+)$/);
   if (nobleMatch) {
@@ -59,6 +90,16 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       if (fs.existsSync(candidate)) {
         return { type: "sourceFile", filePath: candidate };
       }
+    }
+  }
+
+  // Suppress the exports-mismatch warning for @noble/hashes internal relative
+  // imports (e.g. ./crypto.js). Metro's unstable_enablePackageExports raises a
+  // warning when an internal file isn't listed in the package's exports map, but
+  // since it falls back correctly we just resolve it directly to skip the noise.
+  if (moduleName.includes("@noble/hashes") || moduleName.includes("@noble+hashes")) {
+    if (fs.existsSync(moduleName)) {
+      return { type: "sourceFile", filePath: moduleName };
     }
   }
 

@@ -9,23 +9,6 @@ import {
 import { VersionedTransaction } from "@solana/web3.js";
 import { toUint8Array, fromUint8Array } from "js-base64";
 
-// ---------------------------------------------------------------------------
-// Privy (optional — only loaded if EXPO_PUBLIC_PRIVY_APP_ID is set)
-// ---------------------------------------------------------------------------
-
-// We use a lazy import pattern so the app works without Privy installed
-// (during local dev / CI before the package is added). Once @privy-io/expo
-// is in package.json the import resolves normally.
-let privyModule: typeof import("@privy-io/expo") | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  privyModule = require("@privy-io/expo");
-} catch {
-  // Privy not installed — MWA-only mode
-}
-
-const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID ?? "";
-
 const APP_IDENTITY = {
   name: "Terrace",
   uri: "https://terrace.app",
@@ -48,17 +31,16 @@ export interface WalletState {
 export interface UseWalletReturn extends WalletState {
   /** Connect via Solana Mobile Wallet Adapter (Phantom, Solflare, Seeker) */
   connectMWA: () => Promise<string | null>;
-  /**
-   * Connect via Privy embedded wallet (email / Google).
-   * loginMethod: "email" | "google" — passed to Privy's login flow.
-   * No-op if Privy is not configured (EXPO_PUBLIC_PRIVY_APP_ID not set).
-   */
-  connectPrivy: (loginMethod?: "email" | "google") => Promise<void>;
   /** Legacy alias — connects via MWA for backwards compat */
   connect: () => Promise<string | null>;
   disconnect: () => void;
-  /** Signs a base64 VersionedTransaction; works for both tracks */
+  /** Signs a base64 VersionedTransaction; works for MWA and Privy embedded wallet */
   signTransaction: (base64Tx: string) => Promise<string>;
+  /**
+   * Register the Privy embedded wallet signer. Called from App.tsx once
+   * useEmbeddedSolanaWallet() status reaches "connected". Pass null to clear.
+   */
+  setPrivySigner: (signer: ((tx: Uint8Array) => Promise<Uint8Array>) | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,8 +58,9 @@ export function useWallet(): UseWalletReturn {
   // MWA auth token persists between transact() sessions
   const authToken = useRef<string | null>(null);
 
-  // Privy embedded wallet signer (set after Privy login)
-  const privySigner = useRef<{ address: string; signTransaction: (tx: Uint8Array) => Promise<Uint8Array> } | null>(null);
+  // Privy embedded wallet signer — set by App.tsx via setPrivySigner()
+  // when useEmbeddedSolanaWallet().status reaches "connected".
+  const privySigner = useRef<((tx: Uint8Array) => Promise<Uint8Array>) | null>(null);
 
   // ── MWA connect ──────────────────────────────────────────────────────
   const connectMWA = useCallback(async (): Promise<string | null> => {
@@ -120,70 +103,30 @@ export function useWallet(): UseWalletReturn {
     }
   }, []);
 
-  // ── Privy connect ─────────────────────────────────────────────────────
-  const connectPrivy = useCallback(async (loginMethod: "email" | "google" = "email") => {
-    if (!privyModule || !PRIVY_APP_ID) {
-      console.warn("Privy not configured — set EXPO_PUBLIC_PRIVY_APP_ID and install @privy-io/expo");
-      return;
-    }
-
-    setState((s: WalletState) => ({ ...s, connecting: true }));
-    try {
-      // Privy hooks (usePrivy, useEmbeddedSolanaWallet) must be used at component
-      // level; here we use the imperative client path instead.
-      // Privy hooks must be called at the component level, not inside callbacks.
-      // We expose a helper on the module to trigger login from outside React hooks.
-      // The actual Privy hook integration is in PrivyProvider wrapping App root.
-      // Here we just call the imperative login method if available.
-      const privy = (privyModule as any).getPrivyClient?.();
-      if (!privy) {
-        console.warn("Privy client not initialised — wrap your app in <PrivyProvider>");
-        setState((s: WalletState) => ({ ...s, connecting: false }));
-        return;
-      }
-
-      if (loginMethod === "google") {
-        await privy.login({ loginMethods: ["google"] });
-      } else {
-        await privy.login({ loginMethods: ["email"] });
-      }
-
-      // After login Privy creates an embedded Solana wallet automatically
-      const embeddedWallet = privy.user?.linkedAccounts?.find(
-        (a: any) => a.type === "wallet" && a.walletClientType === "privy" && a.chainType === "solana"
-      );
-
-      if (!embeddedWallet) throw new Error("Privy: no embedded Solana wallet created");
-
-      privySigner.current = {
-        address: embeddedWallet.address,
-        signTransaction: async (txBytes: Uint8Array) => {
-          const signed = await privy.embeddedWallet.signTransaction(Buffer.from(txBytes).toString("base64"));
-          return toUint8Array(signed);
-        },
-      };
-
-      setState({
-        publicKey: embeddedWallet.address,
-        connected: true,
-        connecting: false,
-        track: "privy",
-      });
-    } catch (e) {
-      console.error("Privy connect error:", e);
-      setState({ publicKey: null, connected: false, connecting: false, track: null });
-    }
-  }, []);
+  // ── Privy signer registration ─────────────────────────────────────────
+  // Called from App.tsx once useEmbeddedSolanaWallet().status === "connected".
+  // The signer wraps solanaWallet.getProvider().request({ method: 'signTransaction' }).
+  const setPrivySigner = useCallback(
+    (signer: ((tx: Uint8Array) => Promise<Uint8Array>) | null) => {
+      privySigner.current = signer;
+    },
+    []
+  );
 
   // ── signTransaction ───────────────────────────────────────────────────
   const signTransaction = useCallback(async (base64Tx: string): Promise<string> => {
-    if (state.track === "privy" && privySigner.current) {
+    // Privy embedded wallet — registered by App.tsx via setPrivySigner()
+    if (state.track !== "mwa" && privySigner.current) {
       const txBytes = toUint8Array(base64Tx);
-      const signed = await privySigner.current.signTransaction(txBytes);
+      const signed = await privySigner.current(txBytes);
       return fromUint8Array(signed);
     }
 
-    // Default: MWA path
+    // MWA path (Phantom / Solflare)
+    if (state.track !== "mwa" && !privySigner.current) {
+      throw new Error("No wallet connected for signing. Connect Phantom or use email sign-in.");
+    }
+
     return transact(async (wallet: Web3MobileWallet) => {
       if (authToken.current) {
         const reauth = await wallet.reauthorize({
@@ -216,10 +159,10 @@ export function useWallet(): UseWalletReturn {
   return {
     ...state,
     connectMWA,
-    connectPrivy,
     connect: connectMWA,
     disconnect,
     signTransaction,
+    setPrivySigner,
   };
 }
 
