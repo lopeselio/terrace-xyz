@@ -309,7 +309,7 @@ export default function App() {
   const effectivePublicKey = publicKey ?? privySolanaAddress;
   const effectiveConnected = connected || !!privyUser;
 
-  const { reputation } = useReputation(effectivePublicKey ?? null);
+  const { reputation, loading: repLoading } = useReputation(effectivePublicKey ?? null);
 
   // Navigate to pending tab once Privy user logs in (don't wait for wallet creation)
   useEffect(() => {
@@ -461,6 +461,7 @@ export default function App() {
           <HomeScreen
             walletPubkey={effectivePublicKey}
             winRate={reputation ? reputation.winRateBps / 10000 : null}
+            repLoading={repLoading}
             markets={markets}
             marketsLoading={marketsLoading}
             onSelectMarket={handleSelectMarket}
