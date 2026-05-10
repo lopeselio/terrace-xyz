@@ -8,23 +8,24 @@ import {
 
 // Instruction discriminators: sha256("global:<ix_name>")[0..8]
 // Regenerate from IDL after `anchor build` if the program is redeployed.
-const IX_CREATE_MARKET          = Buffer.from([162, 93, 19, 147, 76, 203, 184, 147]);
+const IX_CREATE_MARKET          = Buffer.from([103, 226, 97, 235, 200, 188, 251, 254]);
 const IX_PLACE_BET             = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
-const IX_SETTLE_MARKET         = Buffer.from([130, 125, 241, 173, 147, 184, 200, 93]);
-const IX_SETTLE_MARKET_ORACLE  = Buffer.from([48, 254, 79, 182, 3, 109, 22, 4]); // sha256("global:settle_market_oracle")[0..8]
-const IX_CLAIM_WINNINGS        = Buffer.from([149, 95, 181, 242, 27, 205, 138, 50]);
-const IX_RECORD_LOSS           = Buffer.from([88, 12, 193, 242, 198, 165, 0, 195]);
+const IX_SETTLE_MARKET         = Buffer.from([193, 153, 95, 216, 166, 6, 144, 217]);
+const IX_SETTLE_MARKET_ORACLE  = Buffer.from([218, 140, 181, 156, 247, 133, 190, 172]);
+const IX_CLAIM_WINNINGS        = Buffer.from([161, 215, 24, 59, 14, 236, 242, 221]);
+const IX_RECORD_LOSS           = Buffer.from([112, 182, 48, 145, 171, 216, 247, 43]);
 const IX_CREATE_PARLAY         = Buffer.from([127, 36, 125, 173, 162, 128, 246, 207]);
 const IX_SETTLE_PARLAY         = Buffer.from([51, 60, 177, 79, 214, 52, 6, 22]);
 const IX_CLAIM_PARLAY          = Buffer.from([47, 40, 30, 204, 201, 172, 97, 250]);
-// Matchup discriminators — update from IDL after anchor build
-const IX_CREATE_MATCHUP        = Buffer.from([218, 134, 88, 206, 163, 134, 99, 95]);
-const IX_ACCEPT_MATCHUP        = Buffer.from([12, 118, 57, 228, 167, 193, 46, 70]);
-const IX_SETTLE_MATCHUP        = Buffer.from([194, 55, 3, 119, 38, 144, 197, 246]);
-const IX_DECLINE_MATCHUP       = Buffer.from([107, 211, 250, 207, 189, 226, 3, 230]);
+const IX_CREATE_MATCHUP        = Buffer.from([75, 82, 164, 193, 210, 126, 109, 141]);
+const IX_ACCEPT_MATCHUP        = Buffer.from([72, 143, 127, 220, 136, 121, 246, 195]);
+const IX_SETTLE_MATCHUP        = Buffer.from([54, 94, 80, 183, 80, 58, 209, 167]);
+const IX_DECLINE_MATCHUP       = Buffer.from([159, 161, 44, 97, 82, 177, 185, 127]);
 
 const TOKEN_PROGRAM_ID       = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
-const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
+// spl-associated-token-account-client v2+ (solana-program org) uses a new program address.
+// anchor-spl 0.32 links against this version — pass the new ID or Anchor throws InvalidProgramId.
+const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address;
 const SYSTEM_PROGRAM_ID      = "11111111111111111111111111111111" as Address;
 
 function encodeString(s: string): Buffer {

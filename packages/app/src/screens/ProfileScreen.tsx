@@ -12,11 +12,24 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import type { BadgeTier, Bet, Parlay } from "@terrace/sdk";
+import { deserializeMarketAccount } from "@terrace/sdk";
 import { useReputation } from "../hooks/useReputation";
 import { useBets } from "../hooks/useBets";
 import { useParlay } from "../hooks/useParlay";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useSnsName } from "../hooks/useSnsName";
+import { useCreatedMarkets, type CreatedMarket } from "../hooks/useCreatedMarkets";
+import { useSettleMarket } from "../hooks/useSettleMarket";
+import { useClaimWinnings } from "../hooks/useClaimWinnings";
+
+// Market summary needed to determine if a bet won
+interface MarketSummary {
+  status: "Open" | "Settled" | "Closed";
+  outcome: number | null; // 0=YES, 1=NO
+  creator: string;
+}
+
+const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
 // ---------------------------------------------------------------------------
 // Badge tier logic
@@ -132,7 +145,23 @@ function fmtUsdc(lamports: bigint) {
   return (Number(lamports) / 1_000_000).toFixed(2);
 }
 
-function BetRow({ bet }: { bet: Bet }) {
+function BetRow({
+  bet,
+  marketSummary,
+  onClaim,
+  claiming,
+}: {
+  bet: Bet;
+  marketSummary?: MarketSummary;
+  onClaim?: () => void;
+  claiming?: boolean;
+}) {
+  const isWinner =
+    marketSummary?.status === "Settled" &&
+    marketSummary?.outcome !== null &&
+    marketSummary?.outcome === bet.outcome &&
+    !bet.claimed;
+
   return (
     <View style={pos.row}>
       <View style={pos.rowLeft}>
@@ -144,6 +173,19 @@ function BetRow({ bet }: { bet: Bet }) {
       <View style={pos.rowRight}>
         <Text style={pos.amount}>{fmtUsdc(bet.amount)} USDC</Text>
         {bet.claimed && <Text style={pos.claimedTag}>Claimed</Text>}
+        {isWinner && onClaim && (
+          <TouchableOpacity
+            style={[pos.actionBtn, pos.actionBtnGreen, claiming && pos.btnDisabled]}
+            onPress={onClaim}
+            disabled={claiming}
+          >
+            {claiming ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={pos.actionBtnText}>Claim winnings</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -195,13 +237,19 @@ function ParlayRow({
 function ActivePositions({
   bets,
   parlays,
+  marketSummaries,
   onSettleParlay,
   onClaimParlay,
+  onClaimBet,
+  claimingBet,
 }: {
   bets: Bet[];
   parlays: Parlay[];
+  marketSummaries: Record<string, MarketSummary>;
   onSettleParlay: (p: Parlay) => void;
   onClaimParlay: (p: Parlay) => void;
+  onClaimBet: (bet: Bet) => void;
+  claimingBet: string | null;
 }) {
   if (bets.length === 0 && parlays.length === 0) {
     return (
@@ -214,7 +262,15 @@ function ActivePositions({
   }
   return (
     <View>
-      {bets.map((b) => <BetRow key={b.address} bet={b} />)}
+      {bets.map((b) => (
+        <BetRow
+          key={b.address}
+          bet={b}
+          marketSummary={marketSummaries[b.market as string]}
+          onClaim={() => onClaimBet(b)}
+          claiming={claimingBet === (b.address as string)}
+        />
+      ))}
       {parlays.map((p) => (
         <ParlayRow
           key={p.address}
@@ -264,16 +320,209 @@ const pos = StyleSheet.create({
   parlayStake:  { fontSize: 12, color: "#9ca3af", marginBottom: 6 },
   parlayLegs:   { gap: 2, marginBottom: 8 },
   parlayLeg:    { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
-  actionBtn:       { backgroundColor: "#1a1a1a", borderRadius: 8, paddingVertical: 8, alignItems: "center", borderWidth: 0.5, borderColor: "#333" },
+  actionBtn:       { backgroundColor: "#1a1a1a", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, alignItems: "center", borderWidth: 0.5, borderColor: "#333", marginTop: 4 },
   actionBtnGreen:  { backgroundColor: "#14532d", borderColor: "#22c55e" },
   actionBtnText:   { fontSize: 12, fontWeight: "600", color: "#f9fafb" },
+  btnDisabled:     { opacity: 0.5 },
+});
+
+// ---------------------------------------------------------------------------
+// Created markets — settle UI
+// ---------------------------------------------------------------------------
+
+function formatExpiry(diff: number): string {
+  if (diff > 0) {
+    if (diff < 60_000) {
+      const s = Math.ceil(diff / 1_000);
+      return `${s}s left`;
+    }
+    if (diff < 3_600_000) {
+      const m = Math.floor(diff / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      return s > 0 ? `${m}m ${s}s left` : `${m}m left`;
+    }
+    const h = Math.floor(diff / 3_600_000);
+    return h < 24 ? `${h}h left` : `${Math.floor(h / 24)}d left`;
+  }
+  const ago = Math.abs(diff);
+  if (ago < 3_600_000) {
+    const m = Math.floor(ago / 60_000);
+    return m < 1 ? "Just expired" : `Expired ${m}m ago`;
+  }
+  const h = Math.floor(ago / 3_600_000);
+  return h < 24 ? `Expired ${h}h ago` : `Expired ${Math.floor(h / 24)}d ago`;
+}
+
+function CreatedMarketRow({
+  market,
+  onSettle,
+  settling,
+}: {
+  market: CreatedMarket;
+  onSettle: (outcome: 0 | 1) => void;
+  settling: boolean;
+}) {
+  const expiryMs = market.expiry.getTime();
+  const [diff, setDiff] = useState(() => expiryMs - Date.now());
+
+  useEffect(() => {
+    const remaining = expiryMs - Date.now();
+    // Tick every second when < 1 hour left, every 30s otherwise
+    const interval = remaining < 3_600_000 ? 1_000 : 30_000;
+    const id = setInterval(() => setDiff(expiryMs - Date.now()), interval);
+    return () => clearInterval(id);
+  }, [expiryMs]);
+  const statusColor: Record<string, string> = {
+    Open: "#22c55e",
+    Closed: "#f59e0b",
+    Settled: "#6b7280",
+  };
+
+  return (
+    <View style={cm.row}>
+      <Text style={cm.question} numberOfLines={2}>{market.question}</Text>
+
+      <View style={cm.meta}>
+        <Text style={[cm.status, { color: statusColor[market.status] ?? "#9ca3af" }]}>
+          {market.status}
+        </Text>
+        <Text style={[cm.expiry, diff <= 0 && market.status === "Open" && cm.expiryUrgent]}>
+          {formatExpiry(diff)}
+        </Text>
+        {market.totalVolumeUsdc > 0 && (
+          <Text style={cm.vol}>${market.totalVolumeUsdc.toFixed(2)} vol</Text>
+        )}
+      </View>
+
+      {market.status === "Settled" && market.outcome !== null && (
+        <View style={cm.settledRow}>
+          <View style={[cm.outcomePill, market.outcome === 0 ? cm.yesPill : cm.noPill]}>
+            <Text style={cm.pillText}>
+              Settled {market.outcome === 0 ? "YES" : "NO"}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {market.status === "Open" && (
+        <View style={cm.settleButtons}>
+          <Text style={cm.settleHint}>Settle this market:</Text>
+          <View style={cm.settleRow}>
+            <TouchableOpacity
+              style={[cm.settleBtn, cm.yesBtn, settling && cm.btnDisabled]}
+              onPress={() => onSettle(0)}
+              disabled={settling}
+            >
+              {settling ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={cm.settleBtnText}>✓ YES</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[cm.settleBtn, cm.noBtn, settling && cm.btnDisabled]}
+              onPress={() => onSettle(1)}
+              disabled={settling}
+            >
+              {settling ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={cm.settleBtnText}>✗ NO</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CreatedMarketsList({
+  walletPubkey,
+}: {
+  walletPubkey: string;
+}) {
+  const { markets, loading, refresh } = useCreatedMarkets(walletPubkey);
+  const { status, settleMarket, reset } = useSettleMarket();
+  const [settlingAddr, setSettlingAddr] = useState<string | null>(null);
+
+  const handleSettle = async (address: string, outcome: 0 | 1) => {
+    setSettlingAddr(address);
+    await settleMarket(address, outcome);
+    reset();
+    setSettlingAddr(null);
+    refresh();
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.stubPositions}>
+        <ActivityIndicator color="#22c55e" />
+      </View>
+    );
+  }
+
+  if (markets.length === 0) {
+    return (
+      <View style={styles.stubPositions}>
+        <Text style={styles.stubEmoji}>🏗️</Text>
+        <Text style={styles.stubTitle}>No markets created yet</Text>
+        <Text style={styles.stubSub}>
+          Markets you deploy will appear here. Expired open markets can be settled.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {markets.map((m) => (
+        <CreatedMarketRow
+          key={m.address}
+          market={m}
+          onSettle={(outcome) => handleSettle(m.address, outcome)}
+          settling={settlingAddr === m.address && (status === "building" || status === "signing" || status === "executing")}
+        />
+      ))}
+    </View>
+  );
+}
+
+const cm = StyleSheet.create({
+  row: { backgroundColor: "#111", borderRadius: 12, padding: 14, marginBottom: 8, gap: 8 },
+  question: { fontSize: 14, fontWeight: "600", color: "#f9fafb", lineHeight: 20 },
+  meta: { flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" },
+  status: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
+  expiry: { fontSize: 11, color: "#6b7280" },
+  expiryUrgent: { color: "#f59e0b", fontWeight: "600" },
+  vol:    { fontSize: 11, color: "#4b5563" },
+  settledRow: { flexDirection: "row" },
+  outcomePill: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  yesPill: { backgroundColor: "#14532d" },
+  noPill:  { backgroundColor: "#7f1d1d" },
+  pillText: { fontSize: 12, fontWeight: "700", color: "#f9fafb" },
+  settleHint: { fontSize: 11, color: "#6b7280" },
+  settleButtons: { gap: 6 },
+  settleRow: { flexDirection: "row", gap: 8 },
+  settleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  yesBtn: { backgroundColor: "#052e16", borderColor: "#22c55e" },
+  noBtn:  { backgroundColor: "#3b0a0a", borderColor: "#ef4444" },
+  btnDisabled: { opacity: 0.5 },
+  settleBtnText: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
 });
 
 // ---------------------------------------------------------------------------
 // Profile screen
 // ---------------------------------------------------------------------------
 
-type HistoryTab = "Active" | "History";
+type HistoryTab = "Active" | "History" | "Created";
 
 interface Props {
   walletPubkey: string | null;
@@ -288,8 +537,51 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   const [tab, setTab] = useState<HistoryTab>("Active");
   const [walletTimedOut, setWalletTimedOut] = useState(false);
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
-  const { bets, loading: betsLoading } = useBets(walletPubkey);
+  const { bets, loading: betsLoading, refresh: refreshBets } = useBets(walletPubkey);
   const { parlays, loadingParlays, settleParlay, claimParlay } = useParlay();
+  const { claim: claimWinnings, status: claimStatus } = useClaimWinnings();
+  const [claimingBet, setClaimingBet] = useState<string | null>(null);
+
+  // Batch-fetch market summaries for all bets so we know if each bet won
+  const [marketSummaries, setMarketSummaries] = useState<Record<string, MarketSummary>>({});
+  useEffect(() => {
+    const uniqueMarkets = [...new Set(bets.map((b) => b.market as string))];
+    if (!uniqueMarkets.length || !HELIUS_RPC_URL) return;
+    fetch(HELIUS_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "getMultipleAccounts",
+        params: [uniqueMarkets, { encoding: "base64" }],
+      }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        const summaries: Record<string, MarketSummary> = {};
+        (json.result?.value ?? []).forEach((acct: any, i: number) => {
+          if (!acct) return;
+          try {
+            const raw = Uint8Array.from(atob(acct.data[0]), (c) => c.charCodeAt(0));
+            const m = deserializeMarketAccount(raw, uniqueMarkets[i] as any);
+            summaries[uniqueMarkets[i]] = {
+              status: m.status as "Open" | "Settled" | "Closed",
+              outcome: m.outcome,
+              creator: m.creator as string,
+            };
+          } catch {}
+        });
+        setMarketSummaries(summaries);
+      })
+      .catch(() => {});
+  }, [bets]);
+
+  const handleClaimBet = async (bet: Bet) => {
+    setClaimingBet(bet.address as string);
+    await claimWinnings(bet.address as string, bet.market as string);
+    setClaimingBet(null);
+    refreshBets();
+  };
   const { mainnetSol, devnetSol, mainnetUsdc, devnetUsdc } = useWalletBalances(walletPubkey);
   const { name: snsName } = useSnsName(walletPubkey);
 
@@ -476,10 +768,10 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         </View>
       </View>
 
-      {/* ── Active / History tabs ────────────────── */}
+      {/* ── Active / History / Created tabs ─────── */}
       <View style={styles.tabSection}>
         <View style={styles.tabBar}>
-          {(["Active", "History"] as HistoryTab[]).map((t) => (
+          {(["Active", "History", "Created"] as HistoryTab[]).map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
@@ -493,7 +785,9 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         </View>
 
         {/* Position list */}
-        {(betsLoading || loadingParlays) ? (
+        {tab === "Created" ? (
+          <CreatedMarketsList walletPubkey={walletPubkey} />
+        ) : (betsLoading || loadingParlays) ? (
           <View style={styles.stubPositions}>
             <ActivityIndicator color="#22c55e" />
           </View>
@@ -501,12 +795,19 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
           <ActivePositions
             bets={bets.filter((b) => !b.claimed)}
             parlays={parlays.filter((p) => p.status === "Open" || p.status === "Won")}
+            marketSummaries={marketSummaries}
             onSettleParlay={settleParlay}
             onClaimParlay={claimParlay}
+            onClaimBet={handleClaimBet}
+            claimingBet={claimingBet}
           />
         ) : (
           <HistoryPositions
-            bets={bets.filter((b) => b.claimed || b.resultRecorded)}
+            bets={bets.filter((b) => {
+              if (b.claimed || b.resultRecorded) return true;
+              const ms = marketSummaries[b.market as string];
+              return ms?.status === "Settled" && ms?.outcome !== null && ms?.outcome !== b.outcome;
+            })}
             parlays={parlays.filter((p) => p.status === "Won" || p.status === "Lost" || p.status === "Claimed" || p.status === "Cancelled")}
           />
         )}

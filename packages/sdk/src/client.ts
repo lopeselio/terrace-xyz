@@ -521,7 +521,7 @@ export class TerraceSdk {
     const { getProgramDerivedAddress, getAddressEncoder } = await import("@solana/kit");
     const enc = getAddressEncoder();
     const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address;
-    const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bRS" as Address;
+    const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address;
     const [parlayVaultAddress] = await getProgramDerivedAddress({
       programAddress: ASSOC_TOKEN_PROGRAM_ID,
       seeds: [enc.encode(parlayAddress), enc.encode(TOKEN_PROGRAM_ID), enc.encode(params.usdcMint)],
