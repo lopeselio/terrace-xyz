@@ -34,7 +34,11 @@ export class JupiterMarketsClient {
       headers: this.headers,
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Jupiter API POST ${path} → ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      let detail = "";
+      try { const j = await res.json(); detail = j?.message ?? j?.error ?? JSON.stringify(j); } catch {}
+      throw new Error(`Jupiter API POST ${path} → ${res.status}${detail ? `: ${detail}` : ""}`);
+    }
     return res.json() as Promise<T>;
   }
 
