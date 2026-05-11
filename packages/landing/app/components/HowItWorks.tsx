@@ -1,4 +1,4 @@
-import { HeliusMark } from "./BrandIcons";
+import { HeliusMark, PolymarketLogo, JupiterLogo, PrivyLogo, SolanaMarkSVG, GeminiLogo } from "./BrandIcons";
 
 const steps = [
   {
@@ -20,7 +20,7 @@ const steps = [
   {
     n: "03",
     title: "Back your take",
-    desc: "Buy YES or NO on any market with USDC. Chain multiple legs into a parlay for multiplied payouts. All bets are Bet PDAs — you own them, not us.",
+    desc: "Back your pick on any market. Chain multiple legs into a parlay for multiplied payouts. Your positions are yours — always.",
     icon: "⚡",
     color: "text-fire",
     border: "border-fire/20",
@@ -28,7 +28,7 @@ const steps = [
   {
     n: "04",
     title: "Win. Build rep. Repeat.",
-    desc: "Correct calls update your on-chain Reputation PDA. Win rate, streak, badge tier — all verifiable on Solana. Earn the Legend crown. People will follow your bets.",
+    desc: "Correct calls build your permanent reputation. Win rate, streak, badge tier — all verifiable. Earn the Legend crown. People will follow your bets.",
     icon: "👑",
     color: "text-yellow-400",
     border: "border-yellow-400/20",
@@ -45,8 +45,8 @@ export default function HowItWorks() {
             How Terrace works
           </h2>
           <p className="text-white/50 text-lg max-w-xl mx-auto">
-            From wallet connect to on-chain reputation — the full loop, on
-            Solana.
+            From sign-up to a permanent reputation — the full loop,
+            on Solana.
           </p>
         </div>
 
@@ -85,15 +85,10 @@ export default function HowItWorks() {
         </div>
 
         {/* Tech stack strip */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm text-text-muted">
+        <div className="mt-16 flex flex-wrap items-center justify-center gap-5 text-sm text-text-muted">
           <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-sol" />
+            <SolanaMarkSVG size={16} />
             Solana · 400ms finality
-          </span>
-          <span className="text-white/10">·</span>
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-pitch" />
-            Anchor 0.30 programs
           </span>
           <span className="text-white/10">·</span>
           <span className="flex items-center gap-2">
@@ -102,13 +97,23 @@ export default function HowItWorks() {
           </span>
           <span className="text-white/10">·</span>
           <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-white/40" />
+            <JupiterLogo size={16} />
+            Jupiter swaps
+          </span>
+          <span className="text-white/10">·</span>
+          <span className="flex items-center gap-2">
+            <PolymarketLogo size={16} />
+            Polymarket feed
+          </span>
+          <span className="text-white/10">·</span>
+          <span className="flex items-center gap-2">
+            <PrivyLogo size={16} />
             Privy embedded wallets
           </span>
           <span className="text-white/10">·</span>
           <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-yellow-400" />
-            USDC settlement
+            <GeminiLogo size={16} />
+            Gemini AI intelligence
           </span>
         </div>
       </div>

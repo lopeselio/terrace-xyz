@@ -33,8 +33,8 @@ export default function CreatorTools() {
           </h2>
           <p className="text-white/50 text-lg max-w-2xl mx-auto">
             Deploy a prediction market in under 30 seconds. Set your fee.
-            Watch the volume roll in. Earn from every winning payout —
-            on-chain, automatically.
+            Watch the volume roll in. Earn from every winning payout,
+            automatically.
           </p>
         </div>
 
@@ -170,8 +170,8 @@ export default function CreatorTools() {
             {[
               {
                 icon: "🏗️",
-                title: "Permissionless deployment",
-                desc: "Any wallet can launch a market. No approval process. No gatekeepers. Just your question, your fee, your crowd.",
+                title: "Open to everyone",
+                desc: "Any fan can launch a market. No approval process. Just your question, your fee, your crowd.",
                 color: "text-fire",
                 bg: "bg-fire/10",
                 border: "border-fire/20",
@@ -179,7 +179,7 @@ export default function CreatorTools() {
               {
                 icon: "💰",
                 title: "Automatic fee collection",
-                desc: "When your market settles, your creator fee is automatically credited to your USDC account. Smart contract enforced.",
+                desc: "When your market settles, your creator fee is automatically credited to your account. Enforced by the protocol.",
                 color: "text-pitch",
                 bg: "bg-pitch/10",
                 border: "border-pitch/20",

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { SolanaMarkSVG } from "./BrandIcons";
 
 const stats = [
-  { value: "100%", label: "On-chain settlement" },
+  { value: "100%", label: "Onchain settlement" },
   { value: "<1s", label: "Solana finality" },
   { value: "0%", label: "House edge on Terrace" },
   { value: "8-leg", label: "Max parlay multiplier" },
@@ -74,8 +75,8 @@ export default function Hero() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-pitch/10 border border-pitch/20 rounded-full px-4 py-1.5 mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-pitch animate-pulse" />
-          <span className="text-xs font-semibold text-pitch tracking-wide uppercase">
-            Built on Solana · Powered by the Fans from the Terrace
+          <span className="text-xs font-semibold text-pitch tracking-wide uppercase flex items-center gap-1.5">
+            Built on <SolanaMarkSVG size={14} /> Solana · Powered by the Fans from the Terrace
           </span>
         </div>
 
@@ -85,14 +86,14 @@ export default function Hero() {
           <br />
           <span className="text-pitch glow-green">Your market.</span>
           <br />
-          On-chain.
+          Onchain.
         </h1>
 
         {/* Sub-headline */}
         <p className="text-[clamp(1rem,2.5vw,1.4rem)] text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
           Terrace is the social sports prediction layer football deserves —
-          permissionless markets, live flash bets, parlay chains, and an
-          on-chain reputation that follows you everywhere.
+          open markets, live flash bets, parlay chains, and a
+          reputation that follows you everywhere.
         </p>
 
         {/* CTAs */}

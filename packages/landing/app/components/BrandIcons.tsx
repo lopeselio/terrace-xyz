@@ -89,3 +89,75 @@ export function JupiterLogo({ size = 20 }: { size?: number }) {
     />
   );
 }
+
+export function PrivyLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/privy-logo.png"
+      alt="Privy"
+      width={size}
+      height={size}
+      style={{ borderRadius: Math.round(size * 0.22), objectFit: "cover" }}
+    />
+  );
+}
+
+export function SolanaLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/solana-logo.png"
+      alt="Solana"
+      width={size}
+      height={size}
+      style={{ borderRadius: size / 2, objectFit: "cover" }}
+    />
+  );
+}
+
+export function GeminiLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/gemini-logo.png"
+      alt="Gemini AI"
+      width={size}
+      height={size}
+      style={{ objectFit: "cover" }}
+    />
+  );
+}
+
+export function TelegramLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/telegram-logo.png"
+      alt="Telegram"
+      width={size}
+      height={size}
+      style={{ borderRadius: "50%", flexShrink: 0 }}
+    />
+  );
+}
+
+export function DiscordLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/discord-logo.png"
+      alt="Discord"
+      width={size}
+      height={size}
+      style={{ flexShrink: 0 }}
+    />
+  );
+}
+
+export function SolanaMarkSVG({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/solana-logo.png"
+      alt="Solana"
+      width={size}
+      height={size}
+      style={{ flexShrink: 0 }}
+    />
+  );
+}

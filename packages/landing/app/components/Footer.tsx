@@ -1,4 +1,4 @@
-import { TerraceMark, HeliusMark } from "./BrandIcons";
+import { TerraceMark, HeliusMark, SolanaMarkSVG } from "./BrandIcons";
 
 export default function Footer() {
   return (
@@ -30,14 +30,18 @@ export default function Footer() {
 
         <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-text-muted">
           <p>
-            © 2025 Terrace. All on-chain activity is final. Not financial advice.
+            © 2025 Terrace. All activity is final. Not financial advice.
           </p>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-pitch animate-pulse" />
-            <span>
-              Built on{" "}
-              <span className="text-sol font-medium">Solana</span> ·{" "}
-              Powered by{" "}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-pitch animate-pulse flex-shrink-0" />
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              Built on
+              <span className="inline-flex items-center gap-1">
+                <SolanaMarkSVG size={14} />
+                <span className="text-sol font-medium">Solana</span>
+              </span>
+              ·
+              Powered by
               <span className="inline-flex items-center gap-1">
                 <HeliusMark size={14} />
                 <span className="text-pitch font-medium">Helius</span>
