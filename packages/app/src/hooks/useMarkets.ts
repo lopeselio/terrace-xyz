@@ -11,8 +11,9 @@ const JUPITER_API_KEY =
 const TERRACE_PROGRAM_ID =
   process.env.EXPO_PUBLIC_TERRACE_PROGRAM_ID ?? "";
 
-// Market::SPACE = 336 (from lib.rs) — used as a rough getProgramAccounts filter
-const MARKET_ACCOUNT_SIZE = 336;
+// Market::SPACE = 8 disc + 204 question + 8 expiry + 32 creator + 2 outcome + 8+8+8 volumes
+//   + 32 vault + 1 status + 2 fee_bps + 33 oracle + 1 is_private + 1 is_flash + 8 nonce + 1 bump + 2 pad
+const MARKET_ACCOUNT_SIZE = 359;
 
 // Football-specific search terms to surface relevant Jupiter markets
 const FOOTBALL_QUERIES = ["premier league", "champions league", "world cup", "euro"];
@@ -64,6 +65,7 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
         expiry: new Date(Number(market.expiry) * 1000),
         status: statusMapped,
         nativeMarketAddress: pubkey,
+        creator: market.creator as string,
         isPrivate: market.isPrivate,
         isFlash: market.isFlash,
       };

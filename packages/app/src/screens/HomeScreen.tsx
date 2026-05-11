@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { useLeaderboard, avatarColorFromPubkey, type SharpEntry } from "../hooks/useLeaderboard";
+import { useCreatorWinRates } from "../hooks/useCreatorWinRates";
 import { groupMarkets } from "../utils/groupMarkets";
 import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
@@ -32,6 +34,13 @@ const THUMB_EMOJIS = ["🏴󠁧󠁢󠁥󠁮󠁧󠁿", "⚽", "🔴", "🟣"];
 
 const TRENDING_TABS = ["Markets", "Leagues", "Sharps"] as const;
 type TrendingTab = (typeof TRENDING_TABS)[number];
+
+const SOURCE_FILTERS = [
+  { key: "All",        label: "All markets" },
+  { key: "Terrace",    label: "⚡ Terrace"   },
+  { key: "Polymarket", label: "🔵 Polymarket" },
+] as const;
+type SourceFilter = (typeof SOURCE_FILTERS)[number]["key"];
 
 const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
 
@@ -66,7 +75,12 @@ function categoryLabel(m: UnifiedMarket): string {
 function formatUsdc(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000)     return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${val.toFixed(0)}`;
+  if (val >= 10)        return `$${val.toFixed(1)}`;
+  return `$${val.toFixed(2)}`;
+}
+
+function shortAddr(addr: string): string {
+  return `${addr.slice(0, 5)}…${addr.slice(-4)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,13 +117,19 @@ interface MarketRowProps {
   market: UnifiedMarket;
   index: number;
   onPress: (id: string) => void;
+  creatorWinRate?: number; // winRateBps (0–10000), undefined = not yet loaded
 }
 
-function MarketRow({ market, index, onPress }: MarketRowProps) {
+function MarketRow({ market, index, onPress, creatorWinRate }: MarketRowProps) {
   const thumbColor = THUMB_COLORS[index % THUMB_COLORS.length];
   const thumbEmoji = THUMB_EMOJIS[index % THUMB_EMOJIS.length];
   const label = categoryLabel(market);
-  const isLive = market.status === "Open";
+  const creatorShort = market.creator ? shortAddr(market.creator) : null;
+  const winRateLabel = creatorWinRate != null
+    ? `${Math.round(creatorWinRate / 100)}% W`
+    : "-- W";
+  const isOpen = market.status === "Open";
+  const isSettled = market.status === "Settled" || market.status === "Closed";
 
   return (
     <View>
@@ -126,22 +146,31 @@ function MarketRow({ market, index, onPress }: MarketRowProps) {
 
           {/* Tags */}
           <View style={styles.tagsRow}>
+            {/* YES price */}
             <View style={styles.tagCoin}>
-              <Text style={styles.tagText}>⊙ $0.10</Text>
+              <Text style={styles.tagText}>YES {Math.round(market.yesPrice * 100)}¢</Text>
             </View>
+            {/* Total volume */}
             {market.totalVolumeUsdc > 0 && (
               <View style={styles.tagPrize}>
-                <Text style={styles.tagTextGreen}>🏆 {formatUsdc(market.totalVolumeUsdc)}</Text>
+                <Text style={styles.tagTextGreen}>Vol {formatUsdc(market.totalVolumeUsdc)}</Text>
               </View>
             )}
-            {isLive && (
+            {/* Status */}
+            {isOpen && (
               <View style={styles.tagLive}>
-                <Text style={styles.tagTextRed}>● Live</Text>
+                <Text style={styles.tagTextRed}>● Open</Text>
               </View>
             )}
+            {isSettled && (
+              <View style={styles.tagSettled}>
+                <Text style={styles.tagTextGrey}>✓ Settled</Text>
+              </View>
+            )}
+            {/* Source */}
             {market.source === "native" && (
               <View style={styles.tagFlash}>
-                <Text style={styles.tagTextOrange}>⚡ Native</Text>
+                <Text style={styles.tagTextOrange}>⚡ Terrace</Text>
               </View>
             )}
           </View>
@@ -150,15 +179,15 @@ function MarketRow({ market, index, onPress }: MarketRowProps) {
         <Text style={styles.marketArrow}>›</Text>
       </TouchableOpacity>
 
-      {/* Creator pill row — shown for native markets with known creator, stub for Jupiter */}
-      {market.source === "native" && (
+      {/* Creator pill — native markets only */}
+      {market.source === "native" && creatorShort && (
         <View style={styles.creatorRow}>
           <View style={styles.creatorPill}>
             <View style={[styles.creatorAvatar, styles.avatarGreen]}>
-              <Text style={styles.creatorInitial}>C</Text>
+              <Text style={styles.creatorInitial}>{market.creator![0].toUpperCase()}</Text>
             </View>
-            <Text style={styles.creatorName}>creator</Text>
-            <Text style={styles.creatorWinRate}>-- W</Text>
+            <Text style={styles.creatorName}>{creatorShort}</Text>
+            <Text style={styles.creatorWinRate}>{winRateLabel}</Text>
           </View>
         </View>
       )}
@@ -295,6 +324,7 @@ interface Props {
   onSelectMarket: (id: string) => void;
   onNavigateProfile?: () => void;
   onNavigateParlay?: () => void;
+  onRefreshMarkets?: () => void;
 }
 
 interface SelectedBet {
@@ -303,10 +333,24 @@ interface SelectedBet {
   yesPrice: number | null;
 }
 
-export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onRefreshMarkets }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("All");
   const [leagueFilter, setLeagueFilter] = useState<string>("All");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    onRefreshMarkets?.();
+    // loading state is managed by the parent; stop spinner after a short window
+    setTimeout(() => setRefreshing(false), 1500);
+  }, [onRefreshMarkets]);
+
+  const nativeCreators = markets
+    .filter((m) => m.source === "native" && m.creator)
+    .map((m) => m.creator!);
+  const creatorWinRates = useCreatorWinRates(nativeCreators);
   const { status, txSignature, error, placeBet, reset } = usePlaceBet();
 
   const repLabel = winRate !== null
@@ -336,7 +380,18 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
 
   return (
     <View style={{ flex: 1 }}>
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.root}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#22c55e"
+          colors={["#22c55e"]}
+        />
+      }
+    >
       {/* ── Top nav ─────────────────────────────────────────── */}
       <View style={styles.topNav}>
         <View style={styles.logoRow}>
@@ -411,44 +466,96 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
               <Text style={styles.comingSoonTitle}>No markets yet</Text>
             </View>
           ) : (() => {
-            const grouped = groupMarkets(markets);
-            const filteredGroups = grouped.filter((g) =>
-              matchesLeague(g.type === "grouped" ? g.eventTitle : g.market.jupiterEventTitle ?? g.market.question, leagueFilter)
-            );
+            const sourceFiltered = markets.filter((m) => {
+              if (sourceFilter === "Terrace")    return m.source === "native";
+              if (sourceFilter === "Polymarket") return m.source === "jupiter";
+              return true;
+            });
+            const grouped = groupMarkets(sourceFiltered);
+            const showLeagueChips = sourceFilter !== "Terrace";
+            const filteredGroups = showLeagueChips
+              ? grouped.filter((g) =>
+                  matchesLeague(g.type === "grouped" ? g.eventTitle : g.market.jupiterEventTitle ?? g.market.question, leagueFilter)
+                )
+              : grouped;
             return (
               <>
+                {/* Source filter */}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.leagueChipsRow}
+                  contentContainerStyle={styles.sourceChipsRow}
                 >
-                  {LEAGUE_CHIPS.map((chip) => (
+                  {SOURCE_FILTERS.map(({ key, label }) => (
                     <TouchableOpacity
-                      key={chip}
-                      style={[styles.leagueChip, leagueFilter === chip && styles.leagueChipActive]}
-                      onPress={() => setLeagueFilter(chip)}
+                      key={key}
+                      style={[styles.sourceChip, sourceFilter === key && styles.sourceChipActive]}
+                      onPress={() => {
+                        setSourceFilter(key);
+                        setLeagueFilter("All");
+                      }}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.leagueChipText, leagueFilter === chip && styles.leagueChipTextActive]}>
-                        {chip}
+                      <Text style={[styles.sourceChipText, sourceFilter === key && styles.sourceChipTextActive]}>
+                        {label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                {filteredGroups.map((item, i) =>
-                  item.type === "grouped" ? (
-                    <MatchGroupCard
-                      key={item.eventId}
-                      match={item}
-                      onSelectOutcome={handleSelectOutcome}
-                    />
-                  ) : (
-                    <MarketRow
-                      key={item.market.id}
-                      market={item.market}
-                      index={i}
-                      onPress={onSelectMarket}
-                    />
+
+                {/* League chips — only when showing Polymarket or All */}
+                {showLeagueChips && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.leagueChipsRow}
+                  >
+                    {LEAGUE_CHIPS.map((chip) => (
+                      <TouchableOpacity
+                        key={chip}
+                        style={[styles.leagueChip, leagueFilter === chip && styles.leagueChipActive]}
+                        onPress={() => setLeagueFilter(chip)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.leagueChipText, leagueFilter === chip && styles.leagueChipTextActive]}>
+                          {chip}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+
+                {filteredGroups.length === 0 ? (
+                  <View style={styles.comingSoon}>
+                    <Text style={styles.comingSoonEmoji}>
+                      {sourceFilter === "Terrace" ? "⚡" : "🔵"}
+                    </Text>
+                    <Text style={styles.comingSoonTitle}>
+                      {sourceFilter === "Terrace" ? "No Terrace markets yet" : "No Polymarket markets"}
+                    </Text>
+                    <Text style={styles.comingSoonSub}>
+                      {sourceFilter === "Terrace"
+                        ? "Create the first one from the + tab"
+                        : "Try a different league filter"}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredGroups.map((item, i) =>
+                    item.type === "grouped" ? (
+                      <MatchGroupCard
+                        key={item.eventId}
+                        match={item}
+                        onSelectOutcome={handleSelectOutcome}
+                      />
+                    ) : (
+                      <MarketRow
+                        key={item.market.id}
+                        market={item.market}
+                        index={i}
+                        onPress={onSelectMarket}
+                        creatorWinRate={item.market.creator ? creatorWinRates[item.market.creator] : undefined}
+                      />
+                    )
                   )
                 )}
               </>
@@ -536,6 +643,13 @@ const styles = StyleSheet.create({
   tabTextActive:   { color: "#000" },
   tabTextInactive: { color: "#aaa" },
 
+  // Source filter chips
+  sourceChipsRow: { paddingHorizontal: 14, paddingBottom: 8, paddingTop: 4, gap: 6, flexDirection: "row" },
+  sourceChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 16, backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a" },
+  sourceChipActive: { backgroundColor: "#0f172a", borderColor: "#6366f1" },
+  sourceChipText: { fontSize: 12, fontWeight: "600", color: "#888" },
+  sourceChipTextActive: { color: "#818cf8", fontWeight: "700" },
+
   // League filter chips
   leagueChipsRow: { paddingHorizontal: 14, paddingBottom: 10, gap: 6, flexDirection: "row" },
   leagueChip: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 14, backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#2a2a2a" },
@@ -560,14 +674,16 @@ const styles = StyleSheet.create({
   marketName:      { fontSize: 13, fontWeight: "600", color: "#fff" },
   marketLeague:    { fontSize: 10, color: "#888", marginTop: 1 },
   tagsRow:         { flexDirection: "row", gap: 5, marginTop: 5, flexWrap: "wrap" },
-  tagCoin:  { backgroundColor: "#1e1e1e", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagPrize: { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagLive:  { backgroundColor: "#7f1d1d", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagFlash: { backgroundColor: "#3b1f00", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagCoin:    { backgroundColor: "#1e1e1e", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagPrize:   { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagLive:    { backgroundColor: "#7f1d1d", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagSettled: { backgroundColor: "#1a1a1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 0.5, borderColor: "#333" },
+  tagFlash:   { backgroundColor: "#3b1f00", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   tagText:        { fontSize: 9, fontWeight: "500", color: "#aaa" },
   tagTextGreen:   { fontSize: 9, fontWeight: "500", color: "#4ade80" },
   tagTextRed:     { fontSize: 9, fontWeight: "500", color: "#f87171" },
   tagTextOrange:  { fontSize: 9, fontWeight: "500", color: "#fb923c" },
+  tagTextGrey:    { fontSize: 9, fontWeight: "500", color: "#6b7280" },
   marketArrow: { color: "#444", fontSize: 14 },
 
   // Creator pills
