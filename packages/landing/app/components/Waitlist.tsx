@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TelegramLogo, DiscordLogo } from "./BrandIcons";
 
 export default function Waitlist() {
   const [email, setEmail] = useState("");
@@ -11,10 +12,19 @@ export default function Waitlist() {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitted(true);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setSubmitted(true);
+    } catch {
+      alert("Something went wrong. Try again or DM us on Telegram.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,7 +52,7 @@ export default function Waitlist() {
 
         <p className="text-white/50 text-xl leading-relaxed mb-12 max-w-xl mx-auto">
           Join the waitlist for early access. First 1,000 users get a
-          Founding Fan badge and an on-chain airdrop when we launch.
+          Founding Fan badge when we launch.
         </p>
 
         {!submitted ? (
@@ -70,8 +80,8 @@ export default function Waitlist() {
               You&rsquo;re on the list!
             </h3>
             <p className="text-text-muted text-sm">
-              We&rsquo;ll reach out when Terrace opens. Check your email for
-              a confirmation.
+              We&rsquo;ll reach out when Terrace opens. Follow us on Telegram
+              or Discord for updates.
             </p>
           </div>
         )}
@@ -89,16 +99,20 @@ export default function Waitlist() {
             <span>𝕏</span> Twitter
           </a>
           <a
-            href="#"
+            href="https://discord.com/users/lopeselio"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-text-muted hover:text-white transition-colors text-sm flex items-center gap-2"
           >
-            <span>💬</span> Discord
+            <DiscordLogo size={16} /> Discord
           </a>
           <a
-            href="#"
+            href="https://t.me/ElioCodes"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-text-muted hover:text-white transition-colors text-sm flex items-center gap-2"
           >
-            <span>📱</span> Telegram
+            <TelegramLogo size={16} /> Telegram
           </a>
         </div>
       </div>

@@ -17,6 +17,7 @@ test-ledger/
 # Solana keypairs — never commit
 *.json
 !package.json
+!package-lock.json
 !tsconfig*.json
 !turbo.json
 
