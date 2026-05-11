@@ -4,6 +4,10 @@ dist/
 build/
 .next/
 
+# Cloudflare Workers
+.wrangler/
+.dev.vars
+
 # Anchor / Rust
 target/
 **/*.rs.bk
