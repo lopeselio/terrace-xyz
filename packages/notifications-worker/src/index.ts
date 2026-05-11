@@ -13,6 +13,22 @@ export interface Env {
   DEVICES: KVNamespace;
   /** Public HTTPS base URL of this worker, e.g. https://terrace-notifications.xyz.workers.dev */
   WORKER_BASE_URL?: string;
+  /** Telegram bot token — used to DM users when their wallet is successfully linked */
+  TELEGRAM_BOT_TOKEN?: string;
+  /** Shared secret between the bot server and this worker — required for internal API calls */
+  WORKER_SECRET?: string;
+}
+
+// KV key namespaces (all stored in DEVICES namespace):
+//   link_token:{uuid}  → LinkToken JSON  (TTL 15 min)
+//   tg_wallet:{userId} → { pubkey, linkedAt }
+//   wallet_tg:{pubkey} → { tgUserId, username }
+
+interface LinkToken {
+  tgUserId:   string;
+  tgUsername: string;
+  expiresAt:  number; // ms epoch
+  used:       boolean;
 }
 
 interface DeviceEntry {
@@ -45,13 +61,47 @@ export default {
     if (request.method === "POST" && url.pathname === "/webhook")
       return cors(await handleWebhook(request, env));
 
+    const ua = request.headers.get("User-Agent") ?? "";
+
     // GET /m/<matchup-address>  — HTTPS deep-link redirect page
-    // Shares as a clickable https:// link in Telegram/WhatsApp/SMS,
-    // then JS immediately bounces to terrace://matchup/<address> on device.
     const matchupRedirect = url.pathname.match(/^\/m\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
     if (request.method === "GET" && matchupRedirect) {
-      return handleMatchupRedirect(matchupRedirect[1]);
+      return handleMatchupRedirect(matchupRedirect[1], ua, request.url);
     }
+
+    // GET /link/<token>  — wallet linking bounce page → terrace://link/<token>
+    // Wide regex: accept any alphanumeric+hyphen token (10–100 chars) to avoid
+    // case or format surprises from crypto.randomUUID() across environments
+    const linkRedirect = url.pathname.match(/^\/link\/([a-zA-Z0-9_-]{10,100})$/);
+    if (request.method === "GET" && linkRedirect) {
+      return handleLinkRedirect(linkRedirect[1], ua, request.url);
+    }
+
+    // POST /link/verify  { token, pubkey }  — called by the Terrace app after user confirms
+    if (request.method === "POST" && url.pathname === "/link/verify")
+      return cors(await handleLinkVerify(request, env));
+
+    // Internal API — protected by X-Worker-Secret header
+    if (!checkSecret(request, env))
+      return cors(new Response("Unauthorized", { status: 401 }));
+
+    // POST /api/link-token  { tgUserId, tgUsername }  → { token }
+    if (request.method === "POST" && url.pathname === "/api/link-token")
+      return cors(await handleCreateLinkToken(request, env));
+
+    // POST /api/link-wallet  { tgUserId, tgUsername, pubkey }  — direct link (no token/deep-link)
+    if (request.method === "POST" && url.pathname === "/api/link-wallet")
+      return cors(await handleDirectLinkWallet(request, env));
+
+    // GET /api/wallet/tg/:userId  → { pubkey }
+    const walletByTg = url.pathname.match(/^\/api\/wallet\/tg\/(.+)$/);
+    if (request.method === "GET" && walletByTg)
+      return cors(await handleGetWalletByTg(walletByTg[1], env));
+
+    // GET /api/wallet/pubkey/:pubkey  → { tgUserId, username }
+    const walletByPubkey = url.pathname.match(/^\/api\/wallet\/pubkey\/(.+)$/);
+    if (request.method === "GET" && walletByPubkey)
+      return cors(await handleGetTgByPubkey(walletByPubkey[1], env));
 
     return cors(new Response("Not found", { status: 404 }));
   },
@@ -141,9 +191,9 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
 // GET /m/:address  — deep link bounce page
 // ---------------------------------------------------------------------------
 
-function handleMatchupRedirect(address: string): Response {
-  const deepLink = `terrace://matchup/${address}`;
-  const short    = `${address.slice(0, 6)}…${address.slice(-4)}`;
+function handleMatchupRedirect(address: string, ua: string, pageUrl: string): Response {
+  const { primary, fallback } = buildDeepLinks(`matchup/${address}`, ua, pageUrl);
+  const short = `${address.slice(0, 6)}…${address.slice(-4)}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -160,8 +210,7 @@ function handleMatchupRedirect(address: string): Response {
     p{font-size:15px;color:#9ca3af;line-height:1.6}
     .addr{font-family:monospace;font-size:12px;color:#6b7280}
     a.btn{display:inline-block;background:#22c55e;color:#000;font-weight:700;
-          font-size:17px;padding:16px 40px;border-radius:16px;text-decoration:none;
-          margin-top:8px}
+          font-size:17px;padding:16px 40px;border-radius:16px;text-decoration:none;margin-top:8px}
     .note{font-size:12px;color:#4b5563;margin-top:8px}
   </style>
 </head>
@@ -170,11 +219,13 @@ function handleMatchupRedirect(address: string): Response {
   <h1>You've been challenged!</h1>
   <p>Someone issued you a 1v1 matchup on Terrace.<br/>Open the app to accept or decline.</p>
   <p class="addr">${short}</p>
-  <a class="btn" href="${deepLink}">Open in Terrace</a>
+  <a class="btn" href="${primary}">Open in Terrace</a>
   <p class="note">Requires the Terrace app to be installed.</p>
   <script>
-    // Auto-bounce to the app. If the scheme fires, the browser will background.
-    setTimeout(function(){ window.location.href = "${deepLink}"; }, 400);
+    // No auto-redirect on Android — intent:// fallback loops. iOS is safe.
+    if (!/android/i.test(navigator.userAgent)) {
+      setTimeout(function(){ window.location.href = "${primary}"; }, 400);
+    }
   </script>
 </body>
 </html>`;
@@ -187,6 +238,195 @@ function handleMatchupRedirect(address: string): Response {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function checkSecret(req: Request, env: Env): boolean {
+  const secret = env.WORKER_SECRET;
+  if (!secret) return false;
+  return req.headers.get("X-Worker-Secret") === secret;
+}
+
+function uuid(): string {
+  // crypto.randomUUID is available in Cloudflare Workers
+  return (crypto as any).randomUUID();
+}
+
+// ---------------------------------------------------------------------------
+// Deep link URL helpers — Android needs intent:// to work from WebViews
+// ---------------------------------------------------------------------------
+
+function buildDeepLinks(path: string, ua: string, pageUrl: string): { primary: string; fallback: string } {
+  const isAndroid = /android/i.test(ua);
+  const custom    = `terrace://${path}`;
+  // Android Intent URL: works from Telegram/Chrome WebView where terrace:// is blocked.
+  // S.browser_fallback_url points back to THIS page so if the app isn't installed the user
+  // just sees the same page again instead of an Unauthorized/404 error from the worker root.
+  const intent    = `intent://${path}#Intent;scheme=terrace;package=com.terrace.app;S.browser_fallback_url=${encodeURIComponent(pageUrl)};end`;
+  return { primary: isAndroid ? intent : custom, fallback: custom };
+}
+
+// ---------------------------------------------------------------------------
+// GET /link/:token  — wallet linking bounce page
+// ---------------------------------------------------------------------------
+
+function handleLinkRedirect(token: string, ua: string, pageUrl: string): Response {
+  const { primary } = buildDeepLinks(`link/${token}`, ua, pageUrl);
+  const isAndroid = /android/i.test(ua);
+  // No JS auto-redirect on Android — intent:// in a WebView with a fallback URL causes an
+  // infinite reload loop when the app isn't installed / using Expo Go.
+  // On iOS (WKWebView), auto-redirect is safe.
+  const autoScript = isAndroid
+    ? ""
+    : `<script>setTimeout(function(){ window.location.href = "${primary}"; }, 400);</script>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Link Wallet — Terrace</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0a0a0a;color:#f9fafb;font-family:-apple-system,sans-serif;
+         display:flex;flex-direction:column;align-items:center;justify-content:center;
+         min-height:100vh;padding:32px;text-align:center;gap:20px}
+    h1{font-size:28px;font-weight:800}
+    p{font-size:15px;color:#9ca3af;line-height:1.6}
+    a.btn{display:inline-block;background:#22c55e;color:#000;font-weight:700;
+          font-size:17px;padding:16px 40px;border-radius:16px;text-decoration:none;margin-top:4px}
+    .note{font-size:12px;color:#4b5563;margin-top:4px}
+    .alt{font-size:13px;color:#9ca3af;background:#111;border-radius:12px;padding:14px 16px;text-align:left;line-height:1.8}
+    code{font-family:monospace;color:#22c55e;background:#0d1f12;padding:2px 7px;border-radius:4px}
+  </style>
+</head>
+<body>
+  <div style="font-size:48px">🔗</div>
+  <h1>Link your wallet</h1>
+  <p>Connect your Solana wallet to your Telegram account.</p>
+  <a class="btn" href="${primary}">Open in Terrace</a>
+  <p class="note">Requires a native Terrace build · expires in 15 min</p>
+  <div class="alt">
+    <strong style="color:#f9fafb">Using Expo Go?</strong><br/>
+    Copy your wallet address from the <strong>Profile</strong> tab, then send this to the bot:<br/>
+    <code>/link YOUR_WALLET_ADDRESS</code>
+  </div>
+  ${autoScript}
+</body>
+</html>`;
+  return new Response(html, {
+    headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store" },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /link/verify  { token, pubkey }
+// ---------------------------------------------------------------------------
+
+async function handleLinkVerify(request: Request, env: Env): Promise<Response> {
+  let body: { token?: string; pubkey?: string };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { token, pubkey } = body;
+  if (!token || !pubkey) return new Response("Missing token or pubkey", { status: 400 });
+
+  const raw = await env.DEVICES.get(`link_token:${token}`);
+  if (!raw) return new Response(JSON.stringify({ error: "Token not found or expired" }), { status: 404, headers: { "Content-Type": "application/json" } });
+
+  let entry: LinkToken;
+  try { entry = JSON.parse(raw); }
+  catch { return new Response("Corrupt token", { status: 500 }); }
+
+  if (entry.used)        return new Response(JSON.stringify({ error: "Token already used" }),   { status: 409, headers: { "Content-Type": "application/json" } });
+  if (Date.now() > entry.expiresAt) return new Response(JSON.stringify({ error: "Token expired" }), { status: 410, headers: { "Content-Type": "application/json" } });
+
+  // Mark token as used (keep TTL so it stays expired, not reusable)
+  await env.DEVICES.put(`link_token:${token}`, JSON.stringify({ ...entry, used: true }), { expirationTtl: 60 });
+
+  // Store bidirectional mappings
+  await env.DEVICES.put(`tg_wallet:${entry.tgUserId}`, JSON.stringify({ pubkey, linkedAt: Date.now() }), { expirationTtl: 60 * 60 * 24 * 365 });
+  await env.DEVICES.put(`wallet_tg:${pubkey}`, JSON.stringify({ tgUserId: entry.tgUserId, username: entry.tgUsername }), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  // Notify the user in Telegram
+  if (env.TELEGRAM_BOT_TOKEN) {
+    const short = `${pubkey.slice(0, 6)}…${pubkey.slice(-4)}`;
+    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: entry.tgUserId,
+        text: `✅ *Wallet linked!*\n\nYour Solana wallet \`${short}\` is now connected to this Telegram account.\n\nUse /me to see your reputation anytime.`,
+        parse_mode: "Markdown",
+      }),
+    }).catch(() => {});
+  }
+
+  return new Response(JSON.stringify({ success: true, tgUsername: entry.tgUsername }), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/link-wallet  { tgUserId, tgUsername, pubkey }  — direct link, no deep-link needed
+// ---------------------------------------------------------------------------
+
+async function handleDirectLinkWallet(request: Request, env: Env): Promise<Response> {
+  let body: { tgUserId?: string; tgUsername?: string; pubkey?: string };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { tgUserId, tgUsername = "", pubkey } = body;
+  if (!tgUserId || !pubkey) return new Response("Missing tgUserId or pubkey", { status: 400 });
+  if (pubkey.length < 32 || pubkey.length > 44) return new Response("Invalid pubkey length", { status: 400 });
+
+  await env.DEVICES.put(`tg_wallet:${tgUserId}`, JSON.stringify({ pubkey, linkedAt: Date.now() }), { expirationTtl: 60 * 60 * 24 * 365 });
+  await env.DEVICES.put(`wallet_tg:${pubkey}`, JSON.stringify({ tgUserId, username: tgUsername }), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/link-token  { tgUserId, tgUsername }  → { token }
+// ---------------------------------------------------------------------------
+
+async function handleCreateLinkToken(request: Request, env: Env): Promise<Response> {
+  let body: { tgUserId?: string; tgUsername?: string };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { tgUserId, tgUsername = "" } = body;
+  if (!tgUserId) return new Response("Missing tgUserId", { status: 400 });
+
+  const token: string = uuid();
+  const entry: LinkToken = { tgUserId, tgUsername, expiresAt: Date.now() + 15 * 60 * 1000, used: false };
+  await env.DEVICES.put(`link_token:${token}`, JSON.stringify(entry), { expirationTtl: 15 * 60 });
+
+  return new Response(JSON.stringify({ token }), { headers: { "Content-Type": "application/json" } });
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/wallet/tg/:userId  → { pubkey } | 404
+// ---------------------------------------------------------------------------
+
+async function handleGetWalletByTg(tgUserId: string, env: Env): Promise<Response> {
+  const raw = await env.DEVICES.get(`tg_wallet:${tgUserId}`);
+  if (!raw) return new Response(JSON.stringify({ error: "Not linked" }), { status: 404, headers: { "Content-Type": "application/json" } });
+  return new Response(raw, { headers: { "Content-Type": "application/json" } });
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/wallet/pubkey/:pubkey  → { tgUserId, username } | 404
+// ---------------------------------------------------------------------------
+
+async function handleGetTgByPubkey(pubkey: string, env: Env): Promise<Response> {
+  const raw = await env.DEVICES.get(`wallet_tg:${pubkey}`);
+  if (!raw) return new Response(JSON.stringify({ error: "Not linked" }), { status: 404, headers: { "Content-Type": "application/json" } });
+  return new Response(raw, { headers: { "Content-Type": "application/json" } });
+}
+
+// ---------------------------------------------------------------------------
 function notificationCopy(event: any, actorPubkey: string): { title: string; body: string } {
   const short = `${actorPubkey.slice(0, 5)}…${actorPubkey.slice(-4)}`;
   const type: string = event.type ?? "";
@@ -202,7 +442,7 @@ function notificationCopy(event: any, actorPubkey: string): { title: string; bod
 function cors(response: Response): Response {
   const r = new Response(response.body, response);
   r.headers.set("Access-Control-Allow-Origin", "*");
-  r.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  r.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   r.headers.set("Access-Control-Allow-Headers", "Content-Type");
   return r;
 }

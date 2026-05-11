@@ -8,5 +8,9 @@ binding = "DEVICES"
 id = "a5801c1de5e145bba8d73d08f1ad03fc"
 preview_id = "2da6c626db9645a69181a674ea60b1c3"
 
+[vars]
+# Shared secret between bot and worker — override with `wrangler secret put WORKER_SECRET` for prod
+WORKER_SECRET = "terrace-link-dev-2026"
+
 [observability]
 enabled = true

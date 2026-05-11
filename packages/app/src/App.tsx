@@ -41,6 +41,93 @@ import {
   type OtpFlowState,
 } from "@privy-io/expo";
 
+const WORKER_BASE_URL = "https://terrace-notifications.terrace-xyz.workers.dev";
+
+// ---------------------------------------------------------------------------
+// LinkWalletModal — confirm wallet→Telegram linking after tapping /link URL
+// ---------------------------------------------------------------------------
+function LinkWalletModal({
+  token,
+  pubkey,
+  onSuccess,
+  onDismiss,
+}: {
+  token: string;
+  pubkey: string | null;
+  onSuccess: () => void;
+  onDismiss: () => void;
+}) {
+  const [busy, setBusy]   = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone]   = useState(false);
+
+  const handleLink = async () => {
+    if (!pubkey) { setError("Connect your wallet first."); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/link/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, pubkey }),
+      });
+      const data = await res.json() as { success?: boolean; error?: string };
+      if (!res.ok || data.error) { setError(data.error ?? "Link failed. Try again."); setBusy(false); return; }
+      setDone(true);
+    } catch { setError("Network error. Try again."); setBusy(false); }
+  };
+
+  return (
+    <View style={lm.overlay}>
+      <View style={lm.card}>
+        <View style={lm.handle} />
+        <Text style={lm.emoji}>🔗</Text>
+        {done ? (
+          <>
+            <Text style={lm.title}>Wallet linked!</Text>
+            <Text style={lm.sub}>Go back to Telegram and run /me to see your rep.</Text>
+            <TouchableOpacity style={lm.btn} onPress={onSuccess}>
+              <Text style={lm.btnText}>Done</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={lm.title}>Link to Telegram?</Text>
+            <Text style={lm.sub}>This connects your Solana wallet to your Telegram account so your rep and challenges follow you.</Text>
+            {pubkey ? (
+              <Text style={lm.wallet}>{`${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`}</Text>
+            ) : (
+              <Text style={lm.warn}>No wallet connected — sign in first.</Text>
+            )}
+            {error && <Text style={lm.error}>{error}</Text>}
+            <TouchableOpacity style={lm.btn} onPress={handleLink} disabled={busy || !pubkey}>
+              {busy ? <ActivityIndicator color="#000" /> : <Text style={lm.btnText}>Link wallet</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onDismiss}>
+              <Text style={lm.cancel}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const lm = StyleSheet.create({
+  overlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 100, alignItems: "center", justifyContent: "flex-end" },
+  card:    { backgroundColor: "#111", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 44, width: "100%", gap: 12 },
+  handle:  { width: 36, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 8 },
+  emoji:   { fontSize: 44, textAlign: "center" },
+  title:   { fontSize: 22, fontWeight: "700", color: "#fff", textAlign: "center" },
+  sub:     { fontSize: 14, color: "#9ca3af", textAlign: "center", lineHeight: 20 },
+  wallet:  { fontFamily: "monospace", fontSize: 13, color: "#22c55e", textAlign: "center", backgroundColor: "#0d1f12", padding: 10, borderRadius: 8 },
+  warn:    { fontSize: 13, color: "#f59e0b", textAlign: "center" },
+  error:   { fontSize: 12, color: "#ef4444", textAlign: "center" },
+  btn:     { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  btnText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  cancel:  { fontSize: 14, color: "#6b7280", textAlign: "center", paddingVertical: 4 },
+});
+
 // ---------------------------------------------------------------------------
 // Bottom navigation
 // ---------------------------------------------------------------------------
@@ -292,6 +379,7 @@ export default function App() {
   const [showParlay, setShowParlay] = useState(false);
   const [showMatchups, setShowMatchups] = useState(false);
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
+  const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
@@ -383,7 +471,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [privyUser, solanaWallet.status]);
 
-  // Deep link handling — terrace://matchup/<address>
+  // Deep link handling — terrace://matchup/<address> | terrace://link/<token>
   function handleDeepLink(url: string | null) {
     if (!url) return;
     try {
@@ -394,6 +482,9 @@ export default function App() {
           setDeepLinkMatchupAddress(addr);
           setShowMatchups(true);
         }
+      } else if (hostname === "link" && path) {
+        const token = path.replace(/^\//, "");
+        if (token.length > 10) setDeepLinkToken(token);
       }
     } catch {}
   }
@@ -609,6 +700,15 @@ export default function App() {
             initialMatchupAddress={deepLinkMatchupAddress}
           />
         </View>
+      )}
+
+      {deepLinkToken && (
+        <LinkWalletModal
+          token={deepLinkToken}
+          pubkey={effectivePublicKey ?? null}
+          onSuccess={() => setDeepLinkToken(null)}
+          onDismiss={() => setDeepLinkToken(null)}
+        />
       )}
 
       <View style={styles.bottomNav}>

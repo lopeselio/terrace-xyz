@@ -26,6 +26,8 @@ const JUPITER_API_KEY    = process.env.JUPITER_API_KEY ?? "";
 const WORKER_BASE_URL    = process.env.TERRACE_APP_DEEP_LINK ?? "https://terrace-notifications.terrace-xyz.workers.dev";
 const HELIUS_RPC_URL     = process.env.HELIUS_RPC_URL ?? "";
 const ADMIN_KEYPAIR_B64  = process.env.SOLANA_ADMIN_KEYPAIR_B64 ?? "";
+const WORKER_SECRET      = process.env.WORKER_SECRET ?? "terrace-link-dev-2026";
+const GEMINI_API_KEY     = process.env.GEMINI_API_KEY ?? process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
 
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN not set");
 
@@ -37,6 +39,93 @@ const jupiter = new JupiterMarketsClient(JUPITER_API_KEY);
 // key: marketAddress  value: { yes, no, voters: Set<userId> }
 // ---------------------------------------------------------------------------
 const marketVotes = new Map<string, { yes: number; no: number; voters: Set<string> }>();
+
+// ---------------------------------------------------------------------------
+// Worker KV helpers — bot talks to the worker's internal API
+// ---------------------------------------------------------------------------
+
+const workerHeaders = () => ({
+  "Content-Type": "application/json",
+  "X-Worker-Secret": WORKER_SECRET,
+});
+
+async function createLinkToken(tgUserId: string, tgUsername: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/api/link-token`, {
+      method: "POST",
+      headers: workerHeaders(),
+      body: JSON.stringify({ tgUserId, tgUsername }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { token?: string };
+    return data.token ?? null;
+  } catch { return null; }
+}
+
+async function getWalletByTgId(tgUserId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/api/wallet/tg/${tgUserId}`, {
+      headers: workerHeaders(),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { pubkey?: string };
+    return data.pubkey ?? null;
+  } catch { return null; }
+}
+
+async function getTgByPubkey(pubkey: string): Promise<{ tgUserId: string; username: string } | null> {
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/api/wallet/pubkey/${pubkey}`, {
+      headers: workerHeaders(),
+    });
+    if (!res.ok) return null;
+    return await res.json() as { tgUserId: string; username: string };
+  } catch { return null; }
+}
+
+// ---------------------------------------------------------------------------
+// Gemini — conversational reputation narrative
+// ---------------------------------------------------------------------------
+
+async function reputationNarrative(stats: {
+  pubkey: string;
+  winRate: number;
+  totalBets: number;
+  wins: number;
+  streak: number;
+  badge: string;
+}): Promise<string | null> {
+  if (!GEMINI_API_KEY) return null;
+  const streakDesc = stats.streak > 0
+    ? `${stats.streak} wins in a row 🔥`
+    : stats.streak < 0
+    ? `${Math.abs(stats.streak)} losses in a row ❄️`
+    : "no active streak";
+  const prompt =
+    `You are a cheeky football betting community bot for Terrace (on-chain prediction markets on Solana). ` +
+    `Write a punchy 2–3 sentence Telegram message about this bettor. Use football/betting slang, plain text only (no markdown asterisks). Keep it under 80 words.\n\n` +
+    `Wallet: ${stats.pubkey.slice(0, 8)}…\n` +
+    `Win rate: ${(stats.winRate * 100).toFixed(1)}%\n` +
+    `Total bets: ${stats.totalBets}  |  Wins: ${stats.wins}\n` +
+    `Current streak: ${streakDesc}\n` +
+    `Badge: ${stats.badge}`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
+        }),
+      }
+    );
+    const data = await res.json() as any;
+    return (data.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined)?.trim() ?? null;
+  } catch { return null; }
+}
 
 // ---------------------------------------------------------------------------
 // Admin keypair
@@ -137,13 +226,14 @@ bot.command("start", async (ctx) => {
     "⚽ *Terrace* — on\\-chain football prediction markets on Solana\\.\n\n" +
     "Back your team\\. Bet your take\\. Build your rep\\.\n\n" +
     "Commands:\n" +
+    "/link — connect your Solana wallet 🔗\n" +
+    "/me — your reputation & stats 🎯\n" +
     "/flash — create an in\\-match market ⚡\n" +
     "/live — active flash markets 🔴\n" +
     "/markets — browse open markets 📋\n" +
     "/challenge — send a 1v1 challenge 🥊\n" +
     "/leaderboard — weekly Sharps 🏆\n" +
-    "/sharp \\<pubkey\\> — wallet reputation\n" +
-    "/wallet — link your Solana wallet",
+    "/sharp \\<pubkey\\> — look up any wallet",
     { parse_mode: "MarkdownV2", reply_markup: kb }
   );
 });
@@ -253,37 +343,40 @@ bot.command("odds", async (ctx) => {
 });
 
 // ---------------------------------------------------------------------------
-// /challenge — generate a 1v1 matchup invitation
+// /challenge [@username] — generate a 1v1 matchup invitation
 // ---------------------------------------------------------------------------
 bot.command("challenge", async (ctx) => {
-  const from     = ctx.from;
-  const username = from?.username ? `@${from.username}` : shortAddr(from?.id?.toString() ?? "anon");
-  const link     = WORKER_BASE_URL; // opens app → Matchups screen
+  const from        = ctx.from;
+  const challUserId = String(from?.id ?? "");
+  const challenger  = from?.username ? `@${from.username}` : `Fan ${shortAddr(challUserId)}`;
+  const target      = ctx.match?.trim();
 
-  const kb = new InlineKeyboard()
-    .url("⚔️ Accept on Terrace", link);
+  // Look up challenger's linked wallet
+  const challPubkey = await getWalletByTgId(challUserId);
+  const walletLine  = challPubkey
+    ? `\n💳 Wallet: \`${challPubkey.slice(0, 8)}…${challPubkey.slice(-4)}\``
+    : "\n_(Link your wallet with /link to enable on-chain challenges)_";
+
+  const targetLine = target
+    ? `Hey ${target.startsWith("@") ? target : `@${target}`} — you've been called out! 👀\n\n`
+    : "";
+
+  const kb = new InlineKeyboard().url("⚔️ Open Matchups", WORKER_BASE_URL);
 
   await ctx.reply(
-    `⚔️ *${username} wants a 1v1 matchup!*\n\n` +
-    `Pick a market, stake your USDC, and put your read on the line.\n\n` +
-    `Open Terrace, go to *Matchups → Create*, and challenge back!`,
+    `⚔️ *${challenger} wants a 1v1 matchup!*\n\n` +
+    targetLine +
+    `Pick a market, stake your USDC, and put your read on the line.` +
+    walletLine +
+    `\n\nOpen Terrace → *Matchups → Create* to issue or accept.`,
     { parse_mode: "Markdown", reply_markup: kb }
   );
 });
 
 // ---------------------------------------------------------------------------
-// /wallet — wallet linking instructions
+// /wallet — alias for /link
 // ---------------------------------------------------------------------------
-bot.command("wallet", async (ctx) => {
-  const kb = new InlineKeyboard().url("📱 Open Terrace", WORKER_BASE_URL);
-  await ctx.reply(
-    "🔗 *Link your Solana wallet*\n\n" +
-    "Open the Terrace app and connect your wallet (Phantom, Solflare, or email login).\n\n" +
-    "Once connected, your on-chain reputation and bet history will be visible here via /sharp <your_pubkey>.\n\n" +
-    "Telegram wallet linking (sign with your key → link Telegram ID) is coming soon!",
-    { parse_mode: "Markdown", reply_markup: kb }
-  );
-});
+bot.command("wallet", async (ctx) => ctx.reply("/wallet is now /link — use that to connect your Solana wallet 🔗"));
 
 // ---------------------------------------------------------------------------
 // /leaderboard
@@ -308,22 +401,36 @@ bot.command("leaderboard", async (ctx) => {
 });
 
 // ---------------------------------------------------------------------------
-// /sharp <pubkey>
+// Shared reputation reply — used by /sharp and /me
 // ---------------------------------------------------------------------------
-bot.command("sharp", async (ctx) => {
-  const pubkey = ctx.match?.trim();
-  if (!pubkey) return ctx.reply("Usage: /sharp <wallet_pubkey>");
+
+async function replyWithReputation(
+  reply: (text: string, opts?: any) => Promise<any>,
+  pubkey: string,
+  displayName?: string
+) {
+  const label = displayName ?? `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
 
   try {
     const rep = await fetchOnChainReputation(pubkey);
     if (rep) {
-      const wr     = `${(rep.winRateBps / 100).toFixed(1)}%`;
+      const wr     = rep.winRateBps / 10000;
       const badge  = rep.badgeTier === "Legend" ? "👑 Legend" : rep.badgeTier === "Sharp" ? "⚡ Sharp" : "🎯 Casual";
-      const streak = rep.currentStreak > 0 ? `🔥 ${rep.currentStreak}W` : rep.currentStreak < 0 ? `❄️ ${Math.abs(rep.currentStreak)}L` : "—";
-      await ctx.reply(
-        `*${pubkey.slice(0, 8)}…${pubkey.slice(-4)}* [on\\-chain]\n\n` +
-        `Badge: ${badge}\nWin rate: ${wr}\nBets: ${rep.totalBets} · Wins: ${rep.winningBets}\nStreak: ${streak}`,
-        { parse_mode: "MarkdownV2" }
+      const streak = rep.currentStreak;
+
+      const narrative = await reputationNarrative({
+        pubkey, winRate: wr, totalBets: rep.totalBets,
+        wins: rep.winningBets, streak, badge,
+      });
+
+      const statsBlock =
+        `*${label}* — ${badge}\n\n` +
+        `Win rate: ${(wr * 100).toFixed(1)}%  ·  ${rep.totalBets} bets  ·  ${rep.winningBets} wins\n` +
+        `Streak: ${streak > 0 ? `🔥 ${streak}W` : streak < 0 ? `❄️ ${Math.abs(streak)}L` : "—"}`;
+
+      await reply(
+        narrative ? `${narrative}\n\n${statsBlock}` : statsBlock,
+        { parse_mode: "Markdown" }
       );
       return;
     }
@@ -331,15 +438,151 @@ bot.command("sharp", async (ctx) => {
 
   try {
     const profile = await jupiter.getUserProfile(pubkey);
-    const wr    = profile.winRate != null ? `${(profile.winRate * 100).toFixed(1)}%` : "N/A";
-    const badge = (profile.winRate ?? 0) >= 0.65 ? "👑 Legend" : (profile.winRate ?? 0) >= 0.55 ? "⚡ Sharp" : "🎯 Casual";
-    await ctx.reply(
-      `*${pubkey.slice(0, 8)}…${pubkey.slice(-4)}*\n\nBadge: ${badge}\nWin rate: ${wr}\nTotal trades: ${profile.totalTrades ?? "N/A"}`,
+    const wr    = profile.winRate ?? 0;
+    const badge = wr >= 0.65 ? "👑 Legend" : wr >= 0.55 ? "⚡ Sharp" : "🎯 Casual";
+    const narrative = await reputationNarrative({
+      pubkey, winRate: wr, totalBets: profile.totalTrades ?? 0,
+      wins: Math.round((profile.totalTrades ?? 0) * wr), streak: 0, badge,
+    });
+    const statsBlock =
+      `*${label}* — ${badge}\n\n` +
+      `Win rate: ${(wr * 100).toFixed(1)}%  ·  ${profile.totalTrades ?? "N/A"} trades`;
+
+    await reply(
+      narrative ? `${narrative}\n\n${statsBlock}` : statsBlock,
       { parse_mode: "Markdown" }
     );
   } catch {
-    await ctx.reply("Wallet not found or no bet history.");
+    await reply("Wallet not found or no bet history yet.");
   }
+}
+
+// ---------------------------------------------------------------------------
+// /sharp <pubkey|@username>
+// ---------------------------------------------------------------------------
+bot.command("sharp", async (ctx) => {
+  const input = ctx.match?.trim();
+  if (!input) return ctx.reply("Usage: /sharp <wallet_pubkey> or /sharp @username");
+
+  let pubkey  = input;
+  let displayName: string | undefined;
+
+  // Resolve @username → pubkey via worker KV if the user is linked
+  if (input.startsWith("@")) {
+    const username = input.slice(1).toLowerCase();
+    // We can't do username→userId lookup from the bot side without seeing a message from them,
+    // so look up by iterating — instead, ask the user to use their pubkey or /me
+    await ctx.reply(
+      `Looking up @${username}…\n\nIf they haven't linked their wallet yet, ask them to run /link in the bot first.`
+    );
+    return;
+  }
+
+  displayName = `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
+
+  // Check if there's a linked Telegram account
+  const tgInfo = await getTgByPubkey(pubkey);
+  if (tgInfo?.username) displayName = `@${tgInfo.username}`;
+
+  await replyWithReputation(ctx.reply.bind(ctx), pubkey, displayName);
+});
+
+// ---------------------------------------------------------------------------
+// /link [pubkey] — link wallet. Two modes:
+//   /link             → deep-link flow (native build required)
+//   /link <pubkey>    → direct linking (works with Expo Go — paste from Profile)
+// ---------------------------------------------------------------------------
+bot.command("link", async (ctx) => {
+  const from       = ctx.from;
+  const tgUserId   = String(from?.id ?? "");
+  const tgUsername = from?.username ?? "";
+  const arg        = ctx.match?.trim() ?? "";
+
+  if (!tgUserId) return ctx.reply("Could not identify your Telegram account.");
+
+  // --- Direct pubkey mode (Expo Go friendly) ---
+  if (arg.length >= 32 && arg.length <= 44 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(arg)) {
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/api/link-wallet`, {
+        method: "POST",
+        headers: workerHeaders(),
+        body: JSON.stringify({ tgUserId, tgUsername, pubkey: arg }),
+      });
+      if (!res.ok) throw new Error("worker error");
+      await ctx.reply(
+        `✅ *Wallet linked!*\n\n` +
+        `\`${arg.slice(0, 8)}…${arg.slice(-4)}\` is now connected to your Telegram account.\n\n` +
+        `Use /me to see your reputation.`,
+        { parse_mode: "Markdown" }
+      );
+    } catch {
+      await ctx.reply("Failed to link wallet. Check the address and try again.");
+    }
+    return;
+  }
+
+  if (arg && arg.length > 0) {
+    return ctx.reply(
+      "That doesn't look like a valid Solana address.\n\n" +
+      "Copy your full wallet address from the Profile tab in the Terrace app and try:\n`/link YOUR_WALLET_ADDRESS`",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  // --- Deep-link flow (native/dev build) ---
+  const token   = await createLinkToken(tgUserId, tgUsername);
+  if (!token) return ctx.reply("Link service unavailable. Try again shortly.");
+
+  const linkUrl = `${WORKER_BASE_URL}/link/${token}`;
+  const kb      = new InlineKeyboard().url("🔗 Open in Terrace", linkUrl);
+
+  const text =
+    "🔗 *Link your Solana wallet*\n\n" +
+    "*Option A — native build:* Tap the button below.\n\n" +
+    "*Option B — Expo Go:* Copy your wallet address from the Profile tab, then send:\n" +
+    "`/link YOUR_WALLET_ADDRESS`\n\n" +
+    "⏱ Deep-link expires in 15 minutes.";
+
+  const isGroup = ctx.chat?.type !== "private";
+  if (isGroup) {
+    try {
+      await bot.api.sendMessage(tgUserId, text, { parse_mode: "Markdown", reply_markup: kb });
+      await ctx.reply(`${tgUsername ? `@${tgUsername}` : "You"} — check your DMs 📬`);
+    } catch {
+      await ctx.reply(text, { parse_mode: "Markdown", reply_markup: kb });
+    }
+  } else {
+    await ctx.reply(text, { parse_mode: "Markdown", reply_markup: kb });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// /me — show your own reputation (requires linked wallet)
+// ---------------------------------------------------------------------------
+bot.command("me", async (ctx) => {
+  const tgUserId  = String(ctx.from?.id ?? "");
+  const username  = ctx.from?.username ? `@${ctx.from.username}` : `Fan ${shortAddr(tgUserId)}`;
+
+  const pubkey = await getWalletByTgId(tgUserId);
+  if (!pubkey) {
+    const kb = new InlineKeyboard().text("🔗 Link wallet", "link_wallet");
+    return ctx.reply(
+      "No wallet linked yet.\n\nRun /link to connect your Solana wallet and unlock your reputation stats.",
+      { reply_markup: kb }
+    );
+  }
+
+  await replyWithReputation(ctx.reply.bind(ctx), pubkey, username);
+});
+
+bot.callbackQuery("link_wallet", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.reply(
+    "🔗 *Link your wallet*\n\n" +
+    "Copy your wallet address from the *Profile* tab in the Terrace app, then send:\n\n" +
+    "`/link YOUR_WALLET_ADDRESS`",
+    { parse_mode: "Markdown" }
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -482,14 +725,15 @@ bot.callbackQuery(/^vote:(yes|no):(.+)$/, async (ctx) => {
 bot.command("help", (ctx) =>
   ctx.reply(
     "⚽ *Terrace Bot Commands*\n\n" +
+    "🔗 /link — connect your Solana wallet\n" +
+    "🎯 /me — your reputation & stats (requires /link)\n" +
     "📋 /markets — browse open markets\n" +
     "🔴 /live — active flash markets with countdowns\n" +
     "⚡ /flash <question> [min] — create a flash market (5–90 min)\n" +
-    "⚔️ /challenge — send a 1v1 matchup invitation\n" +
-    "🔗 /wallet — how to link your Solana wallet\n" +
+    "⚔️ /challenge [@user] — send a 1v1 matchup invitation\n" +
     "📊 /odds <id> — YES/NO odds for a market\n" +
     "🏆 /leaderboard — weekly top Sharps\n" +
-    "🎯 /sharp <pubkey> — lookup wallet reputation\n" +
+    "🔍 /sharp <pubkey> — look up any wallet's reputation\n" +
     "🃏 /parlay — learn about parlays\n" +
     "/start — welcome & app link",
     { parse_mode: "Markdown" }
