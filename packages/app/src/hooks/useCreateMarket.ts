@@ -146,7 +146,7 @@ export function useCreateMarket(): CreateMarketResult {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         setStatus("error");
-        console.error("[useCreateMarket]", e);
+        console.warn("[useCreateMarket]", e);
       }
     },
     [publicKey, connected, signTransaction]

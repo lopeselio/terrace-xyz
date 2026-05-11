@@ -9,12 +9,14 @@ import {
 } from "react-native";
 import type { BetStatus } from "../hooks/usePlaceBet";
 
-// Quick-pick stake amounts in USDC
-const QUICK_STAKES = [1, 5, 10, 25];
+const QUICK_STAKES_NATIVE  = [1, 2, 5, 10];
+const QUICK_STAKES_JUPITER = [5, 10, 25, 50];
 
 interface Props {
   marketId: string;
   outcomeLabel: string;
+  marketQuestion?: string;
+  source?: "native" | "jupiter";
   /** YES price in cents (0–100) */
   yesPrice: number | null;
   onConfirm: (amountUsdc: number, isYes: boolean) => void;
@@ -26,6 +28,8 @@ interface Props {
 
 export function BetSheet({
   outcomeLabel,
+  marketQuestion,
+  source = "native",
   yesPrice,
   onConfirm,
   onDismiss,
@@ -33,7 +37,9 @@ export function BetSheet({
   txSignature,
   error,
 }: Props) {
-  const [amount, setAmount] = useState("2");
+  const minStake = source === "jupiter" ? 5 : 1;
+  const quickStakes = source === "jupiter" ? QUICK_STAKES_JUPITER : QUICK_STAKES_NATIVE;
+  const [amount, setAmount] = useState(String(minStake));
 
   const priceLabel = yesPrice !== null ? `${Math.round(yesPrice * 100)}¢` : "—";
   const amountNum = parseFloat(amount) || 0;
@@ -51,18 +57,58 @@ export function BetSheet({
   };
 
   if (status === "success") {
+    const isYes = outcomeLabel.toUpperCase().includes("YES");
+    const titles = isYes
+      ? ["You're backing it! 🔥", "Call locked in! 🎯", "Conviction placed! ⚡"]
+      : ["Bold call! 🧊", "Fading it! 🎯", "Contrarian play! 💡"];
+    const title = titles[Math.floor(Date.now() / 1000) % titles.length];
+
     return (
       <View style={styles.root}>
         <View style={styles.handle} />
-        <Text style={styles.successEmoji}>🎉</Text>
-        <Text style={styles.successTitle}>Bet placed!</Text>
+
+        <View style={styles.successHeader}>
+          <Text style={styles.successTitle}>{title}</Text>
+          {marketQuestion && (
+            <Text style={styles.successMarket} numberOfLines={3}>{marketQuestion}</Text>
+          )}
+          <View style={[styles.successBadge, isYes ? styles.yesBadge : styles.noBadge]}>
+            <Text style={styles.successBadgeText}>
+              {outcomeLabel}  ·  {amountNum > 0 ? `$${amount} USDC` : ""}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.nextCard}>
+          <Text style={styles.nextCardLabel}>WHAT HAPPENS NEXT</Text>
+          <View style={styles.nextRow}>
+            <Text style={styles.nextIcon}>📊</Text>
+            <Text style={styles.nextText}>
+              Track it in <Text style={styles.nextHighlight}>Profile → Active</Text> tab
+            </Text>
+          </View>
+          <View style={styles.nextRow}>
+            <Text style={styles.nextIcon}>⚖️</Text>
+            <Text style={styles.nextText}>
+              When the market settles, a <Text style={styles.nextHighlight}>Claim</Text> button appears if you called it right
+            </Text>
+          </View>
+          <View style={styles.nextRow}>
+            <Text style={styles.nextIcon}>💰</Text>
+            <Text style={styles.nextText}>
+              Winnings land directly in your wallet — no middleman, on-chain
+            </Text>
+          </View>
+        </View>
+
         {txSignature && (
           <Text style={styles.successSig} numberOfLines={1}>
-            {txSignature.slice(0, 12)}…{txSignature.slice(-8)}
+            tx {txSignature.slice(0, 10)}…{txSignature.slice(-6)}
           </Text>
         )}
+
         <TouchableOpacity style={styles.doneBtn} onPress={onDismiss}>
-          <Text style={styles.doneBtnText}>Done</Text>
+          <Text style={styles.doneBtnText}>Back to Markets</Text>
         </TouchableOpacity>
       </View>
     );
@@ -99,7 +145,7 @@ export function BetSheet({
 
       {/* Quick-pick buttons */}
       <View style={styles.quickRow}>
-        {QUICK_STAKES.map((s) => (
+        {quickStakes.map((s) => (
           <TouchableOpacity
             key={s}
             style={[styles.quickBtn, amount === String(s) && styles.quickBtnActive]}
@@ -112,6 +158,9 @@ export function BetSheet({
           </TouchableOpacity>
         ))}
       </View>
+      {source === "jupiter" && amountNum > 0 && amountNum < minStake && (
+        <Text style={styles.minStakeHint}>Minimum order is ${minStake} USDC on Jupiter markets</Text>
+      )}
 
       {/* Payout estimate */}
       <View style={styles.estimateRow}>
@@ -134,9 +183,9 @@ export function BetSheet({
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.confirmBtn, amountNum <= 0 && styles.confirmBtnDisabled]}
+          style={[styles.confirmBtn, amountNum < minStake && styles.confirmBtnDisabled]}
           onPress={() => onConfirm(amountNum, true)}
-          disabled={amountNum <= 0}
+          disabled={amountNum < minStake}
         >
           <Text style={styles.confirmBtnText}>Back {outcomeLabel} · ${amount} USDC</Text>
         </TouchableOpacity>
@@ -199,11 +248,25 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 15, fontWeight: "700", color: "#000" },
 
   footnote: { fontSize: 10, color: "#374151", textAlign: "center" },
+  minStakeHint: { fontSize: 11, color: "#f59e0b", textAlign: "center" },
 
   // Success state
-  successEmoji: { fontSize: 44, textAlign: "center" },
-  successTitle: { fontSize: 22, fontWeight: "700", color: "#fff", textAlign: "center" },
-  successSig: { fontSize: 11, color: "#4b5563", textAlign: "center", fontFamily: "monospace" },
-  doneBtn: { backgroundColor: "#1a1a1a", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 4 },
-  doneBtnText: { fontSize: 15, fontWeight: "600", color: "#fff" },
+  successHeader:  { gap: 8, alignItems: "center" },
+  successTitle:   { fontSize: 22, fontWeight: "800", color: "#fff", textAlign: "center" },
+  successMarket:  { fontSize: 13, color: "#9ca3af", textAlign: "center", lineHeight: 18, paddingHorizontal: 8 },
+  successBadge:   { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginTop: 2 },
+  yesBadge:       { backgroundColor: "#052e16", borderWidth: 1, borderColor: "#22c55e" },
+  noBadge:        { backgroundColor: "#3b0a0a", borderWidth: 1, borderColor: "#ef4444" },
+  successBadgeText: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
+
+  nextCard:       { backgroundColor: "#0d0d0d", borderRadius: 14, padding: 14, gap: 12, borderWidth: 0.5, borderColor: "#1e1e1e" },
+  nextCardLabel:  { fontSize: 9, fontWeight: "700", color: "#4b5563", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
+  nextRow:        { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  nextIcon:       { fontSize: 16, width: 22, textAlign: "center", marginTop: 1 },
+  nextText:       { flex: 1, fontSize: 12, color: "#9ca3af", lineHeight: 18 },
+  nextHighlight:  { color: "#22c55e", fontWeight: "600" },
+
+  successSig:     { fontSize: 10, color: "#374151", textAlign: "center", fontFamily: "monospace" },
+  doneBtn:        { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  doneBtnText:    { fontSize: 15, fontWeight: "700", color: "#000" },
 });

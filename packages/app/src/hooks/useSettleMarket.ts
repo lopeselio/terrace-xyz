@@ -109,7 +109,7 @@ export function useSettleMarket(): SettleMarketResult {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         setStatus("error");
-        console.error("[useSettleMarket]", e);
+        console.warn("[useSettleMarket]", e);
       }
     },
     [publicKey, connected, signTransaction]

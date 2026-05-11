@@ -132,7 +132,7 @@ export function useClaimWinnings(): UseClaimWinningsResult {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         setStatus("error");
-        console.error("[useClaimWinnings]", e);
+        console.warn("[useClaimWinnings]", e);
       }
     },
     [publicKey, connected, signTransaction]

@@ -69,7 +69,7 @@ export function usePlaceBet(): PlaceBetResult {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         setStatus("error");
-        console.error("placeBet error:", e);
+        console.warn("placeBet error:", e);
       }
     },
     [publicKey, connected, signTransaction]
