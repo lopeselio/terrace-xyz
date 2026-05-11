@@ -128,24 +128,120 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
   return null;
 }
 
-export function useHeliusEvents(maxEvents = 50) {
+// Fetch recent historical events from on-chain transaction logs.
+// Called once on mount to hydrate the feed before the WebSocket delivers live events.
+async function fetchHistoricalEvents(
+  rpcUrl: string,
+  programId: string,
+  limit = 30
+): Promise<LiveEvent[]> {
+  // Step 1: get recent confirmed signatures for the program
+  const sigsRes = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: "hist-sigs",
+      method: "getSignaturesForAddress",
+      params: [programId, { limit, commitment: "confirmed" }],
+    }),
+  });
+  const sigsJson = await sigsRes.json();
+  const sigs: Array<{ signature: string; blockTime: number | null; err: unknown }> =
+    sigsJson.result ?? [];
+  const valid = sigs.filter((s) => !s.err);
+  if (valid.length === 0) return [];
+
+  // Step 2: batch-fetch transactions 5 at a time
+  const events: LiveEvent[] = [];
+  const BATCH = 5;
+  for (let i = 0; i < valid.length; i += BATCH) {
+    const batch = valid.slice(i, i + BATCH);
+    const responses = await Promise.all(
+      batch.map(({ signature }) =>
+        fetch(rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: signature,
+            method: "getTransaction",
+            params: [signature, { encoding: "json", maxSupportedTransactionVersion: 0 }],
+          }),
+        })
+          .then((r) => r.json())
+          .catch(() => null)
+      )
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const result = responses[j]?.result;
+      if (!result) continue;
+      const logs: string[] = result.meta?.logMessages ?? [];
+      const sig = batch[j].signature;
+      const blockTime = batch[j].blockTime;
+      const ts = blockTime ? new Date(blockTime * 1_000) : new Date();
+      for (const log of logs) {
+        if (!log.startsWith("Program data: ")) continue;
+        try {
+          const bytes = Uint8Array.from(atob(log.slice("Program data: ".length)), (c) =>
+            c.charCodeAt(0)
+          );
+          const ev = tryParseEvent(bytes, sig);
+          if (ev) events.push({ ...ev, timestamp: ts, id: `hist-${sig}` });
+        } catch {}
+      }
+    }
+  }
+  return events;
+}
+
+export function useHeliusEvents(maxEvents = 200) {
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [connected, setConnected] = useState(false);
+  const [connectAttempt, setConnectAttempt] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const subIdRef = useRef<number | null>(null);
+  const cancelledRef = useRef(false);
+  const backoffRef = useRef(2_000);
+  const hydratedRef = useRef(false);
 
   const addEvent = useCallback((ev: LiveEvent) => {
-    setEvents((prev) => [ev, ...prev].slice(0, maxEvents));
+    setEvents((prev) => {
+      // deduplicate by signature to avoid live WS duplicating a historical event
+      if (prev.some((e) => e.signature === ev.signature)) return prev;
+      return [ev, ...prev].slice(0, maxEvents);
+    });
   }, [maxEvents]);
+
+  // Historical hydration — runs once per mount
+  useEffect(() => {
+    if (!HELIUS_RPC_URL || !TERRACE_PROGRAM_ID || hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    fetchHistoricalEvents(HELIUS_RPC_URL, TERRACE_PROGRAM_ID, 30)
+      .then((historical) => {
+        if (cancelledRef.current || historical.length === 0) return;
+        setEvents((prev) => {
+          const seen = new Set(prev.map((e) => e.signature));
+          const fresh = historical.filter((e) => !seen.has(e.signature));
+          return [...prev, ...fresh]
+            .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+            .slice(0, maxEvents);
+        });
+      })
+      .catch(() => {}); // best-effort — live WS covers gaps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!HELIUS_RPC_URL || !TERRACE_PROGRAM_ID) return;
+    cancelledRef.current = false;
 
     const wsUrl = HELIUS_RPC_URL.replace(/^https?:\/\//, "wss://");
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      backoffRef.current = 2_000; // reset backoff on successful connect
       setConnected(true);
       ws.send(JSON.stringify({
         jsonrpc: "2.0",
@@ -188,9 +284,17 @@ export function useHeliusEvents(maxEvents = 50) {
     ws.onclose = () => {
       setConnected(false);
       wsRef.current = null;
+      if (cancelledRef.current) return;
+      // Exponential backoff reconnect, capped at 30s
+      const delay = backoffRef.current;
+      backoffRef.current = Math.min(delay * 2, 30_000);
+      setTimeout(() => {
+        if (!cancelledRef.current) setConnectAttempt((n) => n + 1);
+      }, delay);
     };
 
     return () => {
+      cancelledRef.current = true;
       if (subIdRef.current != null && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           jsonrpc: "2.0", id: 2,
@@ -200,7 +304,7 @@ export function useHeliusEvents(maxEvents = 50) {
       }
       ws.close();
     };
-  }, [addEvent]);
+  }, [addEvent, connectAttempt]);
 
   return { events, connected };
 }
