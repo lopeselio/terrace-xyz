@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terrace — Pitch Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #080808;
+      --bg2:     #0d0d0d;
+      --card:    #141414;
+      --card2:   #1a1a1a;
+      --border:  rgba(255,255,255,0.07);
+
+      --green:   #00ff87;
+      --green10: rgba(0,255,135,0.10);
+      --green20: rgba(0,255,135,0.18);
+      --purple:  #9945ff;
+      --purple10:rgba(153,69,255,0.10);
+      --purple20:rgba(153,69,255,0.20);
+      --fire:    #ff6b35;
+      --fire10:  rgba(255,107,53,0.10);
+      --fire20:  rgba(255,107,53,0.20);
+      --red:     #ff4d4d;
+      --red10:   rgba(255,77,77,0.10);
+      --red15:   rgba(255,77,77,0.15);
+
+      --white:   #ffffff;
+      --white60: rgba(255,255,255,0.60);
+      --white35: rgba(255,255,255,0.35);
+
+      --hero: 92px;
+      --h1:   62px;
+      --h2:   46px;
+      --h3:   30px;
+      --body: 22px;
+      --sm:   18px;
+      --xs:   14px;
+
+      --font: 'Inter', -apple-system, sans-serif;
+      --ease: cubic-bezier(0.16,1,0.3,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--white); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+
+    /* ── DECK ── */
+    .deck { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 64px 88px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s var(--ease);
+      background: var(--bg);
+    }
+    .slide.alt   { background: var(--bg2); }
+    .slide.active { opacity: 1; pointer-events: auto; }
+
+    /* entrance */
+    .slide.active .in { animation: up 0.5s var(--ease) both; }
+    .slide.active .in:nth-child(1) { animation-delay: 0s; }
+    .slide.active .in:nth-child(2) { animation-delay: 0.07s; }
+    .slide.active .in:nth-child(3) { animation-delay: 0.13s; }
+    .slide.active .in:nth-child(4) { animation-delay: 0.19s; }
+    .slide.active .in:nth-child(5) { animation-delay: 0.25s; }
+    .slide.active .in:nth-child(6) { animation-delay: 0.31s; }
+    .slide.active .in:nth-child(7) { animation-delay: 0.37s; }
+    .slide.active .in:nth-child(8) { animation-delay: 0.43s; }
+    @keyframes up {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── TYPE ── */
+    .hero { font-size:var(--hero); font-weight:900; letter-spacing:-4px; line-height:1.0; }
+    .h1   { font-size:var(--h1);   font-weight:900; letter-spacing:-2.5px; line-height:1.08; }
+    .h2   { font-size:var(--h2);   font-weight:800; letter-spacing:-1.5px; line-height:1.15; }
+    .h3   { font-size:var(--h3);   font-weight:700; letter-spacing:-0.5px; line-height:1.28; }
+    .body { font-size:var(--body); font-weight:400; line-height:1.6; color:var(--white60); }
+    .sm   { font-size:var(--sm);   font-weight:400; line-height:1.6; color:var(--white60); }
+    .xs   { font-size:var(--xs);   font-weight:600; letter-spacing:2.5px; text-transform:uppercase; color:var(--white35); }
+
+    .g   { color:var(--green);  }
+    .p   { color:var(--purple); }
+    .f   { color:var(--fire);   }
+    .r   { color:var(--red);    }
+    .mu  { color:var(--white35); }
+    .wt  { color:var(--white);   font-weight:700; }
+
+    /* ── LAYOUT ── */
+    .c2 { display:grid; grid-template-columns:1fr 1fr;     gap:36px; }
+    .c3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; }
+    .c4 { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+    .row{ display:flex; }
+    .col{ flex-direction:column; }
+    .ac { align-items:center; }
+    .as { align-items:start; }
+    .jb { justify-content:space-between; }
+    .jc { justify-content:center; }
+    .f1 { flex:1; }
+    .tc { text-align:center; }
+    .g4 { gap:4px; }
+    .g8 { gap:8px; }
+    .g12{ gap:12px; }
+    .g20{ gap:20px; }
+    .g28{ gap:28px; }
+
+    /* ── CARDS ── */
+    .card  { background:var(--card);  border:1px solid var(--border); border-radius:18px; padding:28px; }
+    .cg    { background:var(--card);  border:1px solid var(--green20); border-radius:18px; padding:28px; box-shadow:0 0 28px rgba(0,255,135,0.04); }
+    .cp    { background:var(--card);  border:1px solid var(--purple20); border-radius:18px; padding:28px; }
+    .cf    { background:var(--card);  border:1px solid var(--fire20); border-radius:18px; padding:28px; }
+    .cr    { background:var(--card);  border:1px solid var(--red15); border-radius:18px; padding:28px; }
+
+    /* ── DIVIDER ── */
+    .divider { width:52px; height:3px; border-radius:2px; background:var(--green); margin:24px 0; }
+    .divider.red { background:var(--red); opacity:.7; }
+
+    /* ── BADGE ── */
+    .badge { display:inline-flex; align-items:center; gap:6px; padding:7px 18px; border-radius:100px; font-size:var(--xs); font-weight:700; letter-spacing:1px; }
+    .bg  { background:var(--green10); color:var(--green); }
+    .bp  { background:var(--purple10); color:var(--purple); }
+    .bo  { border:1px solid var(--border); color:var(--white60); }
+
+    /* ── METRIC ── */
+    .metric { text-align:center; padding:28px 20px; }
+    .mval { font-size:72px; font-weight:900; color:var(--green); letter-spacing:-3px; line-height:1; }
+    .mlbl { font-size:var(--sm); color:var(--white35); margin-top:8px; font-weight:500; }
+
+    /* ── STEP CIRCLE ── */
+    .step-n { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; font-weight:900; }
+    .step-done { background:var(--green); color:#080808; }
+    .step-open { background:var(--card2); border:1px solid var(--border); color:var(--white); }
+
+    /* ── BULLET LIST ── */
+    .blist { list-style:none; }
+    .blist li {
+      padding: 16px 0 16px 28px; position:relative;
+      font-size:var(--sm); color:var(--white60);
+      border-bottom:1px solid var(--border);
+    }
+    .blist li:last-child { border-bottom:none; }
+    .blist li::before {
+      content:''; position:absolute; left:0; top:50%;
+      width:8px; height:8px; border-radius:50%;
+      background:var(--green); transform:translateY(-50%);
+    }
+
+    /* ── TABLE ── */
+    .tbl { width:100%; border-collapse:collapse; }
+    .tbl th {
+      padding:12px 20px; font-size:var(--xs); color:var(--white35); font-weight:700;
+      border-bottom:1px solid var(--border);
+    }
+    .tbl th:first-child { text-align:left; }
+    .tbl th:not(:first-child) { text-align:center; }
+    .tbl td {
+      padding:14px 20px; font-size:var(--sm);
+      border-bottom:1px solid var(--border); color:var(--white60);
+    }
+    .tbl td:first-child { text-align:left; }
+    .tbl td:not(:first-child) { text-align:center; }
+    .tbl tr.hl td { color:var(--white); background:rgba(0,255,135,0.05); font-weight:700; }
+    .chk { color:var(--green); font-weight:800; }
+    .crs { color:var(--white35); }
+
+    /* ── PROGRESS BAR ── */
+    .pbar { width:100%; height:5px; border-radius:3px; background:rgba(255,255,255,0.06); overflow:hidden; }
+    .pfill { height:100%; border-radius:3px; background:var(--green); }
+
+    /* ── QUOTE ── */
+    .quote {
+      padding:28px 32px 28px 52px;
+      border-left:3px solid var(--green);
+      background:var(--card); border-radius:0 16px 16px 0;
+      position:relative;
+    }
+    .quote::before {
+      content:'"'; position:absolute; left:14px; top:6px;
+      font-size:64px; color:var(--green); opacity:.2;
+      font-family:serif; line-height:1;
+    }
+
+    /* ── PILL ── */
+    .pill {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 20px; border:1px solid var(--border);
+      border-radius:100px;
+    }
+    .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ── SLIDE NUMBER ── */
+    .sn {
+      position:absolute; top:28px; right:36px;
+      font-size:13px; color:var(--white35);
+      font-variant-numeric:tabular-nums;
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:14px 36px;
+      background:linear-gradient(0deg,rgba(8,8,8,.96) 0%,transparent 100%);
+      z-index:100; opacity:0; transition:opacity .3s;
+    }
+    .deck:hover .nav { opacity:1; }
+    .nav-cnt { font-size:13px; color:var(--white35); font-variant-numeric:tabular-nums; }
+    .nav-bar { flex:1; max-width:180px; height:2px; border-radius:1px; background:rgba(255,255,255,.07); margin:0 20px; }
+    .nav-fill { height:100%; border-radius:1px; background:var(--green); transition:width .3s var(--ease); }
+    .nbtn {
+      background:none; border:1px solid var(--border); color:var(--white35);
+      padding:6px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-family:var(--font);
+    }
+    .nbtn:hover { border-color:var(--green); color:var(--white); }
+
+    /* ── NOTES ── */
+    .notes {
+      display:none; position:fixed; bottom:56px; left:36px; right:36px;
+      background:rgba(0,0,0,.93); border:1px solid var(--border);
+      border-radius:12px; padding:18px 22px;
+      font-size:15px; color:var(--white60); line-height:1.65;
+      z-index:200; max-height:180px; overflow-y:auto;
+    }
+    .notes.vis { display:block; }
+    .nlbl { font-size:11px; color:var(--white35); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+
+    @media print {
+      .deck { overflow:visible; }
+      .slide { position:relative; opacity:1; pointer-events:auto; page-break-after:always; height:100vh; break-inside:avoid; }
+      .nav, .notes { display:none !important; }
+      .in { animation:none !important; opacity:1 !important; transform:none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ════════════════════
+     1 — TITLE
+════════════════════ -->
+<div class="slide alt active" style="align-items:center;justify-content:center;text-align:center;">
+  <div class="sn">1 / 12</div>
+
+  <div class="in" style="margin-bottom:36px;">
+    <img src="data:image/png;base64,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" alt="Terrace" style="width:80px;height:80px;border-radius:20px;display:block;margin:0 auto;">
+  </div>
+
+  <h1 class="hero in" style="letter-spacing:-5px;">terrace</h1>
+
+  <p class="in" style="font-size:var(--h3);font-weight:500;color:var(--white60);margin-top:24px;max-width:640px;line-height:1.4;">
+    Put real money behind your football takes.<br>
+    Build a reputation that proves you called it.
+  </p>
+
+  <div class="in" style="display:flex;gap:12px;justify-content:center;margin-top:48px;flex-wrap:wrap;">
+    <span class="badge bg">Consumer App</span>
+    <span class="badge bp">Prediction Markets</span>
+    <span class="badge bo">Solana Mobile</span>
+  </div>
+
+  <p class="in" style="font-size:var(--xs);color:var(--white35);margin-top:64px;letter-spacing:2px;">
+    BUILT ON SOLANA &nbsp;&middot;&nbsp; LIVE ON DEVNET
+  </p>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 1</div>
+    Open with: "40 billion group-chat messages go out about football every single weekend. Every one of them is full of takes. None of them have any proof behind them." Pause. "We built the place where your conviction counts." Keep it to 15 seconds then move straight to Ahmed's story.
+  </div>
+</div>
+
+<!-- ════════════════════
+     2 — THE STORY
+════════════════════ -->
+<div class="slide">
+  <div class="sn">2 / 12</div>
+
+  <span class="xs in">The Story</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:820px;">
+    Ahmed called it.<br>
+    <span class="g">No one believed him.</span><br>
+    No one had to.
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c2 in" style="align-items:start;">
+    <div class="quote">
+      <p style="font-size:var(--h3);font-weight:600;font-style:italic;color:var(--white);line-height:1.4;">
+        "City won't keep a clean sheet. Rodri's out. I'm telling you."
+      </p>
+      <p class="sm" style="margin-top:16px;">
+        Ahmed, Man City fan, WhatsApp group, 2 hours before kick-off
+      </p>
+    </div>
+
+    <div class="row col g12">
+      <div class="card" style="padding:22px 26px;">
+        <p class="xs" style="margin-bottom:10px;">After the match</p>
+        <p class="body" style="color:var(--white);">City lost 2-0. No clean sheet. Ahmed was <span class="g wt">right.</span></p>
+      </div>
+      <div class="card" style="border-color:rgba(255,77,77,0.2);padding:22px 26px;">
+        <p class="xs" style="margin-bottom:10px;">What happened to his take</p>
+        <p class="body" style="color:var(--white);">It <span style="color:var(--red);font-weight:800;">vanished</span> into the chat. No record. No reward. No proof.</p>
+      </div>
+      <div class="cg" style="padding:22px 26px;">
+        <p class="xs" style="color:var(--green);margin-bottom:10px;">What should have happened</p>
+        <p class="body" style="color:var(--white);">Ahmed's win rate goes up. His badge gets sharper. People <span class="g wt">follow him.</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 2</div>
+    Read the quote out loud slowly. Then: "Ahmed is in every football fan's group chat. He has a 70% win rate but nobody knows it. There's no score. No record. No reward for being right. Football is the world's most opinionated sport and it has zero credibility infrastructure. We built it."
+  </div>
+</div>
+
+<!-- ════════════════════
+     3 — THE PROBLEM
+════════════════════ -->
+<div class="slide alt">
+  <div class="sn">3 / 12</div>
+
+  <span class="xs in">The Problem</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:820px;">
+    4 billion fans.<br>
+    <span class="r">Zero place to prove they're right.</span>
+  </h1>
+
+  <div class="divider red in"></div>
+
+  <div class="c3 in" style="margin-top:8px;">
+    <div class="cr">
+      <div style="font-size:40px;margin-bottom:18px;">💬</div>
+      <p class="h3" style="margin-bottom:12px;">Group chat takes vanish</p>
+      <p class="sm">You call it right. The chat moves on. No score. No record. No reward. Your conviction counts for nothing.</p>
+    </div>
+    <div class="cr">
+      <div style="font-size:40px;margin-bottom:18px;">🏦</div>
+      <p class="h3" style="margin-bottom:12px;">Sportsbooks have all the control</p>
+      <p class="sm">Betfair and Bet365 set the odds, own your money, and decide who wins. No fan can create a market. No community. No rep.</p>
+    </div>
+    <div class="cr">
+      <div style="font-size:40px;margin-bottom:18px;">🤷</div>
+      <p class="h3" style="margin-bottom:12px;">Prediction apps aren't social</p>
+      <p class="sm">Prediction markets exist but none of them feel like football. No fan culture. No in-match moments. No identity.</p>
+    </div>
+  </div>
+
+  <div class="in" style="margin-top:24px;padding:22px 28px;background:var(--card);border-radius:14px;border:1px solid var(--red15);display:flex;align-items:center;gap:20px;">
+    <span style="font-size:30px;flex-shrink:0;">📊</span>
+    <p class="body" style="color:var(--white);">Sports betting is a <span class="wt">$180 billion market.</span> Yet the 4 billion fans who won't use a bookmaker have <span class="wt">nowhere to put their conviction.</span></p>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 3</div>
+    "This isn't a niche problem. Prediction markets proved that fans will put money behind their takes. Polymarket did $5 billion on the US election alone. Football is bigger than the US election. But there's no football-native, fan-first platform. That's the gap we're filling."
+  </div>
+</div>
+
+<!-- ════════════════════
+     4 — WHY NOW
+════════════════════ -->
+<div class="slide">
+  <div class="sn">4 / 12</div>
+
+  <span class="xs in">Why Now</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:760px;">
+    Three things just became<br>
+    <span class="g">possible at the same time.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c3 in" style="margin-top:8px;">
+    <div class="cg">
+      <p class="xs" style="color:var(--green);margin-bottom:16px;">Fans already get it</p>
+      <p class="h2" style="color:var(--green);">$5B+</p>
+      <p class="h3" style="margin-top:8px;margin-bottom:14px;">Polymarket 2024</p>
+      <p class="sm">Prediction markets broke into mainstream culture last year. We plug directly into Polymarket's sports feed so our users bet on the same markets as the wider world — plus everything we build on top.</p>
+      <div class="pbar" style="margin-top:18px;"><div class="pfill" style="width:85%;"></div></div>
+      <p style="font-size:12px;color:var(--white35);margin-top:6px;">Polymarket sports markets — live inside Terrace</p>
+    </div>
+
+    <div class="cp">
+      <p class="xs" style="color:var(--purple);margin-bottom:16px;">A real app, not a browser tab</p>
+      <p class="h3" style="margin-bottom:14px;">Football fans live on their phones</p>
+      <p class="sm">Solana Mobile lets us build a native app that feels like any consumer app. Sign in with a wallet. Tap to bet. No browser. No extensions. No friction.</p>
+      <div style="margin-top:20px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:24px;">📱</span>
+        <span class="sm" style="color:var(--purple);">Native mobile, not a web wrapper</span>
+      </div>
+    </div>
+
+    <div class="cf">
+      <p class="xs" style="color:var(--fire);margin-bottom:16px;">Anyone can sign up now</p>
+      <p class="h3" style="margin-bottom:14px;">No wallet setup required</p>
+      <p class="sm">Sign in with your email or Google account. We create your wallet automatically behind the scenes. No jargon. No seed phrases. Just football.</p>
+      <div style="margin-top:20px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:24px;">🔑</span>
+        <span class="sm" style="color:var(--fire);">Email login in under 5 seconds</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 4</div>
+    "Two years ago you'd need MetaMask to use this. Six months ago you couldn't run a native crypto app on mobile. Twelve months ago 99% of fans had never placed a prediction market bet. All three of those blockers are gone. The window is open right now."
+  </div>
+</div>
+
+<!-- ════════════════════
+     5 — SOLUTION
+════════════════════ -->
+<div class="slide alt">
+  <div class="sn">5 / 12</div>
+
+  <span class="xs in">The Solution</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:860px;">
+    Terrace: where your take<br>
+    <span class="g">becomes your reputation.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <p class="body in" style="max-width:680px;margin-bottom:28px;">
+    Terrace is where football fans put real stakes behind their opinions and build a reputation that follows them everywhere. Every correct call earns you a verified record. No one can take it. No one can fake it.
+  </p>
+
+  <div class="in" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;">
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">⚡</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Flash Markets</p>
+      <p class="sm" style="font-size:15px;">In-match bets. 15 to 90 minutes. Next goal, red card, man of the match. Bet the moment while it's happening.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">🏆</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Parlays</p>
+      <p class="sm" style="font-size:15px;">Chain up to 8 bets into one. Nail every leg and your payout multiplies. Your streak becomes your badge.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">⚔️</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">1v1 Matchups</p>
+      <p class="sm" style="font-size:15px;">Challenge a mate directly. Equal stakes. One takes YES, one takes NO. Winner collects the pot. No house cut.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">🌍</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">All Major Leagues</p>
+      <p class="sm" style="font-size:15px;">Premier League, UCL, La Liga, Bundesliga, Serie A and more. Markets open before kickoff and stay live in-match.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">👑</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Rep Badges</p>
+      <p class="sm" style="font-size:15px;">Win rate, streaks, badge tier. Casual, Sharp, or Legend. Your record is permanent and public. Nobody can edit it.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">📡</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Social Feed</p>
+      <p class="sm" style="font-size:15px;">Follow the sharpest predictors. See their bets live. Get notified the second a Legend puts money on a market.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">💬</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Group Alerts</p>
+      <p class="sm" style="font-size:15px;">Terrace pings your Telegram or WhatsApp group the moment a market resolves. Your WhatsApp chat becomes the betting room.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 16px;">
+      <div style="font-size:36px;margin-bottom:12px;">🎯</div>
+      <p class="h3" style="margin-bottom:8px;font-size:20px;">Creator Markets</p>
+      <p class="sm" style="font-size:15px;">Any fan can open a market on any question. Set your fee. Your followers bet. You earn every time they do.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 5</div>
+    "Eight interlocking loops — not one product, a whole ecosystem. Flash markets give urgency. Parlays give multiplied payouts. Matchups settle the group chat. Leagues cover every fan. Rep gives credibility. The social feed drives discovery. Group alerts bring Terrace into WhatsApp and Telegram where fans already live. Creator markets turn the most vocal fans into earners. Ahmed uses all eight."
+  </div>
+</div>
+
+<!-- ════════════════════
+     6 — MATCHUPS
+════════════════════ -->
+<div class="slide">
+  <div class="sn">6 / 12</div>
+
+  <span class="xs in">Matchups</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:860px;">
+    Settle the group chat.<br>
+    <span class="g">Real money. One winner.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c2 in" style="margin-top:8px;align-items:start;">
+
+    <div class="row col g12">
+      <div class="cg" style="padding:20px 24px;">
+        <div class="row ac g12" style="margin-bottom:12px;">
+          <div class="step-n step-done"><span>1</span></div>
+          <p class="h3">Alice sends the challenge</p>
+        </div>
+        <p class="sm">She picks "Will Liverpool win the UCL?", picks YES, enters Bob's wallet, and stakes $5. Her money locks in immediately. Challenge sent.</p>
+      </div>
+
+      <div class="card" style="padding:20px 24px;">
+        <div class="row ac g12" style="margin-bottom:12px;">
+          <div class="step-n step-open"><span>2</span></div>
+          <p class="h3">Bob accepts and takes the other side</p>
+        </div>
+        <p class="sm">Bob sees the challenge in his app. He automatically gets NO. No negotiation needed. He puts in his $5. The pot is now <span class="wt">$10.</span></p>
+      </div>
+
+      <div class="card" style="padding:20px 24px;">
+        <div class="row ac g12" style="margin-bottom:12px;">
+          <div class="step-n step-open"><span>3</span></div>
+          <p class="h3">The match plays out</p>
+        </div>
+        <p class="sm">Liverpool win or they don't. The result is confirmed and recorded automatically. No manual input needed. No arguments about who said what.</p>
+      </div>
+
+      <div class="cg" style="padding:20px 24px;">
+        <div class="row ac g12" style="margin-bottom:12px;">
+          <div class="step-n step-done"><span>4</span></div>
+          <p class="h3">The winner gets the full pot</p>
+        </div>
+        <p class="sm">Either player taps Settle. The app checks who called it right and sends the <span class="g wt">full $10 straight to their wallet.</span> No fees. No waiting. Instant.</p>
+      </div>
+    </div>
+
+    <div class="row col g12">
+      <div class="card" style="padding:26px 28px;">
+        <p class="xs" style="margin-bottom:20px;">The rules</p>
+        <div class="row col">
+          <div class="row ac g12" style="padding:14px 0;border-bottom:1px solid var(--border);">
+            <span style="color:var(--green);font-size:20px;">⚔️</span>
+            <span class="sm" style="color:var(--white);">Both sides always stake the same amount</span>
+          </div>
+          <div class="row ac g12" style="padding:14px 0;border-bottom:1px solid var(--border);">
+            <span class="chk">✓</span>
+            <span class="sm" style="color:var(--white);">Winner takes <span class="wt">double their stake</span></span>
+          </div>
+          <div class="row ac g12" style="padding:14px 0;border-bottom:1px solid var(--border);">
+            <span class="chk">✓</span>
+            <span class="sm" style="color:var(--white);">If Bob never accepts, Alice gets her money back</span>
+          </div>
+          <div class="row ac g12" style="padding:14px 0;">
+            <span class="chk">✓</span>
+            <span class="sm" style="color:var(--white);">The app settles it. No arguments. No middleman.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:22px 24px;background:var(--green10);border-radius:16px;border:1px solid var(--green20);">
+        <p class="xs" style="color:var(--green);margin-bottom:10px;">Why this matters</p>
+        <p class="body" style="color:var(--white);">Group chats are full of big talk. Matchups let you back it with real money against a named opponent. Win and your rep goes up. No bookmaker. No house. Just you versus your mate.</p>
+      </div>
+
+      <div class="card" style="text-align:center;padding:22px 24px;">
+        <div style="font-size:52px;margin-bottom:10px;">⚔️</div>
+        <p class="h3" style="margin-bottom:6px;">1v1. Equal stakes.</p>
+        <p class="sm">Pure conviction.<br>No house edge. No spread. No excuses.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 6</div>
+    "Think of it like a wager at the pub, except it's automatic and nobody needs to trust anyone. Alice says Liverpool win. Bob disagrees. Instead of arguing, they each put $5 into the app. It checks the result and pays the winner immediately. The app is the referee. This is what turns group chat banter into skin in the game."
+  </div>
+</div>
+
+<!-- ════════════════════
+     7 — WHY SOLANA
+════════════════════ -->
+<div class="slide alt">
+  <div class="sn">7 / 12</div>
+
+  <span class="xs in">Why Solana</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:820px;">
+    Take out the tech.<br>
+    <span class="r">The app stops working.</span>
+  </h1>
+
+  <div class="divider red in"></div>
+
+  <div class="c2 in" style="margin-top:8px;">
+    <div class="cr">
+      <p class="xs" style="color:var(--red);margin-bottom:18px;">Without it</p>
+      <ul class="blist" style="--green:var(--red);">
+        <li>Your reputation lives in a company database. They can edit it, sell it, or delete it tomorrow.</li>
+        <li>Anyone who wants to create a market has to ask permission and give the platform a cut.</li>
+        <li>Winnings sit in a company account. They decide if and when you get paid.</li>
+        <li>The whole thing collapses if the company shuts down.</li>
+      </ul>
+    </div>
+    <div class="cg">
+      <p class="xs" style="color:var(--green);margin-bottom:18px;">With Solana</p>
+      <ul class="blist">
+        <li>Your reputation is stored in a place no company owns. It's yours forever. Anyone can verify it.</li>
+        <li>Any fan creates a market in 30 seconds with no permission from anyone. Earnings are automatic.</li>
+        <li>Winnings go straight to your wallet the moment the market settles. No waiting. No company in the middle.</li>
+        <li>The code runs independently. Even if we shut down, your record stays.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="in" style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="pill">
+      <span class="dot" style="background:var(--green);"></span>
+      <span class="sm">Transactions confirm in under a second</span>
+    </div>
+    <div class="pill">
+      <span class="dot" style="background:var(--green);"></span>
+      <span class="sm">A $1 bet costs less than a cent in fees</span>
+    </div>
+    <div class="pill">
+      <span class="dot" style="background:var(--purple);"></span>
+      <span class="sm">Built as a native mobile app, not a website</span>
+    </div>
+    <div class="pill" style="border-color:rgba(255,107,53,0.25);">
+      <span style="font-size:13px;font-weight:800;color:var(--fire);letter-spacing:0.5px;">HELIUS</span>
+      <span class="sm">Live market events and wallet activity via WebSockets</span>
+    </div>
+    <div class="pill" style="border-color:rgba(0,163,255,0.25);">
+      <span style="font-size:13px;font-weight:800;color:#00a3ff;letter-spacing:0.5px;">JUPITER</span>
+      <span class="sm">Swap any token into USDC to place a bet instantly</span>
+    </div>
+    <div class="pill" style="border-color:rgba(0,187,120,0.25);">
+      <span style="font-size:13px;font-weight:800;color:#00bb78;letter-spacing:0.5px;">POLYMARKET</span>
+      <span class="sm">Live sports prediction feed built into the home screen</span>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 7</div>
+    "The tech is invisible to the user. They see a badge, not a blockchain record. They tap 'Back it', not 'sign transaction'. Helius streams every on-chain event so the feed is instant. Jupiter means a fan doesn't need USDC in their wallet already — they swap whatever they have. Polymarket means our market depth is live on day one, not waiting for users to seed it. The infrastructure decisions are what make the experience feel like a real consumer app."
+  </div>
+</div>
+
+<!-- ════════════════════
+     8 — PRODUCT
+════════════════════ -->
+<div class="slide">
+  <div class="sn">8 / 12</div>
+
+  <span class="xs in">Product — Working Today</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:760px;">
+    Full end-to-end.<br>
+    <span class="g">Live on devnet right now.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c2 in" style="margin-top:8px;align-items:start;">
+    <div class="row col g12">
+      <div class="cg" style="padding:20px 24px;">
+        <div class="row ac g12">
+          <span style="font-size:26px;">⚡</span>
+          <div>
+            <p class="h3">Flash and Standard Markets</p>
+            <p class="sm" style="margin-top:6px;">Create, browse, and bet YES or NO. Live countdown timers for flash bets. Polymarket's sports feed is built directly into the home screen — market depth from day one.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px;">
+        <div class="row ac g12">
+          <span style="font-size:26px;">🏆</span>
+          <div>
+            <p class="h3">Parlay Builder</p>
+            <p class="sm" style="margin-top:6px;">Pick 2 to 8 bets. Live multiplier updates as you add legs. Settles automatically when all bets resolve.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px;">
+        <div class="row ac g12">
+          <span style="font-size:26px;">👑</span>
+          <div>
+            <p class="h3">Reputation System</p>
+            <p class="sm" style="margin-top:6px;">Win rate, streak, and badge tier stored permanently. Three levels: Casual, Sharp, and Legend.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px;">
+        <div class="row ac g12">
+          <span style="font-size:26px;">📡</span>
+          <div>
+            <p class="h3">Social and Feed</p>
+            <p class="sm" style="margin-top:6px;">Live activity from followed wallets. Fan leaderboard. Push notifications when people you follow place a bet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row col g12">
+      <div class="card" style="padding:22px 26px;">
+        <p class="xs" style="margin-bottom:18px;">What we shipped</p>
+        <div class="row col">
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Home screen with flash and standard markets</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Bet sheet and confirmation flow</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Parlay builder with live multiplier</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Social feed with following and discovery tabs</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Profile with active bets, history, and created markets</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <span class="sm">Market creation with flash and standard options</span>
+            <span class="chk">✓</span>
+          </div>
+          <div class="row ac g12 jb" style="padding:10px 0;">
+            <span class="sm">Email login and Phantom wallet connection</span>
+            <span class="chk">✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="cg" style="padding:20px 24px;">
+        <p class="xs" style="color:var(--green);margin-bottom:14px;">Under the hood</p>
+        <div class="row col" style="gap:10px;">
+          <div class="row ac g12">
+            <span style="font-size:11px;font-weight:900;color:var(--fire);letter-spacing:0.5px;min-width:82px;">HELIUS</span>
+            <span class="sm">WebSocket feed powers every live event in the app — bets, wins, settlements — in real time.</span>
+          </div>
+          <div class="row ac g12">
+            <span style="font-size:11px;font-weight:900;color:#00a3ff;letter-spacing:0.5px;min-width:82px;">JUPITER</span>
+            <span class="sm">Fans swap any Solana token into USDC at the point of bet. No setup. No separate step.</span>
+          </div>
+          <div class="row ac g12">
+            <span style="font-size:11px;font-weight:900;color:#00bb78;letter-spacing:0.5px;min-width:82px;">POLYMARKET</span>
+            <span class="sm">Live sports prediction markets from Polymarket's feed are surfaced directly on the home screen.</span>
+          </div>
+          <div class="row ac g12">
+            <span style="font-size:11px;font-weight:900;color:var(--green);letter-spacing:0.5px;min-width:82px;">ANCHOR</span>
+            <span class="sm">4 smart contracts — markets, bets, reputation, parlays — all settle without any manual step from us.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 8</div>
+    "This is not a prototype. Every screen you see works today on devnet. You can create a market, place a bet, build a parlay, claim your winnings, and earn a badge in a single session. The smart contract handles settlement. No manual steps from us." If demoing live: show it now.
+  </div>
+</div>
+
+<!-- ════════════════════
+     9 — MARKET
+════════════════════ -->
+<div class="slide alt">
+  <div class="sn">9 / 12</div>
+
+  <span class="xs in">The Market</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:800px;">
+    Football is the world's<br>
+    <span class="g">most opinionated sport.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c2 in" style="margin-top:8px;align-items:center;">
+    <div class="row col g16" style="gap:16px;">
+      <div class="row ac g20" style="padding:22px 24px;background:var(--card);border-radius:16px;border:1px solid var(--border);">
+        <div style="width:60px;height:60px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:13px;color:var(--white35);font-weight:700;">TAM</span>
+        </div>
+        <div>
+          <p class="h2">$180B</p>
+          <p class="sm">Global sports betting market (2025)</p>
+        </div>
+      </div>
+      <div class="row ac g20" style="padding:22px 24px;background:var(--card);border-radius:16px;border:1px solid var(--purple20);">
+        <div style="width:60px;height:60px;border-radius:50%;background:var(--purple10);border:2px solid var(--purple20);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:13px;color:var(--purple);font-weight:700;">SAM</span>
+        </div>
+        <div>
+          <p class="h2" style="color:var(--purple);">$8B</p>
+          <p class="sm">Fans who want social and casual predictions rather than bookmaker betting</p>
+        </div>
+      </div>
+      <div class="row ac g20" style="padding:22px 24px;background:var(--green10);border-radius:16px;border:1px solid var(--green20);">
+        <div style="width:60px;height:60px;border-radius:50%;background:var(--green10);border:2px solid var(--green20);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:13px;color:var(--green);font-weight:700;">SOM</span>
+        </div>
+        <div>
+          <p class="h2" style="color:var(--green);">$50M</p>
+          <p class="sm">Year 1 target: Premier League and Champions League fans, crypto-native first</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:30px 34px;">
+      <p class="h3" style="margin-bottom:24px;">Year 1 bottom-up</p>
+      <div class="row col">
+        <div class="row ac jb" style="padding:14px 0;border-bottom:1px solid var(--border);">
+          <span class="body">Crypto-native football fans</span>
+          <span class="h3 g">2M</span>
+        </div>
+        <div class="row ac jb" style="padding:14px 0;border-bottom:1px solid var(--border);">
+          <span class="body">Reachable in Year 1</span>
+          <span class="h3 g">200K</span>
+        </div>
+        <div class="row ac jb" style="padding:14px 0;border-bottom:1px solid var(--border);">
+          <span class="body">Average bets per user per month</span>
+          <span class="h3 g">12</span>
+        </div>
+        <div class="row ac jb" style="padding:14px 0;border-bottom:1px solid var(--border);">
+          <span class="body">Average stake per bet</span>
+          <span class="h3 g">$18</span>
+        </div>
+        <div class="row ac jb" style="padding:16px 0;background:var(--green10);border-radius:10px;padding-left:14px;padding-right:14px;margin-top:8px;">
+          <span class="h3">Year 1 total volume</span>
+          <span class="h2 g">$43M</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 9</div>
+    "We're not trying to beat Betfair. We're going after the 500 million fans who don't want to use a bookmaker but do want to put a stake behind their opinions. Premier League first. Champions League second. Then La Liga and Serie A. The wedge is tight and the expansion is enormous."
+  </div>
+</div>
+
+<!-- ════════════════════
+     10 — COMPETITION
+════════════════════ -->
+<div class="slide">
+  <div class="sn">10 / 12</div>
+
+  <span class="xs in">Competition</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:760px;">
+    No one is doing<br>
+    <span class="g">all five of these.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="in" style="margin-top:12px;overflow-x:auto;">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th style="color:var(--green);">Terrace</th>
+          <th>Polymarket</th>
+          <th>Betfair</th>
+          <th>ESPN Pick'em</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="hl">
+          <td>Football-first fan culture</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="chk" style="color:var(--white60);">✓</span></td>
+        </tr>
+        <tr class="hl">
+          <td>Anyone can create a market</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+        <tr class="hl">
+          <td>Reputation badge you keep forever</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+        <tr class="hl">
+          <td>Social feed and follow</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+        <tr class="hl">
+          <td>In-match live flash bets</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="chk" style="color:var(--white60);">✓</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+        <tr>
+          <td>Multi-bet parlays</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="chk" style="color:var(--white60);">✓</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+        <tr>
+          <td>No sign-up with a bank account</td>
+          <td><span class="chk">✓</span></td>
+          <td><span class="chk" style="color:var(--white60);">✓</span></td>
+          <td><span class="crs">No</span></td>
+          <td><span class="crs">No</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 10</div>
+    "The highlighted rows are our moat. None of our competitors do all five at once. Polymarket has the infrastructure but none of the culture. Betfair has the sports but is fully centralised and gated. ESPN Pick'em has the fans but no real stakes and no identity. We are the intersection that doesn't exist yet."
+  </div>
+</div>
+
+<!-- ════════════════════
+     11 — ROADMAP
+════════════════════ -->
+<div class="slide alt">
+  <div class="sn">11 / 12</div>
+
+  <span class="xs in">Roadmap</span>
+
+  <h1 class="h1 in" style="margin-top:16px;max-width:760px;">
+    Four phases.<br>
+    <span class="g">Starting with what works.</span>
+  </h1>
+
+  <div class="divider in"></div>
+
+  <div class="c4 in" style="margin-top:8px;">
+    <div class="cg" style="position:relative;">
+      <div class="row ac g8" style="margin-bottom:16px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(0,255,135,0.5);flex-shrink:0;"></span>
+        <span class="xs" style="color:var(--green);">Now</span>
+      </div>
+      <p class="h3" style="margin-bottom:10px;">The Core Game</p>
+      <p class="sm" style="margin-bottom:16px;">Get fans hooked on calling it right</p>
+      <div class="row col g8" style="gap:8px;">
+        <span class="sm">⚡ Flash and standard markets</span>
+        <span class="sm">🏆 Parlay builder</span>
+        <span class="sm">👑 Reputation badges</span>
+        <span class="sm">📡 Social feed and follow</span>
+        <span class="sm">⚔️ 1v1 Matchups</span>
+      </div>
+    </div>
+
+    <div class="cp">
+      <div class="row ac g8" style="margin-bottom:16px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);flex-shrink:0;"></span>
+        <span class="xs" style="color:var(--purple);">Q3 2026</span>
+      </div>
+      <p class="h3" style="margin-bottom:10px;">The Community Layer</p>
+      <p class="sm" style="margin-bottom:16px;">Keep fans coming back</p>
+      <div class="row col g8" style="gap:8px;">
+        <span class="sm">🏟️ Fan Leagues with friends</span>
+        <span class="sm">🤖 Fantasy overlay</span>
+        <span class="sm">📊 Creator analytics</span>
+      </div>
+    </div>
+
+    <div class="cf">
+      <div class="row ac g8" style="margin-bottom:16px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--fire);flex-shrink:0;"></span>
+        <span class="xs" style="color:var(--fire);">Q4 2026</span>
+      </div>
+      <p class="h3" style="margin-bottom:10px;">The Money Layer</p>
+      <p class="sm" style="margin-bottom:16px;">Turn engagement into revenue</p>
+      <div class="row col g8" style="gap:8px;">
+        <span class="sm">💱 Better price discovery</span>
+        <span class="sm">💳 Pay with card or bank</span>
+        <span class="sm">🔒 Private group markets</span>
+        <span class="sm">📈 Leverage for confident fans</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row ac g8" style="margin-bottom:16px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--white35);flex-shrink:0;"></span>
+        <span class="xs">2027+</span>
+      </div>
+      <p class="h3" style="margin-bottom:10px;">The Platform</p>
+      <p class="sm" style="margin-bottom:16px;">Every sport. Every language.</p>
+      <div class="row col g8" style="gap:8px;">
+        <span class="sm">🌍 Cricket, F1, NBA</span>
+        <span class="sm">🤖 AI agents that bet for you</span>
+        <span class="sm">🏢 Tools for clubs and brands</span>
+        <span class="sm">📱 Full iOS and Android launch</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="in" style="margin-top:20px;padding:14px 22px;background:var(--green10);border-radius:12px;border:1px solid var(--green20);">
+    <p class="sm" style="color:var(--white);">
+      <span class="g wt">Core belief:</span>&nbsp;
+      Your calls. Your win rate. Your rep. &nbsp;&middot;&nbsp; Not for traders. For fans. &nbsp;&middot;&nbsp; The tech is invisible. The game is everything.
+    </p>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 11</div>
+    "We're not trying to build everything at once. Phase 1 is the core prediction game. That's live today. Phase 2 is the community layer that keeps fans coming back. Phase 3 is where we monetise at scale. Phase 4 is multi-sport and global. Each phase earns the right to the next one."
+  </div>
+</div>
+
+<!-- ════════════════════
+     12 — THE ASK
+════════════════════ -->
+<div class="slide" style="align-items:center;justify-content:center;text-align:center;">
+  <div class="sn">12 / 12</div>
+
+  <div class="in" style="margin-bottom:32px;">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAPnUlEQVR4nO3dsY4kVxmG4Vlrb8C3UBkZ1ogLWEhxhgSk+F5Mxh0QA7F9F2hCi6xDEzojNSqtRp7d7Z3uqjpV5z/1PU+CvBK73TXB9/apmpk3D5T0+Pj4c+/XANDC09PTm96vgU/5onRi4AHeEwh9uOgHMPYAy4iC/bnAOzD4AG0JgvZc0KKDf7lcWv+VAF1M09T87xQE27mAnUbfwAO0CQQxsI6LdsDoG3uAY6JADNzPhdph9A0+QP8gEAOvc3EaDb/RB6gZA0LgOhdl5egbfIDxgkAM/MKFWDD8Rh/gHDHwJASyA8DwA5yTELgt8o3fM/xGHyAnBp4CQyDqDRt+gFxC4EMRb9TwA/BMCLz3Jn38DT9ApulGCJw9Ak775gw/APeYQkPgdG/K8AOwxhQWAm9Sxt/wA7A1BJ5OFAGneCOGH4DWppOHwBcPgzP+AOzh8sqGbP2V8BUMXTCf+wIYfgCOOA14GvgkYMgX7lM/AEebTnZLYLgX7FM/AD1NJzkNGOoZAOMPQG+Xz2zOaM8FDFErjvwBqGYa/JZA+RfoUz8AlU2D3hIofQvA+ANQ3WXQWwJlA8D4AzCKy4ARUPJ44toFM/wAjHpL4Kng7YByJwDGH4CRXa5sVsWTgFIBYPwBOIMRIqBMABh/AM7kUjwCSgSA8QfgjC6FI6B7ABh/AM7sUjQCugaA8QcgwaVgBHQLAOMPQJJLsQjoEgDGH4BEl0IRcHgAGH8Akl2KRMChAWD8AeChRAQcFgDGHwDqRMAhAWD8AaBWBHR5CND4A0DfTdw9AHp/nyMAjObxgO3cNQAc/QNAzVsBuwWA8QeAuhFw2DMAxh8A6mzlLgHgvj8A1N7U5gHg6B8A6t8KaBoAxh8AxoiAXZ8BMP4AUHNDmwWA+/4AsK+WW9skABz9A8BYtwJ2uQVg/AGg9qZuDgBH/wBwrBbb2/wEwKd/AKi/rV+0LBDjDwD7+Hhjt54CrA4AR/8A0NeWLW52C8CnfwDYV8utXRUAPv0DQA1rN7nJCYBP/wBwjFabuzgAfPoHgFrWbPPmEwCf/gHgWC22d1EA+PQPADUt3ehNJwA+/QNAH1s3+O4A8OkfAGpbstWrTwB8+geAvrZs8V0B4NM/AIzh3s1edQLg0z8A1LB2k5v/NkAAoL6bAeA3/gHA+X5ToBMAAAj0agB4+A8AxnRrwxedADj+B4Calm60WwAAEOizAeDhPwA478OATgAAIJAAAIBAVwPA8T8AnPs2gBMAAAgkAAAg0CcB4If/AMC5XNv2mycA7v8DwFju2W63AAAgkAAAgPQA8O1/AJDx7YBOAAAgkAAAgEACAACSA8D9fwDIeQ7ACQAABBIAABBIAABAIAEAAKkB4AFAAMh6ENAJAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQKA3fgYAAJzfNE0f/LcTAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAg0NveLwBa+cc///Xw7t273i+DAF999euH//74Y++XAZs4AQCAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACve39AqCVP//pjw/J/vLNNw/ffvvX3f+dH3744eF3v323+78D7MsJAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACB3vZ+AQCtffn916v/vz/9/rumrwWqEgBA7Njf+/eJAs5IAADRg7/m3xQEnIEAAMrrMfr3vh4xwKgEAFBWteF/7TUKAUYjAIBSRhj9a5wKMBoBAJQw6vBf41SAEfg5AEB3Zxr/hPfFOTgBALpJGEinAVQlAIDDJQz/x4QA1bgFABwqcfxfSn//1CEAgMMYv/dcBypwCwDYncH7lFsC9OYEANiV8X+d60MvAgDYjXG7j+tEDwIA2IVRW8b14mgCAGjOmK3junEkAQA0ZcS2cf04igAAmjFebbiOHEEAAE0YrbZcT/YmAIDNjNU+XFf2JACATYzUvlxf9iIAACCQAABW8+n0GK4zexAAwCpG6ViuN60JAGAxY9SH605LAgAAAgkAYJE//O9vvV9CNKcAtCIAACCQAADu9qt/f9P7JeAUgEYEAHAX41+LCGArAQAAgQQAcJNP/zU5BWALAQAAgQQAAAQSAMCrHP/X5jYAawkAAAgkAIDP8ul/DE4BWEMAAEAgAQAAgQQAcJXj/7G4DcBSAgAAAgkAAAgkAAAgkAAAPuH+/5g8B8ASAgAAAgkAAAgkAAAgkAAAgEACAPiABwDH5kFA7iUAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIA+MB/fvP33i+BDX76/Xe9XwKDEAAAEEgAAEAgAQAAgQQAAAQSAMAnPAg4Jg8AsoQAAIBAAgAAAgkAAAgkAICrPAcwFvf/WUoAAECgN4+Pjz+//IPL5dLv1QClfPn9171fAndyAsAt0zR98N9OAIDPMipj8HViDQEAAIEEAPAqny5r8/VhLQEAAIEEAAAEEgDATY6Za/J1YQsBAACBBABwF582a/H1YCsBANzN6NTg60ALAgAAAgkAYBGfPvty/WlFAABAIAEALOZTaB+uOy0JAGAVY3Qs15vWBACwmlE6huvMHgQAAAQSAMAmPp3uy/VlLwIA2MxI7cN1ZU8CAGjCWLXlerI3AQA0Y7TacB05ggAAmjJe27h+HEUAAM0ZsXVcN44kAIBdGLNlXC+OJgCA3Ri1+7hO9CAAgF0Zt9e5PvTyttu/DMSN3Jfff937pZRh+OnNCQBwGKP3nutABQIAOFT6+KW/f+pwCwA4XOItAcNPNQIA6CYhBAw/VbkFAHR31pE86/viHJwAACWc6TTA8DMCAQCUHc+RYsDoMxoBAJQ1wqmA4WdUAgAor9qpgNHnDAQAMJSPx/eIIDD4nJEAAIZ2bZy3RIGxJ4UAAE7HiMNtfg4AAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAECgL56ent68/INpmvq9GgCguY+3fd5+JwAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACpAeBnAQBAzs8AmP/XCQAABBIAABBIAABAIAEAAMkB4EFAAMh4AHDmBAAAAgkAAAgkAAAgPQA8BwAA57//P3MCAACBBAAABLoZAG4DAMBY7tnuTwLg43sEAMDYrm27WwAAEEgAAECgqwHg2wEB4Jzf/vfMCQAABBIAABDoswHgNgAAnPP4f+YEAAACLQoApwAAUNPSjX41APxQIAAY060NdwsAAALdDAAPAwLAeR7+e+YEAAACrQoApwAAUMPaTb4rADwMCABjuHezV98CcAoAAH1t2eK7A8ApAADUtmSrNz0E6BQAAPrYusGLAsApAADUtHSjN38boFMAADhWi+1dHABOAQCgljXb3OQHATkFAIBjtNrcVQHgFAAAali7yc1+FLBTAADYV8utXR0ATgEAoK8tW7zpBMBvCgSAur/x79DfBigCAKD+tm4OALcCAOBYLba3+QnAzCkAANTe1C/2KhERAADbXNvSVifvzU4A3AoAgH213NpdbgE8cwoAADU3tGkAuBUAALWP/nc7ARABAFB7/He7BeB5AACovam7PgPwklMAAKizlbsFgFsBAFDv6P+QEwARAAD1xv+QWwCeBwCAett52DMALzkFAIC+m3hIALgVAAA1jv4PPwEQAQBQY/wPvwUgAgDgofv4d3kGQAQAkGwqMP7dHgIUAQAkmoqMf7cAmIkAAJJMhca/awDMRAAACaZi4989AGYiAIAzmwqOf4kAmIkAAM5oKjr+ZQJgJgIAOJOp8PiXCoCZCADgDKbi418uAGYiAICRTQOM/6zcC3r2+Pj487U/v1wux78YALjhcx9WK45/yROAWxfMaQAA1UyDjX/pAJiJAACqmwYc/1npF3frdsDMLQEAephe+TBaffxn5V/gS54LAKCCadBP/cPcAviYWwIA9DadYPxnQ73YZ24JAHC0afAj/48N94JfcksAgCNMJ/nU/9KwL/yZ0wAA9jKd7FP/sM8ALP0CeDYAgLWmE4//bPg38JLTAAC2mk4+/M9O80buiYCZEABgzanxmcZ/dqo385IQAOAeU9jwPzvlm3pJCABwzRQ6/M9O/ebujYCZEADIcM8D4k8nH//Z6d/gS0IAIJfh/1DMG31JCADkMPzXxb3hpSEwEwMAY7n358A8BQ7/s9g3/pIQADgHw3+/+AuwJgRmYgCghiU/9dXw/8KFaBADM0EAcIylP+bd6F/nojQOgZkYAGhrze92Mfyvc3F2joGZIABYZu0vczP693OhDo6BZ6IAoM1vbjX667hoBWLgGoEAnMUev5rd6G/nAg4SBADJDH57LugBBAHAMgZ/fy5wJ6IA4D1j34eLXpRAAM7CwD+U9H+AlI4Vx7wh4QAAAABJRU5ErkJggg==" alt="Terrace" style="width:64px;height:64px;border-radius:16px;display:block;margin:0 auto;">
+  </div>
+
+  <h1 class="hero in" style="letter-spacing:-4px;max-width:840px;margin:0 auto;">
+    Ahmed deserves a
+    <span class="g">Terrace.</span>
+  </h1>
+
+  <p class="in" style="font-size:var(--h3);font-weight:500;color:var(--white60);margin-top:28px;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.5;">
+    We're entering the <span class="wt">Consumer</span> and <span class="wt">Prediction Markets</span> tracks at Colosseum. Here's what we need:
+  </p>
+
+  <div class="c3 in" style="margin-top:36px;max-width:880px;margin-left:auto;margin-right:auto;">
+    <div class="cg" style="text-align:left;padding:26px 28px;">
+      <div style="font-size:36px;margin-bottom:14px;">🏆</div>
+      <p class="h3" style="margin-bottom:10px;">Track recognition</p>
+      <p class="sm">Validation that fan-first social prediction is the right bet for Solana's consumer layer.</p>
+    </div>
+    <div class="cp" style="text-align:left;padding:26px 28px;">
+      <div style="font-size:36px;margin-bottom:14px;">🌐</div>
+      <p class="h3" style="margin-bottom:10px;">Ecosystem access</p>
+      <p class="sm">Connections to Solana ecosystem partners and the football fan community we want to bring on-chain.</p>
+    </div>
+    <div class="card" style="text-align:left;padding:26px 28px;">
+      <div style="font-size:36px;margin-bottom:14px;">🚀</div>
+      <p class="h3" style="margin-bottom:10px;">Mainnet launch</p>
+      <p class="sm">We are ready to go live. We need the credibility and network to bring real football fans into the app.</p>
+    </div>
+  </div>
+
+  <div class="in" style="margin-top:48px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+    <p class="xs" style="letter-spacing:2px;">BACK IT. BUILD YOUR REP. TERRACE.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+      <span class="badge bg"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAPnUlEQVR4nO3dsY4kVxmG4Vlrb8C3UBkZ1ogLWEhxhgSk+F5Mxh0QA7F9F2hCi6xDEzojNSqtRp7d7Z3uqjpV5z/1PU+CvBK73TXB9/apmpk3D5T0+Pj4c+/XANDC09PTm96vgU/5onRi4AHeEwh9uOgHMPYAy4iC/bnAOzD4AG0JgvZc0KKDf7lcWv+VAF1M09T87xQE27mAnUbfwAO0CQQxsI6LdsDoG3uAY6JADNzPhdph9A0+QP8gEAOvc3EaDb/RB6gZA0LgOhdl5egbfIDxgkAM/MKFWDD8Rh/gHDHwJASyA8DwA5yTELgt8o3fM/xGHyAnBp4CQyDqDRt+gFxC4EMRb9TwA/BMCLz3Jn38DT9ApulGCJw9Ak775gw/APeYQkPgdG/K8AOwxhQWAm9Sxt/wA7A1BJ5OFAGneCOGH4DWppOHwBcPgzP+AOzh8sqGbP2V8BUMXTCf+wIYfgCOOA14GvgkYMgX7lM/AEebTnZLYLgX7FM/AD1NJzkNGOoZAOMPQG+Xz2zOaM8FDFErjvwBqGYa/JZA+RfoUz8AlU2D3hIofQvA+ANQ3WXQWwJlA8D4AzCKy4ARUPJ44toFM/wAjHpL4Kng7YByJwDGH4CRXa5sVsWTgFIBYPwBOIMRIqBMABh/AM7kUjwCSgSA8QfgjC6FI6B7ABh/AM7sUjQCugaA8QcgwaVgBHQLAOMPQJJLsQjoEgDGH4BEl0IRcHgAGH8Akl2KRMChAWD8AeChRAQcFgDGHwDqRMAhAWD8AaBWBHR5CND4A0DfTdw9AHp/nyMAjObxgO3cNQAc/QNAzVsBuwWA8QeAuhFw2DMAxh8A6mzlLgHgvj8A1N7U5gHg6B8A6t8KaBoAxh8AxoiAXZ8BMP4AUHNDmwWA+/4AsK+WW9skABz9A8BYtwJ2uQVg/AGg9qZuDgBH/wBwrBbb2/wEwKd/AKi/rV+0LBDjDwD7+Hhjt54CrA4AR/8A0NeWLW52C8CnfwDYV8utXRUAPv0DQA1rN7nJCYBP/wBwjFabuzgAfPoHgFrWbPPmEwCf/gHgWC22d1EA+PQPADUt3ehNJwA+/QNAH1s3+O4A8OkfAGpbstWrTwB8+geAvrZs8V0B4NM/AIzh3s1edQLg0z8A1LB2k5v/NkAAoL6bAeA3/gHA+X5ToBMAAAj0agB4+A8AxnRrwxedADj+B4Calm60WwAAEOizAeDhPwA478OATgAAIJAAAIBAVwPA8T8AnPs2gBMAAAgkAAAg0CcB4If/AMC5XNv2mycA7v8DwFju2W63AAAgkAAAgPQA8O1/AJDx7YBOAAAgkAAAgEACAACSA8D9fwDIeQ7ACQAABBIAABBIAABAIAEAAKkB4AFAAMh6ENAJAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQKA3fgYAAJzfNE0f/LcTAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAg0NveLwBa+cc///Xw7t273i+DAF999euH//74Y++XAZs4AQCAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACve39AqCVP//pjw/J/vLNNw/ffvvX3f+dH3744eF3v323+78D7MsJAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACB3vZ+AQCtffn916v/vz/9/rumrwWqEgBA7Njf+/eJAs5IAADRg7/m3xQEnIEAAMrrMfr3vh4xwKgEAFBWteF/7TUKAUYjAIBSRhj9a5wKMBoBAJQw6vBf41SAEfg5AEB3Zxr/hPfFOTgBALpJGEinAVQlAIDDJQz/x4QA1bgFABwqcfxfSn//1CEAgMMYv/dcBypwCwDYncH7lFsC9OYEANiV8X+d60MvAgDYjXG7j+tEDwIA2IVRW8b14mgCAGjOmK3junEkAQA0ZcS2cf04igAAmjFebbiOHEEAAE0YrbZcT/YmAIDNjNU+XFf2JACATYzUvlxf9iIAACCQAABW8+n0GK4zexAAwCpG6ViuN60JAGAxY9SH605LAgAAAgkAYJE//O9vvV9CNKcAtCIAACCQAADu9qt/f9P7JeAUgEYEAHAX41+LCGArAQAAgQQAcJNP/zU5BWALAQAAgQQAAAQSAMCrHP/X5jYAawkAAAgkAIDP8ul/DE4BWEMAAEAgAQAAgQQAcJXj/7G4DcBSAgAAAgkAAAgkAAAgkAAAPuH+/5g8B8ASAgAAAgkAAAgkAAAgkAAAgEACAPiABwDH5kFA7iUAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIA+MB/fvP33i+BDX76/Xe9XwKDEAAAEEgAAEAgAQAAgQQAAAQSAMAnPAg4Jg8AsoQAAIBAAgAAAgkAAAgkAICrPAcwFvf/WUoAAECgN4+Pjz+//IPL5dLv1QClfPn9171fAndyAsAt0zR98N9OAIDPMipj8HViDQEAAIEEAPAqny5r8/VhLQEAAIEEAAAEEgDATY6Za/J1YQsBAACBBABwF582a/H1YCsBANzN6NTg60ALAgAAAgkAYBGfPvty/WlFAABAIAEALOZTaB+uOy0JAGAVY3Qs15vWBACwmlE6huvMHgQAAAQSAMAmPp3uy/VlLwIA2MxI7cN1ZU8CAGjCWLXlerI3AQA0Y7TacB05ggAAmjJe27h+HEUAAM0ZsXVcN44kAIBdGLNlXC+OJgCA3Ri1+7hO9CAAgF0Zt9e5PvTyttu/DMSN3Jfff937pZRh+OnNCQBwGKP3nutABQIAOFT6+KW/f+pwCwA4XOItAcNPNQIA6CYhBAw/VbkFAHR31pE86/viHJwAACWc6TTA8DMCAQCUHc+RYsDoMxoBAJQ1wqmA4WdUAgAor9qpgNHnDAQAMJSPx/eIIDD4nJEAAIZ2bZy3RIGxJ4UAAE7HiMNtfg4AAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAECgL56ent68/INpmvq9GgCguY+3fd5+JwAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACpAeBnAQBAzs8AmP/XCQAABBIAABBIAABAIAEAAMkB4EFAAMh4AHDmBAAAAgkAAAgkAAAgPQA8BwAA57//P3MCAACBBAAABLoZAG4DAMBY7tnuTwLg43sEAMDYrm27WwAAEEgAAECgqwHg2wEB4Jzf/vfMCQAABBIAABDoswHgNgAAnPP4f+YEAAACLQoApwAAUNPSjX41APxQIAAY060NdwsAAALdDAAPAwLAeR7+e+YEAAACrQoApwAAUMPaTb4rADwMCABjuHezV98CcAoAAH1t2eK7A8ApAADUtmSrNz0E6BQAAPrYusGLAsApAADUtHSjN38boFMAADhWi+1dHABOAQCgljXb3OQHATkFAIBjtNrcVQHgFAAAali7yc1+FLBTAADYV8utXR0ATgEAoK8tW7zpBMBvCgSAur/x79DfBigCAKD+tm4OALcCAOBYLba3+QnAzCkAANTe1C/2KhERAADbXNvSVifvzU4A3AoAgH213NpdbgE8cwoAADU3tGkAuBUAALWP/nc7ARABAFB7/He7BeB5AACovam7PgPwklMAAKizlbsFgFsBAFDv6P+QEwARAAD1xv+QWwCeBwCAett52DMALzkFAIC+m3hIALgVAAA1jv4PPwEQAQBQY/wPvwUgAgDgofv4d3kGQAQAkGwqMP7dHgIUAQAkmoqMf7cAmIkAAJJMhca/awDMRAAACaZi4989AGYiAIAzmwqOf4kAmIkAAM5oKjr+ZQJgJgIAOJOp8PiXCoCZCADgDKbi418uAGYiAICRTQOM/6zcC3r2+Pj487U/v1wux78YALjhcx9WK45/yROAWxfMaQAA1UyDjX/pAJiJAACqmwYc/1npF3frdsDMLQEAephe+TBaffxn5V/gS54LAKCCadBP/cPcAviYWwIA9DadYPxnQ73YZ24JAHC0afAj/48N94JfcksAgCNMJ/nU/9KwL/yZ0wAA9jKd7FP/sM8ALP0CeDYAgLWmE4//bPg38JLTAAC2mk4+/M9O80buiYCZEABgzanxmcZ/dqo385IQAOAeU9jwPzvlm3pJCABwzRQ6/M9O/ebujYCZEADIcM8D4k8nH//Z6d/gS0IAIJfh/1DMG31JCADkMPzXxb3hpSEwEwMAY7n358A8BQ7/s9g3/pIQADgHw3+/+AuwJgRmYgCghiU/9dXw/8KFaBADM0EAcIylP+bd6F/nojQOgZkYAGhrze92Mfyvc3F2joGZIABYZu0vczP693OhDo6BZ6IAoM1vbjX667hoBWLgGoEAnMUev5rd6G/nAg4SBADJDH57LugBBAHAMgZ/fy5wJ6IA4D1j34eLXpRAAM7CwD+U9H+AlI4Vx7wh4QAAAABJRU5ErkJggg==" alt="" style="width:16px;height:16px;border-radius:4px;vertical-align:middle;margin-right:4px;">terrace.gg</span>
+      <span class="badge bo">@terracegg</span>
+      <span class="badge bo">Built on Solana</span>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="nlbl">Notes — slide 12</div>
+    Close with: "Every weekend 40 billion group-chat messages go out about football. Ahmed calls it right 7 times out of 10. Nobody knows. We're building the place where being right means something. We're live on devnet. We're ready for mainnet. We're asking Colosseum to help us get football fans on-chain." Then stop talking.
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button class="nbtn" onclick="prev()">← Prev</button>
+  <span class="nav-cnt"><span id="cur">1</span> / <span id="tot"></span></span>
+  <div class="nav-bar"><div class="nav-fill" id="prog"></div></div>
+  <button class="nbtn" onclick="next()">Next →</button>
+</div>
+
+</div>
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let notesOn = false;
+  document.getElementById('tot').textContent = total;
+
+  function show(i) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(i, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('cur').textContent = cur + 1;
+    document.getElementById('prog').style.width = ((cur + 1) / total * 100) + '%';
+    document.querySelectorAll('.notes').forEach(n => n.classList.remove('vis'));
+    if (notesOn) {
+      const note = slides[cur].querySelector('.notes');
+      if (note) note.classList.add('vis');
+    }
+  }
+
+  function next() { show(cur + 1); }
+  function prev() { show(cur - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); prev(); }
+    if (e.key === 'n' || e.key === 'N') {
+      notesOn = !notesOn;
+      document.querySelectorAll('.notes').forEach(n => {
+        n.classList.toggle('vis', notesOn && n.closest('.slide').classList.contains('active'));
+      });
+    }
+    if (e.key === 'Escape') {
+      notesOn = false;
+      document.querySelectorAll('.notes').forEach(n => n.classList.remove('vis'));
+    }
+  });
+
+  document.getElementById('deck').addEventListener('click', e => {
+    if (e.target.closest('.nav') || e.target.closest('.nbtn')) return;
+    if (e.clientX > window.innerWidth / 2) next(); else prev();
+  });
+
+  show(0);
+</script>
+</body>
+</html>
