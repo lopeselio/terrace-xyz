@@ -89,7 +89,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 
   // Resolve packages that pnpm symlinks but Metro fails to follow.
   // Walk nodeModulePaths and resolve the symlink to its real path.
-  const PNPM_RESOLVE = ["fast-text-encoding"];
+  const PNPM_RESOLVE = ["fast-text-encoding", "expo-notifications"];
   if (PNPM_RESOLVE.includes(moduleName)) {
     for (const nodeModulesDir of config.resolver.nodeModulesPaths) {
       const pkgDir = path.resolve(nodeModulesDir, moduleName);
