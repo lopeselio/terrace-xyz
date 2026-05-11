@@ -11,12 +11,12 @@ const leagues = [
 ];
 
 const compareItems = [
-  { feature: "On-chain settlement", terrace: true, betfair: false, polymarket: true, sportradar: false },
-  { feature: "Permissionless market creation", terrace: true, betfair: false, polymarket: false, sportradar: false },
+  { feature: "Instant settlement", terrace: true, betfair: false, polymarket: true, sportradar: false },
+  { feature: "Open market creation", terrace: true, betfair: false, polymarket: false, sportradar: false },
   { feature: "Flash / in-match markets", terrace: true, betfair: true, polymarket: false, sportradar: false },
   { feature: "Social feed + follow", terrace: true, betfair: false, polymarket: false, sportradar: false },
-  { feature: "On-chain reputation badges", terrace: true, betfair: false, polymarket: false, sportradar: false },
-  { feature: "Multi-leg parlay on-chain", terrace: true, betfair: true, polymarket: false, sportradar: false },
+  { feature: "Verified reputation badges", terrace: true, betfair: false, polymarket: false, sportradar: false },
+  { feature: "Multi-leg parlay builder", terrace: true, betfair: true, polymarket: false, sportradar: false },
   { feature: "USDC settlement (no fiat)", terrace: true, betfair: false, polymarket: true, sportradar: false },
   { feature: "Creator fee economy", terrace: true, betfair: false, polymarket: false, sportradar: false },
   { feature: "No KYC for base access", terrace: true, betfair: false, polymarket: false, sportradar: false },

@@ -53,7 +53,7 @@ export default function Reputation() {
           <div>
             <div className="inline-flex items-center gap-2 bg-sol/10 border border-sol/20 rounded-full px-3 py-1 mb-6">
               <span className="text-xs font-semibold text-sol tracking-wide uppercase">
-                On-chain Reputation
+                Your Reputation
               </span>
             </div>
             <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black tracking-tight leading-tight mb-6">
@@ -64,9 +64,9 @@ export default function Reputation() {
               Verifiable.
             </h2>
             <p className="text-white/50 text-lg leading-relaxed mb-8">
-              Every bet, every win, every parlay — written to a Reputation PDA
-              on Solana. Your badge tier isn&rsquo;t given. It&rsquo;s earned.
-              And everyone can see it.
+              Every bet, every win, every parlay — recorded permanently and
+              visible to everyone. Your badge tier isn&rsquo;t given.
+              It&rsquo;s earned.
             </p>
 
             {/* Badge cards */}
@@ -167,8 +167,8 @@ export default function Reputation() {
             </div>
             <div className="px-5 py-4 border-t border-white/5 text-center">
               <span className="text-xs text-text-muted">
-                Updated live from on-chain PDAs ·{" "}
-                <span className="text-pitch">Solana devnet</span>
+                Updated live ·{" "}
+                <span className="text-pitch">Powered by Solana</span>
               </span>
             </div>
           </div>

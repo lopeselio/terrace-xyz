@@ -4,18 +4,24 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Terrace — Social Sports Predictions on Solana",
   description:
-    "The on-chain prediction layer for football fans. Create markets, back your takes, build your rep. Powered by Solana.",
+    "The social prediction layer for football fans. Create markets, back your takes, build your rep. Powered by Solana.",
+  icons: {
+    icon: "/terrace-logo.png",
+    apple: "/terrace-logo.png",
+  },
   openGraph: {
     title: "Terrace — Social Sports Predictions on Solana",
     description:
-      "Create markets, back your takes, build your on-chain reputation. The social prediction layer football deserves.",
+      "Create markets, back your takes, build your reputation. The social prediction layer football deserves.",
     type: "website",
+    images: [{ url: "/terrace-logo.png", width: 512, height: 512 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Terrace — Social Sports Predictions on Solana",
     description:
-      "Create markets, back your takes, build your on-chain reputation.",
+      "Create markets, back your takes, build your reputation.",
+    images: ["/terrace-logo.png"],
   },
 };
 

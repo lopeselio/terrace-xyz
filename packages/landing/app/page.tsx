@@ -9,6 +9,7 @@ import SocialFeed from "./components/SocialFeed";
 import CreatorTools from "./components/CreatorTools";
 import HowItWorks from "./components/HowItWorks";
 import Leagues from "./components/Leagues";
+import Founder from "./components/Founder";
 import Waitlist from "./components/Waitlist";
 import Footer from "./components/Footer";
 
@@ -26,6 +27,7 @@ export default function Home() {
       <CreatorTools />
       <HowItWorks />
       <Leagues />
+      <Founder />
       <Waitlist />
       <Footer />
     </main>

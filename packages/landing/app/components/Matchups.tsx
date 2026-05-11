@@ -9,7 +9,7 @@ const steps = [
     bg: "bg-pitch/10",
     border: "border-pitch/30",
     title: "Issue the challenge",
-    detail: "Pick a market, choose your side, set the stake. Your USDC locks in the Matchup PDA vault on-chain.",
+    detail: "Pick a market, choose your side, set the stake. Your stake is locked automatically — no intermediary holds it.",
     tag: "STEP 01",
   },
   {
@@ -26,8 +26,8 @@ const steps = [
     color: "text-yellow-400",
     bg: "bg-yellow-400/10",
     border: "border-yellow-400/30",
-    title: "Market settles on-chain",
-    detail: "The underlying market resolves. Either player taps Settle — the program reads the outcome and sends the full pot to the winner. No fees, no middleman.",
+    title: "Market settles automatically",
+    detail: "The underlying market resolves. Either player taps Settle — the outcome is read and the full pot goes to the winner. No fees, no middleman.",
     tag: "STEP 03",
   },
 ];
@@ -85,7 +85,7 @@ export default function Matchups() {
             <span className="text-pitch glow-green">your mouth is.</span>
           </h2>
           <p className="text-white/50 text-lg max-w-xl mx-auto">
-            Challenge any wallet directly. Equal stakes, opposing sides, one winner. Pure on-chain 1v1 — no house, no spread.
+            Challenge any fan directly. Equal stakes, opposing sides, one winner. Pure peer-to-peer 1v1 — no house, no spread.
           </p>
         </div>
 
@@ -194,8 +194,8 @@ export default function Matchups() {
 
             <div className="px-5 py-4 border-t border-white/5 text-center">
               <span className="text-xs text-text-muted">
-                Stake locked in Matchup PDA ·{" "}
-                <span className="text-pitch">Solana devnet</span>
+                Stake locked automatically ·{" "}
+                <span className="text-pitch">Powered by Solana</span>
               </span>
             </div>
           </div>

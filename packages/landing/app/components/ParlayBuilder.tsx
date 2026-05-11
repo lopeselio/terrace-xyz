@@ -81,7 +81,7 @@ export default function ParlayBuilder() {
           </h2>
           <p className="text-white/50 text-lg">
             Stack up to 8 legs. Each correct pick multiplies your payout.
-            All settled on-chain. No house, no middleman.
+            Settled automatically. No house, no middleman.
           </p>
         </div>
 
@@ -264,7 +264,7 @@ export default function ParlayBuilder() {
                 : "Place Parlay on Solana"}
             </button>
             <p className="text-[10px] text-text-muted text-center mt-2">
-              On-chain settlement · USDC payout
+              Automatic settlement · instant payout
             </p>
           </div>
         </div>

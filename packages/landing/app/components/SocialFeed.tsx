@@ -170,7 +170,7 @@ export default function SocialFeed() {
               predictors.
             </h2>
             <p className="text-white/50 text-lg leading-relaxed mb-8">
-              Every bet, win, and market creation streams live on-chain. Follow
+              Every bet, win, and market creation streams live. Follow
               top predictors and get notified the second they back a take. The
               crowd&rsquo;s wisdom — real-time.
             </p>
@@ -180,7 +180,7 @@ export default function SocialFeed() {
                 {
                   icon: "📡",
                   title: "Real-time Helius WebSocket feed",
-                  desc: "On-chain events stream to your feed instantly. No delays, no polling.",
+                  desc: "Live events stream to your feed instantly. No delays, no polling.",
                 },
                 {
                   icon: "👥",
