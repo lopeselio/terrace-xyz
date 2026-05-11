@@ -16,6 +16,9 @@ export interface CreatedMarket {
   outcome: number | null;
   nonce: bigint;
   totalVolumeUsdc: number;
+  creatorFeeBps: number;
+  /** Estimated creator fee revenue = totalVolumeUsdc × creatorFeeBps / 10000 */
+  estimatedRevenueUsdc: number;
   isExpired: boolean;
   isSettleable: boolean;
 }
@@ -79,6 +82,7 @@ export function useCreatedMarkets(walletPubkey: string | null): Result {
             // Program has no on-chain expiry check for settle_market — creator can settle any time
             const isSettleable = m.status === "Open";
 
+            const totalVolumeUsdc = Number(m.totalVolume) / 1_000_000;
             created.push({
               address: pubkey,
               question: m.question,
@@ -86,7 +90,9 @@ export function useCreatedMarkets(walletPubkey: string | null): Result {
               status: m.status as "Open" | "Closed" | "Settled",
               outcome: m.outcome,
               nonce: m.nonce,
-              totalVolumeUsdc: Number(m.totalVolume) / 1_000_000,
+              totalVolumeUsdc,
+              creatorFeeBps: m.creatorFeeBps,
+              estimatedRevenueUsdc: totalVolumeUsdc * m.creatorFeeBps / 10_000,
               isExpired,
               isSettleable,
             });

@@ -25,8 +25,9 @@ import { useClaimWinnings } from "../hooks/useClaimWinnings";
 // Market summary needed to determine if a bet won
 interface MarketSummary {
   status: "Open" | "Settled" | "Closed";
-  outcome: number | null; // 0=YES, 1=NO
+  outcome: number | null; // 0=No, 1=Yes (Rust program convention)
   creator: string;
+  question: string;
 }
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
@@ -150,42 +151,79 @@ function BetRow({
   marketSummary,
   onClaim,
   claiming,
+  claimError,
 }: {
   bet: Bet;
   marketSummary?: MarketSummary;
   onClaim?: () => void;
   claiming?: boolean;
+  claimError?: string | null;
 }) {
+  const settled = marketSummary?.status === "Settled";
   const isWinner =
-    marketSummary?.status === "Settled" &&
+    settled &&
     marketSummary?.outcome !== null &&
+    marketSummary?.outcome !== undefined &&
     marketSummary?.outcome === bet.outcome &&
     !bet.claimed;
+  const isLoser =
+    settled &&
+    marketSummary?.outcome !== null &&
+    marketSummary?.outcome !== undefined &&
+    marketSummary?.outcome !== bet.outcome;
+
+  const question = marketSummary?.question;
+  const statusOpen = !marketSummary || marketSummary.status === "Open";
 
   return (
     <View style={pos.row}>
-      <View style={pos.rowLeft}>
-        <Text style={pos.marketAddr}>{shortAddr(bet.market)}</Text>
-        <View style={[pos.outcomePill, bet.outcome === 0 ? pos.yesPill : pos.noPill]}>
-          <Text style={pos.outcomePillText}>{bet.outcome === 0 ? "YES" : "NO"}</Text>
+      {/* Market question (falls back to short address while summary loads) */}
+      <Text style={pos.marketQuestion} numberOfLines={2}>
+        {question ? question : `Market ${shortAddr(bet.market)}`}
+      </Text>
+
+      <View style={pos.rowMeta}>
+        <View style={pos.rowLeft}>
+          <View style={[pos.outcomePill, bet.outcome === 1 ? pos.yesPill : pos.noPill]}>
+            <Text style={pos.outcomePillText}>{bet.outcome === 1 ? "YES" : "NO"}</Text>
+          </View>
+          {statusOpen && (
+            <View style={pos.openPill}>
+              <Text style={pos.openPillText}>OPEN</Text>
+            </View>
+          )}
+          {!statusOpen && marketSummary?.status === "Settled" && (
+            <View style={pos.settledPill}>
+              <Text style={pos.settledPillText}>SETTLED</Text>
+            </View>
+          )}
         </View>
-      </View>
-      <View style={pos.rowRight}>
-        <Text style={pos.amount}>{fmtUsdc(bet.amount)} USDC</Text>
-        {bet.claimed && <Text style={pos.claimedTag}>Claimed</Text>}
-        {isWinner && onClaim && (
-          <TouchableOpacity
-            style={[pos.actionBtn, pos.actionBtnGreen, claiming && pos.btnDisabled]}
-            onPress={onClaim}
-            disabled={claiming}
-          >
-            {claiming ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={pos.actionBtnText}>Claim winnings</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        <View style={pos.rowRight}>
+          <Text style={pos.amount}>{fmtUsdc(bet.amount)} USDC</Text>
+          {bet.claimed && <Text style={pos.claimedTag}>✓ Claimed</Text>}
+          {isLoser && !bet.claimed && !bet.resultRecorded && (
+            <Text style={pos.lostTag}>✗ Lost</Text>
+          )}
+          {isLoser && bet.resultRecorded && (
+            <Text style={pos.lostRecordedTag}>✗ Recorded</Text>
+          )}
+          {isWinner && onClaim && (
+            <TouchableOpacity
+              style={[pos.actionBtn, pos.actionBtnGreen, claiming && pos.btnDisabled]}
+              onPress={onClaim}
+              disabled={claiming}
+            >
+              {claiming ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={pos.actionBtnText}>Claim winnings</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {claiming === false && claimError && (
+            <Text style={pos.claimErrorText} numberOfLines={2}>{claimError}</Text>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -216,7 +254,7 @@ function ParlayRow({
       <View style={pos.parlayLegs}>
         {parlay.legs.map((l, i) => (
           <Text key={i} style={pos.parlayLeg}>
-            {shortAddr(l.market)} → {l.outcome === 0 ? "YES" : "NO"}
+            {shortAddr(l.market)} → {l.outcome === 1 ? "YES" : "NO"}
           </Text>
         ))}
       </View>
@@ -242,6 +280,7 @@ function ActivePositions({
   onClaimParlay,
   onClaimBet,
   claimingBet,
+  claimError,
 }: {
   bets: Bet[];
   parlays: Parlay[];
@@ -250,6 +289,7 @@ function ActivePositions({
   onClaimParlay: (p: Parlay) => void;
   onClaimBet: (bet: Bet) => void;
   claimingBet: string | null;
+  claimError: string | null;
 }) {
   if (bets.length === 0 && parlays.length === 0) {
     return (
@@ -262,15 +302,19 @@ function ActivePositions({
   }
   return (
     <View>
-      {bets.map((b) => (
-        <BetRow
-          key={b.address}
-          bet={b}
-          marketSummary={marketSummaries[b.market as string]}
-          onClaim={() => onClaimBet(b)}
-          claiming={claimingBet === (b.address as string)}
-        />
-      ))}
+      {bets.map((b) => {
+        const isClaiming = claimingBet === (b.address as string);
+        return (
+          <BetRow
+            key={b.address}
+            bet={b}
+            marketSummary={marketSummaries[b.market as string]}
+            onClaim={() => onClaimBet(b)}
+            claiming={isClaiming}
+            claimError={isClaiming === false ? claimError : null}
+          />
+        );
+      })}
       {parlays.map((p) => (
         <ParlayRow
           key={p.address}
@@ -283,7 +327,15 @@ function ActivePositions({
   );
 }
 
-function HistoryPositions({ bets, parlays }: { bets: Bet[]; parlays: Parlay[] }) {
+function HistoryPositions({
+  bets,
+  parlays,
+  marketSummaries,
+}: {
+  bets: Bet[];
+  parlays: Parlay[];
+  marketSummaries: Record<string, MarketSummary>;
+}) {
   if (bets.length === 0 && parlays.length === 0) {
     return (
       <View style={styles.stubPositions}>
@@ -295,21 +347,33 @@ function HistoryPositions({ bets, parlays }: { bets: Bet[]; parlays: Parlay[] })
   }
   return (
     <View>
-      {bets.map((b) => <BetRow key={b.address} bet={b} />)}
+      {bets.map((b) => (
+        <BetRow
+          key={b.address}
+          bet={b}
+          marketSummary={marketSummaries[b.market as string]}
+        />
+      ))}
       {parlays.map((p) => <ParlayRow key={p.address} parlay={p} />)}
     </View>
   );
 }
 
 const pos = StyleSheet.create({
-  row:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#111", borderRadius: 12, padding: 14, marginBottom: 8 },
-  rowLeft:    { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  rowRight:   { alignItems: "flex-end", gap: 3 },
-  marketAddr: { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  row:            { flexDirection: "column", backgroundColor: "#111", borderRadius: 12, padding: 14, marginBottom: 8, gap: 8 },
+  marketQuestion: { fontSize: 13, fontWeight: "600", color: "#e5e7eb", lineHeight: 18 },
+  rowMeta:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  rowLeft:        { flexDirection: "row", alignItems: "center", gap: 6 },
+  rowRight:       { alignItems: "flex-end", gap: 3 },
+  marketAddr:     { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
   outcomePill:     { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   yesPill:         { backgroundColor: "#14532d" },
   noPill:          { backgroundColor: "#7f1d1d" },
   outcomePillText: { fontSize: 11, fontWeight: "700", color: "#f9fafb" },
+  openPill:        { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#1a2e1a", borderWidth: 0.5, borderColor: "#22c55e" },
+  openPillText:    { fontSize: 10, fontWeight: "600", color: "#22c55e" },
+  settledPill:     { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#1e1e1e" },
+  settledPillText: { fontSize: 10, fontWeight: "600", color: "#6b7280" },
   amount:     { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
   claimedTag: { fontSize: 10, color: "#22c55e" },
 
@@ -324,6 +388,9 @@ const pos = StyleSheet.create({
   actionBtnGreen:  { backgroundColor: "#14532d", borderColor: "#22c55e" },
   actionBtnText:   { fontSize: 12, fontWeight: "600", color: "#f9fafb" },
   btnDisabled:     { opacity: 0.5 },
+  lostTag:         { fontSize: 10, color: "#ef4444", fontWeight: "600" },
+  lostRecordedTag: { fontSize: 10, color: "#6b7280" },
+  claimErrorText:  { fontSize: 10, color: "#f87171", maxWidth: 140, textAlign: "right", marginTop: 2 },
 });
 
 // ---------------------------------------------------------------------------
@@ -396,11 +463,25 @@ function CreatedMarketRow({
 
       {market.status === "Settled" && market.outcome !== null && (
         <View style={cm.settledRow}>
-          <View style={[cm.outcomePill, market.outcome === 0 ? cm.yesPill : cm.noPill]}>
+          <View style={[cm.outcomePill, market.outcome === 1 ? cm.yesPill : cm.noPill]}>
             <Text style={cm.pillText}>
-              Settled {market.outcome === 0 ? "YES" : "NO"}
+              Settled {market.outcome === 1 ? "YES" : "NO"}
             </Text>
           </View>
+        </View>
+      )}
+
+      {/* Creator revenue */}
+      {market.creatorFeeBps > 0 && (
+        <View style={cm.revenueRow}>
+          <Text style={cm.revenueLabel}>
+            Creator fee {(market.creatorFeeBps / 100).toFixed(1)}%
+          </Text>
+          <Text style={cm.revenueValue}>
+            {market.estimatedRevenueUsdc > 0
+              ? `~$${market.estimatedRevenueUsdc.toFixed(4)} earned`
+              : "No volume yet"}
+          </Text>
         </View>
       )}
 
@@ -439,12 +520,21 @@ function CreatedMarketRow({
 
 function CreatedMarketsList({
   walletPubkey,
+  onTotalRevenue,
 }: {
   walletPubkey: string;
+  onTotalRevenue?: (usdc: number) => void;
 }) {
   const { markets, loading, refresh } = useCreatedMarkets(walletPubkey);
   const { status, settleMarket, reset } = useSettleMarket();
   const [settlingAddr, setSettlingAddr] = useState<string | null>(null);
+
+  // Surface total creator revenue to parent for stats display
+  React.useEffect(() => {
+    if (!onTotalRevenue) return;
+    const total = markets.reduce((sum, m) => sum + m.estimatedRevenueUsdc, 0);
+    onTotalRevenue(total);
+  }, [markets, onTotalRevenue]);
 
   const handleSettle = async (address: string, outcome: 0 | 1) => {
     setSettlingAddr(address);
@@ -516,6 +606,9 @@ const cm = StyleSheet.create({
   noBtn:  { backgroundColor: "#3b0a0a", borderColor: "#ef4444" },
   btnDisabled: { opacity: 0.5 },
   settleBtnText: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
+  revenueRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },
+  revenueLabel:  { fontSize: 11, color: "#6b7280" },
+  revenueValue:  { fontSize: 11, color: "#f59e0b", fontWeight: "600" },
 });
 
 // ---------------------------------------------------------------------------
@@ -536,17 +629,22 @@ interface Props {
 export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser, onConnectWallet, onDisconnect }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
   const [walletTimedOut, setWalletTimedOut] = useState(false);
+  const [creatorRevenue, setCreatorRevenue] = useState<number>(0);
   const { reputation, loading: repLoading } = useReputation(walletPubkey);
   const { bets, loading: betsLoading, refresh: refreshBets } = useBets(walletPubkey);
   const { parlays, loadingParlays, settleParlay, claimParlay } = useParlay();
-  const { claim: claimWinnings, status: claimStatus } = useClaimWinnings();
+  const { claim: claimWinnings, error: claimWinError, reset: resetClaim } = useClaimWinnings();
   const [claimingBet, setClaimingBet] = useState<string | null>(null);
 
-  // Batch-fetch market summaries for all bets so we know if each bet won
+  // Batch-fetch market summaries for all bets so we know if each bet won.
+  // Use a stable dep key (sorted unique market addresses) to avoid redundant refetches.
   const [marketSummaries, setMarketSummaries] = useState<Record<string, MarketSummary>>({});
+  const marketAddrKey = [...new Set(bets.map((b) => b.market as string))].sort().join(",");
+
   useEffect(() => {
     const uniqueMarkets = [...new Set(bets.map((b) => b.market as string))];
     if (!uniqueMarkets.length || !HELIUS_RPC_URL) return;
+    let cancelled = false;
     fetch(HELIUS_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -558,6 +656,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
     })
       .then((r) => r.json())
       .then((json) => {
+        if (cancelled) return;
         const summaries: Record<string, MarketSummary> = {};
         (json.result?.value ?? []).forEach((acct: any, i: number) => {
           if (!acct) return;
@@ -568,15 +667,19 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
               status: m.status as "Open" | "Settled" | "Closed",
               outcome: m.outcome,
               creator: m.creator as string,
+              question: m.question ?? "",
             };
           } catch {}
         });
         setMarketSummaries(summaries);
       })
       .catch(() => {});
-  }, [bets]);
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketAddrKey]);
 
   const handleClaimBet = async (bet: Bet) => {
+    resetClaim();
     setClaimingBet(bet.address as string);
     await claimWinnings(bet.address as string, bet.market as string);
     setClaimingBet(null);
@@ -584,6 +687,31 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   };
   const { mainnetSol, devnetSol, mainnetUsdc, devnetUsdc } = useWalletBalances(walletPubkey);
   const { name: snsName } = useSnsName(walletPubkey);
+
+  // Derive performance stats from local bets + marketSummaries —
+  // more accurate than on-chain Reputation PDA which may lag if the
+  // record_result instruction wasn't called for every settled bet.
+  const settledBets = bets.filter((b) => {
+    const ms = marketSummaries[b.market as string];
+    return ms && (ms.status === "Settled" || ms.status === "Closed");
+  });
+  const localWins = settledBets.filter(
+    (b) => marketSummaries[b.market as string]?.outcome === b.outcome
+  ).length;
+  const localLosses = settledBets.filter(
+    (b) => marketSummaries[b.market as string]?.outcome !== b.outcome
+  ).length;
+  const localWinRate = settledBets.length > 0 ? localWins / settledBets.length : 0;
+
+  // Net P&L from bets: claimed win stakes minus lost stakes (stake proxy, not exact payout)
+  const betWinAmount = bets
+    .filter((b) => b.claimed && marketSummaries[b.market as string]?.outcome === b.outcome)
+    .reduce((sum, b) => sum + Number(b.amount) / 1_000_000, 0);
+  const betLossAmount = settledBets
+    .filter((b) => marketSummaries[b.market as string]?.outcome !== b.outcome)
+    .reduce((sum, b) => sum + Number(b.amount) / 1_000_000, 0);
+  const betNetPL = betWinAmount - betLossAmount;
+  const totalRevenue = creatorRevenue + betNetPL;
 
   const handleCopyAddress = async () => {
     if (!walletPubkey) return;
@@ -679,7 +807,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         </View>
         <View style={styles.identityMeta}>
           <Text style={styles.username} numberOfLines={1}>
-            {snsName ?? `@${walletPubkey.slice(0, 8).toLowerCase()}`}
+            {snsName ?? `@${walletPubkey.slice(0, 5)}....${walletPubkey.slice(-5)}`}
           </Text>
           <TouchableOpacity style={styles.addressRow} onPress={handleCopyAddress} activeOpacity={0.7}>
             <Text style={styles.address}>{shortKey}</Text>
@@ -741,15 +869,15 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
       </View>
 
       {/* ── Reputation bar ──────────────────────── */}
-      {repLoading ? (
+      {(repLoading || betsLoading) ? (
         <View style={styles.repLoadingBox}>
           <ActivityIndicator color="#22c55e" />
         </View>
       ) : (
         <RepBar
-          winRate={winRate}
+          winRate={localWinRate}
           streak={streak}
-          totalCalls={totalCalls}
+          totalCalls={settledBets.length}
           badgeTier={badgeTier}
         />
       )}
@@ -758,12 +886,27 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
       <View style={styles.perfSection}>
         <Text style={styles.sectionLabel}>PERFORMANCE</Text>
         <View style={styles.perfRow}>
-          <StatCell label="Wins" value={String(reputation?.winningBets ?? 0)} />
-          <StatCell label="Total" value={String(totalCalls)} />
+          <StatCell label="Wins" value={String(localWins)} />
+          <StatCell label="Losses" value={String(localLosses)} valueColor={localLosses > 0 ? "#ef4444" : undefined} />
+          <StatCell label="Total" value={String(bets.length)} />
           <StatCell
             label="Win rate"
-            value={totalCalls > 0 ? `${Math.round(winRate * 100)}%` : "—"}
+            value={settledBets.length > 0 ? `${Math.round(localWinRate * 100)}%` : "—"}
             valueColor="#22c55e"
+          />
+        </View>
+        <View style={[styles.perfRow, { marginTop: 8 }]}>
+          <StatCell
+            label="Creator fees"
+            value={creatorRevenue > 0 ? `+$${creatorRevenue.toFixed(2)}` : "$0.00"}
+            valueColor="#f59e0b"
+            sub="USDC (est.)"
+          />
+          <StatCell
+            label="Net bet P&L"
+            value={`${betNetPL >= 0 ? "+" : ""}$${betNetPL.toFixed(2)}`}
+            valueColor={betNetPL >= 0 ? "#22c55e" : "#ef4444"}
+            sub="USDC (stake)"
           />
         </View>
       </View>
@@ -786,29 +929,42 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
 
         {/* Position list */}
         {tab === "Created" ? (
-          <CreatedMarketsList walletPubkey={walletPubkey} />
+          <CreatedMarketsList walletPubkey={walletPubkey} onTotalRevenue={setCreatorRevenue} />
         ) : (betsLoading || loadingParlays) ? (
           <View style={styles.stubPositions}>
             <ActivityIndicator color="#22c55e" />
           </View>
         ) : tab === "Active" ? (
           <ActivePositions
-            bets={bets.filter((b) => !b.claimed)}
+            bets={bets.filter((b) => {
+              if (b.claimed) return false;
+              const ms = marketSummaries[b.market as string];
+              // Market not yet loaded → optimistically show (avoids flicker)
+              if (!ms) return true;
+              // Open market → definitely active
+              if (ms.status === "Open") return true;
+              // Settled market → only show if this bet WON (claim button needed)
+              return ms.outcome !== null && ms.outcome !== undefined && ms.outcome === b.outcome;
+            })}
             parlays={parlays.filter((p) => p.status === "Open" || p.status === "Won")}
             marketSummaries={marketSummaries}
             onSettleParlay={settleParlay}
             onClaimParlay={claimParlay}
             onClaimBet={handleClaimBet}
             claimingBet={claimingBet}
+            claimError={claimWinError}
           />
         ) : (
           <HistoryPositions
             bets={bets.filter((b) => {
               if (b.claimed || b.resultRecorded) return true;
               const ms = marketSummaries[b.market as string];
-              return ms?.status === "Settled" && ms?.outcome !== null && ms?.outcome !== b.outcome;
+              if (!ms) return false;
+              // Settled + lost = goes to History
+              return ms.status === "Settled" && ms.outcome !== null && ms.outcome !== b.outcome;
             })}
             parlays={parlays.filter((p) => p.status === "Won" || p.status === "Lost" || p.status === "Claimed" || p.status === "Cancelled")}
+            marketSummaries={marketSummaries}
           />
         )}
       </View>
