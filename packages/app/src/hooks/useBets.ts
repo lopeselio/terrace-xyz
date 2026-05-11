@@ -5,28 +5,17 @@ import { TERRACE_PROGRAM_ID } from "@terrace/sdk";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
-// Bet account layout (after 8-byte discriminator):
+// Bet account layout (Bet::SPACE = 8 + 32 + 32 + 1 + 8 + 1 + 1 + 1 + 15 = 99):
+//   discriminator:   8  bytes  [0..8]
 //   market:          32 bytes  [8..40]
-//   bettor:          32 bytes  [40..72]  ← filter anchor
-//   outcome:         1  byte   [72]
+//   bettor:          32 bytes  [40..72]  ← memcmp filter anchor
+//   outcome:         1  byte   [72]      0 = No, 1 = Yes (per Rust program)
 //   amount:          8  bytes  [73..81]
 //   claimed:         1  byte   [81]
 //   result_recorded: 1  byte   [82]
 //   bump:            1  byte   [83]
+//   padding:         15 bytes  [84..99]
 
-function b58Decode(addr: string): Uint8Array {
-  const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  let num = BigInt(0);
-  for (const c of addr) {
-    const idx = ALPHABET.indexOf(c);
-    if (idx < 0) throw new Error(`bad base58 char: ${c}`);
-    num = num * 58n + BigInt(idx);
-  }
-  const bytes: number[] = [];
-  while (num > 0n) { bytes.unshift(Number(num & 0xffn)); num >>= 8n; }
-  const leadingZeros = addr.match(/^1*/)?.[0].length ?? 0;
-  return new Uint8Array([...Array(leadingZeros).fill(0), ...bytes]);
-}
 
 function deserializeBet(data: Uint8Array, address: Address): Bet {
   const view = new DataView(data.buffer, data.byteOffset);
@@ -87,9 +76,6 @@ export function useBets(walletPubkey: string | null): UseBetsResult {
 
     (async () => {
       try {
-        const bettorBytes = b58Decode(walletPubkey);
-        const bettorBase64 = btoa(String.fromCharCode(...bettorBytes));
-
         const res = await fetch(HELIUS_RPC_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -102,8 +88,9 @@ export function useBets(walletPubkey: string | null): UseBetsResult {
               {
                 encoding: "base64",
                 filters: [
-                  { dataSize: 84 },
-                  { memcmp: { offset: 40, bytes: bettorBase64, encoding: "base64" } },
+                  { dataSize: 99 },
+                  // walletPubkey is already base58 — standard memcmp bytes format
+                  { memcmp: { offset: 40, bytes: walletPubkey } },
                 ],
               },
             ],
