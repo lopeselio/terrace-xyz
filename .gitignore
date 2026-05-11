@@ -36,3 +36,4 @@ packages/app/.gradle/
 # Misc
 .DS_Store
 *.log
+.claude/
