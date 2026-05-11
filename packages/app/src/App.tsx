@@ -280,7 +280,7 @@ export default function App() {
   const { sendCode, loginWithCode, state: otpState } = useLoginWithEmail();
   const solanaWallet = useEmbeddedSolanaWallet();
 
-  const { markets, loading: marketsLoading, prependMarket } = useMarkets();
+  const { markets, loading: marketsLoading, prependMarket, refresh: refreshMarkets } = useMarkets();
   const [activeTab, setActiveTab] = useState<Tab>("Home");
   const [pendingTab, setPendingTab] = useState<Tab>("Home");
   const [showConnect, setShowConnect] = useState(false);
@@ -330,6 +330,7 @@ export default function App() {
   // Register the Privy signer once the embedded wallet is connected.
   // solanaWallet.getProvider() returns PrivyEmbeddedSolanaWalletProvider which
   // supports request({ method: 'signTransaction', params: { transaction } }).
+  // Re-run when publicKey or linkedSolanaAddress resolves (they can lag behind status).
   useEffect(() => {
     if (solanaWallet.status === "connected") {
       const pubkey = solanaWallet.publicKey ?? linkedSolanaAddress;
@@ -347,7 +348,8 @@ export default function App() {
     } else {
       setPrivySigner(null);
     }
-  }, [solanaWallet.status]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solanaWallet.status, privySolanaAddress]);
 
   // Fallback wallet creation for edge cases where createOnLogin didn't fire
   // (e.g. network interruption during login, or needsRecovery state).
@@ -470,6 +472,7 @@ export default function App() {
             onSelectMarket={handleSelectMarket}
             onNavigateProfile={() => setActiveTab("Profile")}
             onNavigateParlay={() => setShowParlay(true)}
+            onRefreshMarkets={refreshMarkets}
           />
         );
       case "Markets":

@@ -109,6 +109,10 @@ function setPrivySigner(
   _privySigner = signer;
   if (signer && pubkey) {
     _setState({ publicKey: pubkey, connected: true, connecting: false, track: "privy" });
+  } else if (signer && !pubkey) {
+    // Signer available but pubkey not yet resolved — switch to privy track immediately
+    // so any stale MWA publicKey is not used as creator/payer for new transactions.
+    _setState((s) => ({ ...s, publicKey: null, connected: true, connecting: false, track: "privy" as WalletTrack }));
   } else if (!signer) {
     _setState((s) =>
       s.track === "privy"
