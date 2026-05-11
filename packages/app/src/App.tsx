@@ -7,25 +7,30 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
+import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 // Required for Privy OAuth to close the browser and complete the auth session
 // when the deep link redirects back to the app.
 WebBrowser.maybeCompleteAuthSession();
+import * as Notifications from "expo-notifications";
 import { useWallet } from "./hooks/useWallet";
 import { useMarkets } from "./hooks/useMarkets";
 import { useReputation } from "./hooks/useReputation";
+import { useFollowing } from "./hooks/useFollowing";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import { HomeScreen } from "./screens/HomeScreen";
 import { MarketListScreen } from "./screens/MarketListScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
 import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
 import { CreateMarketScreen } from "./screens/CreateMarketScreen";
+import { MatchupScreen } from "./screens/MatchupScreen";
 import { MarketDetailSheet } from "./components/MarketDetailSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 import {
@@ -45,8 +50,8 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: "Home",    icon: "🏠", label: "Home"    },
   { id: "Markets", icon: "📋", label: "Markets" },
   { id: "Create",  icon: "＋", label: "Create"  },
-  { id: "Social",  icon: "✈️", label: "Social"  },
-  { id: "Profile", icon: "👤", label: "Profile" },
+  { id: "Social",  icon: "👥", label: "Social"  },
+  { id: "Profile", icon: "🏆", label: "Profile" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -285,6 +290,8 @@ export default function App() {
   const [pendingTab, setPendingTab] = useState<Tab>("Home");
   const [showConnect, setShowConnect] = useState(false);
   const [showParlay, setShowParlay] = useState(false);
+  const [showMatchups, setShowMatchups] = useState(false);
+  const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
@@ -375,6 +382,50 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [privyUser, solanaWallet.status]);
+
+  // Deep link handling — terrace://matchup/<address>
+  function handleDeepLink(url: string | null) {
+    if (!url) return;
+    try {
+      const { hostname, path } = Linking.parse(url);
+      if (hostname === "matchup" && path) {
+        const addr = path.replace(/^\//, "");
+        if (addr.length >= 32) {
+          setDeepLinkMatchupAddress(addr);
+          setShowMatchups(true);
+        }
+      }
+    } catch {}
+  }
+
+  // Cold start — app opened via deep link
+  useEffect(() => {
+    Linking.getInitialURL().then(handleDeepLink);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Warm start — app already running, link tapped
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", ({ url }) => handleDeepLink(url));
+    return () => sub.remove();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push notifications — register token + sync following list with the worker
+  const { following: followingForPush } = useFollowing(effectivePublicKey ?? null);
+  usePushNotifications(effectivePublicKey ?? null, followingForPush);
+
+  // When user taps a notification, navigate to Markets tab and open the relevant market
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      setActiveTab("Markets");
+      if (typeof data.marketId === "string") {
+        const market = markets.find((m) => m.id === data.marketId) ?? null;
+        if (market) setSelectedMarket(market);
+      }
+    });
+    return () => sub.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markets]);
 
   const handleSelectMarket = (id: string) => {
     const market = markets.find((m) => m.id === id) ?? null;
@@ -471,7 +522,8 @@ export default function App() {
             marketsLoading={marketsLoading}
             onSelectMarket={handleSelectMarket}
             onNavigateProfile={() => setActiveTab("Profile")}
-            onNavigateParlay={() => setShowParlay(true)}
+            onNavigateParlay={() => { refreshMarkets(); setShowParlay(true); }}
+            onNavigateMatchup={() => setShowMatchups(true)}
             onRefreshMarkets={refreshMarkets}
           />
         );
@@ -541,6 +593,20 @@ export default function App() {
             walletPubkey={effectivePublicKey}
             onConnectWallet={handleConnectWallet}
             onClose={() => setShowParlay(false)}
+            onNavigateProfile={() => { setShowParlay(false); setActiveTab("Profile"); }}
+          />
+        </View>
+      )}
+
+      {showMatchups && (
+        <View style={styles.parlayOverlay}>
+          <MatchupScreen
+            markets={markets}
+            walletPubkey={effectivePublicKey}
+            onConnectWallet={handleConnectWallet}
+            onClose={() => { setShowMatchups(false); setDeepLinkMatchupAddress(null); }}
+            onRefreshMarkets={refreshMarkets}
+            initialMatchupAddress={deepLinkMatchupAddress}
           />
         </View>
       )}

@@ -1,18 +1,24 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  Modal,
 } from "react-native";
+import type { Matchup } from "@terrace/sdk";
+import { useMatchup } from "../hooks/useMatchup";
+import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { TerraceMark, PolyJupLogos, POLYMARKET_LOGO, JUPITER_LOGO_URI } from "../components/BrandIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePlaceBet } from "../hooks/usePlaceBet";
-import { useLeaderboard, avatarColorFromPubkey, type SharpEntry } from "../hooks/useLeaderboard";
 import { useCreatorWinRates } from "../hooks/useCreatorWinRates";
+import { useTerraceUsers } from "../hooks/useTerraceUsers";
 import { groupMarkets } from "../utils/groupMarkets";
 import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
@@ -32,15 +38,36 @@ const FEATURE_CARDS = [
 const THUMB_COLORS = ["#064e3b", "#1e3a5f", "#7f1d1d", "#2d1b69"];
 const THUMB_EMOJIS = ["🏴󠁧󠁢󠁥󠁮󠁧󠁿", "⚽", "🔴", "🟣"];
 
-const TRENDING_TABS = ["Markets", "Leagues", "Sharps"] as const;
+const TRENDING_TABS = ["Markets", "Leagues"] as const;
 type TrendingTab = (typeof TRENDING_TABS)[number];
 
 const SOURCE_FILTERS = [
   { key: "All",        label: "All markets" },
-  { key: "Terrace",    label: "⚡ Terrace"   },
-  { key: "Polymarket", label: "🔵 Polymarket" },
+  { key: "Terrace",    label: "Terrace"     },
+  { key: "Polymarket", label: "Polymarket"  },
 ] as const;
 type SourceFilter = (typeof SOURCE_FILTERS)[number]["key"];
+
+function SourceChipContent({ filterKey, active }: { filterKey: SourceFilter; active: boolean }) {
+  const textStyle = [styles.sourceChipText, active && styles.sourceChipTextActive];
+  if (filterKey === "Terrace") {
+    return (
+      <>
+        <TerraceMark size={12} />
+        <Text style={textStyle}>Terrace</Text>
+      </>
+    );
+  }
+  if (filterKey === "Polymarket") {
+    return (
+      <>
+        <PolyJupLogos size={12} />
+        <Text style={textStyle}>Polymarket</Text>
+      </>
+    );
+  }
+  return <Text style={textStyle}>All markets</Text>;
+}
 
 const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
 
@@ -72,6 +99,110 @@ function categoryLabel(m: UnifiedMarket): string {
   return "Sports · Prediction market";
 }
 
+// ---------------------------------------------------------------------------
+// Flash market countdown
+// ---------------------------------------------------------------------------
+
+function countdownLabel(expiry: Date | null): string {
+  if (!expiry) return "";
+  const diff = expiry.getTime() - Date.now();
+  if (diff <= 0) return "Expired";
+  const totalSecs = Math.floor(diff / 1_000);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function useCountdown(expiry: Date | null): string {
+  const [label, setLabel] = useState(() => countdownLabel(expiry));
+  useEffect(() => {
+    const id = setInterval(() => setLabel(countdownLabel(expiry)), 1_000);
+    return () => clearInterval(id);
+  }, [expiry]);
+  return label;
+}
+
+function FlashMarketCard({ market, onPress }: { market: UnifiedMarket; onPress: (id: string) => void }) {
+  const countdown = useCountdown(market.expiry);
+  const expired = countdown === "Expired";
+  return (
+    <TouchableOpacity style={flashStyles.card} onPress={() => onPress(market.id)} activeOpacity={0.8}>
+      <View style={flashStyles.cardHeader}>
+        <View style={flashStyles.flashBadge}>
+          <Text style={flashStyles.flashBadgeText}>⚡ FLASH</Text>
+        </View>
+        <Text style={[flashStyles.countdown, expired && flashStyles.countdownExpired]}>
+          {countdown}
+        </Text>
+      </View>
+      <Text style={flashStyles.cardQuestion} numberOfLines={3}>{market.question}</Text>
+      <View style={flashStyles.cardFooter}>
+        <View style={flashStyles.priceChip}>
+          <Text style={flashStyles.priceChipText}>YES {Math.round(market.yesPrice * 100)}¢</Text>
+        </View>
+        {market.totalVolumeUsdc > 0 && (
+          <Text style={flashStyles.cardVol}>Vol {formatUsdc(market.totalVolumeUsdc)}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function FlashMarketsRow({ markets, onSelectMarket }: { markets: UnifiedMarket[]; onSelectMarket: (id: string) => void }) {
+  const flashOpen = useMemo(
+    () =>
+      markets
+        .filter((m) => m.isFlash && m.status === "Open")
+        .sort((a, b) => (a.expiry?.getTime() ?? 0) - (b.expiry?.getTime() ?? 0)),
+    [markets]
+  );
+  if (flashOpen.length === 0) return null;
+  return (
+    <View style={flashStyles.section}>
+      <View style={flashStyles.sectionHeader}>
+        <Text style={flashStyles.sectionTitle}>⚡ Flash Markets</Text>
+        <View style={flashStyles.liveBadge}>
+          <View style={flashStyles.liveDot} />
+          <Text style={flashStyles.liveText}>{flashOpen.length} live</Text>
+        </View>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={flashStyles.scrollContent}
+      >
+        {flashOpen.map((m) => (
+          <FlashMarketCard key={m.id} market={m} onPress={onSelectMarket} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const flashStyles = StyleSheet.create({
+  section:       { marginBottom: 4 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 6, paddingBottom: 10 },
+  sectionTitle:  { fontSize: 15, fontWeight: "700", color: "#fff" },
+  liveBadge:     { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#2d1b69", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  liveDot:       { width: 5, height: 5, borderRadius: 3, backgroundColor: "#a78bfa" },
+  liveText:      { fontSize: 10, fontWeight: "600", color: "#a78bfa" },
+  scrollContent: { paddingHorizontal: 18, gap: 10, paddingBottom: 6 },
+
+  card:          { width: 185, backgroundColor: "#1a0a3a", borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: "#4c1d95" },
+  cardHeader:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  flashBadge:    { backgroundColor: "#4c1d95", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  flashBadgeText:{ fontSize: 9, fontWeight: "700", color: "#c4b5fd", letterSpacing: 0.5 },
+  countdown:     { fontSize: 13, fontWeight: "700", color: "#f59e0b" },
+  countdownExpired: { color: "#6b7280" },
+  cardQuestion:  { fontSize: 13, fontWeight: "500", color: "#e5e7eb", lineHeight: 18, flex: 1 },
+  cardFooter:    { flexDirection: "row", alignItems: "center", gap: 8 },
+  priceChip:     { backgroundColor: "#2d1b69", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  priceChipText: { fontSize: 10, fontWeight: "600", color: "#a78bfa" },
+  cardVol:       { fontSize: 10, color: "#6b7280" },
+});
+
 function formatUsdc(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000)     return `$${(val / 1_000).toFixed(1)}K`;
@@ -87,31 +218,133 @@ function shortAddr(addr: string): string {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function FeatureCardRow({ onParlayPress }: { onParlayPress?: () => void }) {
+const FEATURE_CARD_WIDTH = 148;
+const FEATURE_CARD_GAP   = 10;
+const FEATURE_CARD_STEP  = FEATURE_CARD_WIDTH + FEATURE_CARD_GAP;
+const CAROUSEL_INTERVAL  = 3_000;
+
+function FeatureCardRow({ onParlayPress, onMatchupPress }: { onParlayPress?: () => void; onMatchupPress?: () => void }) {
+  const scrollRef      = useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const userScrolling  = useRef(false);
+  const activeRef      = useRef(0); // avoid stale closure in interval
+
+  // Keep ref in sync
+  useEffect(() => { activeRef.current = activeIndex; }, [activeIndex]);
+
+  // Auto-advance every CAROUSEL_INTERVAL ms; pause while user is dragging
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (userScrolling.current) return;
+      const next = (activeRef.current + 1) % FEATURE_CARDS.length;
+      scrollRef.current?.scrollTo({ x: next * FEATURE_CARD_STEP, animated: true });
+      setActiveIndex(next);
+    }, CAROUSEL_INTERVAL);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.featureRow}
-    >
-      {FEATURE_CARDS.map((card) => (
-        <TouchableOpacity
-          key={card.title}
-          activeOpacity={0.8}
-          onPress={card.key === "Parlays" ? onParlayPress : undefined}
-        >
-          <LinearGradient colors={card.colors} style={styles.featureCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.featureEmoji}>{card.emoji}</Text>
-            <View>
-              <Text style={styles.featureTitle}>{card.title}</Text>
-              <Text style={styles.featureSub}>{card.sub}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+    <View>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.featureRow}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={() => { userScrolling.current = true; }}
+        onMomentumScrollEnd={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const i = Math.round(x / FEATURE_CARD_STEP);
+          setActiveIndex(Math.min(Math.max(i, 0), FEATURE_CARDS.length - 1));
+          userScrolling.current = false;
+        }}
+      >
+        {FEATURE_CARDS.map((card) => (
+          <TouchableOpacity
+            key={card.title}
+            activeOpacity={0.8}
+            onPress={card.key === "Parlays" ? onParlayPress : card.key === "Matchups" ? onMatchupPress : undefined}
+          >
+            <LinearGradient colors={card.colors} style={styles.featureCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.featureEmoji}>{card.emoji}</Text>
+              <View>
+                <Text style={styles.featureTitle}>{card.title}</Text>
+                <Text style={styles.featureSub}>{card.sub}</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Dynamic pagination dots */}
+      <View style={styles.dotsRow}>
+        {FEATURE_CARDS.map((_, i) => (
+          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+        ))}
+      </View>
+    </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Terrace status filter header
+// ---------------------------------------------------------------------------
+
+const TERRACE_STATUS_OPTIONS = [
+  { key: "Open"    as const, activeColor: "#22c55e" },
+  { key: "Settled" as const, activeColor: "#6b7280" },
+  { key: "All"     as const, activeColor: "#818cf8" },
+];
+
+interface TerraceSectionHeaderProps {
+  openCount:    number;
+  settledCount: number;
+  active:       "Open" | "Settled" | "All";
+  onChange:     (v: "Open" | "Settled" | "All") => void;
+}
+
+function TerraceSectionHeader({ openCount, settledCount, active, onChange }: TerraceSectionHeaderProps) {
+  const countOf = (key: "Open" | "Settled" | "All") =>
+    key === "Open" ? openCount : key === "Settled" ? settledCount : openCount + settledCount;
+
+  return (
+    <View style={tsStyles.wrap}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tsStyles.row}>
+        {TERRACE_STATUS_OPTIONS.map(({ key, activeColor }) => {
+          const isActive = active === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[tsStyles.chip, isActive && { borderColor: activeColor }]}
+              onPress={() => onChange(key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[tsStyles.chipLabel, isActive && { color: activeColor }]}>{key}</Text>
+              <View style={[tsStyles.countBubble, isActive && { backgroundColor: activeColor }]}>
+                <Text style={[tsStyles.countText, isActive && { color: "#000" }]}>
+                  {countOf(key)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const tsStyles = StyleSheet.create({
+  wrap:        { paddingTop: 2 },
+  row:         { paddingHorizontal: 14, paddingBottom: 10, gap: 6 },
+  chip:        { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 16, backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a" },
+  chipLabel:   { fontSize: 12, fontWeight: "600", color: "#666" },
+  countBubble: { backgroundColor: "#2a2a2a", borderRadius: 10, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
+  countText:   { fontSize: 10, fontWeight: "700", color: "#666" },
+});
+
+// ---------------------------------------------------------------------------
+// Market row
+// ---------------------------------------------------------------------------
 
 interface MarketRowProps {
   market: UnifiedMarket;
@@ -132,7 +365,7 @@ function MarketRow({ market, index, onPress, creatorWinRate }: MarketRowProps) {
   const isSettled = market.status === "Settled" || market.status === "Closed";
 
   return (
-    <View>
+    <View style={isSettled ? styles.settledMarketWrap : undefined}>
       <TouchableOpacity style={styles.marketRow} onPress={() => onPress(market.id)} activeOpacity={0.7}>
         {/* Thumbnail */}
         <View style={[styles.marketThumb, { backgroundColor: thumbColor }]}>
@@ -168,9 +401,20 @@ function MarketRow({ market, index, onPress, creatorWinRate }: MarketRowProps) {
               </View>
             )}
             {/* Source */}
-            {market.source === "native" && (
+            {market.source === "native" ? (
               <View style={styles.tagFlash}>
-                <Text style={styles.tagTextOrange}>⚡ Terrace</Text>
+                <TerraceMark size={9} />
+                <Text style={styles.tagTextOrange}>Terrace</Text>
+              </View>
+            ) : (
+              <View style={styles.tagPoly}>
+                <PolyJupLogos size={9} />
+                <Text style={styles.tagTextBlue}>Polymarket</Text>
+              </View>
+            )}
+            {market.isFlash && (
+              <View style={styles.tagFlashPurple}>
+                <Text style={styles.tagTextPurple}>⚡ Flash</Text>
               </View>
             )}
           </View>
@@ -205,111 +449,131 @@ function LeaguesTab() {
   );
 }
 
-const BADGE_EMOJI: Record<SharpEntry["badge"], string> = {
-  Legend: "👑",
-  Sharp:  "⚡",
-  Casual: "🎯",
-};
 
-const PERIOD_LABELS = [
-  { key: "weekly"  as const, label: "This week" },
-  { key: "daily"   as const, label: "Today"     },
-  { key: "alltime" as const, label: "All time"  },
-];
+// ---------------------------------------------------------------------------
+// ChallengeNotificationPanel
+// ---------------------------------------------------------------------------
 
-interface SharpRowProps {
-  entry: SharpEntry;
-  walletPubkey: string | null;
-  onFollow: () => void;
+function fmtUsdc(n: bigint) { return `$${(Number(n) / 1_000_000).toFixed(2)}`; }
+
+interface NotifPanelProps {
+  visible: boolean;
+  challenges: Matchup[];
+  busy: boolean;
+  marketQuestionMap: Map<string, string>;
+  challengerNameMap: Map<string, string>;
+  onAccept: (m: Matchup) => void;
+  onDecline: (m: Matchup) => void;
+  onViewAll: () => void;
+  onClose: () => void;
 }
 
-function SharpRow({ entry, walletPubkey, onFollow }: SharpRowProps) {
-  const avatarBg = avatarColorFromPubkey(entry.pubkey);
-  const pnlSign = (entry.pnlUsdc ?? 0) >= 0;
+function ChallengeNotificationPanel({ visible, challenges, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onViewAll, onClose }: NotifPanelProps) {
   return (
-    <View style={styles.sharpRow}>
-      <Text style={styles.sharpRank}>#{entry.rank}</Text>
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+      <Pressable style={notif.backdrop} onPress={onClose}>
+        <Pressable style={notif.panel} onPress={() => {}}>
+          <View style={notif.header}>
+            <Text style={notif.title}>🔔 Pending Challenges</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={notif.closeBtn}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-      <View style={[styles.sharpAvatar, { backgroundColor: avatarBg }]}>
-        <Text style={styles.sharpAvatarText}>{entry.pubkey.slice(0, 1).toUpperCase()}</Text>
-      </View>
-
-      <View style={styles.sharpInfo}>
-        <View style={styles.sharpNameRow}>
-          <Text style={styles.sharpBadge}>{BADGE_EMOJI[entry.badge]}</Text>
-          <Text style={styles.sharpName}>{entry.displayName}</Text>
-        </View>
-        <View style={styles.sharpStats}>
-          {entry.winRate !== null && (
-            <Text style={styles.sharpWinRate}>{Math.round(entry.winRate * 100)}% W</Text>
+          {challenges.length === 0 ? (
+            <View style={notif.empty}>
+              <Text style={notif.emptyEmoji}>🏳️</Text>
+              <Text style={notif.emptyText}>No pending challenges</Text>
+            </View>
+          ) : (
+            <ScrollView style={notif.list} contentContainerStyle={{ gap: 10 }}>
+              {challenges.map((m) => {
+                const bg = avatarColorFromPubkey(m.challenger);
+                return (
+                  <View key={m.address} style={notif.card}>
+                    <View style={notif.cardTop}>
+                      <View style={[notif.avatar, { backgroundColor: bg }]}>
+                        <Text style={notif.avatarText}>{m.challenger.slice(0, 1).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={notif.challengeFrom}>Challenge from</Text>
+                        <Text style={notif.challengerAddr}>
+                          {challengerNameMap.get(m.challenger) ?? shortAddr(m.challenger)}
+                        </Text>
+                        <Text style={notif.stakeText}>
+                          {fmtUsdc(m.stakeUsdc)} each · pot {fmtUsdc(m.stakeUsdc * 2n)}
+                        </Text>
+                      </View>
+                      <View style={[notif.outcomePill, m.challengerOutcome === 1 ? notif.yesPill : notif.noPill]}>
+                        <Text style={notif.outcomeText}>
+                          {m.challengerOutcome === 1 ? "They: YES" : "They: NO"}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={notif.marketAddr} numberOfLines={2}>
+                      📍 {marketQuestionMap.get(m.market as string) ?? shortAddr(m.market)}
+                    </Text>
+                    <View style={notif.actions}>
+                      <TouchableOpacity
+                        style={[notif.btn, notif.acceptBtn]}
+                        onPress={() => { onAccept(m); onClose(); }}
+                        disabled={busy}
+                      >
+                        <Text style={notif.btnText}>✓ Accept</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[notif.btn, notif.declineBtn]}
+                        onPress={() => { onDecline(m); onClose(); }}
+                        disabled={busy}
+                      >
+                        <Text style={[notif.btnText, { color: "#ef4444" }]}>✕ Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           )}
-          {entry.pnlUsdc !== null && (
-            <Text style={[styles.sharpPnl, pnlSign ? styles.pnlPos : styles.pnlNeg]}>
-              {pnlSign ? "+" : ""}${Math.abs(entry.pnlUsdc).toFixed(0)}
-            </Text>
-          )}
-        </View>
-      </View>
 
-      {walletPubkey && entry.pubkey !== walletPubkey && (
-        <TouchableOpacity
-          style={[styles.followBtn, entry.isFollowing && styles.followBtnActive]}
-          onPress={onFollow}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.followBtnText, entry.isFollowing && styles.followBtnTextActive]}>
-            {entry.isFollowing ? "Following" : "Follow"}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+          <TouchableOpacity style={notif.viewAllBtn} onPress={() => { onClose(); onViewAll(); }}>
+            <Text style={notif.viewAllText}>View all matchups →</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
-interface SharpsTabProps { walletPubkey: string | null }
-
-function SharpsTab({ walletPubkey }: SharpsTabProps) {
-  const [period, setPeriod] = useState<"daily" | "weekly" | "alltime">("weekly");
-  const { entries, loading, error, toggleFollow } = useLeaderboard(period);
-
-  return (
-    <View>
-      {/* Period selector */}
-      <View style={styles.periodRow}>
-        {PERIOD_LABELS.map(({ key, label }) => (
-          <Pressable
-            key={key}
-            style={[styles.periodBtn, period === key && styles.periodBtnActive]}
-            onPress={() => setPeriod(key)}
-          >
-            <Text style={[styles.periodBtnText, period === key && styles.periodBtnTextActive]}>
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {loading ? (
-        <ActivityIndicator color="#22c55e" style={{ paddingVertical: 40 }} />
-      ) : error || entries.length === 0 ? (
-        <View style={styles.comingSoon}>
-          <Text style={styles.comingSoonEmoji}>⚡</Text>
-          <Text style={styles.comingSoonTitle}>No leaderboard data</Text>
-          <Text style={styles.comingSoonSub}>Check back after more markets settle</Text>
-        </View>
-      ) : (
-        entries.slice(0, 25).map((entry) => (
-          <SharpRow
-            key={entry.pubkey}
-            entry={entry}
-            walletPubkey={walletPubkey}
-            onFollow={() => toggleFollow(entry.pubkey, walletPubkey)}
-          />
-        ))
-      )}
-    </View>
-  );
-}
+const notif = StyleSheet.create({
+  backdrop:      { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
+  panel:         { position: "absolute", top: 80, right: 12, left: 12, backgroundColor: "#111", borderRadius: 18, borderWidth: 0.5, borderColor: "#2a2a2a", paddingBottom: 8, maxHeight: "70%" },
+  header:        { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 0.5, borderBottomColor: "#1e1e1e" },
+  title:         { fontSize: 14, fontWeight: "700", color: "#fff" },
+  closeBtn:      { fontSize: 13, color: "#6b7280", padding: 4 },
+  empty:         { alignItems: "center", paddingVertical: 28, gap: 8 },
+  emptyEmoji:    { fontSize: 28 },
+  emptyText:     { fontSize: 13, color: "#6b7280" },
+  list:          { paddingHorizontal: 12, paddingTop: 10, maxHeight: 360 },
+  card:          { backgroundColor: "#0d0d0d", borderRadius: 12, padding: 12, borderWidth: 0.5, borderColor: "#1e1e1e", gap: 6 },
+  cardTop:       { flexDirection: "row", alignItems: "center", gap: 10 },
+  avatar:        { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  avatarText:    { fontSize: 14, fontWeight: "700", color: "#fff" },
+  challengeFrom: { fontSize: 10, color: "#6b7280" },
+  challengerAddr:{ fontSize: 12, fontWeight: "600", color: "#e5e7eb", fontFamily: "monospace" },
+  stakeText:     { fontSize: 10, color: "#22c55e", fontWeight: "600", marginTop: 1 },
+  outcomePill:   { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start" },
+  yesPill:       { backgroundColor: "#052e16" },
+  noPill:        { backgroundColor: "#3b0a0a" },
+  outcomeText:   { fontSize: 10, fontWeight: "700", color: "#fff" },
+  marketAddr:    { fontSize: 12, color: "#9ca3af", lineHeight: 17 },
+  actions:       { flexDirection: "row", gap: 8 },
+  btn:           { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center" },
+  acceptBtn:     { backgroundColor: "#22c55e" },
+  declineBtn:    { backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#3b0a0a" },
+  btnText:       { fontSize: 12, fontWeight: "700", color: "#fff" },
+  viewAllBtn:    { marginHorizontal: 12, marginTop: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 0.5, borderColor: "#2a2a2a", alignItems: "center" },
+  viewAllText:   { fontSize: 12, color: "#6b7280" },
+});
 
 // ---------------------------------------------------------------------------
 // HomeScreen
@@ -324,6 +588,7 @@ interface Props {
   onSelectMarket: (id: string) => void;
   onNavigateProfile?: () => void;
   onNavigateParlay?: () => void;
+  onNavigateMatchup?: () => void;
   onRefreshMarkets?: () => void;
 }
 
@@ -331,14 +596,57 @@ interface SelectedBet {
   marketId: string;
   label: string;
   yesPrice: number | null;
+  question: string | null;
+  source: "native" | "jupiter";
 }
 
-export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onRefreshMarkets }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onRefreshMarkets }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("All");
   const [leagueFilter, setLeagueFilter] = useState<string>("All");
+  const [terraceStatusFilter, setTerraceStatusFilter] = useState<"Open" | "Settled" | "All">("Open");
   const [refreshing, setRefreshing] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+
+  const {
+    opponentMatchups,
+    status: matchupStatus,
+    acceptMatchup,
+    declineMatchup,
+  } = useMatchup();
+
+  const { fans } = useTerraceUsers();
+
+  const pendingChallenges = useMemo(
+    () => opponentMatchups.filter((m) => m.status === "Pending"),
+    [opponentMatchups],
+  );
+  const matchupBusy = matchupStatus === "building" || matchupStatus === "signing" || matchupStatus === "executing";
+
+  const marketQuestionMap = useMemo(
+    () => new Map(markets.map((m) => [m.id as string, m.question])),
+    [markets],
+  );
+
+  const challengerNameMap = useMemo(
+    () => new Map(fans.map((f) => [f.pubkey, f.displayName])),
+    [fans],
+  );
+
+  // Reset status filter whenever the user switches away from Terrace
+  useEffect(() => {
+    if (sourceFilter !== "Terrace") setTerraceStatusFilter("Open");
+  }, [sourceFilter]);
+
+  const terraceOpenCount = useMemo(
+    () => markets.filter((m) => !m.isFlash && m.source === "native" && m.status === "Open").length,
+    [markets],
+  );
+  const terraceSettledCount = useMemo(
+    () => markets.filter((m) => !m.isFlash && m.source === "native" && (m.status === "Settled" || m.status === "Closed")).length,
+    [markets],
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -359,7 +667,8 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
 
   const handleSelectOutcome = (marketId: string, label: string, yesPrice: number | null) => {
     reset();
-    setSelectedBet({ marketId, label, yesPrice });
+    const market = markets.find((m) => m.id === marketId);
+    setSelectedBet({ marketId, label, yesPrice, question: market?.question ?? null, source: (market?.source === "native" ? "native" : "jupiter") });
   };
 
   const handleDismissBet = () => {
@@ -402,9 +711,18 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
           <Text style={styles.logoName}>Terrace</Text>
         </View>
         <View style={styles.navRight}>
-          <View style={styles.navIconBtn}>
+          <TouchableOpacity
+            style={styles.navIconBtn}
+            onPress={() => setShowNotifPanel(true)}
+            activeOpacity={0.7}
+          >
             <Text>🔔</Text>
-          </View>
+            {pendingChallenges.length > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{pendingChallenges.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           {walletPubkey && (
             <TouchableOpacity
               style={styles.repBadge}
@@ -425,15 +743,10 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       <Text style={styles.heroLabel}>Back your take.</Text>
 
       {/* ── Feature cards ───────────────────────────────────── */}
-      <FeatureCardRow onParlayPress={onNavigateParlay} />
+      <FeatureCardRow onParlayPress={onNavigateParlay} onMatchupPress={onNavigateMatchup} />
 
-      {/* Pagination dots */}
-      <View style={styles.dotsRow}>
-        <View style={styles.dot} />
-        <View style={[styles.dot, styles.dotActive]} />
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-      </View>
+      {/* ── Flash markets row ───────────────────────────────── */}
+      <FlashMarketsRow markets={markets} onSelectMarket={onSelectMarket} />
 
       {/* ── Trending section ────────────────────────────────── */}
       <View style={styles.section}>
@@ -467,7 +780,13 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             </View>
           ) : (() => {
             const sourceFiltered = markets.filter((m) => {
-              if (sourceFilter === "Terrace")    return m.source === "native";
+              if (m.isFlash) return false; // flash markets shown in dedicated row above
+              if (sourceFilter === "Terrace") {
+                if (m.source !== "native") return false;
+                if (terraceStatusFilter === "Open")    return m.status === "Open";
+                if (terraceStatusFilter === "Settled") return m.status === "Settled" || m.status === "Closed";
+                return true; // "All"
+              }
               if (sourceFilter === "Polymarket") return m.source === "jupiter";
               return true;
             });
@@ -486,7 +805,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.sourceChipsRow}
                 >
-                  {SOURCE_FILTERS.map(({ key, label }) => (
+                  {SOURCE_FILTERS.map(({ key }) => (
                     <TouchableOpacity
                       key={key}
                       style={[styles.sourceChip, sourceFilter === key && styles.sourceChipActive]}
@@ -496,12 +815,20 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.sourceChipText, sourceFilter === key && styles.sourceChipTextActive]}>
-                        {label}
-                      </Text>
+                      <SourceChipContent filterKey={key} active={sourceFilter === key} />
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+
+                {/* Terrace status filter — only when Terrace source is selected */}
+                {sourceFilter === "Terrace" && (
+                  <TerraceSectionHeader
+                    openCount={terraceOpenCount}
+                    settledCount={terraceSettledCount}
+                    active={terraceStatusFilter}
+                    onChange={setTerraceStatusFilter}
+                  />
+                )}
 
                 {/* League chips — only when showing Polymarket or All */}
                 {showLeagueChips && (
@@ -527,9 +854,14 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
 
                 {filteredGroups.length === 0 ? (
                   <View style={styles.comingSoon}>
-                    <Text style={styles.comingSoonEmoji}>
-                      {sourceFilter === "Terrace" ? "⚡" : "🔵"}
-                    </Text>
+                    {sourceFilter === "Terrace" ? (
+                      <Text style={styles.comingSoonEmoji}>⚡</Text>
+                    ) : (
+                      <View style={styles.emptyLogoRow}>
+                        <Image source={{ uri: JUPITER_LOGO_URI }} style={styles.emptyLogo} />
+                        <Image source={POLYMARKET_LOGO} style={styles.emptyLogo} />
+                      </View>
+                    )}
                     <Text style={styles.comingSoonTitle}>
                       {sourceFilter === "Terrace" ? "No Terrace markets yet" : "No Polymarket markets"}
                     </Text>
@@ -563,7 +895,6 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
           })()
         )}
         {activeTab === "Leagues" && <LeaguesTab />}
-        {activeTab === "Sharps"  && <SharpsTab walletPubkey={walletPubkey} />}
 
         {/* Spacer so last row clears bottom nav */}
         <View style={{ height: 80 }} />
@@ -577,6 +908,8 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
         <BetSheet
           marketId={selectedBet.marketId}
           outcomeLabel={selectedBet.label}
+          marketQuestion={selectedBet.question ?? undefined}
+          source={selectedBet.source}
           yesPrice={selectedBet.yesPrice}
           onConfirm={handleConfirmBet}
           onDismiss={handleDismissBet}
@@ -586,6 +919,19 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
         />
       </View>
     )}
+
+    {/* Challenge notification panel */}
+    <ChallengeNotificationPanel
+      visible={showNotifPanel}
+      challenges={pendingChallenges}
+      busy={matchupBusy}
+      marketQuestionMap={marketQuestionMap}
+      challengerNameMap={challengerNameMap}
+      onAccept={acceptMatchup}
+      onDecline={declineMatchup}
+      onViewAll={() => onNavigateMatchup?.()}
+      onClose={() => setShowNotifPanel(false)}
+    />
     </View>
   );
 }
@@ -613,6 +959,8 @@ const styles = StyleSheet.create({
   logoName:  { fontSize: 17, fontWeight: "600", color: "#fff", letterSpacing: -0.3 },
   navRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
   navIconBtn:{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
+  notifBadge:{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
+  notifBadgeText: { fontSize: 9, fontWeight: "700", color: "#fff" },
   repBadge:  { backgroundColor: "#22c55e", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   repBadgeText: { fontSize: 10, fontWeight: "700", color: "#000", letterSpacing: 0.3 },
 
@@ -645,7 +993,7 @@ const styles = StyleSheet.create({
 
   // Source filter chips
   sourceChipsRow: { paddingHorizontal: 14, paddingBottom: 8, paddingTop: 4, gap: 6, flexDirection: "row" },
-  sourceChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 16, backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a" },
+  sourceChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 16, backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a" },
   sourceChipActive: { backgroundColor: "#0f172a", borderColor: "#6366f1" },
   sourceChipText: { fontSize: 12, fontWeight: "600", color: "#888" },
   sourceChipTextActive: { color: "#818cf8", fontWeight: "700" },
@@ -677,13 +1025,18 @@ const styles = StyleSheet.create({
   tagCoin:    { backgroundColor: "#1e1e1e", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   tagPrize:   { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   tagLive:    { backgroundColor: "#7f1d1d", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagSettled: { backgroundColor: "#1a1a1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 0.5, borderColor: "#333" },
-  tagFlash:   { backgroundColor: "#3b1f00", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagSettled:         { backgroundColor: "#1a1a1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 0.5, borderColor: "#333" },
+  settledMarketWrap:  { opacity: 0.6, borderLeftWidth: 2, borderLeftColor: "#374151" },
+  tagFlash: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#3b1f00", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagPoly:  { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#1e3a5f", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   tagText:        { fontSize: 9, fontWeight: "500", color: "#aaa" },
   tagTextGreen:   { fontSize: 9, fontWeight: "500", color: "#4ade80" },
   tagTextRed:     { fontSize: 9, fontWeight: "500", color: "#f87171" },
   tagTextOrange:  { fontSize: 9, fontWeight: "500", color: "#fb923c" },
   tagTextGrey:    { fontSize: 9, fontWeight: "500", color: "#6b7280" },
+  tagTextBlue:    { fontSize: 9, fontWeight: "500", color: "#60a5fa" },
+  tagFlashPurple: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#2d1b69", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  tagTextPurple:  { fontSize: 9, fontWeight: "600", color: "#a78bfa" },
   marketArrow: { color: "#444", fontSize: 14 },
 
   // Creator pills
@@ -696,6 +1049,8 @@ const styles = StyleSheet.create({
   creatorWinRate: { fontSize: 9, fontWeight: "600", color: "#22c55e" },
 
   // Coming soon stubs
+  emptyLogoRow: { flexDirection: "row", gap: 10, marginBottom: 4 },
+  emptyLogo:    { width: 36, height: 36, borderRadius: 18 },
   comingSoon: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 32, gap: 8 },
   comingSoonEmoji: { fontSize: 36 },
   comingSoonTitle: { fontSize: 16, fontWeight: "600", color: "#fff" },
@@ -705,36 +1060,4 @@ const styles = StyleSheet.create({
   betOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, top: 0, justifyContent: "flex-end" },
   betBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
 
-  // Sharps leaderboard
-  periodRow: { flexDirection: "row", gap: 6, paddingHorizontal: 18, paddingBottom: 12 },
-  periodBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#1e1e1e" },
-  periodBtnActive: { backgroundColor: "#22c55e" },
-  periodBtnText: { fontSize: 11, fontWeight: "500", color: "#aaa" },
-  periodBtnTextActive: { color: "#000" },
-
-  sharpRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1a1a1a",
-  },
-  sharpRank:       { width: 24, fontSize: 11, color: "#555", fontWeight: "600", textAlign: "right" },
-  sharpAvatar:     { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  sharpAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
-  sharpInfo:       { flex: 1, minWidth: 0 },
-  sharpNameRow:    { flexDirection: "row", alignItems: "center", gap: 4 },
-  sharpBadge:      { fontSize: 12 },
-  sharpName:       { fontSize: 13, fontWeight: "600", color: "#fff" },
-  sharpStats:      { flexDirection: "row", gap: 8, marginTop: 2 },
-  sharpWinRate:    { fontSize: 10, color: "#22c55e", fontWeight: "600" },
-  sharpPnl:        { fontSize: 10, fontWeight: "600" },
-  pnlPos:          { color: "#4ade80" },
-  pnlNeg:          { color: "#f87171" },
-  followBtn:        { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: "#333" },
-  followBtnActive:  { backgroundColor: "#052e16", borderColor: "#22c55e" },
-  followBtnText:    { fontSize: 11, fontWeight: "600", color: "#aaa" },
-  followBtnTextActive: { color: "#22c55e" },
 });
