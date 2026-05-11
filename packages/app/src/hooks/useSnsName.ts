@@ -269,8 +269,10 @@ export function useSnsName(walletPubkey: string | null): SnsName {
         const res = await fetch(`${SNS_PROXY}/reverse-lookup/${walletPubkey}`).catch(() => null);
         if (!cancelled && res?.ok) {
           const json = await res.json().catch(() => null);
-          const sol: string | undefined = json?.s ?? json?.result;
-          if (sol && !cancelled) setName(`${sol}.sol`);
+          // Bonfida proxy returns { s: "ok", result: "domain" } on success
+          if (json?.s === "ok" && typeof json?.result === "string" && json.result && !cancelled) {
+            setName(`${json.result}.sol`);
+          }
         }
       } catch {
         // no domain found — not an error

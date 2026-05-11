@@ -125,6 +125,8 @@ export interface UnifiedMarket {
   imageUrl?: string;
   /** Native Terrace markets only */
   nativeMarketAddress?: string;
+  /** On-chain creator wallet address (native markets only) */
+  creator?: string;
   isPrivate?: boolean;
   isFlash?: boolean;
   /** Jupiter/Polymarket event category e.g. "sports", subcategory e.g. "soccer" */

@@ -133,6 +133,15 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
         <Text style={styles.heading}>Create market</Text>
         <Text style={styles.sub}>Deploy a permissionless prediction market on Terrace</Text>
 
+        {walletPubkey && (
+          <View style={styles.creatorBanner}>
+            <Text style={styles.creatorBannerLabel}>Creator (signer)</Text>
+            <Text style={styles.creatorBannerAddr} numberOfLines={1}>
+              {walletPubkey.slice(0, 6)}…{walletPubkey.slice(-6)}
+            </Text>
+          </View>
+        )}
+
         {/* ── Question ── */}
         <Text style={styles.label}>Question</Text>
         <TextInput
@@ -333,6 +342,21 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 22, fontWeight: "700", color: "#f9fafb" },
   successSig:   { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
   explorerLink: { fontSize: 12, color: "#22c55e", textAlign: "center", marginTop: 4 },
+  creatorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#111",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#222",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  creatorBannerLabel: { fontSize: 11, color: "#6b7280", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 },
+  creatorBannerAddr:  { fontSize: 12, color: "#22c55e", fontFamily: "monospace", fontWeight: "600" },
+
   doneBtn: {
     marginTop: 8,
     backgroundColor: "#052e16",
