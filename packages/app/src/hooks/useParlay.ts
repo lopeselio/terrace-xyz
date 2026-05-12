@@ -26,6 +26,7 @@ const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
 const TOKEN_PROGRAM_ID       = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOC_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const SYSTEM_PROGRAM_ID      = "11111111111111111111111111111111";
 
 function deriveAta(mint: string, owner: string): Address {
   const [ata] = PublicKey.findProgramAddressSync(
@@ -63,6 +64,43 @@ function toWeb3Ix(ix: any): TransactionInstruction {
     })),
     data: Buffer.from(ix.data ?? []),
   });
+}
+
+// Returns a createAssociatedTokenAccountIdempotent instruction only if the ATA
+// doesn't already exist. Uses @solana/kit's getProgramDerivedAddress to match
+// the exact derivation the on-chain AToken program uses.
+async function buildEnsureAtaIxIfNeeded(
+  mint: string,
+  owner: string,
+  payer: string
+): Promise<object | null> {
+  const { getProgramDerivedAddress, getAddressEncoder } = await import("@solana/kit");
+  const enc = getAddressEncoder();
+  const [ata] = await getProgramDerivedAddress({
+    programAddress: ASSOC_TOKEN_PROGRAM_ID as any,
+    seeds: [enc.encode(owner as any), enc.encode(TOKEN_PROGRAM_ID as any), enc.encode(mint as any)],
+  });
+  const ataStr = ata as string;
+
+  // Check if ATA already exists — skip instruction if so
+  const info = await rpcPost({
+    jsonrpc: "2.0", id: "ata-check", method: "getAccountInfo",
+    params: [ataStr, { encoding: "base64" }],
+  });
+  if (info?.result?.value) return null;
+
+  return {
+    programAddress: ASSOC_TOKEN_PROGRAM_ID,
+    accounts: [
+      { address: payer,              role: 3 }, // WRITABLE_SIGNER
+      { address: ataStr,             role: 1 }, // WRITABLE
+      { address: owner,              role: 0 }, // READONLY
+      { address: mint,               role: 0 }, // READONLY
+      { address: SYSTEM_PROGRAM_ID,  role: 0 }, // READONLY
+      { address: TOKEN_PROGRAM_ID,   role: 0 }, // READONLY
+    ],
+    data: new Uint8Array([1]), // CreateIdempotent discriminator
+  };
 }
 
 async function rpcPost(body: object, retries = 2): Promise<any> {
@@ -263,8 +301,12 @@ export function useParlay(): UseParlayResult {
           programId: TERRACE_PROGRAM_ID,
         });
 
+        // Prepend ATA creation only if the creator's USDC account doesn't exist yet
+        const ensureAtaIx = await buildEnsureAtaIxIfNeeded(usdcMint, publicKey, publicKey);
+        const instructions = ensureAtaIx ? [ensureAtaIx, ix] : [ix];
+
         setStatus("signing");
-        const sig = await buildAndSend(publicKey, [ix], signTransaction);
+        const sig = await buildAndSend(publicKey, instructions, signTransaction);
         setTxSig(sig);
         setStatus("success");
         refresh();
