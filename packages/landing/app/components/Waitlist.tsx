@@ -93,7 +93,9 @@ export default function Waitlist() {
         {/* Social links */}
         <div className="flex items-center justify-center gap-6 mt-12">
           <a
-            href="#"
+            href="https://x.com/terracedotsol"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-text-muted hover:text-white transition-colors text-sm flex items-center gap-2"
           >
             <span>𝕏</span> Twitter
