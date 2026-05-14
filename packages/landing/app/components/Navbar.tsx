@@ -47,6 +47,15 @@ export default function Navbar() {
         {/* CTAs */}
         <div className="flex items-center gap-3">
           <a
+            href="/architecture.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:border-emerald-400/50 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Frontier Demo
+          </a>
+          <a
             href="/pitch-deck.html"
             target="_blank"
             rel="noopener noreferrer"
