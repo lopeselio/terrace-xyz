@@ -16,13 +16,20 @@ export default function Footer() {
 
           {/* Links */}
           <div className="flex gap-6 text-sm text-text-muted">
-            {["Terms", "Privacy", "Docs", "GitHub", "Twitter"].map((l) => (
+            {[
+              { label: "Terms", href: "#" },
+              { label: "Privacy", href: "#" },
+              { label: "Docs", href: "#" },
+              { label: "GitHub", href: "#" },
+              { label: "Twitter", href: "https://x.com/terracedotsol" },
+            ].map(({ label, href }) => (
               <a
-                key={l}
-                href="#"
+                key={label}
+                href={href}
                 className="hover:text-white transition-colors"
+                {...(href !== "#" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
-                {l}
+                {label}
               </a>
             ))}
           </div>
