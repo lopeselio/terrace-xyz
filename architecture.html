@@ -3,10 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terrace — Architecture Diagram</title>
+<title>Terrace — Colosseum Frontier DEMO</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'><rect width='28' height='28' rx='8' fill='%23111' stroke='%23333' stroke-width='1'/><text x='9' y='20' font-family='system-ui,sans-serif' font-size='14' font-weight='700' fill='white'>T</text><circle cx='22' cy='22' r='4' fill='%2322c55e'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Navbar ── */
+  .navbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 56px;
+    background: rgba(10,10,10,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1f1f1f;
+  }
+  .navbar-left { display: flex; align-items: center; gap: 12px; }
+  .navbar-logo { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .navbar-sep { color: #333; font-size: 18px; }
+  .navbar-demo {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+    color: #f59e0b; background: #1c1300; border: 1px solid #92400e;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .navbar-badge {
+    font-size: 11px; color: #888;
+    background: #111; border: 1px solid #222;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .navbar-right { display: flex; align-items: center; gap: 10px; }
+  .navbar-link {
+    font-size: 12px; color: #888; text-decoration: none;
+    padding: 4px 12px; border-radius: 6px; border: 1px solid #222;
+    transition: all 0.15s;
+  }
+  .navbar-link:hover { color: #fff; border-color: #444; }
+
   body { background: #0a0a0a; color: #e5e5e5; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px 24px; }
   h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 6px; letter-spacing: -0.5px; }
   .subtitle { font-size: 14px; color: #666; margin-bottom: 40px; }
@@ -42,8 +73,68 @@
 </head>
 <body>
 
-<h1>Terrace Architecture</h1>
-<p class="subtitle">On-chain football prediction markets · Solana · Full stack monorepo</p>
+<nav class="navbar">
+  <div class="navbar-left">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:28px;height:28px;border-radius:8px;background:#111;border:1px solid #333;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;">
+        <span style="font-weight:700;color:#fff;font-size:13px;line-height:1;">T</span>
+        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;position:absolute;bottom:12%;right:10%;"></span>
+      </div>
+      <span class="navbar-logo" style="font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.3px;">terrace</span>
+    </div>
+    <span class="navbar-sep">·</span>
+    <span class="navbar-demo">Colosseum Frontier DEMO</span>
+    <span class="navbar-badge">Devnet Live</span>
+  </div>
+  <div class="navbar-right">
+    <a class="navbar-link" href="https://terrace.social" target="_blank">Website</a>
+    <a class="navbar-link" href="https://github.com/lopeselio/terrace-xyz" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<div style="padding: 48px 0 8px;">
+  <h1>Terrace Architecture</h1>
+  <p class="subtitle">On-chain football prediction markets · Solana · Full stack monorepo</p>
+</div>
+
+<!-- ── DEMO VIDEO ── -->
+<div class="section">
+  <div class="section-title">Demo Video</div>
+  <div style="background:#111; border:1px solid #1f1f1f; border-radius:12px; overflow:hidden;">
+    <div id="video-placeholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:64px 24px; text-align:center;">
+      <div style="font-size:48px;">🎬</div>
+      <div style="font-size:16px; font-weight:600; color:#fff;">Demo video coming soon</div>
+      <div style="font-size:13px; color:#555; max-width:400px;">
+        Replace the <code style="color:#f59e0b;background:#1c1300;padding:2px 6px;border-radius:4px;">YOUTUBE_VIDEO_ID</code> in the source with your YouTube video ID to embed the demo.
+      </div>
+      <div style="margin-top:8px;">
+        <code style="font-size:11px; color:#888; background:#1a1a1a; padding:8px 14px; border-radius:6px; border:1px solid #2a2a2a; display:block;">
+          https://www.youtube.com/watch?v=<span style="color:#f59e0b;">YOUR_VIDEO_ID</span>
+        </code>
+      </div>
+    </div>
+    <!-- Swap the src below with your YouTube embed URL once the video is uploaded -->
+    <iframe
+      id="demo-iframe"
+      style="display:none; width:100%; aspect-ratio:16/9; border:none;"
+      src=""
+      title="Terrace Demo — Colosseum Frontier"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+  </div>
+</div>
+<script>
+  // Drop your YouTube video ID here once uploaded
+  const YOUTUBE_VIDEO_ID = "Yz5N4DpZkP0";
+  if (YOUTUBE_VIDEO_ID) {
+    document.getElementById("video-placeholder").style.display = "none";
+    const iframe = document.getElementById("demo-iframe");
+    iframe.src = `https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1`;
+    iframe.style.display = "block";
+  }
+</script>
 
 <!-- ── BET TYPES ───────────────────────────────────────────────────── -->
 <div class="section">
