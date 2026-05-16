@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  Image,
   Modal,
   TouchableOpacity,
   TextInput,
@@ -12,8 +13,12 @@ import {
   Platform,
 } from "react-native";
 import type { UnifiedMarket } from "@terrace/sdk";
+import { getPrivateBetRecordPda, TERRACE_PROGRAM_ID } from "@terrace/sdk";
+import * as SecureStore from "expo-secure-store";
 import { usePrivateMarket } from "../hooks/usePrivateMarket";
+import { useWallet } from "../hooks/useWallet";
 import { usePlaceBet } from "../hooks/usePlaceBet";
+import { ArciumBadge, ArciumPrivacyBanner, ArciumSettledBanner } from "./ArciumBadge";
 
 interface Props {
   market: UnifiedMarket | null;
@@ -154,6 +159,34 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
   const [outcome, setOutcome] = useState<0 | 1 | null>(null);
   const [amountStr, setAmountStr] = useState("");
   const { placeBet, revealMarket, claimWinnings, status, error, txSig } = usePrivateMarket();
+  const { publicKey } = useWallet();
+
+  // Claim state — populated if user has an unclaimed private bet on this market
+  const [hasBetSecret, setHasBetSecret] = useState(false);
+  const [betOutcome, setBetOutcome] = useState<0 | 1 | null>(null);
+
+  useEffect(() => {
+    if (market.status !== "Settled" || !publicKey || !market.nativeMarketAddress) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [privateBetRecord] = await getPrivateBetRecordPda(
+          market.nativeMarketAddress as any,
+          publicKey as any,
+          TERRACE_PROGRAM_ID
+        );
+        const stored = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
+        if (!cancelled && stored) {
+          const parsed = JSON.parse(stored) as { secret: string; outcome: 0 | 1 };
+          setHasBetSecret(true);
+          setBetOutcome(parsed.outcome);
+        }
+      } catch {
+        // no bet or SecureStore unavailable
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [market.status, market.nativeMarketAddress, publicKey]);
 
   const busy = status !== "idle" && status !== "success" && status !== "error";
 
@@ -179,15 +212,60 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
     } catch {}
   };
 
+  const handleClaim = async () => {
+    if (!market.nativeMarketAddress || !market.creator) return;
+    try {
+      await claimWinnings({
+        market: market.nativeMarketAddress as any,
+        creator: market.creator as any,
+        usdcMint: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" as any,
+      });
+      setHasBetSecret(false);
+    } catch {}
+  };
+
+  // Settled state: show claim UI only
+  if (market.status === "Settled") {
+    return (
+      <View>
+        <ArciumSettledBanner />
+        <TxStatusBanner status={status} error={error} txSig={txSig} />
+        {hasBetSecret ? (
+          <View style={s.claimSection}>
+            <Text style={s.claimText}>
+              You bet <Text style={{ color: betOutcome === 0 ? "#22c55e" : "#ef4444", fontWeight: "700" }}>
+                {betOutcome === 0 ? "YES" : "NO"}
+              </Text> on this market. If correct, claim your USDC now.
+            </Text>
+            <TouchableOpacity
+              style={[s.claimBtn, busy && s.confirmBtnDisabled]}
+              onPress={handleClaim}
+              disabled={busy}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={s.claimBtnInner}>
+                  <Image source={require("../assets/arcium-logo.png")} style={s.claimBtnLogo} />
+                  <Text style={s.claimBtnText}>Claim private winnings</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={s.claimSection}>
+            <Text style={[s.claimText, { color: "#4b5563" }]}>
+              No unclaimed private bet found for this wallet.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View>
-      {/* Private market notice */}
-      <View style={s.privNotice}>
-        <Text style={s.privNoticeText}>
-          🔒 Private market — your position is encrypted via Arcium MPC. No one can see your bet until settlement.
-        </Text>
-      </View>
-
+      <ArciumPrivacyBanner subtitle="Your position is invisible until settlement" />
       <TxStatusBanner status={status} error={error} txSig={txSig} />
 
       <View style={s.outcomeRow}>
@@ -233,8 +311,16 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
 
       {/* Creator can reveal after expiry */}
       {market.status === "Closed" && (
-        <TouchableOpacity style={s.secondaryBtn} onPress={handleReveal} disabled={busy}>
-          <Text style={s.secondaryBtnText}>Reveal market (creator only)</Text>
+        <TouchableOpacity style={s.revealBtn} onPress={handleReveal} disabled={busy}>
+          {busy ? (
+            <ActivityIndicator color="#c4b5fd" />
+          ) : (
+            <View style={s.revealBtnInner}>
+              <Image source={require("../assets/arcium-logo.png")} style={s.revealBtnLogo} />
+              <Text style={s.revealBtnText}>Reveal via Arcium MPC</Text>
+              <Text style={s.revealBtnSub}>Creator only</Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
     </View>
@@ -263,11 +349,7 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
 
           {/* Header */}
           <View style={s.headerRow}>
-            {market.isPrivate && (
-              <View style={s.privateBadge}>
-                <Text style={s.privateBadgeText}>🔒 Private</Text>
-              </View>
-            )}
+            {market.isPrivate && <ArciumBadge label="Private · Arcium MPC" />}
             {market.isFlash && (
               <View style={s.flashBadge}>
                 <Text style={s.flashBadgeText}>⚡ Flash</Text>
@@ -289,16 +371,14 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
           <View style={s.divider} />
 
           {/* Bet panel — private vs public */}
-          {market.status === "Open" ? (
-            market.isPrivate ? (
-              <PrivateBetPanel market={market} />
-            ) : (
-              <PublicBetPanel market={market} onClose={onClose} />
-            )
+          {market.isPrivate ? (
+            <PrivateBetPanel market={market} />
+          ) : market.status === "Open" ? (
+            <PublicBetPanel market={market} onClose={onClose} />
           ) : (
             <View style={s.settledNotice}>
               <Text style={s.settledText}>
-                {market.status === "Settled" ? "✅ Market settled" : "🔒 Market closed"}
+                {market.status === "Settled" ? "✅ Market settled" : "Market closed"}
               </Text>
             </View>
           )}
@@ -348,11 +428,29 @@ const s = StyleSheet.create({
   confirmBtnDisabled: { opacity: 0.4 },
   confirmBtnText:     { fontSize: 15, fontWeight: "700", color: "#000" },
 
-  secondaryBtn:     { marginTop: 10, backgroundColor: "#1a1a1a", borderRadius: 12, paddingVertical: 13, alignItems: "center", borderWidth: 0.5, borderColor: "#333" },
-  secondaryBtnText: { fontSize: 13, fontWeight: "600", color: "#9ca3af" },
+  // Reveal button (Arcium MPC, creator-only)
+  revealBtn: {
+    marginTop: 10,
+    backgroundColor: "#0b0520",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#4c1d95",
+    alignItems: "center",
+  },
+  revealBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  revealBtnLogo:  { width: 22, height: 22, borderRadius: 11 },
+  revealBtnText:  { fontSize: 13, fontWeight: "700", color: "#c4b5fd", flex: 1 },
+  revealBtnSub:   { fontSize: 11, color: "#5b21b6" },
 
-  privNotice:     { backgroundColor: "#1e3a5f", borderRadius: 10, padding: 12, marginBottom: 14 },
-  privNoticeText: { fontSize: 12, color: "#93c5fd", lineHeight: 18 },
+  // Claim winnings section
+  claimSection:   { marginTop: 8, gap: 12 },
+  claimText:      { fontSize: 13, color: "#d1d5db", lineHeight: 20 },
+  claimBtn:       { backgroundColor: "#2d1469", borderRadius: 12, paddingVertical: 14, borderWidth: 1, borderColor: "#7c3aed" },
+  claimBtnInner:  { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  claimBtnLogo:   { width: 20, height: 20, borderRadius: 10 },
+  claimBtnText:   { fontSize: 14, fontWeight: "700", color: "#e9d5ff" },
 
   settledNotice: { alignItems: "center", paddingVertical: 24 },
   settledText:   { fontSize: 15, color: "#9ca3af", fontWeight: "600" },

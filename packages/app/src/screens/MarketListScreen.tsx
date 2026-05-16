@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import type { UnifiedMarket } from "@terrace/sdk";
+import { ArciumBadge } from "../components/ArciumBadge";
 
 interface Props {
   markets: UnifiedMarket[];
@@ -84,11 +85,7 @@ function MarketCard({ item, onPress }: { item: UnifiedMarket; onPress: () => voi
       </View>
 
       <View style={styles.metaRow}>
-        {item.isPrivate && (
-          <View style={styles.privateBadge}>
-            <Text style={styles.privateText}>🔒 Private</Text>
-          </View>
-        )}
+        {item.isPrivate && <ArciumBadge label="Private" />}
         {item.isFlash && (
           <View style={styles.flashBadge}>
             <Text style={styles.flashText}>⚡ Flash</Text>

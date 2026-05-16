@@ -21,6 +21,7 @@ export interface CreatedMarket {
   estimatedRevenueUsdc: number;
   isExpired: boolean;
   isSettleable: boolean;
+  isPrivate: boolean;
 }
 
 interface Result {
@@ -95,6 +96,7 @@ export function useCreatedMarkets(walletPubkey: string | null): Result {
               estimatedRevenueUsdc: totalVolumeUsdc * m.creatorFeeBps / 10_000,
               isExpired,
               isSettleable,
+              isPrivate: m.isPrivate,
             });
           } catch {
             // skip malformed accounts
