@@ -23,6 +23,7 @@ import { useSnsName } from "../hooks/useSnsName";
 import { useCreatedMarkets, type CreatedMarket } from "../hooks/useCreatedMarkets";
 import { useSettleMarket } from "../hooks/useSettleMarket";
 import { useClaimWinnings } from "../hooks/useClaimWinnings";
+import { usePrivateMarket } from "../hooks/usePrivateMarket";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -495,10 +496,14 @@ function CreatedMarketRow({
   market,
   onSettle,
   settling,
+  onReveal,
+  revealing,
 }: {
   market: CreatedMarket;
   onSettle: (outcome: 0 | 1) => void;
   settling: boolean;
+  onReveal?: () => void;
+  revealing?: boolean;
 }) {
   const expiryMs = market.expiry.getTime();
   const [diff, setDiff] = useState(() => expiryMs - Date.now());
@@ -556,7 +561,31 @@ function CreatedMarketRow({
         </View>
       )}
 
-      {market.status === "Open" && (
+      {market.status === "Open" && market.isPrivate && (
+        <View style={cm.settleButtons}>
+          <Text style={cm.settleHint}>Submit to Arcium MPC for reveal:</Text>
+          <TouchableOpacity
+            style={[cm.revealBtn, revealing && cm.btnDisabled]}
+            onPress={onReveal}
+            disabled={revealing}
+          >
+            {revealing ? (
+              <ActivityIndicator size="small" color="#c4b5fd" />
+            ) : (
+              <View style={cm.revealBtnInner}>
+                <Image
+                  source={require("../assets/arcium-logo.png")}
+                  style={cm.revealBtnLogo}
+                />
+                <Text style={cm.revealBtnText}>Reveal market</Text>
+                <Text style={cm.revealBtnSub}>via Arcium MPC</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {market.status === "Open" && !market.isPrivate && (
         <View style={cm.settleButtons}>
           <Text style={cm.settleHint}>Settle this market:</Text>
           <View style={cm.settleRow}>
@@ -598,7 +627,9 @@ function CreatedMarketsList({
 }) {
   const { markets, loading, refresh } = useCreatedMarkets(walletPubkey);
   const { status, settleMarket, reset } = useSettleMarket();
+  const { revealMarket, status: revealStatus } = usePrivateMarket();
   const [settlingAddr, setSettlingAddr] = useState<string | null>(null);
+  const [revealingAddr, setRevealingAddr] = useState<string | null>(null);
 
   // Surface total creator revenue to parent for stats display
   React.useEffect(() => {
@@ -612,6 +643,17 @@ function CreatedMarketsList({
     await settleMarket(address, outcome);
     reset();
     setSettlingAddr(null);
+    refresh();
+  };
+
+  const handleReveal = async (address: string) => {
+    setRevealingAddr(address);
+    try {
+      await revealMarket({ market: address as any });
+    } catch {
+      // error surfaced via revealStatus
+    }
+    setRevealingAddr(null);
     refresh();
   };
 
@@ -643,6 +685,8 @@ function CreatedMarketsList({
           market={m}
           onSettle={(outcome) => handleSettle(m.address, outcome)}
           settling={settlingAddr === m.address && (status === "building" || status === "signing" || status === "executing")}
+          onReveal={() => handleReveal(m.address)}
+          revealing={revealingAddr === m.address && (revealStatus === "building" || revealStatus === "signing" || revealStatus === "executing")}
         />
       ))}
     </View>
@@ -673,8 +717,21 @@ const cm = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  yesBtn: { backgroundColor: "#052e16", borderColor: "#22c55e" },
-  noBtn:  { backgroundColor: "#3b0a0a", borderColor: "#ef4444" },
+  yesBtn:    { backgroundColor: "#052e16", borderColor: "#22c55e" },
+  noBtn:     { backgroundColor: "#3b0a0a", borderColor: "#ef4444" },
+  revealBtn: {
+    backgroundColor: "#0b0520",
+    borderWidth: 1,
+    borderColor: "#4c1d95",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: "center",
+  },
+  revealBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  revealBtnLogo:  { width: 22, height: 22, borderRadius: 11 },
+  revealBtnText:  { fontSize: 13, fontWeight: "700", color: "#c4b5fd", flex: 1 },
+  revealBtnSub:   { fontSize: 11, color: "#5b21b6" },
   btnDisabled: { opacity: 0.5 },
   settleBtnText: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
   revenueRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },

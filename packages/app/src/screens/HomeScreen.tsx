@@ -223,7 +223,7 @@ const FEATURE_CARD_GAP   = 10;
 const FEATURE_CARD_STEP  = FEATURE_CARD_WIDTH + FEATURE_CARD_GAP;
 const CAROUSEL_INTERVAL  = 3_000;
 
-function FeatureCardRow({ onParlayPress, onMatchupPress }: { onParlayPress?: () => void; onMatchupPress?: () => void }) {
+function FeatureCardRow({ onParlayPress, onMatchupPress, onLeaguePress }: { onParlayPress?: () => void; onMatchupPress?: () => void; onLeaguePress?: () => void }) {
   const scrollRef      = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const userScrolling  = useRef(false);
@@ -263,7 +263,7 @@ function FeatureCardRow({ onParlayPress, onMatchupPress }: { onParlayPress?: () 
           <TouchableOpacity
             key={card.title}
             activeOpacity={0.8}
-            onPress={card.key === "Parlays" ? onParlayPress : card.key === "Matchups" ? onMatchupPress : undefined}
+            onPress={card.key === "Parlays" ? onParlayPress : card.key === "Matchups" ? onMatchupPress : card.key === "Leagues" ? onLeaguePress : undefined}
           >
             <LinearGradient colors={card.colors} style={styles.featureCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Text style={styles.featureEmoji}>{card.emoji}</Text>
@@ -439,12 +439,21 @@ function MarketRow({ market, index, onPress, creatorWinRate }: MarketRowProps) {
   );
 }
 
-function LeaguesTab() {
+function LeaguesTab({ onOpenLeagues }: { onOpenLeagues?: () => void }) {
   return (
     <View style={styles.comingSoon}>
       <Text style={styles.comingSoonEmoji}>🏆</Text>
-      <Text style={styles.comingSoonTitle}>Leagues coming soon</Text>
+      <Text style={styles.comingSoonTitle}>Fan Leagues</Text>
       <Text style={styles.comingSoonSub}>Create a private league with mates, compete each gameweek</Text>
+      {onOpenLeagues && (
+        <TouchableOpacity
+          style={{ marginTop: 20, backgroundColor: "#22c55e", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 }}
+          onPress={onOpenLeagues}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Open Leagues</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -589,6 +598,7 @@ interface Props {
   onNavigateProfile?: () => void;
   onNavigateParlay?: () => void;
   onNavigateMatchup?: () => void;
+  onNavigateLeague?: () => void;
   onRefreshMarkets?: () => void;
 }
 
@@ -600,7 +610,7 @@ interface SelectedBet {
   source: "native" | "jupiter";
 }
 
-export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onRefreshMarkets }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onNavigateLeague, onRefreshMarkets }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("All");
@@ -743,7 +753,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       <Text style={styles.heroLabel}>Back your take.</Text>
 
       {/* ── Feature cards ───────────────────────────────────── */}
-      <FeatureCardRow onParlayPress={onNavigateParlay} onMatchupPress={onNavigateMatchup} />
+      <FeatureCardRow onParlayPress={onNavigateParlay} onMatchupPress={onNavigateMatchup} onLeaguePress={onNavigateLeague} />
 
       {/* ── Flash markets row ───────────────────────────────── */}
       <FlashMarketsRow markets={markets} onSelectMarket={onSelectMarket} />
@@ -894,7 +904,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             );
           })()
         )}
-        {activeTab === "Leagues" && <LeaguesTab />}
+        {activeTab === "Leagues" && <LeaguesTab onOpenLeagues={onNavigateLeague} />}
 
         {/* Spacer so last row clears bottom nav */}
         <View style={{ height: 80 }} />
