@@ -31,6 +31,7 @@ import { SocialScreen } from "./screens/SocialScreen";
 import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
 import { CreateMarketScreen } from "./screens/CreateMarketScreen";
 import { MatchupScreen } from "./screens/MatchupScreen";
+import { LeagueScreen } from "./screens/LeagueScreen";
 import { MarketDetailSheet } from "./components/MarketDetailSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 import {
@@ -378,6 +379,7 @@ export default function App() {
   const [showConnect, setShowConnect] = useState(false);
   const [showParlay, setShowParlay] = useState(false);
   const [showMatchups, setShowMatchups] = useState(false);
+  const [showLeagues, setShowLeagues] = useState(false);
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
@@ -615,6 +617,7 @@ export default function App() {
             onNavigateProfile={() => setActiveTab("Profile")}
             onNavigateParlay={() => { refreshMarkets(); setShowParlay(true); }}
             onNavigateMatchup={() => setShowMatchups(true)}
+            onNavigateLeague={() => setShowLeagues(true)}
             onRefreshMarkets={refreshMarkets}
           />
         );
@@ -698,6 +701,16 @@ export default function App() {
             onClose={() => { setShowMatchups(false); setDeepLinkMatchupAddress(null); }}
             onRefreshMarkets={refreshMarkets}
             initialMatchupAddress={deepLinkMatchupAddress}
+          />
+        </View>
+      )}
+
+      {showLeagues && (
+        <View style={styles.parlayOverlay}>
+          <LeagueScreen
+            walletPubkey={effectivePublicKey}
+            onConnectWallet={handleConnectWallet}
+            onClose={() => setShowLeagues(false)}
           />
         </View>
       )}
