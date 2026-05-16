@@ -249,10 +249,10 @@ export function usePrivateMarket() {
         crypto.getRandomValues(secret);
         const outcomeCommitment = computeOutcomeCommitment(params.outcome, secret);
 
-        // Persist secret so user can claim later (SecureStore = device Keychain/Keystore)
+        // Persist secret + bettor outcome so claim can reproduce the blake3 commitment
         await SecureStore.setItemAsync(
           `terrace:bet_secret:${privateBetRecord}`,
-          Buffer.from(secret).toString("hex")
+          JSON.stringify({ secret: Buffer.from(secret).toString("hex"), outcome: params.outcome })
         );
 
         const ix = await buildPlacePrivateBetEncryptedInstruction({
@@ -356,7 +356,6 @@ export function usePrivateMarket() {
     async (params: {
       market: Address;
       creator: Address;
-      outcome: 0 | 1;
       usdcMint: Address;
       programId?: Address;
     }) => {
@@ -370,12 +369,13 @@ export function usePrivateMarket() {
         const [privateState]  = await getPrivateStatePda(params.market, programId);
         const [privateBetRecord] = await getPrivateBetRecordPda(params.market, bettor, programId);
 
-        const secretHex = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
-        if (!secretHex) throw new Error("Bet secret not found — cannot claim");
-        const secret = new Uint8Array(Buffer.from(secretHex, "hex"));
+        const stored = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
+        if (!stored) throw new Error("Bet secret not found — cannot claim");
+        const parsed = JSON.parse(stored) as { secret: string; outcome: 0 | 1 };
+        const secret = new Uint8Array(Buffer.from(parsed.secret, "hex"));
 
         const ix = await buildClaimPrivateWinningsInstruction({
-          outcome: params.outcome,
+          outcome: parsed.outcome,
           secret,
           market: params.market,
           privateState,

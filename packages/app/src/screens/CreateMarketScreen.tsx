@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useCreateMarket } from "../hooks/useCreateMarket";
 import type { UnifiedMarket } from "@terrace/sdk";
+import { ArciumBadge } from "../components/ArciumBadge";
 
 // ---------------------------------------------------------------------------
 // Expiry presets
@@ -208,14 +209,17 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
 
         {/* ── Private toggle ── */}
         <View style={styles.toggleRow}>
-          <View>
-            <Text style={styles.label}>Private market</Text>
-            <Text style={styles.toggleSub}>Invite-only via Light Protocol ZK</Text>
+          <View style={styles.toggleLabelCol}>
+            <View style={styles.toggleLabelRow}>
+              <Text style={styles.label}>Private market</Text>
+              <ArciumBadge label="Arcium MPC" />
+            </View>
+            <Text style={styles.toggleSub}>Positions encrypted — hidden until MPC reveal</Text>
           </View>
           <Switch
             value={isPrivate}
             onValueChange={setIsPrivate}
-            trackColor={{ true: "#16a34a", false: "#2a2a2a" }}
+            trackColor={{ true: "#7c3aed", false: "#2a2a2a" }}
             thumbColor="#fff"
             disabled={busy}
           />
@@ -288,6 +292,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 4,
   },
+  toggleLabelCol: { flex: 1, marginRight: 12 },
+  toggleLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   toggleSub: { fontSize: 11, color: "#6b7280", marginTop: 2 },
 
   presetRow: { flexDirection: "row", gap: 8, marginTop: 2 },
