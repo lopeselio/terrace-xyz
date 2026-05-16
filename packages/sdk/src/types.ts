@@ -163,6 +163,62 @@ export interface ClaimParlayParams {
   usdcMint: Address;
 }
 
+// ── League types ──────────────────────────────────────────────────────────────
+
+export type LeagueStatus = "Active" | "Ended";
+
+export interface League {
+  address: Address;
+  creator: Address;
+  name: string;
+  season: number;
+  gameweek: number;
+  memberCount: number;
+  maxMembers: number;
+  isPrivate: boolean;
+  entryFeeUsdc: bigint;
+  prizePool: bigint;
+  vault: Address;
+  status: LeagueStatus;
+  nonce: bigint;
+  bump: number;
+}
+
+export interface LeagueMember {
+  address: Address;
+  league: Address;
+  member: Address;
+  gameweekScore: number;
+  totalScore: number;
+  lastScoredGameweek: number;
+  bump: number;
+}
+
+export interface CreateLeagueParams {
+  name: string;
+  season: number;
+  isPrivate?: boolean;
+  entryFeeUsdc?: bigint;
+  maxMembers?: number;
+  nonce: bigint;
+  usdcMint: Address;
+}
+
+export interface JoinLeagueParams {
+  league: Address;
+  usdcMint: Address;
+}
+
+export interface RecordLeagueWinParams {
+  league: Address;
+  market: Address;
+  bet: Address;
+}
+
+export interface AdvanceGameweekParams {
+  league: Address;
+}
+
 export const USDC_DEVNET_MINT =
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" as Address;
 

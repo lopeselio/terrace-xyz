@@ -242,6 +242,44 @@ export async function getArciumClockPda(): Promise<Address> {
   return addr;
 }
 
+// ── League PDAs ───────────────────────────────────────────────────────────────
+
+export async function getLeaguePda(
+  creator: Address,
+  nonce: bigint,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<readonly [Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [new TextEncoder().encode("league"), enc.encode(creator), u64LeBytes(nonce)],
+  });
+}
+
+export async function getLeagueMemberPda(
+  league: Address,
+  member: Address,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<readonly [Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [new TextEncoder().encode("league_member"), enc.encode(league), enc.encode(member)],
+  });
+}
+
+export async function getLeagueScoreRecordPda(
+  league: Address,
+  bet: Address,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<readonly [Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [new TextEncoder().encode("league_score"), enc.encode(league), enc.encode(bet)],
+  });
+}
+
 /**
  * LUT address for an MXE account — needed by init_*_comp_def instructions.
  * `lutOffsetSlot` comes from `MXEAccount.lut_offset_slot` on-chain.

@@ -804,6 +804,129 @@ export async function buildClaimPrivateWinningsInstruction(params: {
   };
 }
 
+// ── League instructions ───────────────────────────────────────────────────────
+
+const IX_CREATE_LEAGUE      = Buffer.from([129, 229, 70, 201, 64, 57, 180, 164]);
+const IX_JOIN_LEAGUE        = Buffer.from([32, 4, 179, 25, 65, 34, 15, 127]);
+const IX_RECORD_LEAGUE_WIN  = Buffer.from([249, 61, 237, 109, 194, 69, 201, 169]);
+const IX_ADVANCE_GAMEWEEK   = Buffer.from([171, 247, 39, 30, 225, 129, 136, 60]);
+
+export async function buildCreateLeagueInstruction(params: {
+  name: string;
+  season: number;
+  isPrivate: boolean;
+  entryFeeUsdc: bigint;
+  maxMembers: number;
+  nonce: bigint;
+  leagueAddress: Address;
+  usdcMint: Address;
+  creator: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { name, season, isPrivate, entryFeeUsdc, maxMembers, nonce, leagueAddress, usdcMint, creator, programId } = params;
+  const vaultAddress = await deriveAta(usdcMint, leagueAddress);
+
+  const seasonBuf = Buffer.alloc(2);
+  seasonBuf.writeUInt16LE(season, 0);
+
+  const data = Buffer.concat([
+    IX_CREATE_LEAGUE,
+    encodeString(name),
+    seasonBuf,
+    Buffer.from([isPrivate ? 1 : 0]),
+    encodeU64LE(entryFeeUsdc),
+    Buffer.from([maxMembers]),
+    encodeU64LE(nonce),
+  ]);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: leagueAddress, role: AccountRole.WRITABLE },
+      { address: vaultAddress, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: creator, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+export async function buildJoinLeagueInstruction(params: {
+  leagueAddress: Address;
+  leagueCreator: Address;
+  leagueNonce: bigint;
+  leagueMemberAddress: Address;
+  usdcMint: Address;
+  member: Address;
+  programId: Address;
+}): Promise<IInstruction> {
+  const { leagueAddress, leagueMemberAddress, usdcMint, member, programId } = params;
+  const memberAta = await deriveAta(usdcMint, member);
+  const leagueVault = await deriveAta(usdcMint, leagueAddress);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: leagueAddress, role: AccountRole.WRITABLE },
+      { address: leagueMemberAddress, role: AccountRole.WRITABLE },
+      { address: memberAta, role: AccountRole.WRITABLE },
+      { address: leagueVault, role: AccountRole.WRITABLE },
+      { address: usdcMint, role: AccountRole.READONLY },
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: ASSOC_TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_JOIN_LEAGUE),
+  };
+}
+
+export function buildRecordLeagueWinInstruction(params: {
+  leagueAddress: Address;
+  leagueMemberAddress: Address;
+  marketAddress: Address;
+  betAddress: Address;
+  scoreRecordAddress: Address;
+  member: Address;
+  programId: Address;
+}): IInstruction {
+  const { leagueAddress, leagueMemberAddress, marketAddress, betAddress, scoreRecordAddress, member, programId } = params;
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: leagueAddress, role: AccountRole.READONLY },
+      { address: leagueMemberAddress, role: AccountRole.WRITABLE },
+      { address: marketAddress, role: AccountRole.READONLY },
+      { address: betAddress, role: AccountRole.READONLY },
+      { address: scoreRecordAddress, role: AccountRole.WRITABLE },
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_RECORD_LEAGUE_WIN),
+  };
+}
+
+export function buildAdvanceGameweekInstruction(params: {
+  leagueAddress: Address;
+  creator: Address;
+  programId: Address;
+}): IInstruction {
+  const { leagueAddress, creator, programId } = params;
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: leagueAddress, role: AccountRole.WRITABLE },
+      { address: creator, role: AccountRole.READONLY_SIGNER },
+    ],
+    data: new Uint8Array(IX_ADVANCE_GAMEWEEK),
+  };
+}
+
 // Derives the Associated Token Address for (owner, mint) off-chain.
 async function deriveAta(mint: Address, owner: Address): Promise<Address> {
   const { getProgramDerivedAddress, getAddressEncoder } = await import("@solana/kit");

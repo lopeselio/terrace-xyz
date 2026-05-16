@@ -6,6 +6,8 @@ export {
   deserializeMatchupAccount,
   deserializePrivateMarketStateAccount,
   deserializePrivateBetRecordAccount,
+  deserializeLeagueAccount,
+  deserializeLeagueMemberAccount,
 } from "./client";
 export {
   getMarketPda,
@@ -15,6 +17,9 @@ export {
   getMatchupPda,
   getPrivateStatePda,
   getPrivateBetRecordPda,
+  getLeaguePda,
+  getLeagueMemberPda,
+  getLeagueScoreRecordPda,
   getArciumMxePda,
   getArciumSignPda,
   getArciumCompDefPda,
@@ -52,6 +57,10 @@ export {
   buildPlacePrivateBetInstruction as buildPlacePrivateBetEncryptedInstruction,
   buildRevealPrivateMarketInstruction,
   buildClaimPrivateWinningsInstruction,
+  buildCreateLeagueInstruction,
+  buildJoinLeagueInstruction,
+  buildRecordLeagueWinInstruction,
+  buildAdvanceGameweekInstruction,
 } from "./instructions";
 export type {
   Market,
@@ -77,6 +86,13 @@ export type {
   BadgeTier,
   ParlayStatus,
   MatchupStatus,
+  LeagueStatus,
+  League,
+  LeagueMember,
+  CreateLeagueParams,
+  JoinLeagueParams,
+  RecordLeagueWinParams,
+  AdvanceGameweekParams,
 } from "./types";
 export { USDC_DEVNET_MINT, MIN_BET_LAMPORTS } from "./types";
 export { JupiterMarketsClient } from "./jupiter";

@@ -38,6 +38,9 @@ import type {
   MatchupStatus,
   BadgeTier,
   MarketStatus,
+  League,
+  LeagueMember,
+  LeagueStatus,
 } from "./types";
 import { getMarketPda, getBetPda, getReputationPda, getParlayPda, getMatchupPda, TERRACE_PROGRAM_ID } from "./pda";
 import {
@@ -405,6 +408,92 @@ export function deserializePrivateBetRecordAccount(
   const bump = view.getUint8(o);
 
   return { address, market, bettor, amount, outcomeCommitment, claimed, bump };
+}
+
+/**
+ * Deserialises a raw League account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   creator          — 32 Pubkey
+ *   name             — 4 (len) + up to 50 bytes String
+ *   season           — u16 LE
+ *   gameweek         — u8
+ *   member_count     — u8
+ *   max_members      — u8
+ *   is_private       — u8 bool
+ *   entry_fee_usdc   — u64 LE
+ *   prize_pool       — u64 LE
+ *   vault            — 32 Pubkey
+ *   status           — u8 (0=Active, 1=Ended)
+ *   nonce            — u64 LE
+ *   bump             — u8
+ */
+export function deserializeLeagueAccount(data: Uint8Array, address: Address): League {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8; // skip discriminator
+
+  const creator = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+
+  const nameLen = view.getUint32(o, true);
+  o += 4;
+  const name = new TextDecoder().decode(data.slice(o, o + nameLen));
+  o += nameLen;
+
+  const season = view.getUint16(o, true);
+  o += 2;
+  const gameweek = view.getUint8(o);
+  o += 1;
+  const memberCount = view.getUint8(o);
+  o += 1;
+  const maxMembers = view.getUint8(o);
+  o += 1;
+  const isPrivate = view.getUint8(o) !== 0;
+  o += 1;
+  const entryFeeUsdc = view.getBigUint64(o, true);
+  o += 8;
+  const prizePool = view.getBigUint64(o, true);
+  o += 8;
+  const vault = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const statusByte = view.getUint8(o);
+  o += 1;
+  const status: LeagueStatus = statusByte === 1 ? "Ended" : "Active";
+  const nonce = view.getBigUint64(o, true);
+  o += 8;
+  const bump = view.getUint8(o);
+
+  return { address, creator, name, season, gameweek, memberCount, maxMembers, isPrivate, entryFeeUsdc, prizePool, vault, status, nonce, bump };
+}
+
+/**
+ * Deserialises a raw LeagueMember account buffer.
+ *
+ * Layout (after 8-byte discriminator):
+ *   league                — 32 Pubkey
+ *   member                — 32 Pubkey
+ *   gameweek_score        — u32 LE
+ *   total_score           — u32 LE
+ *   last_scored_gameweek  — u8
+ *   bump                  — u8
+ */
+export function deserializeLeagueMemberAccount(data: Uint8Array, address: Address): LeagueMember {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let o = 8;
+
+  const league = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const member = pubkeyBytesToAddress(data.slice(o, o + 32));
+  o += 32;
+  const gameweekScore = view.getUint32(o, true);
+  o += 4;
+  const totalScore = view.getUint32(o, true);
+  o += 4;
+  const lastScoredGameweek = view.getUint8(o);
+  o += 1;
+  const bump = view.getUint8(o);
+
+  return { address, league, member, gameweekScore, totalScore, lastScoredGameweek, bump };
 }
 
 export class TerraceSdk {
