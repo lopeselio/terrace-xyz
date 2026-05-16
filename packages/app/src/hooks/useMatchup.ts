@@ -39,7 +39,12 @@ function toWeb3Ix(ix: any): TransactionInstruction {
   });
 }
 
-async function rpcPost(body: object, retries = 2): Promise<any> {
+function isPingError(e: unknown): boolean {
+  const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return msg.includes("ping") || msg.includes("timed out") || msg.includes("timeout") || msg.includes("network request failed");
+}
+
+async function rpcPost(body: object, retries = 4): Promise<any> {
   if (!HELIUS_RPC_URL) throw new Error("RPC URL not configured");
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -49,10 +54,17 @@ async function rpcPost(body: object, retries = 2): Promise<any> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return await res.json();
+      const json = await res.json();
+      // Retry on devnet keepalive/ping errors embedded in the response body
+      if (json?.error && isPingError(json.error)) {
+        lastErr = new Error(json.error.message ?? "RPC ping timeout");
+        if (attempt < retries) await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        continue;
+      }
+      return json;
     } catch (e) {
       lastErr = e;
-      if (attempt < retries) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
     }
   }
   throw lastErr;
@@ -64,22 +76,29 @@ async function fetchBlockhash(): Promise<string> {
 }
 
 async function confirmTransaction(sig: string): Promise<void> {
-  const TIMEOUT_MS = 60_000;
-  const POLL_MS = 1_500;
+  const TIMEOUT_MS = 90_000;
+  const POLL_MS = 2_000;
   const start = Date.now();
   while (Date.now() - start < TIMEOUT_MS) {
-    const res = await rpcPost({
-      jsonrpc: "2.0", id: 1, method: "getSignatureStatuses",
-      params: [[sig], { searchTransactionHistory: false }],
-    });
-    const status = res.result?.value?.[0];
-    if (status != null) {
-      if (status.err) throw new Error(`Transaction failed on-chain: ${JSON.stringify(status.err)}`);
-      if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") return;
+    try {
+      const res = await rpcPost({
+        jsonrpc: "2.0", id: 1, method: "getSignatureStatuses",
+        params: [[sig], { searchTransactionHistory: false }],
+      });
+      const status = res.result?.value?.[0];
+      if (status != null) {
+        if (status.err) throw new Error(`Transaction failed on-chain: ${JSON.stringify(status.err)}`);
+        if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") return;
+      }
+    } catch (e) {
+      // On-chain failure is a real error — rethrow immediately
+      if (e instanceof Error && e.message.startsWith("Transaction failed on-chain")) throw e;
+      // Network/ping errors during polling: log and keep trying until TIMEOUT_MS
+      console.warn(`${LOG} confirmTransaction: poll error (will retry) —`, e);
     }
     await new Promise((r) => setTimeout(r, POLL_MS));
   }
-  throw new Error("Transaction confirmation timed out after 60s");
+  throw new Error("Transaction confirmation timed out after 90s");
 }
 
 async function buildAndSend(
@@ -392,10 +411,16 @@ export function useMatchup(): UseMatchupResult {
       } catch (e: any) {
         const msg = e?.message ?? String(e);
         console.warn(`${LOG} settleMatchup: FAILED`, msg);
-        setError(msg);
-        setStatus("error");
-        if (msg.includes("Ping") || msg.includes("timed out") || msg.includes("timeout")) {
+        if (isPingError(e)) {
+          // Devnet keepalive dropped — the tx may have landed. Refresh and treat as
+          // ambiguous rather than a hard failure so the UI doesn't show a false error.
+          console.warn(`${LOG} settleMatchup: ping/timeout — refreshing to check on-chain state`);
           setTimeout(() => refresh(), 2500);
+          setStatus("idle");
+          setError("Connection dropped — checking settlement status…");
+        } else {
+          setError(msg);
+          setStatus("error");
         }
         throw e;
       }
