@@ -24,6 +24,8 @@ import { useCreatedMarkets, type CreatedMarket } from "../hooks/useCreatedMarket
 import { useSettleMarket } from "../hooks/useSettleMarket";
 import { useClaimWinnings } from "../hooks/useClaimWinnings";
 import { usePrivateMarket } from "../hooks/usePrivateMarket";
+import { useLeague } from "../hooks/useLeague";
+import { ArciumBadge } from "../components/ArciumBadge";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -786,10 +788,103 @@ const fc = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
+// Leagues tab (embedded in Profile)
+// ---------------------------------------------------------------------------
+
+function LeaguesTab({ walletPubkey, onOpen }: { walletPubkey: string | null; onOpen: () => void }) {
+  const { myLeagues, joinedLeagues, myMemberships, loading } = useLeague(walletPubkey);
+
+  const allLeagues = [
+    ...myLeagues,
+    ...joinedLeagues.filter((jl) => !myLeagues.some((ml) => String(ml.address) === String(jl.address))),
+  ];
+
+  if (loading) {
+    return <ActivityIndicator color="#22c55e" style={{ marginTop: 32 }} />;
+  }
+
+  if (allLeagues.length === 0) {
+    return (
+      <View style={styles.stubPositions}>
+        <Text style={styles.stubEmoji}>🏆</Text>
+        <Text style={styles.stubTitle}>No leagues yet</Text>
+        <Text style={styles.stubSub}>Create or join a league to compete with friends</Text>
+        <TouchableOpacity style={lgStyles.openBtn} onPress={onOpen}>
+          <Text style={lgStyles.openBtnText}>Go to Leagues</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      {allLeagues.map((league) => {
+        const membership = myMemberships.find((m) => String(m.league) === String(league.address));
+        const isCreator = walletPubkey === String(league.creator);
+        return (
+          <TouchableOpacity key={String(league.address)} style={lgStyles.card} onPress={onOpen} activeOpacity={0.8}>
+            <View style={lgStyles.cardHeader}>
+              <Text style={lgStyles.leagueName} numberOfLines={1}>{league.name}</Text>
+              {league.isPrivate && <ArciumBadge />}
+            </View>
+            <View style={lgStyles.metaRow}>
+              <Text style={lgStyles.meta}>GW {league.gameweek}</Text>
+              <Text style={lgStyles.metaDot}>·</Text>
+              <Text style={lgStyles.meta}>{league.memberCount}/{league.maxMembers} members</Text>
+              {isCreator && <><Text style={lgStyles.metaDot}>·</Text><Text style={[lgStyles.meta, { color: "#4ade80" }]}>Creator</Text></>}
+            </View>
+            {membership ? (
+              <View style={lgStyles.scoreRow}>
+                <View style={lgStyles.scoreCell}>
+                  <Text style={lgStyles.scoreValue}>{membership.gameweekScore}</Text>
+                  <Text style={lgStyles.scoreLabel}>GW pts</Text>
+                </View>
+                <View style={lgStyles.scoreDivider} />
+                <View style={lgStyles.scoreCell}>
+                  <Text style={lgStyles.scoreValue}>{membership.totalScore}</Text>
+                  <Text style={lgStyles.scoreLabel}>Total wins</Text>
+                </View>
+                <View style={lgStyles.scoreDivider} />
+                <View style={lgStyles.scoreCell}>
+                  <Text style={[lgStyles.scoreValue, { color: "#60a5fa" }]}>S{league.season}</Text>
+                  <Text style={lgStyles.scoreLabel}>Season</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={lgStyles.notJoined}>Not yet joined — tap to enter</Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+      <TouchableOpacity style={lgStyles.openBtn} onPress={onOpen}>
+        <Text style={lgStyles.openBtnText}>Open Leagues</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const lgStyles = StyleSheet.create({
+  card:        { backgroundColor: "#111", borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: "#1f2937" },
+  cardHeader:  { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  leagueName:  { fontSize: 15, fontWeight: "700", color: "#fff", flex: 1 },
+  metaRow:     { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+  meta:        { fontSize: 12, color: "#6b7280" },
+  metaDot:     { fontSize: 12, color: "#374151" },
+  scoreRow:    { flexDirection: "row", backgroundColor: "#0a0a0a", borderRadius: 10, overflow: "hidden" },
+  scoreCell:   { flex: 1, alignItems: "center", paddingVertical: 10, gap: 2 },
+  scoreDivider:{ width: 0.5, backgroundColor: "#1f2937" },
+  scoreValue:  { fontSize: 18, fontWeight: "700", color: "#f9fafb" },
+  scoreLabel:  { fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.4 },
+  notJoined:   { fontSize: 11, color: "#4b5563", fontStyle: "italic" },
+  openBtn:     { backgroundColor: "#1a1a1a", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 0.5, borderColor: "#2a2a2a", marginTop: 4 },
+  openBtnText: { fontSize: 13, fontWeight: "600", color: "#9ca3af" },
+});
+
+// ---------------------------------------------------------------------------
 // Profile screen
 // ---------------------------------------------------------------------------
 
-type HistoryTab = "Active" | "History" | "Created";
+type HistoryTab = "Active" | "History" | "Created" | "Leagues";
 
 interface Props {
   walletPubkey: string | null;
@@ -798,9 +893,10 @@ interface Props {
   privyUser?: any;
   onConnectWallet: () => void;
   onDisconnect?: () => void;
+  onNavigateLeague?: () => void;
 }
 
-export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser, onConnectWallet, onDisconnect }: Props) {
+export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser, onConnectWallet, onDisconnect, onNavigateLeague }: Props) {
   const [tab, setTab] = useState<HistoryTab>("Active");
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [walletTimedOut, setWalletTimedOut] = useState(false);
@@ -1179,7 +1275,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
       {/* ── Active / History / Created tabs ─────── */}
       <View style={styles.tabSection}>
         <View style={styles.tabBar}>
-          {(["Active", "History", "Created"] as HistoryTab[]).map((t) => (
+          {(["Active", "History", "Created", "Leagues"] as HistoryTab[]).map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
@@ -1193,7 +1289,9 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         </View>
 
         {/* Position list */}
-        {tab === "Created" ? (
+        {tab === "Leagues" ? (
+          <LeaguesTab walletPubkey={walletPubkey} onOpen={() => onNavigateLeague?.()} />
+        ) : tab === "Created" ? (
           <CreatedMarketsList walletPubkey={walletPubkey} onTotalRevenue={setCreatorRevenue} />
         ) : (betsLoading || loadingParlays) ? (
           <View style={styles.stubPositions}>

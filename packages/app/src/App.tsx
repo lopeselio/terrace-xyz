@@ -645,6 +645,7 @@ export default function App() {
             privyUser={privyUser}
             onConnectWallet={handleConnectWallet}
             onDisconnect={handleDisconnect}
+            onNavigateLeague={() => setShowLeagues(true)}
           />
         );
       default:

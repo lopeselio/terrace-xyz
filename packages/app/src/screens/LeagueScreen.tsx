@@ -15,10 +15,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { League, LeagueMember } from "@terrace/sdk";
 import { useLeague } from "../hooks/useLeague";
+import type { EligibleBet } from "../hooks/useLeague";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import { ArciumBadge, ArciumPrivacyBanner } from "../components/ArciumBadge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// HTTPS landing URL — makes invite links clickable in Telegram/WhatsApp.
+// Set EXPO_PUBLIC_LANDING_URL in .env to your deployed domain.
+const LANDING_URL = (process.env.EXPO_PUBLIC_LANDING_URL ?? "").replace(/\/$/, "");
+function inviteUrl(leagueAddress: string) {
+  return LANDING_URL
+    ? `${LANDING_URL}/league/${leagueAddress}`
+    : `terrace://league/${leagueAddress}`;
+}
 
 function shortAddr(addr: string) { return `${addr.slice(0, 5)}…${addr.slice(-4)}`; }
 function fmtUsdc(n: bigint) { return `$${(Number(n) / 1_000_000).toFixed(2)}`; }
@@ -85,7 +95,12 @@ function LeaderboardSheet({
   myPubkey,
   isCreator,
   busy,
+  eligibleBets,
+  loadingEligible,
+  notAMember,
   onAdvanceGameweek,
+  onJoinLeague,
+  onScoreWin,
   onClose,
 }: {
   league: League;
@@ -94,18 +109,25 @@ function LeaderboardSheet({
   myPubkey: string | null;
   isCreator: boolean;
   busy: boolean;
+  eligibleBets: EligibleBet[];
+  loadingEligible: boolean;
+  notAMember: boolean;
   onAdvanceGameweek: () => void;
+  onJoinLeague: () => void;
+  onScoreWin: (betAddress: string, marketAddress: string) => void;
   onClose: () => void;
 }) {
+  const [pendingScore, setPendingScore] = useState<EligibleBet | null>(null);
+
   const handleShare = useCallback(async () => {
-    const link = `terrace://league/${String(league.address)}`;
+    const link = inviteUrl(String(league.address));
     try {
       await Share.share({ message: `Join my league "${league.name}" on Terrace!\n${link}` });
     } catch {}
   }, [league]);
 
   const handleCopyInvite = useCallback(() => {
-    Clipboard.setString(`terrace://league/${String(league.address)}`);
+    Clipboard.setString(inviteUrl(String(league.address)));
   }, [league]);
 
   return (
@@ -142,7 +164,50 @@ function LeaderboardSheet({
         )}
       </View>
 
-      <Text style={s.leaderboardTitle}>Gameweek {league.gameweek} Leaderboard</Text>
+      {/* Score your wins */}
+      {loadingEligible ? (
+        <ActivityIndicator color="#22c55e" style={{ marginBottom: 16 }} />
+      ) : notAMember ? (
+        <TouchableOpacity
+          style={[s.eligibleSection, { backgroundColor: "#1a1200", borderColor: "#78350f" }]}
+          onPress={onJoinLeague}
+          disabled={busy}
+          activeOpacity={0.8}
+        >
+          <Text style={[s.eligibleTitle, { color: "#fbbf24" }]}>Join to score your wins</Text>
+          <Text style={{ fontSize: 12, color: "#9ca3af" }}>
+            You're the creator but haven't joined yet. Tap to join and start scoring points.
+          </Text>
+        </TouchableOpacity>
+      ) : eligibleBets.length > 0 ? (
+        <View style={s.eligibleSection}>
+          <Text style={s.eligibleTitle}>Score your wins ({eligibleBets.length})</Text>
+          {eligibleBets.map((b) => (
+            <TouchableOpacity
+              key={String(b.betAddress)}
+              style={[s.eligibleRow, busy && s.btnDisabled]}
+              onPress={() => setPendingScore(b)}
+              disabled={busy}
+              activeOpacity={0.75}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={s.eligibleQuestion} numberOfLines={2}>{b.marketQuestion}</Text>
+                <Text style={s.eligibleMeta}>${(Number(b.amount) / 1_000_000).toFixed(2)} stake</Text>
+              </View>
+              <Text style={s.eligibleCta}>+1 pt →</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <Text style={[s.leaderboardTitle, { marginBottom: 0, flex: 1 }]}>
+          Gameweek {league.gameweek} Leaderboard
+        </Text>
+        {league.isPrivate && (
+          <Text style={s.privateNote}>🔒 Scores hidden until reveal</Text>
+        )}
+      </View>
 
       {loading ? (
         <ActivityIndicator color="#22c55e" style={{ marginTop: 24 }} />
@@ -153,24 +218,63 @@ function LeaderboardSheet({
           {members.map((m, idx) => {
             const isMe = myPubkey === String(m.member);
             const gw = m.lastScoredGameweek === league.gameweek ? m.gameweekScore : 0;
+            const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+            // In private leagues, hide other members' scores — only show your own
+            const scoreHidden = league.isPrivate && !isMe;
             return (
               <View key={String(m.address)} style={[s.memberRow, isMe && s.memberRowMe]}>
-                <Text style={s.rank}>#{idx + 1}</Text>
-                <MemberAvatar pubkey={String(m.member)} size={32} />
+                {isMe && <View style={s.memberAccent} />}
+                <Text style={medal ? s.rankMedal : s.rank}>{medal ?? `#${idx + 1}`}</Text>
+                <MemberAvatar pubkey={String(m.member)} size={30} />
                 <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={[s.memberAddr, isMe && { color: "#22c55e" }]}>
+                  <Text style={[s.memberAddr, isMe && s.memberAddrMe]}>
                     {isMe ? "You" : shortAddr(String(m.member))}
                   </Text>
-                  <Text style={s.memberTotal}>{m.totalScore} total wins</Text>
+                  <Text style={s.memberTotal}>
+                    {scoreHidden ? "—  total pts" : `${m.totalScore} total pts`}
+                  </Text>
                 </View>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={s.gwScore}>{gw} pts</Text>
-                  <Text style={s.gwLabel}>this GW</Text>
+                <View style={s.scoreBlock}>
+                  {scoreHidden ? (
+                    <Text style={s.gwScoreLocked}>🔒</Text>
+                  ) : (
+                    <Text style={[s.gwScore, gw === 0 && s.gwScoreZero]}>{gw}</Text>
+                  )}
+                  <Text style={s.gwLabel}>{scoreHidden ? "private" : "GW pts"}</Text>
                 </View>
               </View>
             );
           })}
         </ScrollView>
+      )}
+
+      {/* Score confirmation modal */}
+      {pendingScore && (
+        <View style={s.confirmOverlay}>
+          <View style={s.confirmCard}>
+            <Text style={s.confirmHeading}>Score this win?</Text>
+            <Text style={s.confirmQuestion}>{pendingScore.marketQuestion}</Text>
+            <Text style={s.confirmStake}>${(Number(pendingScore.amount) / 1_000_000).toFixed(2)} stake · +1 league point</Text>
+            <View style={s.confirmActions}>
+              <TouchableOpacity style={s.confirmCancelBtn} onPress={() => setPendingScore(null)}>
+                <Text style={s.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmScoreBtn, busy && s.btnDisabled]}
+                disabled={busy}
+                onPress={() => {
+                  const b = pendingScore;
+                  setPendingScore(null);
+                  onScoreWin(String(b.betAddress), b.marketAddress);
+                }}
+              >
+                {busy
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.confirmScoreText}>Confirm +1 pt →</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -180,9 +284,11 @@ function LeaderboardSheet({
 
 function CreateTab({
   busy,
+  stepLabel,
   onSubmit,
 }: {
   busy: boolean;
+  stepLabel: string | null;
   onSubmit: (params: { name: string; isPrivate: boolean; entryFeeUsdc: bigint; maxMembers: number }) => void;
 }) {
   const [name, setName] = useState("");
@@ -268,9 +374,14 @@ function CreateTab({
         disabled={!valid || busy}
         activeOpacity={0.8}
       >
-        {busy
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={s.createBtnText}>Create league</Text>}
+        {busy ? (
+          <View style={{ alignItems: "center", gap: 6 }}>
+            <ActivityIndicator color="#fff" />
+            {stepLabel && <Text style={s.stepLabel}>{stepLabel}</Text>}
+          </View>
+        ) : (
+          <Text style={s.createBtnText}>Create league</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -337,16 +448,22 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     myLeagues,
     joinedLeagues,
     leaderboard,
+    eligibleBets,
+    notAMember,
     loading,
     loadingLeaderboard,
+    loadingEligible,
     status,
+    createStep,
     error,
     createLeague,
     joinLeague,
+    recordWin,
     advanceGameweek,
     loadLeaderboard,
+    loadEligibleBets,
     refresh,
-  } = useLeague();
+  } = useLeague(walletPubkey);
 
   const busy = status === "building" || status === "signing";
 
@@ -358,7 +475,20 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
   const handleOpenLeague = useCallback((league: League) => {
     setSelectedLeague(league);
     loadLeaderboard(String(league.address));
-  }, [loadLeaderboard]);
+    loadEligibleBets(String(league.address));
+  }, [loadLeaderboard, loadEligibleBets]);
+
+  const handleScoreWin = useCallback(async (betAddress: string, marketAddress: string) => {
+    if (!selectedLeague) return;
+    try {
+      await recordWin({ leagueAddress: String(selectedLeague.address), marketAddress });
+      showToast("+1 point scored!");
+      loadLeaderboard(String(selectedLeague.address));
+      loadEligibleBets(String(selectedLeague.address));
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to score win");
+    }
+  }, [selectedLeague, recordWin, loadLeaderboard, loadEligibleBets]);
 
   const handleCreate = useCallback(async (params: {
     name: string;
@@ -369,7 +499,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     if (!walletPubkey) { onConnectWallet?.(); return; }
     try {
       const { leagueAddress } = await createLeague(params);
-      showToast(`League created! Share: terrace://league/${leagueAddress}`);
+      showToast(`League created! Share: ${inviteUrl(leagueAddress)}`);
       setTab("My Leagues");
     } catch (e: any) {
       showToast(e?.message ?? "Failed to create league");
@@ -397,6 +527,18 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       showToast(e?.message ?? "Failed to advance gameweek");
     }
   }, [selectedLeague, advanceGameweek, loadLeaderboard]);
+
+  const handleJoinFromSheet = useCallback(async () => {
+    if (!selectedLeague || !walletPubkey) return;
+    try {
+      await joinLeague(String(selectedLeague.address));
+      showToast("Joined! Now you can score your wins.");
+      loadEligibleBets(String(selectedLeague.address));
+      loadLeaderboard(String(selectedLeague.address));
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to join league");
+    }
+  }, [selectedLeague, walletPubkey, joinLeague, loadEligibleBets, loadLeaderboard]);
 
   // Deduplicate: myLeagues + joinedLeagues
   const allLeagues = [
@@ -475,7 +617,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
 
       {tab === "Create" && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={s.listContent} keyboardShouldPersistTaps="handled">
-          <CreateTab busy={busy} onSubmit={handleCreate} />
+          <CreateTab busy={busy} stepLabel={createStep} onSubmit={handleCreate} />
         </ScrollView>
       )}
 
@@ -495,7 +637,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
             myPubkey={walletPubkey}
             isCreator={walletPubkey === String(selectedLeague.creator)}
             busy={busy}
+            eligibleBets={eligibleBets}
+            loadingEligible={loadingEligible}
+            notAMember={notAMember}
             onAdvanceGameweek={handleAdvanceGameweek}
+            onJoinLeague={handleJoinFromSheet}
+            onScoreWin={handleScoreWin}
             onClose={() => setSelectedLeague(null)}
           />
         </View>
@@ -562,16 +709,43 @@ const s = StyleSheet.create({
   actionBtn:    { flex: 1, backgroundColor: "#111", borderWidth: 0.5, borderColor: "#2a2a2a", borderRadius: 8, paddingVertical: 8, alignItems: "center" },
   actionBtnText: { fontSize: 12, fontWeight: "600", color: "#9ca3af" },
   advanceBtn:   { borderColor: "#92400e" },
+  eligibleSection:  { backgroundColor: "#052e16", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 0.5, borderColor: "#166534" },
+  eligibleTitle:    { fontSize: 12, fontWeight: "700", color: "#4ade80", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 },
+  eligibleRow:      { flexDirection: "row", alignItems: "center", backgroundColor: "#0a3320", borderRadius: 8, padding: 10, marginBottom: 6 },
+  eligibleQuestion: { fontSize: 13, color: "#e5e5e5", fontWeight: "500", lineHeight: 18 },
+  eligibleMeta:     { fontSize: 11, color: "#6b7280", marginTop: 2 },
+  eligibleCta:      { fontSize: 13, fontWeight: "700", color: "#22c55e", marginLeft: 8 },
   leaderboardTitle: { fontSize: 13, fontWeight: "600", color: "#6b7280", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8 },
 
-  memberRow:   { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#111" },
-  memberRowMe: { backgroundColor: "#052e16", marginHorizontal: -16, paddingHorizontal: 16, borderRadius: 8 },
-  rank:        { fontSize: 14, fontWeight: "700", color: "#4b5563", width: 28 },
-  memberAddr:  { fontSize: 13, fontWeight: "600", color: "#e5e5e5" },
-  memberTotal: { fontSize: 11, color: "#6b7280", marginTop: 1 },
-  gwScore:     { fontSize: 16, fontWeight: "700", color: "#22c55e" },
-  gwLabel:     { fontSize: 10, color: "#4b5563" },
+  memberRow:    { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: "#141414", gap: 0 },
+  memberRowMe:  { backgroundColor: "#060f06", borderRadius: 10, borderWidth: 0.5, borderColor: "#1a3a1a", marginBottom: 2, paddingHorizontal: 4 },
+  memberAccent: { width: 3, height: 36, borderRadius: 2, backgroundColor: "#22c55e", marginRight: 8 },
+  rank:         { fontSize: 13, fontWeight: "700", color: "#4b5563", width: 28, textAlign: "center" },
+  rankMedal:    { fontSize: 17, width: 28, textAlign: "center" },
+  memberAddrMe: { color: "#4ade80", fontWeight: "700" },
+  memberAddr:   { fontSize: 13, fontWeight: "600", color: "#e5e5e5" },
+  memberTotal:  { fontSize: 11, color: "#6b7280", marginTop: 1 },
+  scoreBlock:   { alignItems: "flex-end", minWidth: 48 },
+  gwScore:      { fontSize: 20, fontWeight: "800", color: "#22c55e" },
+  gwScoreZero:  { color: "#374151" },
+  gwScoreLocked: { fontSize: 16 },
+  gwLabel:      { fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: 0.4 },
+  privateNote:  { fontSize: 10, color: "#6366f1", fontWeight: "600" },
 
   toast:     { position: "absolute", bottom: 40, left: 24, right: 24, backgroundColor: "#1f1f1f", borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: "#2a2a2a", alignItems: "center" },
   toastText: { fontSize: 13, color: "#e5e5e5", textAlign: "center" },
+
+  stepLabel: { fontSize: 11, color: "rgba(255,255,255,0.65)", letterSpacing: 0.3 },
+
+  // Score confirmation modal
+  confirmOverlay:    { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "flex-end", paddingBottom: 32 },
+  confirmCard:       { backgroundColor: "#111", marginHorizontal: 16, borderRadius: 16, padding: 20, borderWidth: 0.5, borderColor: "#2a2a2a" },
+  confirmHeading:    { fontSize: 11, fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
+  confirmQuestion:   { fontSize: 16, fontWeight: "600", color: "#f3f4f6", lineHeight: 22, marginBottom: 8 },
+  confirmStake:      { fontSize: 12, color: "#6b7280", marginBottom: 20 },
+  confirmActions:    { flexDirection: "row", gap: 10 },
+  confirmCancelBtn:  { flex: 1, backgroundColor: "#1f1f1f", borderRadius: 10, paddingVertical: 13, alignItems: "center", borderWidth: 0.5, borderColor: "#2a2a2a" },
+  confirmCancelText: { fontSize: 14, fontWeight: "600", color: "#9ca3af" },
+  confirmScoreBtn:   { flex: 2, backgroundColor: "#22c55e", borderRadius: 10, paddingVertical: 13, alignItems: "center" },
+  confirmScoreText:  { fontSize: 14, fontWeight: "700", color: "#fff" },
 });

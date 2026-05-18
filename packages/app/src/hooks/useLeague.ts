@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Buffer } from "buffer";
+import * as SecureStore from "expo-secure-store";
 import {
   PublicKey,
   TransactionInstruction,
@@ -17,20 +18,27 @@ import {
   getBetPda,
   deserializeLeagueAccount,
   deserializeLeagueMemberAccount,
+  deserializeMarketAccount,
   buildCreateLeagueInstruction,
   buildJoinLeagueInstruction,
   buildRecordLeagueWinInstruction,
   buildAdvanceGameweekInstruction,
 } from "@terrace/sdk";
+
+export interface EligibleBet {
+  betAddress: Address;
+  marketAddress: string;
+  marketQuestion: string;
+  amount: bigint;
+}
 import { useWallet } from "./useWallet";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 const LOG = "[useLeague]";
 
-// League account discriminator: sha256("account:League")[0..8]
-const LEAGUE_DISCRIMINATOR = Buffer.from([138, 138, 131, 232, 188, 18, 247, 15]);
-// LeagueMember discriminator: sha256("account:LeagueMember")[0..8]
-const LEAGUE_MEMBER_DISCRIMINATOR = Buffer.from([45, 222, 196, 56, 246, 40, 250, 121]);
+// Discriminators from target/types/terrace.ts (IDL source of truth)
+const LEAGUE_DISCRIMINATOR = Buffer.from([65, 23, 216, 206, 217, 174, 87, 182]);
+const LEAGUE_MEMBER_DISCRIMINATOR = Buffer.from([138, 210, 116, 230, 53, 35, 47, 83]);
 
 export type LeagueOpStatus = "idle" | "building" | "signing" | "success" | "error";
 
@@ -222,9 +230,31 @@ async function fetchLeagueByAddress(address: string): Promise<League | null> {
   } catch { return null; }
 }
 
+// ── League address persistence ────────────────────────────────────────────────
+// Saves league addresses to SecureStore so leagues survive getProgramAccounts
+// indexing lag and app restarts. Belt-and-suspenders alongside on-chain queries.
+
+function persistedKey(pubkey: string) { return `terrace:leagues:${pubkey}`; }
+
+async function loadPersistedAddresses(pubkey: string): Promise<string[]> {
+  try {
+    const raw = await SecureStore.getItemAsync(persistedKey(pubkey));
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch { return []; }
+}
+
+async function persistAddress(pubkey: string, leagueAddress: string): Promise<void> {
+  try {
+    const existing = await loadPersistedAddresses(pubkey);
+    if (!existing.includes(leagueAddress)) {
+      await SecureStore.setItemAsync(persistedKey(pubkey), JSON.stringify([...existing, leagueAddress]));
+    }
+  } catch {}
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useLeague() {
+export function useLeague(ownerPubkey?: string | null) {
   const [status, setStatus] = useState<LeagueOpStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
@@ -237,28 +267,50 @@ export function useLeague() {
   const [joinedLeagues, setJoinedLeagues] = useState<League[]>([]);
   // Leaderboard for the currently viewed league
   const [leaderboard, setLeaderboard] = useState<LeagueMember[]>([]);
+  // Winning bets eligible to be scored in the currently viewed league
+  const [eligibleBets, setEligibleBets] = useState<EligibleBet[]>([]);
+  const [loadingEligible, setLoadingEligible] = useState(false);
+  const [notAMember, setNotAMember] = useState(false); // true when user isn't a LeagueMember for the viewed league
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  // Human-readable progress label for multi-step create (null when idle)
+  const [createStep, setCreateStep] = useState<string | null>(null);
 
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey: walletPubkey, signTransaction } = useWallet();
+  // ownerPubkey prop takes precedence for data fetches; falls back to wallet state.
+  // This handles Privy users where _state.publicKey may be null while effectivePublicKey is not.
+  const publicKey = ownerPubkey ?? walletPubkey;
 
   const refresh = useCallback(async () => {
     if (!publicKey) return;
     setLoading(true);
     try {
-      const [created, memberships] = await Promise.all([
+      const [created, memberships, persistedAddrs] = await Promise.all([
         fetchLeaguesByCreator(publicKey),
         fetchMemberLeagues(publicKey),
+        loadPersistedAddresses(publicKey),
       ]);
-      setMyLeagues(created);
-      setMyMemberships(memberships);
 
       // Fetch full League objects for each membership
-      const leagueDetails = await Promise.all(
+      const membershipLeagues = (await Promise.all(
         memberships.map((m) => fetchLeagueByAddress(String(m.league)))
-      );
-      setJoinedLeagues(leagueDetails.filter(Boolean) as League[]);
+      )).filter(Boolean) as League[];
+
+      // Also fetch any persisted addresses not already covered — handles indexing lag
+      const knownAddrs = new Set([
+        ...created.map((l) => String(l.address)),
+        ...membershipLeagues.map((l) => String(l.address)),
+      ]);
+      const extraLeagues = (await Promise.all(
+        persistedAddrs
+          .filter((a) => !knownAddrs.has(a))
+          .map((a) => fetchLeagueByAddress(a))
+      )).filter(Boolean) as League[];
+
+      setMyLeagues(created);
+      setMyMemberships(memberships);
+      setJoinedLeagues([...membershipLeagues, ...extraLeagues]);
     } catch (e) {
       console.warn(`${LOG} refresh error`, e);
     } finally {
@@ -281,6 +333,104 @@ export function useLeague() {
       setLoadingLeaderboard(false);
     }
   }, []);
+
+  const loadEligibleBets = useCallback(async (leagueAddress: string) => {
+    if (!publicKey) return;
+    setLoadingEligible(true);
+    setEligibleBets([]);
+    setNotAMember(false);
+    try {
+      // 0. Check if the user has a LeagueMember PDA for this league — record_league_win requires it
+      const [leagueMemberAddr] = await getLeagueMemberPda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+      const memberCheck = await rpcPost({
+        jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+        params: [String(leagueMemberAddr), { encoding: "base64", commitment: "confirmed" }],
+      });
+      if (!memberCheck.result?.value) {
+        // Not a member yet — can't score wins until they join
+        setNotAMember(true);
+        setLoadingEligible(false);
+        return;
+      }
+
+      // 1. Fetch all claimed bets for this wallet (dataSize=99, bettor at offset 40)
+      const betsRes = await rpcPost({
+        jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
+        params: [TERRACE_PROGRAM_ID, {
+          encoding: "base64", commitment: "confirmed",
+          filters: [{ dataSize: 99 }, { memcmp: { offset: 40, bytes: publicKey } }],
+        }],
+      });
+
+      const ALPHA = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+      const b58 = (bytes: Uint8Array): string => {
+        let n = 0n;
+        for (const b of bytes) n = n * 256n + BigInt(b);
+        let s = "";
+        while (n > 0n) { s = ALPHA[Number(n % 58n)] + s; n /= 58n; }
+        const lead = bytes.findIndex((b) => b !== 0);
+        return "1".repeat(lead < 0 ? 0 : lead) + s;
+      };
+
+      const claimedBets: Array<{ betAddress: Address; marketAddress: string }> = [];
+      for (const { pubkey, account } of betsRes.result ?? []) {
+        const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
+        const claimed = raw[81] === 1;
+        if (!claimed) continue;
+        claimedBets.push({ betAddress: pubkey as Address, marketAddress: b58(raw.slice(8, 40)) });
+      }
+
+      // 2. Check which bets haven't been scored in this league yet
+      const unscored: Array<{ betAddress: Address; marketAddress: string }> = [];
+      await Promise.all(claimedBets.map(async (b) => {
+        const [scoreRecordAddr] = await getLeagueScoreRecordPda(
+          leagueAddress as Address, b.betAddress, TERRACE_PROGRAM_ID as Address
+        );
+        const res = await rpcPost({
+          jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+          params: [String(scoreRecordAddr), { encoding: "base64", commitment: "confirmed" }],
+        });
+        if (!res.result?.value) unscored.push(b);
+      }));
+
+      // 3. Batch-fetch market accounts to get questions
+      const marketAddrs = [...new Set(unscored.map((b) => b.marketAddress))];
+      const marketQuestions: Record<string, string> = {};
+      await Promise.all(marketAddrs.map(async (addr) => {
+        try {
+          const res = await rpcPost({
+            jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+            params: [addr, { encoding: "base64", commitment: "confirmed" }],
+          });
+          const b64 = res.result?.value?.data?.[0];
+          if (!b64) return;
+          const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const market = deserializeMarketAccount(raw, addr as Address);
+          marketQuestions[addr] = market.question;
+        } catch { marketQuestions[addr] = `${addr.slice(0, 8)}…`; }
+      }));
+
+      const betAmounts: Record<string, bigint> = {};
+      for (const { pubkey, account } of betsRes.result ?? []) {
+        const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
+        const view = new DataView(raw.buffer, raw.byteOffset);
+        betAmounts[pubkey] = view.getBigUint64(73, true);
+      }
+
+      setEligibleBets(unscored.map((b) => ({
+        betAddress: b.betAddress,
+        marketAddress: b.marketAddress,
+        marketQuestion: marketQuestions[b.marketAddress] ?? `${b.marketAddress.slice(0, 8)}…`,
+        amount: betAmounts[String(b.betAddress)] ?? 0n,
+      })));
+    } catch (e) {
+      console.warn(`${LOG} loadEligibleBets error`, e);
+    } finally {
+      setLoadingEligible(false);
+    }
+  }, [publicKey]);
 
   const createLeague = useCallback(async (params: {
     name: string;
@@ -312,23 +462,50 @@ export function useLeague() {
         programId: TERRACE_PROGRAM_ID as Address,
       });
 
+      setCreateStep("Creating league… 1/2");
       setStatus("signing");
       const sig = await buildAndSend(publicKey, [ix], signTransaction);
       setTxSig(sig);
-      setStatus("success");
+
+      // Persist address immediately so it survives indexing lag and app restarts
+      await persistAddress(publicKey, String(leagueAddress));
 
       // Optimistic insert — getProgramAccounts may not index immediately after confirmation
-      let inserted = false;
+      let newLeague: League | null = null;
       for (let i = 0; i < 4; i++) {
         await new Promise((r) => setTimeout(r, 800));
-        const newLeague = await fetchLeagueByAddress(String(leagueAddress));
-        if (newLeague) {
-          setMyLeagues((prev) => [newLeague, ...prev.filter((l) => String(l.address) !== String(leagueAddress))]);
-          inserted = true;
-          break;
-        }
+        newLeague = await fetchLeagueByAddress(String(leagueAddress));
+        if (newLeague) break;
       }
-      if (!inserted) refresh();
+      if (newLeague) {
+        setMyLeagues((prev) => [newLeague!, ...prev.filter((l) => String(l.address) !== String(leagueAddress))]);
+      }
+
+      // Auto-join creator so they appear on the leaderboard without a second manual step
+      setCreateStep("Joining league… 2/2");
+      setStatus("signing");
+      try {
+        const [leagueMemberAddress] = await getLeagueMemberPda(
+          leagueAddress, publicKey as Address, TERRACE_PROGRAM_ID as Address
+        );
+        const joinIx = await buildJoinLeagueInstruction({
+          leagueAddress,
+          leagueCreator: publicKey as Address,
+          leagueNonce: nonce,
+          leagueMemberAddress,
+          usdcMint: USDC_DEVNET_MINT,
+          member: publicKey as Address,
+          programId: TERRACE_PROGRAM_ID as Address,
+        });
+        await buildAndSend(publicKey, [joinIx], signTransaction);
+      } catch (joinErr: any) {
+        // Non-fatal — creator can still use the league even if auto-join fails
+        console.warn(`${LOG} auto-join creator failed:`, joinErr?.message);
+      }
+
+      setCreateStep(null);
+      setStatus("success");
+      if (!newLeague) refresh();
       return { sig, leagueAddress: String(leagueAddress) };
     } catch (e: any) {
       // Ping timeout = MWA keepalive died, but the tx may have already landed.
@@ -339,11 +516,13 @@ export function useLeague() {
         const newLeague = await fetchLeagueByAddress(String(leagueAddress));
         if (newLeague) {
           setMyLeagues((prev) => [newLeague, ...prev.filter((l) => String(l.address) !== String(leagueAddress))]);
+          setCreateStep(null);
           setStatus("success");
           setError(null);
           return { sig: "ambiguous", leagueAddress: String(leagueAddress) };
         }
       }
+      setCreateStep(null);
       setError(e?.message ?? String(e));
       setStatus("error");
       throw e;
@@ -381,6 +560,7 @@ export function useLeague() {
       const sig = await buildAndSend(publicKey, [ix], signTransaction);
       setTxSig(sig);
       setStatus("success");
+      await persistAddress(publicKey, leagueAddress);
       refresh();
       return sig;
     } catch (e: any) {
@@ -394,6 +574,7 @@ export function useLeague() {
         if (res.result?.value) {
           setStatus("success");
           setError(null);
+          await persistAddress(publicKey, leagueAddress);
           refresh();
           return "ambiguous";
         }
@@ -485,9 +666,13 @@ export function useLeague() {
     myMemberships,
     joinedLeagues,
     leaderboard,
+    eligibleBets,
+    notAMember,
     loading,
     loadingLeaderboard,
+    loadingEligible,
     status,
+    createStep,
     error,
     txSig,
     // Actions
@@ -496,6 +681,7 @@ export function useLeague() {
     recordWin,
     advanceGameweek,
     loadLeaderboard,
+    loadEligibleBets,
     refresh,
   };
 }
