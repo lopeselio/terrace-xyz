@@ -200,6 +200,7 @@ pub fn join_league(ctx: Context<JoinLeague>) -> Result<()> {
     let lm = &mut ctx.accounts.league_member;
     lm.league = league.key();
     lm.member = member_key;
+    lm.member_slot = league.member_count; // slot = position before increment (0-indexed)
     lm.gameweek_score = 0;
     lm.total_score = 0;
     lm.last_scored_gameweek = 0;

@@ -10,4 +10,4 @@ pub use reputation::{Reputation, BadgeTier};
 pub use parlay::{Parlay, ParlayLeg, ParlayStatus};
 pub use matchup::{Matchup, MatchupStatus};
 pub use private::{PrivateMarketState, PrivateBetRecord};
-pub use league::{League, LeagueMember, LeagueScoreRecord, LeagueStatus};
+pub use league::{League, LeagueMember, LeagueScoreRecord, LeagueStatus, PrivateMemberScore};

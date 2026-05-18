@@ -3,6 +3,7 @@ pub mod parlay;
 pub mod matchup;
 pub mod private;
 pub mod league;
+pub mod league_private;
 
 pub use market::{CreateMarket, PlaceBet, SettleMarket, SettleMarketOracle, ClaimWinnings, RecordLoss};
 pub use parlay::{CreateParlay, SettleParlay, ClaimParlay};
@@ -17,3 +18,12 @@ pub use private::{
     ClaimPrivateWinnings,
 };
 pub use league::{CreateLeague, JoinLeague, RecordLeagueWin, AdvanceGameweek};
+pub use league_private::{
+    InitInitMemberScoreCompDef,
+    InitIncrementMemberScoreCompDef,
+    InitRevealMemberScoreCompDef,
+    InitMemberScore,
+    ResetMemberScore,
+    RecordPrivateLeagueWin,
+    RevealMemberScore,
+};

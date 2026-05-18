@@ -26,8 +26,6 @@ mod circuits {
 
     /// Initialise a fresh encrypted BetTotals at [0, 0].
     /// Called once when a private market is created.
-    /// `mxe: Mxe` represents the MXE key context; the nonce for the output
-    /// ciphertext is passed as a plaintext_u128 via ArgBuilder.
     #[instruction]
     pub fn init_private_market_state(mxe: Mxe) -> Enc<Mxe, BetTotals> {
         let totals: BetTotals = [0u64, 0u64];
@@ -35,9 +33,6 @@ mod circuits {
     }
 
     /// Add an encrypted bet to the running totals.
-    /// `bet_ctx` is encrypted by the client's ephemeral X25519 key so the
-    /// MPC nodes can decrypt it inside the secure environment without ever
-    /// exposing plaintext to the chain.
     /// The oblivious array update `totals[outcome as usize] += amount` is
     /// handled by Arcis as a secret-indexed write.
     #[instruction]
@@ -52,11 +47,37 @@ mod circuits {
     }
 
     /// Reveal the final totals. Called by the market creator at settlement.
-    /// Returns plaintext (no_total, yes_total) — visible only after this
-    /// instruction is called; individual positions remain hidden.
     #[instruction]
     pub fn reveal_private_market(totals_ctx: Enc<Mxe, BetTotals>) -> (u64, u64) {
         let totals = totals_ctx.to_arcis();
         (totals[0].reveal(), totals[1].reveal())
+    }
+
+    // ── Per-member league score circuits ─────────────────────────────────────
+    // Each private league member gets their own PrivateMemberScore PDA with
+    // a single encrypted u64. Simpler than an array — avoids arcis array
+    // size limits while providing the same privacy guarantee.
+
+    /// Initialise a member's encrypted score at 0.
+    /// Called when the member joins a private league.
+    #[instruction]
+    pub fn init_member_score(mxe: Mxe) -> Enc<Mxe, u64> {
+        mxe.from_arcis(0u64)
+    }
+
+    /// Add 1 to a member's encrypted score.
+    /// Called when the member submits a winning bet for the active GW.
+    #[instruction]
+    pub fn increment_member_score(score_ctx: Enc<Mxe, u64>) -> Enc<Mxe, u64> {
+        let score = score_ctx.to_arcis();
+        score_ctx.owner.from_arcis(score + 1)
+    }
+
+    /// Reveal a member's score. Called by advance_gameweek_private.
+    /// Returns plaintext u64 — the member's GW score.
+    #[instruction]
+    pub fn reveal_member_score(score_ctx: Enc<Mxe, u64>) -> u64 {
+        let score = score_ctx.to_arcis();
+        score.reveal()
     }
 }

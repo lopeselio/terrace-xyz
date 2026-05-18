@@ -74,4 +74,12 @@ pub enum TerracError {
     OnlyCreatorCanAdvanceGameweek,
     #[msg("max_members must be at least 2")]
     LeagueMaxMembersInvalid,
+    #[msg("Member score has not been revealed yet")]
+    ScoreNotRevealed,
+    #[msg("Member score has already been revealed for this gameweek")]
+    ScoreAlreadyRevealed,
+    #[msg("Must reset score before recording wins for new gameweek")]
+    MustResetScore,
+    #[msg("Member score not initialised — call init_member_score first")]
+    ScoreNotInitialized,
 }

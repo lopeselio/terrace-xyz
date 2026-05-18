@@ -20,6 +20,7 @@ pub use instructions::parlay::*;
 pub use instructions::matchup::*;
 pub use instructions::private::*;
 pub use instructions::league::*;
+pub use instructions::league_private::*;
 
 declare_id!("8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF");
 
@@ -105,6 +106,85 @@ pub struct RevealPrivateMarketCallback<'info> {
         bump = market.bump,
     )]
     pub market: Account<'info, Market>,
+}
+
+// ---------------------------------------------------------------------------
+// League score callbacks (per-member Enc<Mxe, u64>)
+// ---------------------------------------------------------------------------
+
+#[callback_accounts("init_member_score")]
+#[derive(Accounts)]
+pub struct InitMemberScoreCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_LEAGUE_INIT))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"member-score", member_score.league.as_ref(), member_score.member.as_ref()],
+        bump = member_score.bump,
+    )]
+    pub member_score: Account<'info, PrivateMemberScore>,
+}
+
+#[callback_accounts("increment_member_score")]
+#[derive(Accounts)]
+pub struct IncrementMemberScoreCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_LEAGUE_SCORE))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"member-score", member_score.league.as_ref(), member_score.member.as_ref()],
+        bump = member_score.bump,
+    )]
+    pub member_score: Account<'info, PrivateMemberScore>,
+}
+
+#[callback_accounts("reveal_member_score")]
+#[derive(Accounts)]
+pub struct RevealMemberScoreCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_LEAGUE_REVEAL))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation account managed by Arcium.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions sysvar.
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"member-score", member_score.league.as_ref(), member_score.member.as_ref()],
+        bump = member_score.bump,
+    )]
+    pub member_score: Account<'info, PrivateMemberScore>,
+    #[account(
+        mut,
+        seeds = [b"league_member", league_member.league.as_ref(), league_member.member.as_ref()],
+        bump = league_member.bump,
+    )]
+    pub league_member: Account<'info, LeagueMember>,
 }
 
 #[arcium_program]
@@ -293,5 +373,73 @@ pub mod terrace {
 
     pub fn advance_gameweek(ctx: Context<AdvanceGameweek>) -> Result<()> {
         instructions::league::advance_gameweek(ctx)
+    }
+
+    // ── Private league score instructions (per-member Enc<Mxe, u64>) ────────
+
+    pub fn init_init_member_score_comp_def(ctx: Context<InitInitMemberScoreCompDef>) -> Result<()> {
+        instructions::league_private::init_init_member_score_comp_def(ctx)
+    }
+
+    pub fn init_increment_member_score_comp_def(ctx: Context<InitIncrementMemberScoreCompDef>) -> Result<()> {
+        instructions::league_private::init_increment_member_score_comp_def(ctx)
+    }
+
+    pub fn init_reveal_member_score_comp_def(ctx: Context<InitRevealMemberScoreCompDef>) -> Result<()> {
+        instructions::league_private::init_reveal_member_score_comp_def(ctx)
+    }
+
+    pub fn init_member_score(
+        ctx: Context<InitMemberScore>,
+        computation_offset: u64,
+        nonce: u128,
+    ) -> Result<()> {
+        instructions::league_private::init_member_score(ctx, computation_offset, nonce)
+    }
+
+    #[arcium_callback(encrypted_ix = "init_member_score")]
+    pub fn init_member_score_callback(
+        ctx: Context<InitMemberScoreCallback>,
+        output: SignedComputationOutputs<InitMemberScoreOutput>,
+    ) -> Result<()> {
+        instructions::league_private::init_member_score_callback(ctx, output)
+    }
+
+    pub fn reset_member_score(
+        ctx: Context<ResetMemberScore>,
+        computation_offset: u64,
+        nonce: u128,
+    ) -> Result<()> {
+        instructions::league_private::reset_member_score(ctx, computation_offset, nonce)
+    }
+
+    pub fn record_private_league_win(
+        ctx: Context<RecordPrivateLeagueWin>,
+        computation_offset: u64,
+    ) -> Result<()> {
+        instructions::league_private::record_private_league_win(ctx, computation_offset)
+    }
+
+    #[arcium_callback(encrypted_ix = "increment_member_score")]
+    pub fn increment_member_score_callback(
+        ctx: Context<IncrementMemberScoreCallback>,
+        output: SignedComputationOutputs<IncrementMemberScoreOutput>,
+    ) -> Result<()> {
+        instructions::league_private::increment_member_score_callback(ctx, output)
+    }
+
+    pub fn reveal_member_score(
+        ctx: Context<RevealMemberScore>,
+        computation_offset: u64,
+    ) -> Result<()> {
+        instructions::league_private::reveal_member_score(ctx, computation_offset)
+    }
+
+    #[arcium_callback(encrypted_ix = "reveal_member_score")]
+    pub fn reveal_member_score_callback(
+        ctx: Context<RevealMemberScoreCallback>,
+        output: SignedComputationOutputs<RevealMemberScoreOutput>,
+    ) -> Result<()> {
+        instructions::league_private::reveal_member_score_callback(ctx, output)
     }
 }
