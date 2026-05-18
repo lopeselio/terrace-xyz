@@ -811,6 +811,15 @@ const IX_JOIN_LEAGUE        = Buffer.from([32, 4, 179, 25, 65, 34, 15, 127]);
 const IX_RECORD_LEAGUE_WIN  = Buffer.from([249, 61, 237, 109, 194, 69, 201, 169]);
 const IX_ADVANCE_GAMEWEEK   = Buffer.from([171, 247, 39, 30, 225, 129, 136, 60]);
 
+// ── Private league score instructions (per-member Enc<Mxe, u64>) ─────────────
+const IX_INIT_INIT_MEMBER_SCORE_COMP_DEF      = Buffer.from([103, 33, 195, 145, 4, 27, 148, 21]);
+const IX_INIT_INCREMENT_MEMBER_SCORE_COMP_DEF = Buffer.from([157, 179, 3, 20, 46, 255, 229, 74]);
+const IX_INIT_REVEAL_MEMBER_SCORE_COMP_DEF    = Buffer.from([181, 211, 83, 98, 158, 123, 139, 241]);
+const IX_INIT_MEMBER_SCORE                    = Buffer.from([223, 241, 141, 61, 226, 187, 225, 72]);
+const IX_RESET_MEMBER_SCORE                   = Buffer.from([114, 36, 208, 143, 83, 157, 156, 229]);
+const IX_RECORD_PRIVATE_LEAGUE_WIN            = Buffer.from([101, 183, 243, 102, 69, 36, 254, 185]);
+const IX_REVEAL_MEMBER_SCORE                  = Buffer.from([144, 39, 69, 91, 141, 24, 164, 30]);
+
 export async function buildCreateLeagueInstruction(params: {
   name: string;
   season: number;
@@ -924,6 +933,321 @@ export function buildAdvanceGameweekInstruction(params: {
       { address: creator, role: AccountRole.READONLY_SIGNER },
     ],
     data: new Uint8Array(IX_ADVANCE_GAMEWEEK),
+  };
+}
+
+/** One-time setup: registers the init_member_score computation definition with Arcium. */
+export function buildInitInitMemberScoreCompDefInstruction(params: {
+  payer: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const { payer, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: payer, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: "AddressLookupTab1e1111111111111111111111111" as Address, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_INIT_MEMBER_SCORE_COMP_DEF),
+  };
+}
+
+/** One-time setup: registers the increment_member_score computation definition with Arcium. */
+export function buildInitIncrementMemberScoreCompDefInstruction(params: {
+  payer: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const { payer, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: payer, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: "AddressLookupTab1e1111111111111111111111111" as Address, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_INCREMENT_MEMBER_SCORE_COMP_DEF),
+  };
+}
+
+/** One-time setup: registers the reveal_member_score computation definition with Arcium. */
+export function buildInitRevealMemberScoreCompDefInstruction(params: {
+  payer: Address;
+  mxeAccount: Address;
+  compDefAccount: Address;
+  addressLookupTable: Address;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const { payer, mxeAccount, compDefAccount, addressLookupTable, programId } = params;
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: payer, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.WRITABLE },
+      { address: addressLookupTable, role: AccountRole.WRITABLE },
+      { address: "AddressLookupTab1e1111111111111111111111111" as Address, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array(IX_INIT_REVEAL_MEMBER_SCORE_COMP_DEF),
+  };
+}
+
+/**
+ * Creates a PrivateMemberScore PDA and queues init_member_score MXE (encrypted 0).
+ * Called by each member after joining a private league.
+ */
+export function buildInitMemberScoreInstruction(params: {
+  member: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  leagueAddress: Address;
+  leagueMemberAddress: Address;
+  memberScoreAddress: Address;
+  computationOffset: bigint;
+  nonce: bigint;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const {
+    member, mxeAccount, signPdaAccount, mempoolAccount, executingPool,
+    computationAccount, compDefAccount, clusterAccount, poolAccount, clockAccount,
+    leagueAddress, leagueMemberAddress, memberScoreAddress,
+    computationOffset, nonce, programId,
+  } = params;
+
+  const data = Buffer.alloc(IX_INIT_MEMBER_SCORE.length + 8 + 16);
+  IX_INIT_MEMBER_SCORE.copy(data);
+  data.writeBigUInt64LE(computationOffset, IX_INIT_MEMBER_SCORE.length);
+  // nonce is u128 — write as two u64 LE parts
+  const nonceLo = nonce & 0xFFFFFFFFFFFFFFFFn;
+  const nonceHi = nonce >> 64n;
+  data.writeBigUInt64LE(nonceLo, IX_INIT_MEMBER_SCORE.length + 8);
+  data.writeBigUInt64LE(nonceHi, IX_INIT_MEMBER_SCORE.length + 12);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: leagueAddress, role: AccountRole.READONLY },
+      { address: leagueMemberAddress, role: AccountRole.READONLY },
+      { address: memberScoreAddress, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Re-initialises encrypted score to 0 for a new gameweek.
+ * Member must have already revealed (is_revealed = true) before calling.
+ */
+export function buildResetMemberScoreInstruction(params: {
+  member: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  leagueAddress: Address;
+  memberScoreAddress: Address;
+  computationOffset: bigint;
+  nonce: bigint;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const {
+    member, mxeAccount, signPdaAccount, mempoolAccount, executingPool,
+    computationAccount, compDefAccount, clusterAccount, poolAccount, clockAccount,
+    leagueAddress, memberScoreAddress,
+    computationOffset, nonce, programId,
+  } = params;
+
+  const data = Buffer.alloc(IX_RESET_MEMBER_SCORE.length + 8 + 16);
+  IX_RESET_MEMBER_SCORE.copy(data);
+  data.writeBigUInt64LE(computationOffset, IX_RESET_MEMBER_SCORE.length);
+  const nonceLo = nonce & 0xFFFFFFFFFFFFFFFFn;
+  const nonceHi = nonce >> 64n;
+  data.writeBigUInt64LE(nonceLo, IX_RESET_MEMBER_SCORE.length + 8);
+  data.writeBigUInt64LE(nonceHi, IX_RESET_MEMBER_SCORE.length + 12);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: leagueAddress, role: AccountRole.READONLY },
+      { address: memberScoreAddress, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Records a win for a private league member. Queues increment_member_score MXE circuit.
+ * Verifies: market settled, bet won, score not already recorded.
+ */
+export function buildRecordPrivateLeagueWinInstruction(params: {
+  member: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  leagueAddress: Address;
+  leagueMemberAddress: Address;
+  memberScoreAddress: Address;
+  marketAddress: Address;
+  betAddress: Address;
+  scoreRecordAddress: Address;
+  computationOffset: bigint;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const {
+    member, mxeAccount, signPdaAccount, mempoolAccount, executingPool,
+    computationAccount, compDefAccount, clusterAccount, poolAccount, clockAccount,
+    leagueAddress, leagueMemberAddress, memberScoreAddress,
+    marketAddress, betAddress, scoreRecordAddress,
+    computationOffset, programId,
+  } = params;
+
+  const data = Buffer.alloc(IX_RECORD_PRIVATE_LEAGUE_WIN.length + 8);
+  IX_RECORD_PRIVATE_LEAGUE_WIN.copy(data);
+  data.writeBigUInt64LE(computationOffset, IX_RECORD_PRIVATE_LEAGUE_WIN.length);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: leagueAddress, role: AccountRole.READONLY },
+      { address: leagueMemberAddress, role: AccountRole.READONLY },
+      { address: memberScoreAddress, role: AccountRole.WRITABLE },
+      { address: marketAddress, role: AccountRole.READONLY },
+      { address: betAddress, role: AccountRole.READONLY },
+      { address: scoreRecordAddress, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
+  };
+}
+
+/**
+ * Reveals a member's encrypted score after the gameweek has advanced.
+ * Queues reveal_member_score MXE. Callback applies score to LeagueMember.
+ */
+export function buildRevealMemberScoreInstruction(params: {
+  member: Address;
+  mxeAccount: Address;
+  signPdaAccount: Address;
+  mempoolAccount: Address;
+  executingPool: Address;
+  computationAccount: Address;
+  compDefAccount: Address;
+  clusterAccount: Address;
+  poolAccount: Address;
+  clockAccount: Address;
+  leagueAddress: Address;
+  leagueMemberAddress: Address;
+  memberScoreAddress: Address;
+  computationOffset: bigint;
+  programId: Address;
+  arciumProgram?: Address;
+}): IInstruction {
+  const {
+    member, mxeAccount, signPdaAccount, mempoolAccount, executingPool,
+    computationAccount, compDefAccount, clusterAccount, poolAccount, clockAccount,
+    leagueAddress, leagueMemberAddress, memberScoreAddress,
+    computationOffset, programId,
+  } = params;
+
+  const data = Buffer.alloc(IX_REVEAL_MEMBER_SCORE.length + 8);
+  IX_REVEAL_MEMBER_SCORE.copy(data);
+  data.writeBigUInt64LE(computationOffset, IX_REVEAL_MEMBER_SCORE.length);
+
+  return {
+    programAddress: programId,
+    accounts: [
+      { address: member, role: AccountRole.WRITABLE_SIGNER },
+      { address: mxeAccount, role: AccountRole.READONLY },
+      { address: signPdaAccount, role: AccountRole.READONLY },
+      { address: mempoolAccount, role: AccountRole.WRITABLE },
+      { address: executingPool, role: AccountRole.WRITABLE },
+      { address: computationAccount, role: AccountRole.WRITABLE },
+      { address: compDefAccount, role: AccountRole.READONLY },
+      { address: clusterAccount, role: AccountRole.WRITABLE },
+      { address: poolAccount, role: AccountRole.WRITABLE },
+      { address: clockAccount, role: AccountRole.WRITABLE },
+      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: params.arciumProgram ?? ARCIUM_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: leagueAddress, role: AccountRole.READONLY },
+      { address: leagueMemberAddress, role: AccountRole.WRITABLE },
+      { address: memberScoreAddress, role: AccountRole.WRITABLE },
+    ],
+    data: new Uint8Array(data),
   };
 }
 

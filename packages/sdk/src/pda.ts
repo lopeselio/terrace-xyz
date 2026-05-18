@@ -136,6 +136,11 @@ export const COMP_DEF_OFFSET_INIT_PRIVATE_MARKET_STATE = 3039685700;
 export const COMP_DEF_OFFSET_PLACE_PRIVATE_BET = 886724798;
 export const COMP_DEF_OFFSET_REVEAL_PRIVATE_MARKET = 2928281020;
 
+// Private league score circuits (per-member Enc<Mxe, u64>)
+export const COMP_DEF_OFFSET_INIT_MEMBER_SCORE      = 283752962;
+export const COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE = 4002611357;
+export const COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE    = 2652114814;
+
 function u32LeBytes(n: number): Uint8Array {
   const buf = new ArrayBuffer(4);
   new DataView(buf).setUint32(0, n, true);
@@ -277,6 +282,19 @@ export async function getLeagueScoreRecordPda(
   return getProgramDerivedAddress({
     programAddress: programId,
     seeds: [new TextEncoder().encode("league_score"), enc.encode(league), enc.encode(bet)],
+  });
+}
+
+/** Per-member encrypted score PDA for private leagues. */
+export async function getMemberScorePda(
+  league: Address,
+  member: Address,
+  programId: Address = TERRACE_PROGRAM_ID
+): Promise<readonly [Address, number]> {
+  const enc = getAddressEncoder();
+  return getProgramDerivedAddress({
+    programAddress: programId,
+    seeds: [new TextEncoder().encode("member-score"), enc.encode(league), enc.encode(member)],
   });
 }
 

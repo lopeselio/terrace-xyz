@@ -35,6 +35,10 @@ export {
   COMP_DEF_OFFSET_INIT_PRIVATE_MARKET_STATE,
   COMP_DEF_OFFSET_PLACE_PRIVATE_BET,
   COMP_DEF_OFFSET_REVEAL_PRIVATE_MARKET,
+  COMP_DEF_OFFSET_INIT_MEMBER_SCORE,
+  COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE,
+  COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE,
+  getMemberScorePda,
 } from "./pda";
 export {
   buildCreateMarketInstruction,
@@ -61,6 +65,13 @@ export {
   buildJoinLeagueInstruction,
   buildRecordLeagueWinInstruction,
   buildAdvanceGameweekInstruction,
+  buildInitInitMemberScoreCompDefInstruction,
+  buildInitIncrementMemberScoreCompDefInstruction,
+  buildInitRevealMemberScoreCompDefInstruction,
+  buildInitMemberScoreInstruction,
+  buildResetMemberScoreInstruction,
+  buildRecordPrivateLeagueWinInstruction,
+  buildRevealMemberScoreInstruction,
 } from "./instructions";
 export type {
   Market,
