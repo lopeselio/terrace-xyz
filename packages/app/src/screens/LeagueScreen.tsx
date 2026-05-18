@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { League, LeagueMember } from "@terrace/sdk";
 import { useLeague } from "../hooks/useLeague";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { ArciumBadge, ArciumPrivacyBanner } from "../components/ArciumBadge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function LeagueCard({
     <TouchableOpacity style={s.leagueCard} activeOpacity={0.8} onPress={() => onOpen(league)}>
       <View style={s.leagueCardHeader}>
         <Text style={s.leagueName}>{league.name}</Text>
-        {league.isPrivate && <Text style={s.privateBadge}>🔒 Private</Text>}
+        {league.isPrivate && <ArciumBadge label="Private · Arcium MPC" />}
       </View>
       <View style={s.leagueMeta}>
         <Text style={s.metaText}>GW {league.gameweek}</Text>
@@ -114,6 +115,7 @@ function LeaderboardSheet({
         <View style={{ flex: 1 }}>
           <Text style={s.sheetTitle}>{league.name}</Text>
           <Text style={s.sheetSub}>Season {league.season} · Gameweek {league.gameweek}</Text>
+          {league.isPrivate && <View style={{ marginTop: 6 }}><ArciumBadge label="Private · Arcium MPC" /></View>}
         </View>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={s.closeBtn}>✕</Text>
@@ -235,8 +237,11 @@ function CreateTab({
       />
 
       <View style={s.toggleRow}>
-        <View>
-          <Text style={s.formLabel}>Private league</Text>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
+            <Text style={s.formLabel}>Private league</Text>
+            <ArciumBadge />
+          </View>
           <Text style={s.formSub}>Standings hidden until reveal (Arcium MPC)</Text>
         </View>
         <Switch
@@ -246,6 +251,16 @@ function CreateTab({
           thumbColor={isPrivate ? "#60a5fa" : "#374151"}
         />
       </View>
+      {isPrivate && (
+        <ArciumPrivacyBanner
+          subtitle="League standings encrypted until gameweek ends"
+          bullets={[
+            "🔒  Member scores hidden from all other players",
+            "👁  Standings revealed only via Arcium MPC",
+            "⚡  Trustless reveal at end of each gameweek",
+          ]}
+        />
+      )}
 
       <TouchableOpacity
         style={[s.createBtn, (!valid || busy) && s.btnDisabled]}
@@ -514,7 +529,6 @@ const s = StyleSheet.create({
   leagueCard:       { backgroundColor: "#111", borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: "#1f1f1f" },
   leagueCardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
   leagueName:       { fontSize: 15, fontWeight: "700", color: "#fff", flex: 1 },
-  privateBadge:     { fontSize: 11, color: "#60a5fa", backgroundColor: "#0c1a2e", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   leagueMeta:       { flexDirection: "row", alignItems: "center", gap: 6 },
   metaText:         { fontSize: 12, color: "#6b7280" },
   metaDot:          { fontSize: 12, color: "#374151" },

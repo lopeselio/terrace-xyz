@@ -294,10 +294,11 @@ export function useLeague() {
     setError(null);
     setTxSig(null);
 
-    try {
-      const nonce = BigInt(Date.now());
-      const [leagueAddress] = await getLeaguePda(publicKey as Address, nonce, TERRACE_PROGRAM_ID as Address);
+    // Hoist PDA so catch block can check if tx landed despite a ping timeout
+    const nonce = BigInt(Date.now());
+    const [leagueAddress] = await getLeaguePda(publicKey as Address, nonce, TERRACE_PROGRAM_ID as Address);
 
+    try {
       const ix = await buildCreateLeagueInstruction({
         name: params.name,
         season: params.season ?? 1,
@@ -315,9 +316,34 @@ export function useLeague() {
       const sig = await buildAndSend(publicKey, [ix], signTransaction);
       setTxSig(sig);
       setStatus("success");
-      refresh();
+
+      // Optimistic insert — getProgramAccounts may not index immediately after confirmation
+      let inserted = false;
+      for (let i = 0; i < 4; i++) {
+        await new Promise((r) => setTimeout(r, 800));
+        const newLeague = await fetchLeagueByAddress(String(leagueAddress));
+        if (newLeague) {
+          setMyLeagues((prev) => [newLeague, ...prev.filter((l) => String(l.address) !== String(leagueAddress))]);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) refresh();
       return { sig, leagueAddress: String(leagueAddress) };
     } catch (e: any) {
+      // Ping timeout = MWA keepalive died, but the tx may have already landed.
+      // Check the PDA directly before surfacing the error.
+      if (isPingError(e)) {
+        setError("Wallet timed out — checking if league was created...");
+        await new Promise((r) => setTimeout(r, 2500));
+        const newLeague = await fetchLeagueByAddress(String(leagueAddress));
+        if (newLeague) {
+          setMyLeagues((prev) => [newLeague, ...prev.filter((l) => String(l.address) !== String(leagueAddress))]);
+          setStatus("success");
+          setError(null);
+          return { sig: "ambiguous", leagueAddress: String(leagueAddress) };
+        }
+      }
       setError(e?.message ?? String(e));
       setStatus("error");
       throw e;
@@ -330,15 +356,16 @@ export function useLeague() {
     setError(null);
     setTxSig(null);
 
+    // Hoist member PDA so catch block can verify on ping timeout
+    const [leagueMemberAddress] = await getLeagueMemberPda(
+      leagueAddress as Address,
+      publicKey as Address,
+      TERRACE_PROGRAM_ID as Address
+    );
+
     try {
       const league = await fetchLeagueByAddress(leagueAddress);
       if (!league) throw new Error("League not found");
-
-      const [leagueMemberAddress] = await getLeagueMemberPda(
-        leagueAddress as Address,
-        publicKey as Address,
-        TERRACE_PROGRAM_ID as Address
-      );
 
       const ix = await buildJoinLeagueInstruction({
         leagueAddress: leagueAddress as Address,
@@ -357,6 +384,20 @@ export function useLeague() {
       refresh();
       return sig;
     } catch (e: any) {
+      if (isPingError(e)) {
+        setError("Wallet timed out — checking if you joined...");
+        await new Promise((r) => setTimeout(r, 2500));
+        const res = await rpcPost({
+          jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+          params: [String(leagueMemberAddress), { encoding: "base64", commitment: "confirmed" }],
+        });
+        if (res.result?.value) {
+          setStatus("success");
+          setError(null);
+          refresh();
+          return "ambiguous";
+        }
+      }
       setError(e?.message ?? String(e));
       setStatus("error");
       throw e;
