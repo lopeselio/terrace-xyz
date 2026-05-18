@@ -38,3 +38,7 @@ packages/app/.gradle/
 .DS_Store
 *.log
 .claude/
+
+# Local agent skills and project scaffolding context (dev tooling, not source)
+.agents/
+.superstack/
