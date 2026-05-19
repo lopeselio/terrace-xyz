@@ -1,5 +1,5 @@
 [package]
-name = "terrace-encrypted-ixs"
+name = "encrypted-ixs"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,8 +10,5 @@ edition = "2021"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-# Pin blake3 to 1.8.2 as required by arcis 0.8.5.
-# Safe here because this crate is compiled natively (not to BPF).
 arcis = "0.8.5"
-blake3 = "=1.8.2"
 proc-macro-crate = "=3.3.0"
