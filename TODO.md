@@ -58,11 +58,11 @@
 - [x] Profile screen shows "Creator fees" stat (estimated from settled volume × fee BPS)
 
 ## Sprint 9 — Fan leagues
-- [ ] League PDA: creator, name, member pubkeys[], weekly_scores, season
-- [ ] Create league UI: name, invite link (deep link with league address)
-- [ ] Join league via invite link
-- [ ] Weekly leaderboard inside league — score = bets won that gameweek
-- [ ] "Leagues" tab in HomeScreen replacing "coming soon" stub
+- [x] League PDA: creator, name, season, gameweek, member_count, entry_fee, prize_pool, vault, is_private, nonce — on-chain (4 instructions: create_league, join_league, record_league_win, advance_gameweek)
+- [x] Create league UI: name, invite link (deep link with league address)
+- [x] Join league via invite link
+- [x] Weekly leaderboard inside league — score = bets won that gameweek
+- [x] "Leagues" tab in HomeScreen replacing "coming soon" stub
 
 ## Sprint 10 — Matchups (1v1) ✅
 - [x] `useMatchup` hook — create, accept, settle, decline; fetches challenger + opponent matchups
@@ -80,6 +80,12 @@
 - [x] `settle-matchups.mjs` admin script — finds all Accepted matchups, settles their markets, settles matchups in one pass
 - [x] Profile Active/History tabs: filter chips (All | Bets | Parlays | Matchups) with item counts; parlays + matchups sorted by nonce desc
 - [x] Share matchup as deep link → `terrace://matchup/<address>` — challenger taps "Share" on pending card; recipient opens link → Challenges tab opens with card highlighted
+
+## Sprint 11 — Arcium private market UI ✅
+- [x] `useCreatedMarkets` exposes `isPrivate` flag on each `CreatedMarket`
+- [x] Profile "Created" tab: private Open markets show "Reveal market (Arcium MPC)" button instead of YES/NO settle buttons — calls `revealMarket()` which queues the MPC circuit; Arcium callback auto-settles
+- [x] `usePrivateMarket.claimWinnings` no longer requires `outcome` param — reads it from SecureStore JSON alongside the bet secret (stored at bet time)
+- [x] `MarketDetailSheet` `PrivateBetPanel`: Settled state shows "Claim private winnings" button for bettors with an unclaimed secret in SecureStore; shows "No unclaimed private bet found" otherwise
 
 ## Layer 3 (future)
 - [ ] Bonding curve AMM — price moves with volume (Meteora-style), early movers rewarded
@@ -108,4 +114,4 @@
 - [x] Matchup cards showed raw blockchain addresses instead of market questions / display names — fixed
 - [x] Matchups missing from Profile Active and History tabs — `useMatchup` not wired in ProfileScreen — fixed
 - [x] 3-leg parlay submit: "An account required by the instruction is missing" — resolved; confirmed working
-- [ ] "Ping reached timeout" error on Settle matchup — keepalive/WebSocket issue on devnet, needs investigation
+- [x] "Ping reached timeout" error on Settle matchup — `rpcPost` now retries on ping errors in response body; `confirmTransaction` continues polling through network blips; settle catch treats timeout as ambiguous (refreshes silently) rather than hard error
