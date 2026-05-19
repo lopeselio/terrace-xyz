@@ -22,8 +22,10 @@ pub use league_private::{
     InitInitMemberScoreCompDef,
     InitIncrementMemberScoreCompDef,
     InitRevealMemberScoreCompDef,
+    InitRecordPrivateLeagueWinV2CompDef,
     InitMemberScore,
     ResetMemberScore,
     RecordPrivateLeagueWin,
     RevealMemberScore,
+    RecordPrivateLeagueWinV2,
 };

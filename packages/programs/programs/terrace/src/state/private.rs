@@ -29,10 +29,25 @@ pub struct PrivateBetRecord {
     pub bettor: Pubkey,               // 32
     pub amount: u64,                  // 8
     pub outcome_commitment: [u8; 32], // 32 — blake3(outcome_byte || secret_32_bytes)
+    pub outcome_ct: [u8; 32],         // 32 — Enc<Shared> field 0; stored for MPC league scoring
+    pub amount_ct: [u8; 32],          // 32 — Enc<Shared> field 1; needed to reconstruct full Enc<Shared,(u8,u64)>
+    pub encryption_pubkey: [u8; 32],  // 32 — ephemeral X25519 pubkey used at bet time
+    pub bet_nonce: u128,              // 16 — nonce for Enc<Shared>
     pub claimed: bool,                // 1
     pub bump: u8,                     // 1
 }
 
 impl PrivateBetRecord {
-    pub const SPACE: usize = 8 + 32 + 32 + 8 + 32 + 1 + 1 + 14; // 128 total
+    pub const SPACE: usize = 8   // discriminator
+        + 32                     // market
+        + 32                     // bettor
+        + 8                      // amount
+        + 32                     // outcome_commitment
+        + 32                     // outcome_ct
+        + 32                     // amount_ct
+        + 32                     // encryption_pubkey
+        + 16                     // bet_nonce u128
+        + 1                      // claimed
+        + 1                      // bump
+        + 6;                     // padding → 232
 }
