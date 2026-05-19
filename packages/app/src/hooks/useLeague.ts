@@ -16,6 +16,20 @@ import {
   getLeagueMemberPda,
   getLeagueScoreRecordPda,
   getBetPda,
+  getMemberScorePda,
+  getArciumMxePda,
+  getArciumSignPda,
+  getArciumCompDefPda,
+  getArciumMempoolPda,
+  getArciumExecpoolPda,
+  getArciumComputationPda,
+  getArciumClusterPda,
+  getArciumFeePoolPda,
+  getArciumClockPda,
+  COMP_DEF_OFFSET_INIT_MEMBER_SCORE,
+  COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE,
+  COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE,
+  COMP_DEF_OFFSET_RECORD_PRIVATE_LEAGUE_WIN,
   deserializeLeagueAccount,
   deserializeLeagueMemberAccount,
   deserializeMarketAccount,
@@ -23,6 +37,13 @@ import {
   buildJoinLeagueInstruction,
   buildRecordLeagueWinInstruction,
   buildAdvanceGameweekInstruction,
+  buildInitMemberScoreInstruction,
+  buildRecordPrivateLeagueWinInstruction,
+  buildRecordPrivateLeagueWinV2Instruction,
+  buildRevealMemberScoreInstruction,
+  buildResetMemberScoreInstruction,
+  getPrivateBetRecordPda,
+  getPrivateStatePda,
 } from "@terrace/sdk";
 
 export interface EligibleBet {
@@ -30,6 +51,8 @@ export interface EligibleBet {
   marketAddress: string;
   marketQuestion: string;
   amount: bigint;
+  isActive?: boolean; // true = market is Open/Closed (not yet settled); scoring not available yet
+  betType?: "public" | "private"; // "private" = PrivateBetRecord → record_private_league_win_v2
 }
 import { useWallet } from "./useWallet";
 
@@ -252,6 +275,56 @@ async function persistAddress(pubkey: string, leagueAddress: string): Promise<vo
   } catch {}
 }
 
+// ── Arcium helpers ────────────────────────────────────────────────────────────
+
+// Read the cluster offset (Option<u32>) from the MXEAccount.
+// MXEAccount Borsh: [8 discriminator][1+4 cluster Option<u32>]...
+async function readMxeClusterOffset(): Promise<number> {
+  const mxe = await getArciumMxePda(TERRACE_PROGRAM_ID as Address);
+  const res = await rpcPost({
+    jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+    params: [String(mxe), { encoding: "base64", commitment: "confirmed" }],
+  });
+  const b64 = res.result?.value?.data?.[0];
+  if (!b64) throw new Error("Arcium MXE account not found — has the program been initialised with Arcium?");
+  const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  if (data[8] !== 1) throw new Error("MXE account has no cluster configured");
+  const view = new DataView(data.buffer, data.byteOffset);
+  return view.getUint32(9, true); // LE u32 cluster offset
+}
+
+async function buildArciumAccounts(clusterOffset: number, computationOffset: bigint, compDefOffset: number) {
+  const [mxeAccount, signPdaAccount, compDefAccount, mempoolAccount, executingPool,
+         computationAccount, clusterAccount, poolAccount, clockAccount] = await Promise.all([
+    getArciumMxePda(TERRACE_PROGRAM_ID as Address),
+    getArciumSignPda(TERRACE_PROGRAM_ID as Address),
+    getArciumCompDefPda(compDefOffset, TERRACE_PROGRAM_ID as Address),
+    getArciumMempoolPda(clusterOffset),
+    getArciumExecpoolPda(clusterOffset),
+    getArciumComputationPda(clusterOffset, computationOffset),
+    getArciumClusterPda(clusterOffset),
+    getArciumFeePoolPda(),
+    getArciumClockPda(),
+  ]);
+  return { mxeAccount, signPdaAccount, compDefAccount, mempoolAccount, executingPool,
+           computationAccount, clusterAccount, poolAccount, clockAccount };
+}
+
+// Check whether a PrivateMemberScore PDA exists and has been initialised by the
+// Arcium callback (encrypted_score field is non-zero at offset 72).
+async function memberScoreReady(memberScoreAddress: string): Promise<boolean> {
+  const res = await rpcPost({
+    jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+    params: [memberScoreAddress, { encoding: "base64", commitment: "confirmed" }],
+  });
+  const b64 = res.result?.value?.data?.[0];
+  if (!b64) return false;
+  const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  // encrypted_score lives at offset 72 (8 disc + 32 league + 32 member); 32 bytes.
+  // The callback has run if any byte in the ciphertext is non-zero.
+  return data.slice(72, 104).some((b) => b !== 0);
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useLeague(ownerPubkey?: string | null) {
@@ -276,6 +349,14 @@ export function useLeague(ownerPubkey?: string | null) {
   const [loading, setLoading] = useState(false);
   // Human-readable progress label for multi-step create (null when idle)
   const [createStep, setCreateStep] = useState<string | null>(null);
+
+  // Per-member encrypted score state for private leagues
+  const [memberScoreState, setMemberScoreState] = useState<{
+    isReady: boolean;
+    isRevealed: boolean;
+    scoresGameweek: number;
+  } | null>(null);
+  const [loadingMemberScore, setLoadingMemberScore] = useState(false);
 
   const { publicKey: walletPubkey, signTransaction } = useWallet();
   // ownerPubkey prop takes precedence for data fetches; falls back to wallet state.
@@ -334,13 +415,13 @@ export function useLeague(ownerPubkey?: string | null) {
     }
   }, []);
 
-  const loadEligibleBets = useCallback(async (leagueAddress: string) => {
+  const loadEligibleBets = useCallback(async (leagueAddress: string, isPrivate?: boolean) => {
     if (!publicKey) return;
     setLoadingEligible(true);
     setEligibleBets([]);
     setNotAMember(false);
     try {
-      // 0. Check if the user has a LeagueMember PDA for this league — record_league_win requires it
+      // 0. Check LeagueMember PDA exists — required to score wins
       const [leagueMemberAddr] = await getLeagueMemberPda(
         leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
       );
@@ -349,13 +430,15 @@ export function useLeague(ownerPubkey?: string | null) {
         params: [String(leagueMemberAddr), { encoding: "base64", commitment: "confirmed" }],
       });
       if (!memberCheck.result?.value) {
-        // Not a member yet — can't score wins until they join
         setNotAMember(true);
         setLoadingEligible(false);
         return;
       }
 
-      // 1. Fetch all claimed bets for this wallet (dataSize=99, bettor at offset 40)
+      // 1. Fetch all bets for this wallet (dataSize=99, bettor at offset 40)
+      // Claimed filtering is done in code below:
+      //   private leagues — include Open/Closed (in-play) AND claimed wins
+      //   public leagues  — include claimed=1 only
       const betsRes = await rpcPost({
         jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
         params: [TERRACE_PROGRAM_ID, {
@@ -374,17 +457,40 @@ export function useLeague(ownerPubkey?: string | null) {
         return "1".repeat(lead < 0 ? 0 : lead) + s;
       };
 
-      const claimedBets: Array<{ betAddress: Address; marketAddress: string }> = [];
+      type RawBet = { betAddress: Address; marketAddress: string; claimed: boolean; betType: "public" | "private" };
+      const candidateBets: RawBet[] = [];
+
+      // Public Bet accounts (dataSize=99, bettor@40, claimed@81)
       for (const { pubkey, account } of betsRes.result ?? []) {
         const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
         const claimed = raw[81] === 1;
-        if (!claimed) continue;
-        claimedBets.push({ betAddress: pubkey as Address, marketAddress: b58(raw.slice(8, 40)) });
+        if (!isPrivate && !claimed) continue;
+        candidateBets.push({ betAddress: pubkey as Address, marketAddress: b58(raw.slice(8, 40)), claimed, betType: "public" });
       }
 
-      // 2. Check which bets haven't been scored in this league yet
-      const unscored: Array<{ betAddress: Address; marketAddress: string }> = [];
-      await Promise.all(claimedBets.map(async (b) => {
+      // PrivateBetRecord accounts for private leagues (dataSize=232, bettor@40, market@8, amount@72)
+      if (isPrivate) {
+        const PRIVATE_BET_DISCRIMINATOR_B64 = Buffer.from([248, 33, 174, 240, 96, 84, 217, 101]).toString("base64");
+        const privateBetsRes = await rpcPost({
+          jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
+          params: [TERRACE_PROGRAM_ID, {
+            encoding: "base64", commitment: "confirmed",
+            filters: [
+              { dataSize: 232 },
+              { memcmp: { offset: 40, bytes: publicKey } },
+            ],
+          }],
+        });
+        for (const { pubkey, account } of privateBetsRes.result ?? []) {
+          const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
+          const marketAddr = b58(raw.slice(8, 40));
+          candidateBets.push({ betAddress: pubkey as Address, marketAddress: marketAddr, claimed: false, betType: "private" });
+        }
+      }
+
+      // 2. Filter out bets already scored in this league
+      const unscored: RawBet[] = [];
+      await Promise.all(candidateBets.map(async (b) => {
         const [scoreRecordAddr] = await getLeagueScoreRecordPda(
           leagueAddress as Address, b.betAddress, TERRACE_PROGRAM_ID as Address
         );
@@ -395,9 +501,10 @@ export function useLeague(ownerPubkey?: string | null) {
         if (!res.result?.value) unscored.push(b);
       }));
 
-      // 3. Batch-fetch market accounts to get questions
+      // 3. Fetch market accounts for question text and status
       const marketAddrs = [...new Set(unscored.map((b) => b.marketAddress))];
-      const marketQuestions: Record<string, string> = {};
+      type MarketMeta = { question: string; status: string };
+      const marketMeta: Record<string, MarketMeta> = {};
       await Promise.all(marketAddrs.map(async (addr) => {
         try {
           const res = await rpcPost({
@@ -407,24 +514,46 @@ export function useLeague(ownerPubkey?: string | null) {
           const b64 = res.result?.value?.data?.[0];
           if (!b64) return;
           const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-          const market = deserializeMarketAccount(raw, addr as Address);
-          marketQuestions[addr] = market.question;
-        } catch { marketQuestions[addr] = `${addr.slice(0, 8)}…`; }
+          const m = deserializeMarketAccount(raw, addr as Address);
+          marketMeta[addr] = { question: m.question, status: m.status };
+        } catch { marketMeta[addr] = { question: `${addr.slice(0, 8)}…`, status: "Settled" }; }
       }));
 
+      // 4. Apply market-status filter:
+      //    Public bets in private leagues — Open/Closed (in-play) OR won+claimed
+      //    Private bet records — only Settled markets (private_state.is_revealed required by program)
+      //    Public leagues — only won+claimed (Settled, claimed=1); already filtered above
+      const eligible = unscored.filter((b) => {
+        const meta = marketMeta[b.marketAddress];
+        if (!meta) return false;
+        if (b.betType === "private") {
+          return meta.status === "Settled";
+        }
+        if (isPrivate) {
+          return meta.status === "Open" || meta.status === "Closed" || b.claimed;
+        }
+        return true;
+      });
+
+      // 5. Bet amounts (u64 at offset 72 for both Bet and PrivateBetRecord)
       const betAmounts: Record<string, bigint> = {};
       for (const { pubkey, account } of betsRes.result ?? []) {
         const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
         const view = new DataView(raw.buffer, raw.byteOffset);
-        betAmounts[pubkey] = view.getBigUint64(73, true);
+        betAmounts[pubkey] = view.getBigUint64(72, true);
       }
 
-      setEligibleBets(unscored.map((b) => ({
-        betAddress: b.betAddress,
-        marketAddress: b.marketAddress,
-        marketQuestion: marketQuestions[b.marketAddress] ?? `${b.marketAddress.slice(0, 8)}…`,
-        amount: betAmounts[String(b.betAddress)] ?? 0n,
-      })));
+      setEligibleBets(eligible.map((b) => {
+        const meta = marketMeta[b.marketAddress];
+        return {
+          betAddress: b.betAddress,
+          marketAddress: b.marketAddress,
+          marketQuestion: meta?.question ?? `${b.marketAddress.slice(0, 8)}…`,
+          amount: betAmounts[String(b.betAddress)] ?? 0n,
+          isActive: b.betType === "private" ? false : (meta ? meta.status !== "Settled" : false),
+          betType: b.betType,
+        };
+      }));
     } catch (e) {
       console.warn(`${LOG} loadEligibleBets error`, e);
     } finally {
@@ -482,12 +611,15 @@ export function useLeague(ownerPubkey?: string | null) {
       }
 
       // Auto-join creator so they appear on the leaderboard without a second manual step
-      setCreateStep("Joining league… 2/2");
+      const totalSteps = (params.isPrivate ?? false) ? 3 : 2;
+      setCreateStep(`Joining league… 2/${totalSteps}`);
       setStatus("signing");
+      let leagueMemberAddress: Address | null = null;
       try {
-        const [leagueMemberAddress] = await getLeagueMemberPda(
+        const [lmAddr] = await getLeagueMemberPda(
           leagueAddress, publicKey as Address, TERRACE_PROGRAM_ID as Address
         );
+        leagueMemberAddress = lmAddr;
         const joinIx = await buildJoinLeagueInstruction({
           leagueAddress,
           leagueCreator: publicKey as Address,
@@ -501,6 +633,17 @@ export function useLeague(ownerPubkey?: string | null) {
       } catch (joinErr: any) {
         // Non-fatal — creator can still use the league even if auto-join fails
         console.warn(`${LOG} auto-join creator failed:`, joinErr?.message);
+      }
+
+      // Private leagues: initialise per-member encrypted score PDA (3rd step)
+      if ((params.isPrivate ?? false) && leagueMemberAddress) {
+        setCreateStep("Setting up private scores… 3/3");
+        setStatus("signing");
+        try {
+          await _initMemberScore(String(leagueAddress), leagueMemberAddress);
+        } catch (initErr: any) {
+          console.warn(`${LOG} initMemberScore during createLeague failed:`, initErr?.message);
+        }
       }
 
       setCreateStep(null);
@@ -559,8 +702,19 @@ export function useLeague(ownerPubkey?: string | null) {
       setStatus("signing");
       const sig = await buildAndSend(publicKey, [ix], signTransaction);
       setTxSig(sig);
-      setStatus("success");
       await persistAddress(publicKey, leagueAddress);
+
+      // Private leagues: initialise per-member encrypted score PDA after joining
+      if (league.isPrivate) {
+        try {
+          await _initMemberScore(leagueAddress, leagueMemberAddress);
+        } catch (initErr: any) {
+          // Non-fatal — user can retry via separate UI action
+          console.warn(`${LOG} initMemberScore after join failed:`, initErr?.message);
+        }
+      }
+
+      setStatus("success");
       refresh();
       return sig;
     } catch (e: any) {
@@ -585,9 +739,42 @@ export function useLeague(ownerPubkey?: string | null) {
     }
   }, [publicKey, signTransaction, refresh]);
 
+  // Internal helper — not exposed; called by joinLeague and createLeague
+  const _initMemberScore = useCallback(async (
+    leagueAddress: string,
+    leagueMemberAddress: Address,
+  ) => {
+    if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
+    const clusterOffset = await readMxeClusterOffset();
+    const computationOffset = BigInt(Date.now());
+    const nonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+
+    const [memberScoreAddress] = await getMemberScorePda(
+      leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+    );
+    const arcium = await buildArciumAccounts(
+      clusterOffset, computationOffset, COMP_DEF_OFFSET_INIT_MEMBER_SCORE
+    );
+
+    const ix = buildInitMemberScoreInstruction({
+      member: publicKey as Address,
+      ...arcium,
+      leagueAddress: leagueAddress as Address,
+      leagueMemberAddress,
+      memberScoreAddress,
+      computationOffset,
+      nonce,
+      programId: TERRACE_PROGRAM_ID as Address,
+    });
+
+    await buildAndSend(publicKey, [ix], signTransaction);
+  }, [publicKey, signTransaction]);
+
   const recordWin = useCallback(async (params: {
     leagueAddress: string;
     marketAddress: string;
+    isPrivate?: boolean;
+    betType?: "public" | "private";
   }) => {
     if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
     setStatus("building");
@@ -600,29 +787,130 @@ export function useLeague(ownerPubkey?: string | null) {
         publicKey as Address,
         TERRACE_PROGRAM_ID as Address
       );
-      const [betAddress] = await getBetPda(
-        params.marketAddress as Address,
-        publicKey as Address,
-        TERRACE_PROGRAM_ID as Address
-      );
-      const [scoreRecordAddress] = await getLeagueScoreRecordPda(
-        params.leagueAddress as Address,
-        betAddress,
-        TERRACE_PROGRAM_ID as Address
-      );
 
-      const ix = buildRecordLeagueWinInstruction({
-        leagueAddress: params.leagueAddress as Address,
-        leagueMemberAddress,
-        marketAddress: params.marketAddress as Address,
-        betAddress,
-        scoreRecordAddress,
-        member: publicKey as Address,
-        programId: TERRACE_PROGRAM_ID as Address,
-      });
+      let sig: string;
 
-      setStatus("signing");
-      const sig = await buildAndSend(publicKey, [ix], signTransaction);
+      if (params.betType === "private") {
+        // Private market bet — use record_private_league_win_v2 (Arcium decrypts outcome internally)
+        const [privateBetRecord] = await getPrivateBetRecordPda(
+          params.marketAddress as Address,
+          publicKey as Address,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const [privateState] = await getPrivateStatePda(
+          params.marketAddress as Address,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const [memberScoreAddress] = await getMemberScorePda(
+          params.leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+        );
+        const [scoreRecordAddress] = await getLeagueScoreRecordPda(
+          params.leagueAddress as Address,
+          privateBetRecord,
+          TERRACE_PROGRAM_ID as Address
+        );
+
+        const ready = await memberScoreReady(String(memberScoreAddress));
+        if (!ready) {
+          throw new Error(
+            "Your encrypted score is still initializing (Arcium processing). " +
+            "Please wait a moment and try again."
+          );
+        }
+
+        const clusterOffset = await readMxeClusterOffset();
+        const computationOffset = BigInt(Date.now());
+        const arcium = await buildArciumAccounts(
+          clusterOffset, computationOffset, COMP_DEF_OFFSET_RECORD_PRIVATE_LEAGUE_WIN
+        );
+
+        const ix = buildRecordPrivateLeagueWinV2Instruction({
+          member: publicKey as Address,
+          ...arcium,
+          leagueAddress: params.leagueAddress as Address,
+          leagueMemberAddress,
+          memberScoreAddress,
+          marketAddress: params.marketAddress as Address,
+          privateState,
+          privateBetRecord,
+          scoreRecordAddress,
+          computationOffset,
+          programId: TERRACE_PROGRAM_ID as Address,
+        });
+
+        setStatus("signing");
+        sig = await buildAndSend(publicKey, [ix], signTransaction);
+      } else if (params.isPrivate) {
+        // Public-bet in a private league — increment_member_score circuit
+        const [betAddress] = await getBetPda(
+          params.marketAddress as Address,
+          publicKey as Address,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const [scoreRecordAddress] = await getLeagueScoreRecordPda(
+          params.leagueAddress as Address,
+          betAddress,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const [memberScoreAddress] = await getMemberScorePda(
+          params.leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+        );
+
+        const ready = await memberScoreReady(String(memberScoreAddress));
+        if (!ready) {
+          throw new Error(
+            "Your encrypted score is still initializing (Arcium processing). " +
+            "Please wait a moment and try again."
+          );
+        }
+
+        const clusterOffset = await readMxeClusterOffset();
+        const computationOffset = BigInt(Date.now());
+        const arcium = await buildArciumAccounts(
+          clusterOffset, computationOffset, COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE
+        );
+
+        const ix = buildRecordPrivateLeagueWinInstruction({
+          member: publicKey as Address,
+          ...arcium,
+          leagueAddress: params.leagueAddress as Address,
+          leagueMemberAddress,
+          memberScoreAddress,
+          marketAddress: params.marketAddress as Address,
+          betAddress,
+          scoreRecordAddress,
+          computationOffset,
+          programId: TERRACE_PROGRAM_ID as Address,
+        });
+
+        setStatus("signing");
+        sig = await buildAndSend(publicKey, [ix], signTransaction);
+      } else {
+        // Public league — direct on-chain score update
+        const [betAddress] = await getBetPda(
+          params.marketAddress as Address,
+          publicKey as Address,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const [scoreRecordAddress] = await getLeagueScoreRecordPda(
+          params.leagueAddress as Address,
+          betAddress,
+          TERRACE_PROGRAM_ID as Address
+        );
+        const ix = buildRecordLeagueWinInstruction({
+          leagueAddress: params.leagueAddress as Address,
+          leagueMemberAddress,
+          marketAddress: params.marketAddress as Address,
+          betAddress,
+          scoreRecordAddress,
+          member: publicKey as Address,
+          programId: TERRACE_PROGRAM_ID as Address,
+        });
+
+        setStatus("signing");
+        sig = await buildAndSend(publicKey, [ix], signTransaction);
+      }
+
       setTxSig(sig);
       setStatus("success");
       refresh();
@@ -633,6 +921,123 @@ export function useLeague(ownerPubkey?: string | null) {
       throw e;
     }
   }, [publicKey, signTransaction, refresh]);
+
+  // Reveal a member's encrypted score after the gameweek has advanced.
+  // Arcium processes reveal_member_score async; LeagueMember is updated in the callback.
+  const revealMemberScore = useCallback(async (leagueAddress: string) => {
+    if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
+    setStatus("building");
+    setError(null);
+    setTxSig(null);
+
+    try {
+      const [leagueMemberAddress] = await getLeagueMemberPda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+      const [memberScoreAddress] = await getMemberScorePda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+
+      const clusterOffset = await readMxeClusterOffset();
+      const computationOffset = BigInt(Date.now());
+      const arcium = await buildArciumAccounts(
+        clusterOffset, computationOffset, COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE
+      );
+
+      const ix = buildRevealMemberScoreInstruction({
+        member: publicKey as Address,
+        ...arcium,
+        leagueAddress: leagueAddress as Address,
+        leagueMemberAddress,
+        memberScoreAddress,
+        computationOffset,
+        programId: TERRACE_PROGRAM_ID as Address,
+      });
+
+      setStatus("signing");
+      const sig = await buildAndSend(publicKey, [ix], signTransaction);
+      setTxSig(sig);
+      setStatus("success");
+      // Leaderboard will update once the Arcium callback lands
+      return sig;
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+      setStatus("error");
+      throw e;
+    }
+  }, [publicKey, signTransaction]);
+
+  // Re-initialise encrypted score to 0 for the new gameweek.
+  // Must be called after revealMemberScore before recording wins in the new GW.
+  const resetMemberScore = useCallback(async (leagueAddress: string) => {
+    if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
+    setStatus("building");
+    setError(null);
+    setTxSig(null);
+
+    try {
+      const [leagueMemberAddress] = await getLeagueMemberPda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+      const [memberScoreAddress] = await getMemberScorePda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+
+      const clusterOffset = await readMxeClusterOffset();
+      const computationOffset = BigInt(Date.now());
+      const nonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+      const arcium = await buildArciumAccounts(
+        clusterOffset, computationOffset, COMP_DEF_OFFSET_INIT_MEMBER_SCORE
+      );
+
+      const ix = buildResetMemberScoreInstruction({
+        member: publicKey as Address,
+        ...arcium,
+        leagueAddress: leagueAddress as Address,
+        memberScoreAddress,
+        computationOffset,
+        nonce,
+        programId: TERRACE_PROGRAM_ID as Address,
+      });
+
+      setStatus("signing");
+      const sig = await buildAndSend(publicKey, [ix], signTransaction);
+      setTxSig(sig);
+      setStatus("success");
+      return sig;
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+      setStatus("error");
+      throw e;
+    }
+  }, [publicKey, signTransaction]);
+
+  const loadMemberScoreState = useCallback(async (leagueAddress: string) => {
+    if (!publicKey) return;
+    setLoadingMemberScore(true);
+    try {
+      const [memberScoreAddress] = await getMemberScorePda(
+        leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+      );
+      const res = await rpcPost({
+        jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+        params: [String(memberScoreAddress), { encoding: "base64", commitment: "confirmed" }],
+      });
+      const b64 = res.result?.value?.data?.[0];
+      if (!b64) { setMemberScoreState(null); return; }
+      const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      // PrivateMemberScore layout: [8 disc][32 league][32 member][32 encrypted_score][16 nonce][1 scores_gw][1 is_revealed][1 bump]
+      const isReady = data.slice(72, 104).some((b) => b !== 0);
+      const scoresGameweek = data[120];
+      const isRevealed = data[121] === 1;
+      setMemberScoreState({ isReady, isRevealed, scoresGameweek });
+    } catch (e) {
+      console.warn(`${LOG} loadMemberScoreState error`, e);
+      setMemberScoreState(null);
+    } finally {
+      setLoadingMemberScore(false);
+    }
+  }, [publicKey]);
 
   const advanceGameweek = useCallback(async (leagueAddress: string) => {
     if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
@@ -671,6 +1076,8 @@ export function useLeague(ownerPubkey?: string | null) {
     loading,
     loadingLeaderboard,
     loadingEligible,
+    memberScoreState,
+    loadingMemberScore,
     status,
     createStep,
     error,
@@ -680,8 +1087,11 @@ export function useLeague(ownerPubkey?: string | null) {
     joinLeague,
     recordWin,
     advanceGameweek,
+    revealMemberScore,
+    resetMemberScore,
     loadLeaderboard,
     loadEligibleBets,
+    loadMemberScoreState,
     refresh,
   };
 }

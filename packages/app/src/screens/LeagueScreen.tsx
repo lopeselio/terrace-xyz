@@ -98,9 +98,13 @@ function LeaderboardSheet({
   eligibleBets,
   loadingEligible,
   notAMember,
+  memberScoreState,
+  loadingMemberScore,
   onAdvanceGameweek,
   onJoinLeague,
   onScoreWin,
+  onRevealScore,
+  onResetScore,
   onClose,
 }: {
   league: League;
@@ -112,9 +116,13 @@ function LeaderboardSheet({
   eligibleBets: EligibleBet[];
   loadingEligible: boolean;
   notAMember: boolean;
+  memberScoreState: { isReady: boolean; isRevealed: boolean; scoresGameweek: number } | null;
+  loadingMemberScore: boolean;
   onAdvanceGameweek: () => void;
   onJoinLeague: () => void;
   onScoreWin: (betAddress: string, marketAddress: string) => void;
+  onRevealScore: () => void;
+  onResetScore: () => void;
   onClose: () => void;
 }) {
   const [pendingScore, setPendingScore] = useState<EligibleBet | null>(null);
@@ -181,24 +189,102 @@ function LeaderboardSheet({
         </TouchableOpacity>
       ) : eligibleBets.length > 0 ? (
         <View style={s.eligibleSection}>
-          <Text style={s.eligibleTitle}>Score your wins ({eligibleBets.length})</Text>
+          <Text style={s.eligibleTitle}>
+            {league.isPrivate
+              ? `Your bets this GW (${eligibleBets.length})`
+              : `Score your wins (${eligibleBets.length})`}
+          </Text>
           {eligibleBets.map((b) => (
-            <TouchableOpacity
-              key={String(b.betAddress)}
-              style={[s.eligibleRow, busy && s.btnDisabled]}
-              onPress={() => setPendingScore(b)}
-              disabled={busy}
-              activeOpacity={0.75}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={s.eligibleQuestion} numberOfLines={2}>{b.marketQuestion}</Text>
-                <Text style={s.eligibleMeta}>${(Number(b.amount) / 1_000_000).toFixed(2)} stake</Text>
+            b.isActive ? (
+              // Market not yet settled — show as "in play" (private league Arcium-protected bet)
+              <View key={String(b.betAddress)} style={[s.eligibleRow, { opacity: 0.75 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.eligibleQuestion} numberOfLines={2}>{b.marketQuestion}</Text>
+                  <Text style={s.eligibleMeta}>${(Number(b.amount) / 1_000_000).toFixed(2)} stake</Text>
+                </View>
+                <Text style={s.eligibleCtaLocked}>🔒 Active</Text>
               </View>
-              <Text style={s.eligibleCta}>+1 pt →</Text>
-            </TouchableOpacity>
+            ) : (
+              // Market settled, won+claimed — can score the league point
+              <TouchableOpacity
+                key={String(b.betAddress)}
+                style={[s.eligibleRow, busy && s.btnDisabled]}
+                onPress={() => setPendingScore(b)}
+                disabled={busy}
+                activeOpacity={0.75}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={s.eligibleQuestion} numberOfLines={2}>{b.marketQuestion}</Text>
+                  <Text style={s.eligibleMeta}>${(Number(b.amount) / 1_000_000).toFixed(2)} stake</Text>
+                </View>
+                <Text style={s.eligibleCta}>{league.isPrivate ? "Score Arcium →" : "+1 pt →"}</Text>
+              </TouchableOpacity>
+            )
           ))}
         </View>
       ) : null}
+
+      {/* Private league: reveal / reset actions for the current member */}
+      {league.isPrivate && !notAMember && (() => {
+        if (loadingMemberScore) {
+          return (
+            <View style={s.privateActionsSection}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={s.privateActionsNote}>Loading encrypted score state…</Text>
+            </View>
+          );
+        }
+        if (!memberScoreState) return null;
+
+        const gwAdvanced = league.gameweek > memberScoreState.scoresGameweek;
+
+        if (memberScoreState.isRevealed) {
+          return (
+            <View style={s.privateActionsSection}>
+              <Text style={s.privateActionsLabel}>Your score was revealed for GW {memberScoreState.scoresGameweek}</Text>
+              <TouchableOpacity
+                style={[s.privateActionBtn, s.resetBtn, busy && s.btnDisabled]}
+                onPress={onResetScore}
+                disabled={busy}
+                activeOpacity={0.8}
+              >
+                {busy
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.privateActionBtnText}>Reset for GW {league.gameweek} →</Text>}
+              </TouchableOpacity>
+            </View>
+          );
+        }
+
+        if (gwAdvanced && memberScoreState.isReady) {
+          return (
+            <View style={s.privateActionsSection}>
+              <Text style={s.privateActionsLabel}>Gameweek {memberScoreState.scoresGameweek} ended — reveal your score</Text>
+              <TouchableOpacity
+                style={[s.privateActionBtn, s.revealBtn, busy && s.btnDisabled]}
+                onPress={onRevealScore}
+                disabled={busy}
+                activeOpacity={0.8}
+              >
+                {busy
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.privateActionBtnText}>Reveal my score →</Text>}
+              </TouchableOpacity>
+            </View>
+          );
+        }
+
+        if (!memberScoreState.isReady) {
+          return (
+            <View style={s.privateActionsSection}>
+              <ActivityIndicator size="small" color="#6366f1" style={{ marginRight: 8 }} />
+              <Text style={s.privateActionsNote}>Arcium is initializing your encrypted score…</Text>
+            </View>
+          );
+        }
+
+        return null;
+      })()}
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 }}>
         <Text style={[s.leaderboardTitle, { marginBottom: 0, flex: 1 }]}>
@@ -453,6 +539,8 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     loading,
     loadingLeaderboard,
     loadingEligible,
+    memberScoreState,
+    loadingMemberScore,
     status,
     createStep,
     error,
@@ -460,8 +548,11 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     joinLeague,
     recordWin,
     advanceGameweek,
+    revealMemberScore,
+    resetMemberScore,
     loadLeaderboard,
     loadEligibleBets,
+    loadMemberScoreState,
     refresh,
   } = useLeague(walletPubkey);
 
@@ -475,16 +566,23 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
   const handleOpenLeague = useCallback((league: League) => {
     setSelectedLeague(league);
     loadLeaderboard(String(league.address));
-    loadEligibleBets(String(league.address));
-  }, [loadLeaderboard, loadEligibleBets]);
+    loadEligibleBets(String(league.address), league.isPrivate);
+    if (league.isPrivate && walletPubkey) {
+      loadMemberScoreState(String(league.address));
+    }
+  }, [loadLeaderboard, loadEligibleBets, loadMemberScoreState, walletPubkey]);
 
   const handleScoreWin = useCallback(async (betAddress: string, marketAddress: string) => {
     if (!selectedLeague) return;
     try {
-      await recordWin({ leagueAddress: String(selectedLeague.address), marketAddress });
+      await recordWin({
+        leagueAddress: String(selectedLeague.address),
+        marketAddress,
+        isPrivate: selectedLeague.isPrivate,
+      });
       showToast("+1 point scored!");
       loadLeaderboard(String(selectedLeague.address));
-      loadEligibleBets(String(selectedLeague.address));
+      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
     } catch (e: any) {
       showToast(e?.message ?? "Failed to score win");
     }
@@ -533,12 +631,38 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     try {
       await joinLeague(String(selectedLeague.address));
       showToast("Joined! Now you can score your wins.");
-      loadEligibleBets(String(selectedLeague.address));
+      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
       loadLeaderboard(String(selectedLeague.address));
     } catch (e: any) {
       showToast(e?.message ?? "Failed to join league");
     }
   }, [selectedLeague, walletPubkey, joinLeague, loadEligibleBets, loadLeaderboard]);
+
+  const handleRevealScore = useCallback(async () => {
+    if (!selectedLeague) return;
+    try {
+      await revealMemberScore(String(selectedLeague.address));
+      showToast("Reveal queued — Arcium is decrypting your score. Check back shortly.");
+      // Reload after a delay to catch the callback landing
+      setTimeout(() => {
+        loadMemberScoreState(String(selectedLeague.address));
+        loadLeaderboard(String(selectedLeague.address));
+      }, 6000);
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to reveal score");
+    }
+  }, [selectedLeague, revealMemberScore, loadMemberScoreState, loadLeaderboard]);
+
+  const handleResetScore = useCallback(async () => {
+    if (!selectedLeague) return;
+    try {
+      await resetMemberScore(String(selectedLeague.address));
+      showToast("Score reset — Arcium is initializing for GW " + selectedLeague.gameweek);
+      setTimeout(() => loadMemberScoreState(String(selectedLeague.address)), 6000);
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to reset score");
+    }
+  }, [selectedLeague, resetMemberScore, loadMemberScoreState]);
 
   // Deduplicate: myLeagues + joinedLeagues
   const allLeagues = [
@@ -640,9 +764,13 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
             eligibleBets={eligibleBets}
             loadingEligible={loadingEligible}
             notAMember={notAMember}
+            memberScoreState={memberScoreState}
+            loadingMemberScore={loadingMemberScore}
             onAdvanceGameweek={handleAdvanceGameweek}
             onJoinLeague={handleJoinFromSheet}
             onScoreWin={handleScoreWin}
+            onRevealScore={handleRevealScore}
+            onResetScore={handleResetScore}
             onClose={() => setSelectedLeague(null)}
           />
         </View>
@@ -715,6 +843,7 @@ const s = StyleSheet.create({
   eligibleQuestion: { fontSize: 13, color: "#e5e5e5", fontWeight: "500", lineHeight: 18 },
   eligibleMeta:     { fontSize: 11, color: "#6b7280", marginTop: 2 },
   eligibleCta:      { fontSize: 13, fontWeight: "700", color: "#22c55e", marginLeft: 8 },
+  eligibleCtaLocked: { fontSize: 11, fontWeight: "600", color: "#6366f1", marginLeft: 8 },
   leaderboardTitle: { fontSize: 13, fontWeight: "600", color: "#6b7280", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8 },
 
   memberRow:    { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: "#141414", gap: 0 },
@@ -731,6 +860,14 @@ const s = StyleSheet.create({
   gwScoreLocked: { fontSize: 16 },
   gwLabel:      { fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: 0.4 },
   privateNote:  { fontSize: 10, color: "#6366f1", fontWeight: "600" },
+
+  privateActionsSection: { flexDirection: "row", alignItems: "center", backgroundColor: "#0f0b1f", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 0.5, borderColor: "#312e81", gap: 10 },
+  privateActionsLabel:   { fontSize: 12, color: "#a5b4fc", fontWeight: "600", flex: 1 },
+  privateActionsNote:    { fontSize: 12, color: "#6b7280", flex: 1 },
+  privateActionBtn:      { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, alignItems: "center" },
+  revealBtn:             { backgroundColor: "#4f46e5" },
+  resetBtn:              { backgroundColor: "#1e3a5f" },
+  privateActionBtnText:  { fontSize: 13, fontWeight: "700", color: "#fff" },
 
   toast:     { position: "absolute", bottom: 40, left: 24, right: 24, backgroundColor: "#1f1f1f", borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: "#2a2a2a", alignItems: "center" },
   toastText: { fontSize: 13, color: "#e5e5e5", textAlign: "center" },
