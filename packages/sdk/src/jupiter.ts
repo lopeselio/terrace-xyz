@@ -36,7 +36,7 @@ export class JupiterMarketsClient {
     });
     if (!res.ok) {
       let detail = "";
-      try { const j = await res.json(); detail = j?.message ?? j?.error ?? JSON.stringify(j); } catch {}
+      try { const j = await res.json() as Record<string, unknown>; detail = (j?.message ?? j?.error ?? JSON.stringify(j)) as string; } catch {}
       throw new Error(`Jupiter API POST ${path} → ${res.status}${detail ? `: ${detail}` : ""}`);
     }
     return res.json() as Promise<T>;

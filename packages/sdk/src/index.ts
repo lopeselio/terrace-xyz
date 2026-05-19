@@ -38,6 +38,7 @@ export {
   COMP_DEF_OFFSET_INIT_MEMBER_SCORE,
   COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE,
   COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE,
+  COMP_DEF_OFFSET_RECORD_PRIVATE_LEAGUE_WIN,
   getMemberScorePda,
 } from "./pda";
 export {
@@ -71,6 +72,8 @@ export {
   buildInitMemberScoreInstruction,
   buildResetMemberScoreInstruction,
   buildRecordPrivateLeagueWinInstruction,
+  buildRecordPrivateLeagueWinV2Instruction,
+  buildInitRecordPrivateLeagueWinV2CompDefInstruction,
   buildRevealMemberScoreInstruction,
 } from "./instructions";
 export type {
