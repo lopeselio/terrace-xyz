@@ -286,9 +286,9 @@ async function readMxeClusterOffset(): Promise<number> {
     params: [String(mxe), { encoding: "base64", commitment: "confirmed" }],
   });
   const b64 = res.result?.value?.data?.[0];
-  if (!b64) throw new Error("Arcium MXE account not found — has the program been initialised with Arcium?");
+  if (!b64) throw new Error("Private features aren't available right now — please try again later.");
   const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  if (data[8] !== 1) throw new Error("MXE account has no cluster configured");
+  if (data[8] !== 1) throw new Error("Private features aren't fully set up — please try again later.");
   const view = new DataView(data.buffer, data.byteOffset);
   return view.getUint32(9, true); // LE u32 cluster offset
 }
@@ -357,6 +357,14 @@ export function useLeague(ownerPubkey?: string | null) {
     scoresGameweek: number;
   } | null>(null);
   const [loadingMemberScore, setLoadingMemberScore] = useState(false);
+
+  // Lifecycle of the per-(league, member) init_member_score flow.
+  // Keyed by league address. Status drives the "Set up your league spot"
+  // UI in LeagueScreen: visible spinner while submitting/pending, retry CTA
+  // when failed, hidden when ready. See initMemberScore() below.
+  const [memberScoreInit, setMemberScoreInit] = useState<
+    Record<string, "submitting" | "pending_callback" | "ready" | "failed">
+  >({});
 
   const { publicKey: walletPubkey, signTransaction } = useWallet();
   // ownerPubkey prop takes precedence for data fetches; falls back to wallet state.
@@ -739,12 +747,17 @@ export function useLeague(ownerPubkey?: string | null) {
     }
   }, [publicKey, signTransaction, refresh]);
 
-  // Internal helper — not exposed; called by joinLeague and createLeague
+  // Submit the init_member_score tx and start polling the PDA for the
+  // Arcium callback to land (writes encrypted_score). Drives memberScoreInit
+  // state machine. Called auto-fire from createLeague/joinLeague and as a
+  // manual retry from the LeagueScreen "set up my league spot" CTA.
   const _initMemberScore = useCallback(async (
     leagueAddress: string,
     leagueMemberAddress: Address,
   ) => {
     if (!publicKey || !signTransaction) throw new Error("Wallet not connected");
+    setMemberScoreInit((s) => ({ ...s, [leagueAddress]: "submitting" }));
+
     const clusterOffset = await readMxeClusterOffset();
     const computationOffset = BigInt(Date.now());
     const nonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
@@ -767,8 +780,44 @@ export function useLeague(ownerPubkey?: string | null) {
       programId: TERRACE_PROGRAM_ID as Address,
     });
 
-    await buildAndSend(publicKey, [ix], signTransaction);
+    try {
+      await buildAndSend(publicKey, [ix], signTransaction);
+    } catch (e) {
+      setMemberScoreInit((s) => ({ ...s, [leagueAddress]: "failed" }));
+      throw e;
+    }
+
+    // Tx confirmed — now wait for the Arcium callback (~4–8s on devnet, up
+    // to ~60s on a slow run). Poll the PDA every 3s; mark ready when
+    // encrypted_score[72..104] becomes non-zero.
+    setMemberScoreInit((s) => ({ ...s, [leagueAddress]: "pending_callback" }));
+    const startedAt = Date.now();
+    const POLL_INTERVAL_MS = 3000;
+    const POLL_TIMEOUT_MS = 60000;
+    while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
+      try {
+        const ready = await memberScoreReady(String(memberScoreAddress));
+        if (ready) {
+          setMemberScoreInit((s) => ({ ...s, [leagueAddress]: "ready" }));
+          return;
+        }
+      } catch (pollErr) {
+        // Single-poll failures are transient — keep polling until timeout.
+        console.warn("[useLeague] init poll error:", pollErr);
+      }
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+    setMemberScoreInit((s) => ({ ...s, [leagueAddress]: "failed" }));
   }, [publicKey, signTransaction]);
+
+  // Public retry — wraps _initMemberScore with the LeagueMember PDA derivation.
+  const initMemberScore = useCallback(async (leagueAddress: string) => {
+    if (!publicKey) throw new Error("Wallet not connected");
+    const [leagueMemberAddress] = await getLeagueMemberPda(
+      leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address,
+    );
+    await _initMemberScore(leagueAddress, leagueMemberAddress);
+  }, [publicKey, _initMemberScore]);
 
   const recordWin = useCallback(async (params: {
     leagueAddress: string;
@@ -1078,6 +1127,7 @@ export function useLeague(ownerPubkey?: string | null) {
     loadingEligible,
     memberScoreState,
     loadingMemberScore,
+    memberScoreInit,
     status,
     createStep,
     error,
@@ -1089,6 +1139,7 @@ export function useLeague(ownerPubkey?: string | null) {
     advanceGameweek,
     revealMemberScore,
     resetMemberScore,
+    initMemberScore,
     loadLeaderboard,
     loadEligibleBets,
     loadMemberScoreState,
