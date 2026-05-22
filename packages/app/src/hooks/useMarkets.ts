@@ -18,6 +18,15 @@ const MARKET_ACCOUNT_SIZE = 359;
 // Football-specific search terms to surface relevant Jupiter markets
 const FOOTBALL_QUERIES = ["premier league", "champions league", "world cup", "euro"];
 
+// Cap for plausible market volume in raw u64 USDC base units ($1B = 10^15).
+// Anything above this is corrupted on-chain data — historically caused by the
+// pre-v8 Arcium `Enc<Mxe, (u64,u64)>` reveal bug (see
+// docs/arcium-mxe-roundtrip-issue.md) where reveal_private_market_callback
+// wrote garbage volumes that saturating_add'd to ~u64::MAX. The v8 contract
+// fixes this for new markets; this filter hides the corrupted historical
+// accounts still sitting on devnet.
+const MAX_PLAUSIBLE_VOLUME_RAW = 1_000_000_000_000_000n; // $1B USDC
+
 async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
   if (!HELIUS_RPC_URL || !TERRACE_PROGRAM_ID) return [];
 
@@ -43,9 +52,17 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
     const accounts: Array<{ pubkey: string; account: { data: [string, string] } }> =
       json.result ?? [];
 
-    return accounts.map(({ pubkey, account }) => {
+    return accounts.flatMap(({ pubkey, account }) => {
       const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
       const market = deserializeMarketAccount(raw, pubkey as Address);
+
+      if (
+        market.totalVolume > MAX_PLAUSIBLE_VOLUME_RAW ||
+        market.yesVolume > MAX_PLAUSIBLE_VOLUME_RAW ||
+        market.noVolume > MAX_PLAUSIBLE_VOLUME_RAW
+      ) {
+        return [];
+      }
 
       let statusMapped: UnifiedMarket["status"] = "Open";
       if (market.status === "Settled") statusMapped = "Settled";
@@ -55,7 +72,7 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
       const yesVol = Number(market.yesVolume);
       const yesPrice = totalVol > 0 ? yesVol / totalVol : 0.5;
 
-      return {
+      return [{
         source: "native" as const,
         id: pubkey,
         question: market.question,
@@ -68,7 +85,7 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
         creator: market.creator as string,
         isPrivate: market.isPrivate,
         isFlash: market.isFlash,
-      };
+      }];
     });
   } catch (e) {
     console.warn("fetchNativeMarkets failed:", e);
