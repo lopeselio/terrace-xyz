@@ -472,6 +472,7 @@ export function deserializeLeagueAccount(data: Uint8Array, address: Address): Le
  * Layout (after 8-byte discriminator):
  *   league                — 32 Pubkey
  *   member                — 32 Pubkey
+ *   member_slot           — u8       (join order, 0-based)
  *   gameweek_score        — u32 LE
  *   total_score           — u32 LE
  *   last_scored_gameweek  — u8
@@ -485,6 +486,8 @@ export function deserializeLeagueMemberAccount(data: Uint8Array, address: Addres
   o += 32;
   const member = pubkeyBytesToAddress(data.slice(o, o + 32));
   o += 32;
+  const memberSlot = view.getUint8(o);
+  o += 1;
   const gameweekScore = view.getUint32(o, true);
   o += 4;
   const totalScore = view.getUint32(o, true);
@@ -493,7 +496,7 @@ export function deserializeLeagueMemberAccount(data: Uint8Array, address: Addres
   o += 1;
   const bump = view.getUint8(o);
 
-  return { address, league, member, gameweekScore, totalScore, lastScoredGameweek, bump };
+  return { address, league, member, memberSlot, gameweekScore, totalScore, lastScoredGameweek, bump };
 }
 
 export class TerraceSdk {

@@ -188,6 +188,7 @@ export interface LeagueMember {
   address: Address;
   league: Address;
   member: Address;
+  memberSlot: number;
   gameweekScore: number;
   totalScore: number;
   lastScoredGameweek: number;
