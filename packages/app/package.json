@@ -10,7 +10,6 @@
     "clean": "rm -rf node_modules .expo"
   },
   "dependencies": {
-    "@arcium-hq/client": "^0.9.7",
     "@babel/runtime": "^7.29.2",
     "@expo/env": "~0.3.0",
     "@expo/metro-config": "^0.19.12",

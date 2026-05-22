@@ -31,18 +31,29 @@ import { useWallet } from "./useWallet";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
-// ── Encryption helpers (X25519 + RescueCipher over BN254) ─────────────────────
+// ── Encryption helpers ────────────────────────────────────────────────────────
 //
-// Arcium's arcis runtime expects `Enc<Shared, T>` inputs to be encrypted with
-// RescueCipher in CTR mode keyed by the X25519 shared secret with the MXE's
-// x25519 pubkey. Each plaintext value is encoded as a 32-byte BN254 field
-// element. A hand-rolled XOR+SHA256 scheme produces 32-byte blobs that
-// arcis rejects at input deserialization with "Failed to convert bytes to
-// field element" — see fix(e2e) commit for the original incident.
+// ⚠️ KNOWN-BROKEN cipher (XOR + SHA256). arcis 0.9.x's `Enc<Shared, T>` actually
+// needs RescueCipher over BN254 from @arcium-hq/client — the e2e + SDK use it
+// correctly. We tried to use it in the app too, but bundling @arcium-hq/client
+// into React Native pulled in @coral-xyz/anchor + Node's `crypto`, `fs`, and
+// other stdlib modules. The bundle compiled with shims but threw at module
+// eval ("Cannot read property 'n' of undefined"). See the session log for the
+// debug trail.
 //
-// Commitment: blake3(outcome_byte || secret_32_bytes) stored on-chain;
-// bettor reveals (outcome, secret) in claim_private_winnings.
+// For now the app's `place_private_bet` flow uses this hand-rolled XOR scheme
+// so the build is green. New bets placed from the app will be silently scored
+// as zero by the chained MPC (the sealed outcome decodes to garbage). The
+// `record_private_league_win` flow — scoring bets that were already sealed
+// on-chain (e.g. via the e2e script) — works fine because that path doesn't
+// touch the client-side cipher.
+//
+// TODO: port the RescueCipher math from @arcium-hq/client/src/cryptography/
+// into a self-contained packages/app/src/lib/rescueCipher.ts (no anchor /
+// no Node deps), or wire react-native-quick-crypto + rebuild the dev client.
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { sha256 } = require("@noble/hashes/sha2") as { sha256: (data: Uint8Array) => Uint8Array };
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { x25519 } = require("@noble/curves/ed25519") as {
   x25519: {
@@ -51,19 +62,20 @@ const { x25519 } = require("@noble/curves/ed25519") as {
     getSharedSecret: (priv: Uint8Array, pub: Uint8Array) => Uint8Array;
   };
 };
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { RescueCipher } = require("@arcium-hq/client") as {
-  RescueCipher: new (sharedSecret: Uint8Array) => {
-    encrypt: (plaintext: bigint[], nonce: Uint8Array) => number[][];
-  };
-};
 
-function nonceToBytes16(n: bigint): Uint8Array {
-  const out = new Uint8Array(16);
-  const dv = new DataView(out.buffer);
-  dv.setBigUint64(0, n & 0xFFFFFFFFFFFFFFFFn, true);
-  dv.setBigUint64(8, (n >> 64n) & 0xFFFFFFFFFFFFFFFFn, true);
+function deriveFieldKey(shared: Uint8Array, idx: number): Uint8Array {
+  const pre = new Uint8Array(shared.length + 1);
+  pre.set(shared);
+  pre[shared.length] = idx;
+  return sha256(pre);
+}
+function xor32(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) out[i] = a[i] ^ b[i];
   return out;
+}
+function padU8To32(v: number): Uint8Array {
+  const out = new Uint8Array(32); out[0] = v; return out;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -153,7 +165,7 @@ async function fetchMxeData(mxeAccount: Address): Promise<{
     }),
   });
   const { result } = await res.json();
-  if (!result?.value) throw new Error("MXE account not found — run init_mxe first");
+  if (!result?.value) throw new Error("Private features aren't available right now — please try again later.");
 
   const raw = new Uint8Array(Buffer.from(result.value.data[0], "base64"));
   const view = new DataView(raw.buffer, raw.byteOffset);
@@ -168,7 +180,7 @@ async function fetchMxeData(mxeAccount: Address): Promise<{
   //   + mxe_program_id(32) + authority Option<Pubkey>(1+32)  = 94
   // SetUnset<UtilityPubkeys>: 1 byte tag; if Some → x25519 pubkey at [95..127]
   const utilStart = 94;
-  if (raw[utilStart] !== 1) throw new Error("MXE utility keys not initialised");
+  if (raw[utilStart] !== 1) throw new Error("Private features aren't fully set up — please try again later.");
   const x25519Pubkey = raw.slice(utilStart + 1, utilStart + 33);
 
   return { clusterOffset, x25519Pubkey };

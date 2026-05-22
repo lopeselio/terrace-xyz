@@ -87,6 +87,43 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
+  // Force @arcium-hq/client to its ESM build (index.mjs). The CJS build
+  // additionally requires `fs` at the top (for keypair/circuit file loading
+  // on Node), which RN has no shim for; the ESM build avoids `fs`.
+  if (moduleName === "@arcium-hq/client") {
+    for (const nodeModulesDir of config.resolver.nodeModulesPaths) {
+      const pkgDir = path.resolve(nodeModulesDir, moduleName);
+      const esmFile = path.join(pkgDir, "build/index.mjs");
+      try {
+        if (fs.existsSync(esmFile)) {
+          return { type: "sourceFile", filePath: esmFile };
+        }
+      } catch {}
+    }
+  }
+
+  // Node `crypto` polyfill. Both arcium-hq/client builds import `crypto` for
+  // AES + randomBytes. RN has no stdlib so the import has to resolve to
+  // *something* — we point it at a tiny shim that implements just what
+  // RescueCipher needs (sha256 + RNG) and throws clearly on AES paths.
+  if (moduleName === "crypto" || moduleName === "node:crypto") {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(projectRoot, "src/polyfills/crypto-shim.js"),
+    };
+  }
+
+  // Node `fs` polyfill — empty module. The ESM build of @arcium-hq/client
+  // doesn't import fs, but transitive deps occasionally do (e.g. tslib
+  // dynamic imports). Anything that actually calls fs methods at runtime
+  // will throw — but the bundle resolves cleanly.
+  if (moduleName === "fs" || moduleName === "node:fs" || moduleName === "path" || moduleName === "node:path") {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(projectRoot, "src/polyfills/empty-module.js"),
+    };
+  }
+
   // Resolve packages that pnpm symlinks but Metro fails to follow.
   // Walk nodeModulePaths and resolve the symlink to its real path.
   const PNPM_RESOLVE = ["fast-text-encoding", "expo-notifications"];
