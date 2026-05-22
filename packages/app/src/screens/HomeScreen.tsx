@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import type { Matchup } from "@terrace/sdk";
 import { useMatchup } from "../hooks/useMatchup";
+import { useLeague } from "../hooks/useLeague";
+import { useLeagueAdvanceNotifications, type AdvanceNotification } from "../hooks/useLeagueAdvanceNotifications";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import { TerraceMark, PolyJupLogos, POLYMARKET_LOGO, JUPITER_LOGO_URI } from "../components/BrandIcons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -468,34 +470,68 @@ function fmtUsdc(n: bigint) { return `$${(Number(n) / 1_000_000).toFixed(2)}`; }
 interface NotifPanelProps {
   visible: boolean;
   challenges: Matchup[];
+  advances: AdvanceNotification[];
   busy: boolean;
   marketQuestionMap: Map<string, string>;
   challengerNameMap: Map<string, string>;
   onAccept: (m: Matchup) => void;
   onDecline: (m: Matchup) => void;
+  onAdvanceTap: (leagueAddress: string) => void;
   onViewAll: () => void;
   onClose: () => void;
 }
 
-function ChallengeNotificationPanel({ visible, challenges, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onViewAll, onClose }: NotifPanelProps) {
+function ChallengeNotificationPanel({ visible, challenges, advances, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onAdvanceTap, onViewAll, onClose }: NotifPanelProps) {
+  const isEmpty = challenges.length === 0 && advances.length === 0;
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <Pressable style={notif.backdrop} onPress={onClose}>
         <Pressable style={notif.panel} onPress={() => {}}>
           <View style={notif.header}>
-            <Text style={notif.title}>🔔 Pending Challenges</Text>
+            <Text style={notif.title}>🔔 Notifications</Text>
             <TouchableOpacity onPress={onClose}>
               <Text style={notif.closeBtn}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {challenges.length === 0 ? (
+          {isEmpty ? (
             <View style={notif.empty}>
               <Text style={notif.emptyEmoji}>🏳️</Text>
-              <Text style={notif.emptyText}>No pending challenges</Text>
+              <Text style={notif.emptyText}>No new notifications</Text>
             </View>
           ) : (
             <ScrollView style={notif.list} contentContainerStyle={{ gap: 10 }}>
+              {advances.length > 0 && (
+                <>
+                  <Text style={notif.sectionTitle}>LEAGUE GAMEWEEKS</Text>
+                  {advances.map((a) => (
+                    <TouchableOpacity
+                      key={a.leagueAddress}
+                      style={notif.card}
+                      onPress={() => { onAdvanceTap(a.leagueAddress); onClose(); }}
+                      activeOpacity={0.75}
+                    >
+                      <View style={notif.cardTop}>
+                        <View style={[notif.avatar, { backgroundColor: "#ea580c" }]}>
+                          <Text style={notif.avatarText}>📊</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={notif.challengeFrom}>League advanced</Text>
+                          <Text style={notif.challengerAddr}>{a.leagueName}</Text>
+                          <Text style={notif.stakeText}>Now in Gameweek {a.gameweek} · reveal your score</Text>
+                        </View>
+                        <Text style={notif.arrowChev}>›</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+              {challenges.length > 0 && advances.length > 0 && (
+                <Text style={[notif.sectionTitle, { marginTop: 8 }]}>PENDING CHALLENGES</Text>
+              )}
+              {challenges.length > 0 && advances.length === 0 && (
+                <Text style={notif.sectionTitle}>PENDING CHALLENGES</Text>
+              )}
               {challenges.map((m) => {
                 const bg = avatarColorFromPubkey(m.challenger);
                 return (
@@ -563,6 +599,8 @@ const notif = StyleSheet.create({
   emptyEmoji:    { fontSize: 28 },
   emptyText:     { fontSize: 13, color: "#6b7280" },
   list:          { paddingHorizontal: 12, paddingTop: 10, maxHeight: 360 },
+  sectionTitle:  { fontSize: 10, fontWeight: "700", color: "#6b7280", letterSpacing: 1, marginBottom: 4, marginTop: 2 },
+  arrowChev:     { fontSize: 22, color: "#6b7280", marginLeft: 4 },
   card:          { backgroundColor: "#0d0d0d", borderRadius: 12, padding: 12, borderWidth: 0.5, borderColor: "#1e1e1e", gap: 6 },
   cardTop:       { flexDirection: "row", alignItems: "center", gap: 10 },
   avatar:        { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
@@ -633,6 +671,23 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
     [opponentMatchups],
   );
   const matchupBusy = matchupStatus === "building" || matchupStatus === "signing" || matchupStatus === "executing";
+
+  // League gameweek-advance notifications. Source of truth is on-chain
+  // league.gameweek vs per-user last-seen value in SecureStore.
+  const { myLeagues, joinedLeagues } = useLeague(walletPubkey);
+  const allLeagues = useMemo(() => {
+    const seen = new Set<string>();
+    return [...myLeagues, ...joinedLeagues].filter((l) => {
+      const k = String(l.address);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [myLeagues, joinedLeagues]);
+  const { advances: gwAdvances, markSeen: markAdvanceSeen } =
+    useLeagueAdvanceNotifications(walletPubkey, allLeagues);
+
+  const totalNotifCount = pendingChallenges.length + gwAdvances.length;
 
   const marketQuestionMap = useMemo(
     () => new Map(markets.map((m) => [m.id as string, m.question])),
@@ -727,9 +782,9 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             activeOpacity={0.7}
           >
             <Text>🔔</Text>
-            {pendingChallenges.length > 0 && (
+            {totalNotifCount > 0 && (
               <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{pendingChallenges.length}</Text>
+                <Text style={styles.notifBadgeText}>{totalNotifCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -930,15 +985,23 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       </View>
     )}
 
-    {/* Challenge notification panel */}
+    {/* Notification panel — challenges + league gameweek advances */}
     <ChallengeNotificationPanel
       visible={showNotifPanel}
       challenges={pendingChallenges}
+      advances={gwAdvances}
       busy={matchupBusy}
       marketQuestionMap={marketQuestionMap}
       challengerNameMap={challengerNameMap}
       onAccept={acceptMatchup}
       onDecline={declineMatchup}
+      onAdvanceTap={(leagueAddress) => {
+        // Mark seen so the badge clears, then navigate the user to leagues.
+        // We don't yet have a deep-link to a specific league sheet, so this
+        // surfaces them to the leagues screen where they can open it.
+        markAdvanceSeen(leagueAddress);
+        onNavigateLeague?.();
+      }}
       onViewAll={() => onNavigateMatchup?.()}
       onClose={() => setShowNotifPanel(false)}
     />
