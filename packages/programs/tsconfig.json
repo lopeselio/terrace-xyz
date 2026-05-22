@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai"],
+    "types": ["mocha", "chai", "node"],
     "lib": ["es2020"],
     "module": "commonjs",
-    "target": "es6",
+    "target": "es2020",
     "esModuleInterop": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true
   },
-  "include": ["tests/**/*.ts"]
+  "include": ["tests/**/*.ts", "scripts/**/*.ts"]
 }

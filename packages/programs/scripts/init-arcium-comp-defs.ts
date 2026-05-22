@@ -12,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Connection } from "@solana/web3.js";
 import { AddressLookupTableProgram } from "@solana/web3.js";
 import * as fs from "fs";
 import * as path from "path";

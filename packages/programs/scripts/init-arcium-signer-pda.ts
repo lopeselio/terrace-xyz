@@ -26,7 +26,7 @@ describe("init-arcium-signer-pda", () => {
       return;
     }
 
-    const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "../../programs/scripts/../target/idl/terrace.json"), "utf8"));
+    const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "../target/idl/terrace.json"), "utf8"));
     const ix_meta = (idl.instructions as any[]).find((i: any) => i.name === "init_arcium_signer_pda");
     const disc = Buffer.from(ix_meta.discriminator as number[]);
 
