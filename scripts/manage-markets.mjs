@@ -21,7 +21,10 @@ const {
   VersionedTransaction,
 } = require(resolve(__dirname, "../packages/app/node_modules/@solana/web3.js/lib/index.cjs.js"));
 
-const RPC_URL    = "https://devnet.helius-rpc.com/?api-key=06decfd9-b8df-4d35-854f-3e6584dad022";
+const RPC_URL = process.env.ANCHOR_PROVIDER_URL
+  ?? (process.env.HELIUS_API_KEY
+        ? `https://devnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
+        : "https://api.devnet.solana.com");
 const PROGRAM_ID = "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF";
 const USDC_MINT  = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const MARKET_SIZE = 359;

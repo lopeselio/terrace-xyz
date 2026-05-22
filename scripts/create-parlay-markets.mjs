@@ -19,7 +19,13 @@ const {
   VersionedTransaction,
 } = require(resolve(__dirname, "../packages/app/node_modules/@solana/web3.js/lib/index.cjs.js"));
 
-const RPC_URL    = "https://devnet.helius-rpc.com/?api-key=06decfd9-b8df-4d35-854f-3e6584dad022";
+const RPC_URL = process.env.ANCHOR_PROVIDER_URL
+  ?? (process.env.HELIUS_API_KEY
+        ? `https://devnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
+        : "https://api.devnet.solana.com");
+if (!RPC_URL || RPC_URL.includes("api.devnet.solana.com")) {
+  console.warn("[warn] using public devnet RPC — set ANCHOR_PROVIDER_URL or HELIUS_API_KEY for better throughput");
+}
 const PROGRAM_ID = "8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF";
 const USDC_MINT  = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
