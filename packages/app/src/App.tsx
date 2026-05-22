@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
+import { NotificationProvider } from "./components/NotificationProvider";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
@@ -656,6 +657,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.root}>
       <ExpoStatusBar style="light" />
+      <NotificationProvider>
 
       <View style={styles.content}>
         {renderContent()}
@@ -743,6 +745,7 @@ export default function App() {
           );
         })}
       </View>
+      </NotificationProvider>
     </SafeAreaView>
   );
 }
