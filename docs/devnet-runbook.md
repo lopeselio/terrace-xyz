@@ -71,24 +71,28 @@ solana program show 8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF --url $ANCHOR_P
 
 ## 4. Initialize MXE on devnet
 
+> **v0.9.x flag changes** — the short `-kp` is now `-k`; `--keypair` is no longer accepted (use `--keypair-path` or `-k`); `--program-id` is now `--callback-program` (`-p`); `--cluster-offset` (`-f`) and `--recovery-set-size` (`-r`) are required; `--authority` is gone (the signer is always the MXE authority). To inspect an MXE after init: `arcium mxe-info <PROGRAM_ID>` — also subsumes the removed `mxe-keys` subcommand.
+
 ```bash
 arcium init-mxe \
   --rpc-url $ANCHOR_PROVIDER_URL \
-  --keypair $ANCHOR_WALLET \
-  --program-id 8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF
+  --keypair-path $ANCHOR_WALLET \
+  --callback-program 8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF \
+  --cluster-offset <CLUSTER_OFFSET> \
+  --recovery-set-size <N>
 ```
 
 This:
 
 - Creates the MXE account at `derive_mxe_pda!(terrace_program_id)`.
-- Assigns the MXE to a public Arcium devnet cluster (returns the cluster offset).
+- Assigns the MXE to the public Arcium devnet cluster at the given offset.
 - Returns the LUT slot.
 
-Save the cluster offset it prints (e.g. `1`). Add it to `Arcium.toml`:
+The cluster offset is the public devnet cluster Arcium publishes (ask in their dev-ticket if unsure). Add it to `Arcium.toml`:
 
 ```toml
 [clusters.devnet]
-offset = 1   # whatever arcium init-mxe returned
+offset = <CLUSTER_OFFSET>
 ```
 
 Commit that one-line change.
