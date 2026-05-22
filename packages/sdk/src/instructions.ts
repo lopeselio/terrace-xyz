@@ -622,16 +622,19 @@ export function buildInitPrivateMarketStateInstruction(params: {
 }
 
 /**
- * Queues an encrypted bet for MPC processing.
+ * Queues an encrypted bet for MPC processing (v8 architecture).
  *
- * `outcomeCt` and `amountCt` are 32-byte ciphertexts produced by X25519 ECDH encryption
- * against the MXE node's public key. See usePrivateMarket.ts for the client-side helper.
- * `outcomeCommitment` = blake3(outcome_byte || secret_32_bytes) — store secret for claim.
+ * `outcomeCt` is a 32-byte ciphertext produced by `RescueCipher` (from
+ * `@arcium-hq/client`) keyed by the X25519 shared secret with the MXE node's
+ * public key — encrypts the bet outcome as `Enc<Shared, u64>` (value 0 = NO,
+ * 1 = YES). `amount` is passed in plaintext because the on-chain USDC
+ * settlement transfer reveals it anyway. `outcomeCommitment` =
+ * blake3(outcome_byte || secret_32_bytes) — bettor stores secret locally so
+ * they can later prove their side on the public claim path.
  */
 export async function buildPlacePrivateBetInstruction(params: {
   computationOffset: bigint;
   outcomeCt: Uint8Array;
-  amountCt: Uint8Array;
   encryptionPubkey: Uint8Array;
   betNonce: bigint;
   amount: bigint;
@@ -654,7 +657,7 @@ export async function buildPlacePrivateBetInstruction(params: {
   programId: Address;
 }): Promise<IInstruction> {
   const {
-    computationOffset, outcomeCt, amountCt, encryptionPubkey, betNonce,
+    computationOffset, outcomeCt, encryptionPubkey, betNonce,
     amount, outcomeCommitment, bettor, mxeAccount, signPdaAccount,
     mempoolAccount, executingPool, computationAccount, compDefAccount,
     clusterAccount, poolAccount, clockAccount, market, privateState,
@@ -664,11 +667,13 @@ export async function buildPlacePrivateBetInstruction(params: {
   const vault = await deriveAta(usdcMint, market);
   const bettorAta = await deriveAta(usdcMint, bettor);
 
+  // v8 ix data: discriminator || computation_offset || outcome_ct ||
+  // encryption_pubkey || bet_nonce || amount || outcome_commitment.
+  // (amount is plaintext in v8 — the v2-era amount_ct field is gone.)
   const data = Buffer.concat([
     IX_PLACE_PRIVATE_BET,
     encodeU64LE(computationOffset),
     Buffer.from(outcomeCt.slice(0, 32)),
-    Buffer.from(amountCt.slice(0, 32)),
     Buffer.from(encryptionPubkey.slice(0, 32)),
     encodeU128LE(betNonce),
     encodeU64LE(amount),

@@ -132,16 +132,18 @@ const ADDRESS_LOOKUP_TABLE_PROGRAM_ID =
   "AddressLookupTab1e1111111111111111111111111" as Address;
 
 // sha256(circuit_name)[0..4] LE — computed at Rust compile time via comp_def_offset().
-// _v2 suffix used to get fresh comp def PDAs (originals had circuit_len=0 on-chain).
-export const COMP_DEF_OFFSET_INIT_PRIVATE_MARKET_STATE = 2948112014; // init_private_market_state_v2
-export const COMP_DEF_OFFSET_PLACE_PRIVATE_BET = 4110952086;         // place_private_bet_v2
-export const COMP_DEF_OFFSET_REVEAL_PRIVATE_MARKET = 1998882395;     // reveal_private_market_v2
+// v8 private-market architecture: Enc<Mxe, u64> totals tracked as two
+// independent cells (no/yes), Enc<Shared, u64> outcome, plaintext u64 amount.
+export const COMP_DEF_OFFSET_INIT_PRIVATE_MARKET_STATE = 1343019643; // init_private_market_state_v8
+export const COMP_DEF_OFFSET_PLACE_PRIVATE_BET = 1205507811;         // place_private_bet_v8
+export const COMP_DEF_OFFSET_REVEAL_PRIVATE_MARKET = 1460863666;     // reveal_private_market_v8
 
-// Private league score circuits (_v2 names — sha256(name)[0:4] LE)
+// Private league score circuits — score chain stays on the _v2 names (unchanged).
 export const COMP_DEF_OFFSET_INIT_MEMBER_SCORE           = 1481970775;  // init_member_score_v2
 export const COMP_DEF_OFFSET_INCREMENT_MEMBER_SCORE      = 635120120;   // increment_member_score_v2
 export const COMP_DEF_OFFSET_REVEAL_MEMBER_SCORE         = 3852259505;  // reveal_member_score_v2
-export const COMP_DEF_OFFSET_RECORD_PRIVATE_LEAGUE_WIN   = 2634511554;  // record_private_league_win_v2
+// Chained-MPC win recorder — v8 to match the bet circuit's Enc<Mxe, u64> sealed outcome.
+export const COMP_DEF_OFFSET_RECORD_PRIVATE_LEAGUE_WIN   = 3891244117;  // record_private_league_win_v8
 
 function u32LeBytes(n: number): Uint8Array {
   const buf = new ArrayBuffer(4);
