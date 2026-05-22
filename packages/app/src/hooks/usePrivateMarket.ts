@@ -31,20 +31,18 @@ import { useWallet } from "./useWallet";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
-// ── Encryption helpers ────────────────────────────────────────────────────────
+// ── Encryption helpers (X25519 + RescueCipher over BN254) ─────────────────────
 //
-// Arcium MPC accepts X25519 ECDH ciphertexts against the MXE's x25519 pubkey.
-//
-// Scheme:
-//   shared  = X25519_DH(client_ephemeral_priv, mxe_x25519_pub)
-//   key_i   = SHA256(shared || [i as u8])
-//   ct_i    = XOR(padded_plaintext_i_32_bytes, key_i)
+// Arcium's arcis runtime expects `Enc<Shared, T>` inputs to be encrypted with
+// RescueCipher in CTR mode keyed by the X25519 shared secret with the MXE's
+// x25519 pubkey. Each plaintext value is encoded as a 32-byte BN254 field
+// element. A hand-rolled XOR+SHA256 scheme produces 32-byte blobs that
+// arcis rejects at input deserialization with "Failed to convert bytes to
+// field element" — see fix(e2e) commit for the original incident.
 //
 // Commitment: blake3(outcome_byte || secret_32_bytes) stored on-chain;
 // bettor reveals (outcome, secret) in claim_private_winnings.
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { sha256 } = require("@noble/hashes/sha2") as { sha256: (data: Uint8Array) => Uint8Array };
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { x25519 } = require("@noble/curves/ed25519") as {
   x25519: {
@@ -53,34 +51,18 @@ const { x25519 } = require("@noble/curves/ed25519") as {
     getSharedSecret: (priv: Uint8Array, pub: Uint8Array) => Uint8Array;
   };
 };
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { RescueCipher } = require("@arcium-hq/client") as {
+  RescueCipher: new (sharedSecret: Uint8Array) => {
+    encrypt: (plaintext: bigint[], nonce: Uint8Array) => number[][];
+  };
+};
 
-function sha256Bytes(data: Uint8Array): Uint8Array {
-  return sha256(data);
-}
-
-function deriveFieldKey(shared: Uint8Array, idx: number): Uint8Array {
-  const pre = new Uint8Array(shared.length + 1);
-  pre.set(shared);
-  pre[shared.length] = idx;
-  return sha256Bytes(pre);
-}
-
-function xor32(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const out = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) out[i] = a[i] ^ b[i];
-  return out;
-}
-
-function padU8To32(v: number): Uint8Array {
-  const out = new Uint8Array(32);
-  out[0] = v;
-  return out;
-}
-
-function padU64To32(v: bigint): Uint8Array {
-  const out = new Uint8Array(32);
-  const view = new DataView(out.buffer);
-  view.setBigUint64(0, v & 0xFFFFFFFFFFFFFFFFn, true);
+function nonceToBytes16(n: bigint): Uint8Array {
+  const out = new Uint8Array(16);
+  const dv = new DataView(out.buffer);
+  dv.setBigUint64(0, n & 0xFFFFFFFFFFFFFFFFn, true);
+  dv.setBigUint64(8, (n >> 64n) & 0xFFFFFFFFFFFFFFFFn, true);
   return out;
 }
 
@@ -234,16 +216,16 @@ export function usePrivateMarket() {
         const computationOffset = BigInt(Date.now());
         const computationAccount = await getArciumComputationPda(clusterOffset, computationOffset);
 
-        // X25519 ECDH encryption
+        // X25519 ECDH → RescueCipher encrypt the outcome as Enc<Shared, u64>.
+        // Amount is plaintext — it's already publicly observable from the USDC
+        // settlement transfer, so encrypting it inside the MPC adds no privacy.
         const clientPriv   = x25519.utils.randomPrivateKey();
         const clientPub    = x25519.getPublicKey(clientPriv);
         const sharedSecret = x25519.getSharedSecret(clientPriv, x25519Pubkey);
-
-        const outcomeKey = deriveFieldKey(sharedSecret, 0);
-        const amountKey  = deriveFieldKey(sharedSecret, 1);
-        const outcomeCt  = xor32(padU8To32(params.outcome), outcomeKey);
-        const amountCt   = xor32(padU64To32(params.amount), amountKey);
-        const betNonce   = BigInt(Date.now()) ^ (BigInt(Math.random() * 0xFFFFFFFF | 0) << 32n);
+        const betNonce     = BigInt(Date.now()) ^ (BigInt(Math.random() * 0xFFFFFFFF | 0) << 32n);
+        const cipher       = new RescueCipher(sharedSecret);
+        const ctBlocks     = cipher.encrypt([BigInt(params.outcome)], nonceToBytes16(betNonce));
+        const outcomeCt    = new Uint8Array(ctBlocks[0]);
 
         const secret = new Uint8Array(32);
         crypto.getRandomValues(secret);
@@ -258,7 +240,6 @@ export function usePrivateMarket() {
         const ix = await buildPlacePrivateBetEncryptedInstruction({
           computationOffset,
           outcomeCt,
-          amountCt,
           encryptionPubkey: clientPub,
           betNonce,
           amount: params.amount,
