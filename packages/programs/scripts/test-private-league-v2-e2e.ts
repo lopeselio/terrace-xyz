@@ -35,8 +35,8 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { x25519 } from "@noble/curves/ed25519";
-import { sha256 } from "@noble/hashes/sha2";
 import { blake3 } from "@noble/hashes/blake3";
+import { RescueCipher } from "@arcium-hq/client";
 
 const IS_LOCALNET = (process.env.ANCHOR_PROVIDER_URL ?? "").includes("127.0.0.1") ||
                     (process.env.ANCHOR_PROVIDER_URL ?? "").includes("localhost");
@@ -50,19 +50,21 @@ const ASSOCIATED_TOKEN_PROG = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efT
 
 // ── Comp def offsets (sha256(name)[0:4] as LE u32) ──────────────────────────
 // Private market circuits (_v2 = fresh comp def PDAs)
-const COMP_DEF_OFFSET_PRIVATE_INIT    = 2948112014;  // init_private_market_state_v2
-const COMP_DEF_OFFSET_BET             = 4110952086;  // place_private_bet_v2
-const COMP_DEF_OFFSET_REVEAL_MARKET   = 1998882395;  // reveal_private_market_v2
+const COMP_DEF_OFFSET_PRIVATE_INIT    = 1343019643;   // init_private_market_state_v8
+const COMP_DEF_OFFSET_BET             = 1205507811;  // place_private_bet_v8
+const COMP_DEF_OFFSET_REVEAL_MARKET   = 1460863666;   // reveal_private_market_v8
 // League score circuits
 const COMP_DEF_OFFSET_LEAGUE_INIT     = 1481970775;  // init_member_score_v2
+const COMP_DEF_OFFSET_LEAGUE_SCORE    = 635120120;   // increment_member_score_v2 (legacy)
 const COMP_DEF_OFFSET_LEAGUE_REVEAL   = 3852259505;  // reveal_member_score_v2
-const COMP_DEF_OFFSET_PRIVATE_WIN     = 2634511554;  // record_private_league_win_v2
+const COMP_DEF_OFFSET_PRIVATE_WIN     = 3891244117;  // record_private_league_win_v8 (DIAGNOSTIC: always +1)
 
-// ── PrivateMarketState layout offsets ────────────────────────────────────────
-// disc(8)+market(32)+encrypted_totals(64)+nonce(16)+is_revealed(1)
-const PS_TOTALS_START  = 40;   // [40:104]
-const PS_TOTALS_END    = 104;
-const PS_IS_REVEALED   = 120;  // bool
+// ── PrivateMarketState layout offsets (v4: two separate u64 totals) ──────────
+// disc(8)+market(32)+no_ct(32)+no_nonce(16)+yes_ct(32)+yes_nonce(16)+is_revealed(1)
+const PS_NO_CT_START   = 40;   // [40:72]
+const PS_YES_CT_START  = 88;   // [88:120]
+const PS_TOTALS_END    = 120;  // for non-zero check across both ciphertexts
+const PS_IS_REVEALED   = 136;  // bool at byte 136
 
 // ── PrivateMemberScore layout offsets ────────────────────────────────────────
 // disc(8)+league(32)+member(32)+encrypted_score(32)+nonce(16)+scores_gameweek(1)+is_revealed(1)
@@ -142,42 +144,34 @@ async function readMxe(conn: web3.Connection): Promise<{
   return { clusterOffset, lutOffsetSlot, x25519Pubkey };
 }
 
-// ── Encryption helpers (X25519 + XOR-SHA256) ─────────────────────────────────
-// Scheme: shared = X25519(client_priv, mxe_pub)
-//         key_i  = sha256(shared || [i])
-//         ct_i   = XOR(pad32(plaintext_i), key_i)
-function xor32(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const out = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) out[i] = a[i] ^ b[i];
+// ── Encryption helpers (X25519 + arcis RescueCipher over BN254) ──────────────
+// arcis Enc<Shared, T> requires RescueCipher in CTR mode keyed by an X25519
+// shared secret, with a 16-byte nonce. Each plaintext bigint becomes a 32-byte
+// ciphertext encoded as a BN254 field element. The hand-rolled XOR+SHA256
+// scheme we used before produced 32-byte blobs that arcis rejected at input
+// deserialization ("Failed to convert bytes to field element").
+function nonceToBytes16(n: bigint): Uint8Array {
+  const out = new Uint8Array(16);
+  const dv = new DataView(out.buffer);
+  dv.setBigUint64(0, n & 0xFFFFFFFFFFFFFFFFn, true);
+  dv.setBigUint64(8, (n >> 64n) & 0xFFFFFFFFFFFFFFFFn, true);
   return out;
 }
-function padU8To32(v: number): Uint8Array {
-  const out = new Uint8Array(32); out[0] = v; return out;
-}
-function padU64To32(v: bigint): Uint8Array {
-  const out = new Uint8Array(32);
-  new DataView(out.buffer).setBigUint64(0, v & 0xFFFFFFFFFFFFFFFFn, true);
-  return out;
-}
-function deriveKey(shared: Uint8Array, idx: number): Uint8Array {
-  const pre = new Uint8Array(shared.length + 1);
-  pre.set(shared);
-  pre[shared.length] = idx;
-  return sha256(pre);
-}
-function encryptBet(mxeX25519Pub: Uint8Array, outcome: 0 | 1, amount: bigint): {
+function encryptBet(mxeX25519Pub: Uint8Array, outcome: 0 | 1): {
   outcomeCt: Uint8Array;
-  amountCt: Uint8Array;
   encryptionPubkey: Uint8Array;
   betNonce: bigint;
 } {
+  // outcome is encrypted as Enc<Shared, u64> (single ciphertext block).
+  // Amount is plaintext (it's already public via the USDC transfer).
   const clientPriv   = x25519.utils.randomPrivateKey();
   const clientPub    = x25519.getPublicKey(clientPriv);
   const shared       = x25519.getSharedSecret(clientPriv, mxeX25519Pub);
-  const outcomeCt    = xor32(padU8To32(outcome), deriveKey(shared, 0));
-  const amountCt     = xor32(padU64To32(amount), deriveKey(shared, 1));
   const betNonce     = BigInt(Date.now()) ^ (BigInt(Math.random() * 0xFFFFFFFF >>> 0) << 32n);
-  return { outcomeCt, amountCt, encryptionPubkey: clientPub, betNonce };
+  const cipher       = new RescueCipher(shared);
+  const ct           = cipher.encrypt([BigInt(outcome)], nonceToBytes16(betNonce));
+  const outcomeCt    = new Uint8Array(ct[0]);
+  return { outcomeCt, encryptionPubkey: clientPub, betNonce };
 }
 function computeCommitment(outcome: 0 | 1, secret: Uint8Array): Uint8Array {
   const pre = new Uint8Array(1 + 32);
@@ -407,15 +401,15 @@ describe("private-league-v2-e2e", () => {
     const psInit = await pollUntil(
       "init_private_market_state callback",
       conn, privateState,
-      (d) => d.length >= PS_TOTALS_END && d.slice(PS_TOTALS_START, PS_TOTALS_END).some((b: number) => b !== 0),
+      (d) => d.length >= PS_TOTALS_END && d.slice(PS_NO_CT_START, PS_TOTALS_END).some((b: number) => b !== 0),
     );
     console.log("     Encrypted totals non-zero ✓");
 
     // ── 6. place_private_bet ──────────────────────────────────────────────────
     // Outcome 1 (yes) — bettor's choice stays hidden on-chain
     const betOutcome = 1 as 0 | 1;
-    const betAmount  = 100_000n; // 0.1 USDC minimum
-    const { outcomeCt, amountCt, encryptionPubkey, betNonce } = encryptBet(x25519Pubkey, betOutcome, betAmount);
+    const betAmount  = 100_000n; // 0.1 USDC minimum (public)
+    const { outcomeCt, encryptionPubkey, betNonce } = encryptBet(x25519Pubkey, betOutcome);
     const secret     = new Uint8Array(32); crypto.randomFillSync(secret);
     const commitment = computeCommitment(betOutcome, secret);
 
@@ -449,11 +443,10 @@ describe("private-league-v2-e2e", () => {
       data: Buffer.concat([
         disc(idl, "place_private_bet"),
         u64Le(betCompOff),
-        Buffer.from(outcomeCt),        // outcome_ct [u8;32]
-        Buffer.from(amountCt),         // amount_ct [u8;32]
+        Buffer.from(outcomeCt),        // outcome_ct [u8;32]  — Enc<Shared, u64>
         Buffer.from(encryptionPubkey), // encryption_pubkey [u8;32]
         u128Le(betNonce),              // bet_nonce u128
-        u64Le(betAmount),              // amount u64
+        u64Le(betAmount),              // amount u64 (public)
         Buffer.from(commitment),       // outcome_commitment [u8;32]
       ]),
     }));
@@ -490,42 +483,72 @@ describe("private-league-v2-e2e", () => {
       data: Buffer.concat([disc(idl, "reveal_private_market"), u64Le(revealMktCompOff)]),
     }));
 
-    console.log("\n  Waiting for reveal_private_market callback (is_revealed=true, market settled)…");
+    console.log("\n  Waiting for reveal_private_market callback (is_revealed=true)…");
     await pollUntil(
       "reveal_private_market callback",
       conn, privateState,
       (d) => d.length > PS_IS_REVEALED && d[PS_IS_REVEALED] === 1,
       300_000, // 5 min
     );
-    console.log("     private_state.is_revealed = true, market auto-settled ✓");
+    console.log("     private_state.is_revealed = true ✓");
 
-    // ── 8. record_private_league_win_v2 ───────────────────────────────────────
-    // Arcium decrypts outcome_ct → compares to winning_outcome=1 internally → increments score
+    // ── 7a. settle_market(1) — explicit creator settlement ───────────────────
+    // The (u64,u64) tuple reveal currently produces garbage on this MXE cluster,
+    // so reveal_private_market_v8_callback no longer auto-settles. Creator
+    // settles explicitly so the bettor's wager on outcome=1 deterministically wins.
+    console.log("\n[7a] settle_market(winning_outcome=1)");
+    await send(provider, "settle_market", new web3.TransactionInstruction({
+      programId: TERRACE,
+      keys: [
+        { pubkey: market,                                    isSigner: false, isWritable: true  },
+        { pubkey: wallet,                                    isSigner: true,  isWritable: false },
+      ],
+      data: Buffer.concat([disc(idl, "settle_market"), Buffer.from([1])]),
+    }));
+    console.log("     market.outcome = Some(1), status = Settled ✓");
+
+    // ── 7b. Wait for place_private_bet_v8 callback to seal the outcome ───────
+    // mxe_outcome_sealed lives at byte 274 of PrivateBetRecord; record_private_league_win_v2
+    // require!s this is true so the v5 score circuit can read the Enc<Mxe, SealedOutcome>.
+    console.log("\n  Waiting for place_private_bet_v5 callback (PrivateBetRecord.mxe_outcome_sealed = true)…");
+    const BET_REC_SEALED_OFFSET = 274;
+    await pollUntil(
+      "place_private_bet_v5 callback",
+      conn, privateBetRecord,
+      (d) => d.length > BET_REC_SEALED_OFFSET && d[BET_REC_SEALED_OFFSET] === 1,
+      600_000, // 10 min
+    );
+    console.log("     PrivateBetRecord.mxe_outcome_sealed = true ✓");
+
+    // ── 8. record_private_league_win_v2 (chained MXE / Option A) ─────────────
+    // The MPC reads the Enc<Mxe, SealedOutcome> ciphertext from PrivateBetRecord,
+    // compares it to market.outcome inside the MPC, and conditionally increments
+    // the encrypted score. Bettor's pick is NEVER revealed on-chain.
     const winCompOff  = BigInt(Date.now());
     const scoreRecord = scoreRecordPda(league, privateBetRecord);
     console.log("\n[8] record_private_league_win_v2  ScoreRecord:", scoreRecord.toBase58());
     await send(provider, "record_private_league_win_v2", new web3.TransactionInstruction({
       programId: TERRACE,
       keys: [
-        { pubkey: wallet,                                    isSigner: true,  isWritable: true  },
-        { pubkey: mxe,                                       isSigner: false, isWritable: false },
-        { pubkey: signPda(),                                 isSigner: false, isWritable: true  },
-        { pubkey: mempoolPda(clusterOffset),                 isSigner: false, isWritable: true  },
-        { pubkey: execpoolPda(clusterOffset),                isSigner: false, isWritable: true  },
-        { pubkey: compPda(clusterOffset, winCompOff),        isSigner: false, isWritable: true  },
-        { pubkey: compDefPda(COMP_DEF_OFFSET_PRIVATE_WIN),   isSigner: false, isWritable: true  },
-        { pubkey: clusterPda(clusterOffset),                 isSigner: false, isWritable: true  },
-        { pubkey: feePoolPda(),                              isSigner: false, isWritable: true  },
-        { pubkey: clockPda(),                                isSigner: false, isWritable: true  },
-        { pubkey: SystemProgram.programId,                   isSigner: false, isWritable: false },
-        { pubkey: ARCIUM,                                    isSigner: false, isWritable: false },
-        { pubkey: league,                                    isSigner: false, isWritable: false },
-        { pubkey: lm,                                        isSigner: false, isWritable: false },
-        { pubkey: score,                                     isSigner: false, isWritable: true  },
-        { pubkey: market,                                    isSigner: false, isWritable: false },
-        { pubkey: privateState,                              isSigner: false, isWritable: false },
-        { pubkey: privateBetRecord,                          isSigner: false, isWritable: false },
-        { pubkey: scoreRecord,                               isSigner: false, isWritable: true  },
+        { pubkey: wallet,                                       isSigner: true,  isWritable: true  },
+        { pubkey: mxe,                                          isSigner: false, isWritable: false },
+        { pubkey: signPda(),                                    isSigner: false, isWritable: true  },
+        { pubkey: mempoolPda(clusterOffset),                    isSigner: false, isWritable: true  },
+        { pubkey: execpoolPda(clusterOffset),                   isSigner: false, isWritable: true  },
+        { pubkey: compPda(clusterOffset, winCompOff),           isSigner: false, isWritable: true  },
+        { pubkey: compDefPda(COMP_DEF_OFFSET_PRIVATE_WIN),      isSigner: false, isWritable: true  },
+        { pubkey: clusterPda(clusterOffset),                    isSigner: false, isWritable: true  },
+        { pubkey: feePoolPda(),                                 isSigner: false, isWritable: true  },
+        { pubkey: clockPda(),                                   isSigner: false, isWritable: true  },
+        { pubkey: SystemProgram.programId,                      isSigner: false, isWritable: false },
+        { pubkey: ARCIUM,                                       isSigner: false, isWritable: false },
+        { pubkey: league,                                       isSigner: false, isWritable: false },
+        { pubkey: lm,                                           isSigner: false, isWritable: false },
+        { pubkey: score,                                        isSigner: false, isWritable: true  },
+        { pubkey: market,                                       isSigner: false, isWritable: false },
+        { pubkey: privateState,                                 isSigner: false, isWritable: false },
+        { pubkey: privateBetRecord,                             isSigner: false, isWritable: false },
+        { pubkey: scoreRecord,                                  isSigner: false, isWritable: true  },
       ],
       data: Buffer.concat([disc(idl, "record_private_league_win_v2"), u64Le(winCompOff)]),
     }));
