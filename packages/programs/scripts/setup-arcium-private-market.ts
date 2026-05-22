@@ -25,10 +25,12 @@ import * as path from "path";
 const ARCIUM_PROGRAM_ID  = new PublicKey("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ");
 const TERRACE_PROGRAM_ID = new PublicKey("8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF");
 
-// sha256(circuit_name)[0..4] LE u32 — _v2 names get fresh comp def PDAs
-const COMP_DEF_OFFSET_INIT   = 2948112014; // init_private_market_state_v2
-const COMP_DEF_OFFSET_BET    = 4110952086; // place_private_bet_v2
-const COMP_DEF_OFFSET_REVEAL = 1998882395; // reveal_private_market_v2
+// sha256(circuit_name)[0..4] LE u32
+// v4/v6 use the only-Enc<Mxe, u64> architecture: every encrypted state cell is a
+// single u64. NO and YES totals tracked independently. Outcome sealed as u64.
+const COMP_DEF_OFFSET_INIT   = 1343019643;  // init_private_market_state_v8
+const COMP_DEF_OFFSET_BET    = 1205507811; // place_private_bet_v8
+const COMP_DEF_OFFSET_REVEAL = 1460863666;  // reveal_private_market_v8
 
 const DISC_INIT_RAW_CIRCUIT_ACC = Buffer.from([16, 228, 193, 228, 93, 231, 58, 4]);
 const DISC_UPLOAD_CIRCUIT       = Buffer.from([86, 238, 214, 111, 30, 23, 168, 100]);
@@ -37,9 +39,9 @@ const DISC_FINALIZE_COMP_DEF    = Buffer.from([174, 66, 159, 51, 199, 243, 219, 
 const CHUNK_SIZE = 814;
 
 const CIRCUITS = [
-  { name: "init_private_market_state_v2", offset: COMP_DEF_OFFSET_INIT,   file: "build/init_private_market_state_v2.arcis", initFnName: "init_init_private_market_state_comp_def" },
-  { name: "place_private_bet_v2",         offset: COMP_DEF_OFFSET_BET,    file: "build/place_private_bet_v2.arcis",         initFnName: "init_place_private_bet_comp_def" },
-  { name: "reveal_private_market_v2",     offset: COMP_DEF_OFFSET_REVEAL, file: "build/reveal_private_market_v2.arcis",     initFnName: "init_reveal_private_market_comp_def" },
+  { name: "init_private_market_state_v8", offset: COMP_DEF_OFFSET_INIT,   file: "build/init_private_market_state_v8.arcis", initFnName: "init_init_private_market_state_comp_def" },
+  { name: "place_private_bet_v8",         offset: COMP_DEF_OFFSET_BET,    file: "build/place_private_bet_v8.arcis",         initFnName: "init_place_private_bet_comp_def" },
+  { name: "reveal_private_market_v8",     offset: COMP_DEF_OFFSET_REVEAL, file: "build/reveal_private_market_v8.arcis",     initFnName: "init_reveal_private_market_comp_def" },
 ];
 
 function u32Le(n: number): Buffer {
@@ -211,18 +213,30 @@ async function uploadCircuit(
       data: Buffer.concat([DISC_UPLOAD_CIRCUIT, args]),
     });
 
-    const tx = new web3.Transaction().add(ix);
-    try {
-      await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
-    } catch (err: any) {
-      const logs: string[] = err?.logs ?? [];
-      if (logs.some((l: string) => l.includes("ComputationDefinitionAlreadyCompleted"))) {
-        console.log(`  ⚡ upload_circuit [${circuit.name}] — already finalized, skipping all chunks`);
-        return;
+    // Retry each chunk up to 5 times to ride out RPC blockhash expiries / 429s.
+    let lastErr: any;
+    let landed = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const tx = new web3.Transaction().add(ix);
+      try {
+        await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
+        landed = true;
+        break;
+      } catch (err: any) {
+        const logs: string[] = err?.logs ?? [];
+        if (logs.some((l: string) => l.includes("ComputationDefinitionAlreadyCompleted"))) {
+          console.log(`  ⚡ upload_circuit [${circuit.name}] — already finalized, skipping all chunks`);
+          return;
+        }
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       }
-      console.error(`\n  ✗ upload chunk ${i + 1}/${totalChunks} failed:`, err?.message ?? err);
+    }
+    if (!landed) {
+      const logs: string[] = lastErr?.logs ?? [];
+      console.error(`\n  ✗ upload chunk ${i + 1}/${totalChunks} failed after 5 retries:`, lastErr?.message ?? lastErr);
       if (logs.length) console.error("  Logs:", logs.slice(-6).join("\n  "));
-      throw err;
+      throw lastErr;
     }
 
     if (i % 25 === 0 || i === totalChunks - 1) {
@@ -230,6 +244,8 @@ async function uploadCircuit(
     } else {
       process.stdout.write(".");
     }
+    // Light pacing to stay under Helius free-tier rate limits.
+    await new Promise((r) => setTimeout(r, 50));
   }
   console.log();
 }

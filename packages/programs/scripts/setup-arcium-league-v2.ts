@@ -34,8 +34,11 @@ const COMP_DEF_OFFSET_INIT      = 1481970775;
 const COMP_DEF_OFFSET_INCREMENT = 635120120;
 // sha256("reveal_member_score_v2")[0..4] LE u32
 const COMP_DEF_OFFSET_REVEAL    = 3852259505;
-// sha256("record_private_league_win_v2")[0..4] LE u32
-const COMP_DEF_OFFSET_PRIVATE_WIN = 2634511554;
+// sha256("record_private_league_win_v8")[0..4] LE u32
+// DIAGNOSTIC: v7 has same signature as v6 but ignores inputs and always +1.
+// Used to determine whether the basic Enc<Mxe, u64> chain works for non-zero
+// values (would reveal score = 1) or is fully broken (would still reveal 0).
+const COMP_DEF_OFFSET_PRIVATE_WIN = 3891244117;
 
 const DISC_INIT_RAW_CIRCUIT_ACC = Buffer.from([16, 228, 193, 228, 93, 231, 58, 4]);
 const DISC_UPLOAD_CIRCUIT       = Buffer.from([86, 238, 214, 111, 30, 23, 168, 100]);
@@ -47,7 +50,7 @@ const CIRCUITS = [
   { name: "init_member_score_v2",           offset: COMP_DEF_OFFSET_INIT,        file: "build/init_member_score_v2.arcis",           initFnName: "init_init_member_score_comp_def" },
   { name: "increment_member_score_v2",      offset: COMP_DEF_OFFSET_INCREMENT,   file: "build/increment_member_score_v2.arcis",      initFnName: "init_increment_member_score_comp_def" },
   { name: "reveal_member_score_v2",         offset: COMP_DEF_OFFSET_REVEAL,      file: "build/reveal_member_score_v2.arcis",         initFnName: "init_reveal_member_score_comp_def" },
-  { name: "record_private_league_win_v2",   offset: COMP_DEF_OFFSET_PRIVATE_WIN, file: "build/record_private_league_win_v2.arcis",   initFnName: "init_record_private_league_win_v2_comp_def" },
+  { name: "record_private_league_win_v8",   offset: COMP_DEF_OFFSET_PRIVATE_WIN, file: "build/record_private_league_win_v8.arcis",   initFnName: "init_record_private_league_win_v2_comp_def" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -254,18 +257,31 @@ async function uploadCircuit(
       data: Buffer.concat([DISC_UPLOAD_CIRCUIT, args]),
     });
 
-    const tx = new web3.Transaction().add(ix);
-    try {
-      await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
-    } catch (err: any) {
-      const logs: string[] = err?.logs ?? [];
-      if (logs.some((l: string) => l.includes("ComputationDefinitionAlreadyCompleted"))) {
-        console.log(`  ⚡ upload_circuit [${circuit.name}] — already finalized, skipping all chunks`);
-        return;
+    // Retry each chunk up to 5 times to ride out RPC blockhash expiries / 429s.
+    let lastErr: any;
+    let landed = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const tx = new web3.Transaction().add(ix);
+      try {
+        await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
+        landed = true;
+        break;
+      } catch (err: any) {
+        const logs: string[] = err?.logs ?? [];
+        if (logs.some((l: string) => l.includes("ComputationDefinitionAlreadyCompleted"))) {
+          console.log(`  ⚡ upload_circuit [${circuit.name}] — already finalized, skipping all chunks`);
+          return;
+        }
+        lastErr = err;
+        // Backoff before retry (RPC rate limit / blockhash expiry recovery)
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       }
-      console.error(`\n  ✗ upload chunk ${i + 1}/${totalChunks} failed:`, err?.message ?? err);
+    }
+    if (!landed) {
+      const logs: string[] = lastErr?.logs ?? [];
+      console.error(`\n  ✗ upload chunk ${i + 1}/${totalChunks} failed after 5 retries:`, lastErr?.message ?? lastErr);
       if (logs.length) console.error("  Logs:", logs.slice(-6).join("\n  "));
-      throw err;
+      throw lastErr;
     }
 
     if (i % 25 === 0 || i === totalChunks - 1) {
@@ -273,6 +289,8 @@ async function uploadCircuit(
     } else {
       process.stdout.write(".");
     }
+    // Light pacing to stay under Helius free-tier rate limits.
+    await new Promise((r) => setTimeout(r, 50));
   }
   console.log();
 }
@@ -354,6 +372,6 @@ describe("setup-arcium-league-v2", () => {
 
     console.log("\n✅ All 4 league comp defs are registered, uploaded, and finalized.");
     console.log("   ARX nodes can now execute encrypted league score computations,");
-    console.log("   including private-bet-aware scoring (record_private_league_win_v2).");
+    console.log("   including private-bet-aware scoring (record_private_league_win_v8).");
   });
 });

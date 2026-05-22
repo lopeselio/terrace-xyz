@@ -14,7 +14,7 @@ use crate::{
     InitMemberScoreV2Output,
     IncrementMemberScoreV2Output,
     RevealMemberScoreV2Output,
-    RecordPrivateLeagueWinV2Output,
+    RecordPrivateLeagueWinV8Output,
 };
 
 #[allow(dead_code)]
@@ -81,7 +81,7 @@ pub struct InitRevealMemberScoreCompDef<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[init_computation_definition_accounts("record_private_league_win_v2", payer)]
+#[init_computation_definition_accounts("record_private_league_win_v8", payer)]
 #[derive(Accounts)]
 pub struct InitRecordPrivateLeagueWinV2CompDef<'info> {
     #[account(mut)]
@@ -612,15 +612,19 @@ pub fn reveal_member_score_callback(
 }
 
 // ---------------------------------------------------------------------------
-// RecordPrivateLeagueWinV2 — score a private-market bet without revealing outcome
+// RecordPrivateLeagueWinV2 — score a private-market bet via chained MXE (Option A).
 //
-// Stronger privacy path: re-uses the Enc<Shared, (u8,u64)> stored at bet time.
-// The circuit checks encrypted_outcome == public winning_outcome inside Arcium
-// and only increments the Enc<Mxe, u64> score if they match.
-// The bettor's outcome choice is NEVER revealed on-chain by this instruction.
+// Reads the Enc<Mxe, SealedOutcome> ciphertext that place_private_bet_v5 wrote
+// to PrivateBetRecord. The MPC decodes the sealed outcome, compares it to the
+// public market.outcome, and conditionally increments the bettor's encrypted
+// Enc<Mxe, u64> score — bettor's outcome is NEVER revealed on-chain.
+//
+// Both this circuit and place_private_bet_v5 use named structs (SealedOutcome,
+// Totals, BetCtx) per the canonical Arcium pattern; raw `Enc<Mxe, [u64;2]>` and
+// `Enc<Mxe, u8>` produced garbage roundtrips on this cluster.
 // ---------------------------------------------------------------------------
 
-#[queue_computation_accounts("record_private_league_win_v2", member)]
+#[queue_computation_accounts("record_private_league_win_v8", member)]
 #[derive(Accounts)]
 #[instruction(computation_offset: u64)]
 pub struct RecordPrivateLeagueWinV2<'info> {
@@ -713,10 +717,15 @@ pub struct RecordPrivateLeagueWinV2<'info> {
     pub score_record: Box<Account<'info, LeagueScoreRecord>>,
 }
 
-/// Queue the record_private_league_win_v2 MPC circuit.
-/// The winning_outcome (from the revealed private market) and the bettor's
-/// encrypted (outcome, amount) are passed to Arcium. The circuit internally
-/// checks outcome == winning_outcome and conditionally increments the score.
+/// Queue the record_private_league_win_v8 MPC circuit (chained-MXE / Option A).
+///
+/// Inputs (in circuit order):
+///   1. Enc<Mxe, SealedOutcome> — sealed by place_private_bet_v5, lives on PrivateBetRecord
+///   2. u8                      — public winning_outcome from market.outcome
+///   3. Enc<Mxe, u64>           — current encrypted member score
+///
+/// The MPC compares the decoded outcome to winning_outcome and conditionally
+/// increments the score by 1 — outcome is NEVER revealed on-chain.
 pub fn record_private_league_win_v2(
     ctx: Context<RecordPrivateLeagueWinV2>,
     computation_offset: u64,
@@ -724,21 +733,26 @@ pub fn record_private_league_win_v2(
     let market = &ctx.accounts.market;
     let record = &ctx.accounts.private_bet_record;
 
+    require!(record.mxe_outcome_sealed, TerracError::NotYetRevealed);
+
     let winning_outcome = market.outcome.ok_or(TerracError::MarketNotSettled)?;
 
     ctx.accounts.score_record.bump = ctx.bumps.score_record;
 
+    let mxe_outcome_nonce = record.mxe_outcome_nonce;
     let score_nonce = ctx.accounts.member_score.nonce;
 
     let args = ArgBuilder::new()
-        // Enc<Shared, (u8, u64)> — same encoding used in place_private_bet
-        .x25519_pubkey(record.encryption_pubkey)
-        .plaintext_u128(record.bet_nonce)
-        .encrypted_u8(record.outcome_ct)     // field 0: outcome (u8)
-        .encrypted_u64(record.amount_ct)     // field 1: amount (u64)
-        // public winning_outcome — MPC checks this against decrypted outcome
-        .plaintext_u8(winning_outcome)
-        // Enc<Mxe, u64> — current encrypted score
+        // Enc<Mxe, SealedOutcome> — ciphertext at PrivateBetRecord[MXE_OUTCOME_OFFSET..]
+        .plaintext_u128(mxe_outcome_nonce)
+        .account(
+            ctx.accounts.private_bet_record.key(),
+            MXE_OUTCOME_OFFSET,
+            MXE_OUTCOME_SIZE,
+        )
+        // public winning_outcome — MPC compares against decoded sealed outcome
+        .plaintext_u64(winning_outcome as u64)
+        // Enc<Mxe, u64> — current encrypted member score
         .plaintext_u128(score_nonce)
         .account(
             ctx.accounts.member_score.key(),
@@ -751,7 +765,7 @@ pub fn record_private_league_win_v2(
         ctx.accounts,
         computation_offset,
         args,
-        vec![crate::RecordPrivateLeagueWinV2Callback::callback_ix(
+        vec![crate::RecordPrivateLeagueWinV8Callback::callback_ix(
             computation_offset,
             &ctx.accounts.mxe_account,
             &[CallbackAccount {
@@ -766,9 +780,9 @@ pub fn record_private_league_win_v2(
     Ok(())
 }
 
-pub fn record_private_league_win_v2_callback(
-    ctx: Context<crate::RecordPrivateLeagueWinV2Callback>,
-    output: SignedComputationOutputs<RecordPrivateLeagueWinV2Output>,
+pub fn record_private_league_win_v8_callback(
+    ctx: Context<crate::RecordPrivateLeagueWinV8Callback>,
+    output: SignedComputationOutputs<RecordPrivateLeagueWinV8Output>,
 ) -> Result<()> {
     let o = match output.verify_output(
         &ctx.accounts.cluster_account,

@@ -33,9 +33,9 @@ type ErrorCode = TerracError;
 // arcium_program macro to resolve __client_accounts_* at `crate::` level.
 // ---------------------------------------------------------------------------
 
-#[callback_accounts("init_private_market_state_v2")]
+#[callback_accounts("init_private_market_state_v8")]
 #[derive(Accounts)]
-pub struct InitPrivateMarketStateV2Callback<'info> {
+pub struct InitPrivateMarketStateV8Callback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
@@ -56,18 +56,18 @@ pub struct InitPrivateMarketStateV2Callback<'info> {
     pub private_state: Account<'info, PrivateMarketState>,
 }
 
-#[callback_accounts("place_private_bet_v2")]
+#[callback_accounts("place_private_bet_v8")]
 #[derive(Accounts)]
-pub struct PlacePrivateBetV2Callback<'info> {
+pub struct PlacePrivateBetV8Callback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_BET))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
     /// CHECK: computation account managed by Arcium; verified by the callback CPI.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_cluster_pda!(mxe_account, TerracError::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
     /// CHECK: instructions sysvar, address-constrained above.
     pub instructions_sysvar: AccountInfo<'info>,
@@ -76,12 +76,20 @@ pub struct PlacePrivateBetV2Callback<'info> {
         seeds = [b"private-state", private_state.market.as_ref()],
         bump = private_state.bump,
     )]
-    pub private_state: Account<'info, PrivateMarketState>,
+    pub private_state: Box<Account<'info, PrivateMarketState>>,
+    // Written in the callback to persist the Mxe-sealed outcome ciphertext.
+    // The bettor's pubkey is read from the record itself (it was set on init).
+    #[account(
+        mut,
+        seeds = [b"private-bet", private_bet_record.market.as_ref(), private_bet_record.bettor.as_ref()],
+        bump = private_bet_record.bump,
+    )]
+    pub private_bet_record: Box<Account<'info, PrivateBetRecord>>,
 }
 
-#[callback_accounts("reveal_private_market_v2")]
+#[callback_accounts("reveal_private_market_v8")]
 #[derive(Accounts)]
-pub struct RevealPrivateMarketV2Callback<'info> {
+pub struct RevealPrivateMarketV8Callback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
@@ -187,9 +195,9 @@ pub struct RevealMemberScoreV2Callback<'info> {
     pub league_member: Account<'info, LeagueMember>,
 }
 
-#[callback_accounts("record_private_league_win_v2")]
+#[callback_accounts("record_private_league_win_v8")]
 #[derive(Accounts)]
-pub struct RecordPrivateLeagueWinV2Callback<'info> {
+pub struct RecordPrivateLeagueWinV8Callback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PRIVATE_LEAGUE_WIN))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
@@ -344,10 +352,10 @@ pub mod terrace {
         instructions::private::init_private_market_state(ctx, computation_offset, nonce)
     }
 
-    #[arcium_callback(encrypted_ix = "init_private_market_state_v2")]
-    pub fn init_private_market_state_v2_callback(
-        ctx: Context<InitPrivateMarketStateV2Callback>,
-        output: SignedComputationOutputs<InitPrivateMarketStateV2Output>,
+    #[arcium_callback(encrypted_ix = "init_private_market_state_v8")]
+    pub fn init_private_market_state_v8_callback(
+        ctx: Context<InitPrivateMarketStateV8Callback>,
+        output: SignedComputationOutputs<InitPrivateMarketStateV8Output>,
     ) -> Result<()> {
         instructions::private::init_private_market_state_callback(ctx, output)
     }
@@ -356,19 +364,18 @@ pub mod terrace {
         ctx: Context<PlacePrivateBet>,
         computation_offset: u64,
         outcome_ct: [u8; 32],
-        amount_ct: [u8; 32],
         encryption_pubkey: [u8; 32],
         bet_nonce: u128,
         amount: u64,
         outcome_commitment: [u8; 32],
     ) -> Result<()> {
-        instructions::private::place_private_bet(ctx, computation_offset, outcome_ct, amount_ct, encryption_pubkey, bet_nonce, amount, outcome_commitment)
+        instructions::private::place_private_bet(ctx, computation_offset, outcome_ct, encryption_pubkey, bet_nonce, amount, outcome_commitment)
     }
 
-    #[arcium_callback(encrypted_ix = "place_private_bet_v2")]
-    pub fn place_private_bet_v2_callback(
-        ctx: Context<PlacePrivateBetV2Callback>,
-        output: SignedComputationOutputs<PlacePrivateBetV2Output>,
+    #[arcium_callback(encrypted_ix = "place_private_bet_v8")]
+    pub fn place_private_bet_v8_callback(
+        ctx: Context<PlacePrivateBetV8Callback>,
+        output: SignedComputationOutputs<PlacePrivateBetV8Output>,
     ) -> Result<()> {
         instructions::private::place_private_bet_callback(ctx, output)
     }
@@ -380,10 +387,10 @@ pub mod terrace {
         instructions::private::reveal_private_market(ctx, computation_offset)
     }
 
-    #[arcium_callback(encrypted_ix = "reveal_private_market_v2")]
-    pub fn reveal_private_market_v2_callback(
-        ctx: Context<RevealPrivateMarketV2Callback>,
-        output: SignedComputationOutputs<RevealPrivateMarketV2Output>,
+    #[arcium_callback(encrypted_ix = "reveal_private_market_v8")]
+    pub fn reveal_private_market_v8_callback(
+        ctx: Context<RevealPrivateMarketV8Callback>,
+        output: SignedComputationOutputs<RevealPrivateMarketV8Output>,
     ) -> Result<()> {
         instructions::private::reveal_private_market_callback(ctx, output)
     }
@@ -499,11 +506,11 @@ pub mod terrace {
         instructions::league_private::record_private_league_win_v2(ctx, computation_offset)
     }
 
-    #[arcium_callback(encrypted_ix = "record_private_league_win_v2")]
-    pub fn record_private_league_win_v2_callback(
-        ctx: Context<RecordPrivateLeagueWinV2Callback>,
-        output: SignedComputationOutputs<RecordPrivateLeagueWinV2Output>,
+    #[arcium_callback(encrypted_ix = "record_private_league_win_v8")]
+    pub fn record_private_league_win_v8_callback(
+        ctx: Context<RecordPrivateLeagueWinV8Callback>,
+        output: SignedComputationOutputs<RecordPrivateLeagueWinV8Output>,
     ) -> Result<()> {
-        instructions::league_private::record_private_league_win_v2_callback(ctx, output)
+        instructions::league_private::record_private_league_win_v8_callback(ctx, output)
     }
 }
