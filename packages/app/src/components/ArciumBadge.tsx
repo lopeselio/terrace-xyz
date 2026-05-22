@@ -4,8 +4,12 @@ import { View, Text, Image, StyleSheet } from "react-native";
 const arciumLogo = require("../assets/arcium-logo.png");
 
 // ── Inline pill badge ─────────────────────────────────────────────────────────
+//
+// Default label is "Private League" — fan-friendly. The Arcium logo stays as
+// a subtle credential. Callers may override the label (e.g. for non-league
+// surfaces that still want a "Private" chip) but should avoid acronyms.
 
-export function ArciumBadge({ label = "Arcium MPC" }: { label?: string }) {
+export function ArciumBadge({ label = "Private League" }: { label?: string }) {
   return (
     <View style={pill.root}>
       <Image source={arciumLogo} style={pill.logo} />
@@ -54,19 +58,19 @@ interface BannerProps {
 }
 
 const DEFAULT_BULLETS = [
-  "🔒  Positions encrypted with X25519 ECDH",
-  "👁  Hidden from everyone until settlement",
-  "⚡  Outcome computed via Multi-Party Computation",
+  "🔒  Your pick stays yours — no one else can see it",
+  "👁  Hidden from the bookmaker, your friends, and the league",
+  "⚡  Revealed only when the market settles",
 ];
 
 const SETTLED_BULLETS = [
-  "✅  Arcium MPC has revealed the market outcome",
-  "🔒  All bets were kept private during the contest",
-  "💰  Eligible winners can now claim their USDC",
+  "✅  Final result is in",
+  "🔒  Every bet stayed private the whole time",
+  "💰  If you won, claim your USDC below",
 ];
 
 export function ArciumPrivacyBanner({
-  subtitle = "Powered by Arcium MPC",
+  subtitle = "Powered by Arcium · your picks stay yours",
   bullets = DEFAULT_BULLETS,
 }: BannerProps) {
   return (
@@ -75,7 +79,7 @@ export function ArciumPrivacyBanner({
       <View style={bn.headerRow}>
         <Image source={arciumLogo} style={bn.logoLg} />
         <View style={bn.headerText}>
-          <Text style={bn.title}>Encrypted by Arcium MPC</Text>
+          <Text style={bn.title}>Private League</Text>
           <Text style={bn.subtitle}>{subtitle}</Text>
         </View>
       </View>
@@ -103,7 +107,7 @@ export function ArciumPrivacyBanner({
 export function ArciumSettledBanner() {
   return (
     <ArciumPrivacyBanner
-      subtitle="MPC computation complete"
+      subtitle="The result is in"
       bullets={SETTLED_BULLETS}
     />
   );
