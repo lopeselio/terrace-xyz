@@ -658,6 +658,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     loadLeaderboard,
     loadEligibleBets,
     loadMemberScoreState,
+    pollMemberScoreRevealed,
     loadLeague,
     loadGameweekHistory,
     refresh,
@@ -869,21 +870,41 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
 
   const handleRevealScore = useCallback(async () => {
     if (!selectedLeague) return;
+    const addr = String(selectedLeague.address);
+    // The Arcium reveal target is the gameweek the member is currently sitting
+    // on (memberScoreState.scoresGameweek), not the league's current gameweek.
+    const targetGw = memberScoreState?.scoresGameweek;
     const id = notify.show({ kind: "loading", message: "Calculating your league points…" });
     try {
-      await revealMemberScore(String(selectedLeague.address));
-      notify.update(id, { kind: "success", message: "Your league points are in! Pull to refresh." });
-      // Reload after a delay to catch the callback landing
-      setTimeout(() => {
-        const addr = String(selectedLeague.address);
+      await revealMemberScore(addr);
+      // Don't claim success until the Arcium callback actually flips is_revealed
+      // on-chain. Poll up to 90s; if it doesn't land, surface a retry CTA so
+      // the user isn't left staring at a stale spinner.
+      const landed = await pollMemberScoreRevealed(addr, { timeoutMs: 90_000, targetGameweek: targetGw });
+      if (landed) {
+        notify.update(id, { kind: "success", message: "Your league points are in!" });
         loadMemberScoreState(addr);
         loadLeaderboard(addr);
         refreshHistory(addr);
-      }, 6000);
+      } else {
+        notify.update(id, {
+          kind: "error",
+          message: "MPC reveal is taking longer than expected. Try again?",
+          action: { label: "Retry reveal", onPress: handleRevealScore },
+        });
+        // Best-effort refresh anyway in case the callback lands moments later.
+        loadMemberScoreState(addr);
+        loadLeaderboard(addr);
+      }
     } catch (e: any) {
-      notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't reveal your score — please try again.") });
+      notify.update(id, {
+        kind: "error",
+        message: friendlyError(e, "Couldn't reveal your score — please try again."),
+        action: { label: "Retry", onPress: handleRevealScore },
+      });
     }
-  }, [selectedLeague, revealMemberScore, loadMemberScoreState, loadLeaderboard, refreshHistory, notify]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLeague, memberScoreState, revealMemberScore, pollMemberScoreRevealed, loadMemberScoreState, loadLeaderboard, refreshHistory, notify]);
 
   const handleResetScore = useCallback(async () => {
     if (!selectedLeague) return;

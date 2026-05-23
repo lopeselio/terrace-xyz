@@ -1114,6 +1114,44 @@ export function useLeague(ownerPubkey?: string | null) {
     }
   }, [publicKey, signTransaction]);
 
+  // Polls PrivateMemberScore.is_revealed every `intervalMs` until it flips to
+  // true, or the timeout expires. Used after revealMemberScore to detect when
+  // the Arcium callback has actually landed (vs. just waiting a fixed delay
+  // that leaves the UI in a stuck state if the computation hangs).
+  const pollMemberScoreRevealed = useCallback(async (
+    leagueAddress: string,
+    {
+      timeoutMs = 90_000,
+      intervalMs = 2_000,
+      targetGameweek,
+    }: { timeoutMs?: number; intervalMs?: number; targetGameweek?: number } = {},
+  ): Promise<boolean> => {
+    if (!publicKey) return false;
+    const [memberScoreAddress] = await getMemberScorePda(
+      leagueAddress as Address, publicKey as Address, TERRACE_PROGRAM_ID as Address
+    );
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const res = await rpcPost({
+          jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+          params: [String(memberScoreAddress), { encoding: "base64", commitment: "confirmed" }],
+        });
+        const b64 = res.result?.value?.data?.[0];
+        if (b64) {
+          const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const scoresGw = data[120];
+          const isRevealed = data[121] === 1;
+          if (isRevealed && (targetGameweek === undefined || scoresGw === targetGameweek)) {
+            return true;
+          }
+        }
+      } catch { /* transient RPC errors are fine — keep polling */ }
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return false;
+  }, [publicKey]);
+
   const loadMemberScoreState = useCallback(async (leagueAddress: string) => {
     if (!publicKey) return;
     setLoadingMemberScore(true);
@@ -1196,6 +1234,7 @@ export function useLeague(ownerPubkey?: string | null) {
     loadLeaderboard,
     loadEligibleBets,
     loadMemberScoreState,
+    pollMemberScoreRevealed,
     loadLeague,
     loadGameweekHistory,
     refresh,
