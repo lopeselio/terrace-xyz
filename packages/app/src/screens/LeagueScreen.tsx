@@ -22,6 +22,7 @@ import { ArciumBadge, ArciumPrivacyBanner } from "../components/ArciumBadge";
 import { useNotify } from "../components/NotificationProvider";
 import { RevealCelebrationModal } from "../components/RevealCelebrationModal";
 import { friendlyError } from "../utils/friendlyError";
+import { registerLeagues, publishLeagueEvent } from "../utils/leagueNotify";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -796,10 +797,18 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       notify.update(id, { kind: "success", message: "+1 league point — your win is in!" });
       loadLeaderboard(String(selectedLeague.address));
       loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
+      if (walletPubkey) {
+        publishLeagueEvent(
+          String(selectedLeague.address),
+          walletPubkey,
+          "win",
+          { leagueName: selectedLeague.name, gameweek: selectedLeague.gameweek },
+        );
+      }
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't log this win — please try again.") });
     }
-  }, [selectedLeague, recordWin, loadLeaderboard, loadEligibleBets, notify]);
+  }, [selectedLeague, recordWin, loadLeaderboard, loadEligibleBets, walletPubkey, notify]);
 
   const handleCreate = useCallback(async (params: {
     name: string;
@@ -817,6 +826,8 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         action: { label: "Copy", onPress: () => { /* copy handled by share button on screen */ } },
       });
       setTab("My Leagues");
+      // Treat creation as a join so the index includes the creator from t0.
+      publishLeagueEvent(leagueAddress, walletPubkey, "join", { leagueName: params.name });
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't create the league — please try again.") });
     }
@@ -850,6 +861,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       if (selectedLeague.isPrivate && walletPubkey) {
         loadMemberScoreState(addr);
       }
+      if (walletPubkey) {
+        publishLeagueEvent(addr, walletPubkey, "advance", {
+          leagueName: selectedLeague.name,
+          gameweek: (updated ?? selectedLeague).gameweek,
+        });
+      }
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't advance the gameweek.") });
     }
@@ -863,6 +880,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       notify.update(id, { kind: "success", message: "You're in! Your wins will score from here." });
       loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
       loadLeaderboard(String(selectedLeague.address));
+      publishLeagueEvent(
+        String(selectedLeague.address),
+        walletPubkey,
+        "join",
+        { leagueName: selectedLeague.name },
+      );
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't join — please try again.") });
     }
@@ -886,6 +909,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         loadMemberScoreState(addr);
         loadLeaderboard(addr);
         refreshHistory(addr);
+        if (walletPubkey) {
+          publishLeagueEvent(addr, walletPubkey, "reveal", {
+            leagueName: selectedLeague.name,
+            gameweek: targetGw,
+          });
+        }
       } else {
         notify.update(id, {
           kind: "error",
@@ -904,7 +933,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeague, memberScoreState, revealMemberScore, pollMemberScoreRevealed, loadMemberScoreState, loadLeaderboard, refreshHistory, notify]);
+  }, [selectedLeague, memberScoreState, revealMemberScore, pollMemberScoreRevealed, loadMemberScoreState, loadLeaderboard, refreshHistory, walletPubkey, notify]);
 
   const handleResetScore = useCallback(async () => {
     if (!selectedLeague) return;
@@ -923,6 +952,15 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     ...myLeagues,
     ...joinedLeagues.filter((jl) => !myLeagues.some((ml) => String(ml.address) === String(jl.address))),
   ];
+
+  // Keep the notifications-worker's `league_members` KV index in sync with
+  // what we observe on-chain, so league-event fan-outs reach the right wallets.
+  // Fires whenever the user's known league set or wallet changes.
+  useEffect(() => {
+    if (!walletPubkey) return;
+    registerLeagues(walletPubkey, allLeagues.map((l) => String(l.address)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletPubkey, allLeagues.map((l) => String(l.address)).join(",")]);
 
   const TABS: Tab[] = ["My Leagues", "Create", "Join"];
 

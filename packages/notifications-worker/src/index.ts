@@ -2,11 +2,15 @@
  * Terrace notification worker — Cloudflare Workers
  *
  * Routes
- *   POST /register  { pubkey, token, following[] }  — upsert device entry
- *   POST /webhook   Helius webhook body              — fan-out push notifications
+ *   POST /register         { pubkey, token, following[] }     — upsert device entry
+ *   POST /webhook          Helius webhook body                — fan-out follow-graph pushes
+ *   POST /league-register  { pubkey, leagues[] }              — upsert league membership index
+ *   POST /league-event     { leagueAddress, actorPubkey, kind, payload? } — fan-out to league-mates
  *
  * KV namespace DEVICES
- *   key: device:{pubkey}  →  DeviceEntry JSON
+ *   key: device:{pubkey}              →  DeviceEntry JSON
+ *   key: member_leagues:{pubkey}      →  string[]  (leagues the user belongs to)
+ *   key: league_members:{leagueAddr}  →  string[]  (member pubkeys in the league)
  */
 
 export interface Env {
@@ -60,6 +64,12 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/webhook")
       return cors(await handleWebhook(request, env));
+
+    if (request.method === "POST" && url.pathname === "/league-register")
+      return cors(await handleLeagueRegister(request, env));
+
+    if (request.method === "POST" && url.pathname === "/league-event")
+      return cors(await handleLeagueEvent(request, env));
 
     const ua = request.headers.get("User-Agent") ?? "";
 
@@ -181,6 +191,168 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   }
 
   return new Response("OK");
+}
+
+// ---------------------------------------------------------------------------
+// POST /league-register  { pubkey, leagues[] }  — replaces membership list
+// ---------------------------------------------------------------------------
+
+async function handleLeagueRegister(request: Request, env: Env): Promise<Response> {
+  let body: { pubkey?: string; leagues?: string[] };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { pubkey, leagues } = body;
+  if (!pubkey || !Array.isArray(leagues)) {
+    return new Response("Missing pubkey or leagues", { status: 400 });
+  }
+  if (pubkey.length < 32 || pubkey.length > 44) {
+    return new Response("Invalid pubkey length", { status: 400 });
+  }
+
+  // Diff against previously-registered set so we can remove the user from
+  // league_members entries they no longer belong to.
+  const prevRaw = await env.DEVICES.get(`member_leagues:${pubkey}`);
+  const prev: string[] = prevRaw ? safeArr(prevRaw) : [];
+  const next = Array.from(new Set(leagues.filter((l) => typeof l === "string" && l.length >= 32)));
+
+  const removed = prev.filter((l) => !next.includes(l));
+  const added   = next.filter((l) => !prev.includes(l));
+
+  for (const leagueAddr of added) {
+    const memRaw = await env.DEVICES.get(`league_members:${leagueAddr}`);
+    const members: string[] = memRaw ? safeArr(memRaw) : [];
+    if (!members.includes(pubkey)) {
+      members.push(pubkey);
+      await env.DEVICES.put(`league_members:${leagueAddr}`, JSON.stringify(members), {
+        expirationTtl: 60 * 60 * 24 * 365,
+      });
+    }
+  }
+  for (const leagueAddr of removed) {
+    const memRaw = await env.DEVICES.get(`league_members:${leagueAddr}`);
+    if (!memRaw) continue;
+    const members: string[] = safeArr(memRaw).filter((m) => m !== pubkey);
+    if (members.length === 0) {
+      await env.DEVICES.delete(`league_members:${leagueAddr}`);
+    } else {
+      await env.DEVICES.put(`league_members:${leagueAddr}`, JSON.stringify(members), {
+        expirationTtl: 60 * 60 * 24 * 365,
+      });
+    }
+  }
+
+  await env.DEVICES.put(`member_leagues:${pubkey}`, JSON.stringify(next), {
+    expirationTtl: 60 * 60 * 24 * 365,
+  });
+
+  return new Response(JSON.stringify({ ok: true, count: next.length }), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /league-event  { leagueAddress, actorPubkey, kind, payload? }
+// ---------------------------------------------------------------------------
+
+type LeagueEventKind =
+  | "join"           // a new member joined
+  | "win"            // actor recorded a league win
+  | "advance"        // gameweek advanced
+  | "reveal"         // actor revealed their GW score
+  | "market_create"; // actor created a market
+
+async function handleLeagueEvent(request: Request, env: Env): Promise<Response> {
+  let body: {
+    leagueAddress?: string;
+    actorPubkey?: string;
+    kind?: LeagueEventKind;
+    payload?: Record<string, unknown>;
+  };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { leagueAddress, actorPubkey, kind, payload = {} } = body;
+  if (!leagueAddress || !actorPubkey || !kind) {
+    return new Response("Missing leagueAddress / actorPubkey / kind", { status: 400 });
+  }
+
+  const memRaw = await env.DEVICES.get(`league_members:${leagueAddress}`);
+  if (!memRaw) return new Response(JSON.stringify({ delivered: 0 }), {
+    headers: { "Content-Type": "application/json" },
+  });
+  const members: string[] = safeArr(memRaw);
+
+  const { title, body: pushBody } = leagueEventCopy(kind, actorPubkey, payload);
+  const pushBatch: ExpoPushMessage[] = [];
+
+  for (const member of members) {
+    if (member === actorPubkey) continue; // don't ping the actor
+    const deviceRaw = await env.DEVICES.get(`device:${member}`);
+    if (!deviceRaw) continue;
+    let entry: DeviceEntry;
+    try { entry = JSON.parse(deviceRaw); }
+    catch { continue; }
+    if (!entry.token.startsWith("ExponentPushToken[")) continue;
+
+    pushBatch.push({
+      to: entry.token,
+      title,
+      body: pushBody,
+      sound: "default",
+      data: {
+        terraceKind: "league_event",
+        leagueAddress,
+        actorPubkey,
+        kind,
+        ...payload,
+      },
+    });
+  }
+
+  if (pushBatch.length > 0) {
+    for (let i = 0; i < pushBatch.length; i += 100) {
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
+        body: JSON.stringify(pushBatch.slice(i, i + 100)),
+      }).catch(() => {});
+    }
+  }
+
+  return new Response(JSON.stringify({ delivered: pushBatch.length }), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function leagueEventCopy(
+  kind: LeagueEventKind,
+  actor: string,
+  payload: Record<string, unknown>,
+): { title: string; body: string } {
+  const short = `${actor.slice(0, 5)}…${actor.slice(-4)}`;
+  const leagueName = (payload.leagueName as string) || "your league";
+  switch (kind) {
+    case "join":
+      return { title: "👋 New rival in the league", body: `${short} just joined ${leagueName}` };
+    case "win":
+      return { title: "🎯 League point scored", body: `${short} cashed a bet in ${leagueName}` };
+    case "advance":
+      return { title: "📅 Gameweek advanced", body: `${leagueName} is now in GW${payload.gameweek ?? "?"} — reveal your score` };
+    case "reveal":
+      return { title: "🔓 Score revealed", body: `${short} revealed their score in ${leagueName}` };
+    case "market_create":
+      return { title: "🏗️ New market in your league", body: `${short} opened a market for ${leagueName} to back` };
+    default:
+      return { title: "⚡ League activity", body: `${short} did something in ${leagueName}` };
+  }
+}
+
+function safeArr(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch { return []; }
 }
 
 // ---------------------------------------------------------------------------
