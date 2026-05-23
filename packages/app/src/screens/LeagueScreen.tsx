@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { League, LeagueMember } from "@terrace/sdk";
 import { useLeague } from "../hooks/useLeague";
-import type { EligibleBet } from "../hooks/useLeague";
+import type { EligibleBet, GameweekScoreEntry } from "../hooks/useLeague";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import * as SecureStore from "expo-secure-store";
 import { ArciumBadge, ArciumPrivacyBanner } from "../components/ArciumBadge";
@@ -95,6 +95,7 @@ function LeagueCard({
 function LeaderboardSheet({
   league,
   members,
+  gwHistory,
   loading,
   myPubkey,
   isCreator,
@@ -117,6 +118,7 @@ function LeaderboardSheet({
 }: {
   league: League;
   members: LeagueMember[];
+  gwHistory: Record<string, GameweekScoreEntry[]>;
   loading: boolean;
   myPubkey: string | null;
   isCreator: boolean;
@@ -369,18 +371,30 @@ function LeaderboardSheet({
             const isMe = myPubkey === String(m.member);
             const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
 
-            // In private leagues, other members' scores stay hidden UNTIL they
-            // explicitly reveal. The reveal callback sets `lastScoredGameweek`
-            // to the revealed GW — so we use that as the "has revealed at
-            // least once" flag for totalScore (it's plaintext on-chain after
-            // reveal anyway, so this just stops misleading "—" once the data
-            // is public). Current-GW points stay hidden until reveal for THIS
-            // gameweek specifically.
+            // On-chain LeagueMember keeps the most-recent revealed score as
+            // plaintext (gameweekScore + lastScoredGameweek) until a new GW's
+            // first record_league_win lazy-resets the slot. So the score for
+            // their last revealed GW is publicly readable — we should show it,
+            // labelled with the GW it actually belongs to, not always 0/locked.
             const hasEverRevealed = m.lastScoredGameweek > 0;
-            const revealedForCurrentGw = m.lastScoredGameweek === league.gameweek;
+            const showsCurrentGw = m.lastScoredGameweek === league.gameweek;
             const totalHidden = league.isPrivate && !isMe && !hasEverRevealed;
-            const currentGwHidden = league.isPrivate && !isMe && !revealedForCurrentGw;
-            const gw = revealedForCurrentGw ? m.gameweekScore : 0;
+
+            // Score block: prefer the on-chain revealed slot (current OR prior
+            // GW). Only lock the column when nothing has been revealed yet for
+            // a private league non-self row.
+            const showLock = league.isPrivate && !isMe && !hasEverRevealed;
+            const scoreVal = hasEverRevealed ? m.gameweekScore : 0;
+            const scoreLabel = showLock
+              ? "private"
+              : showsCurrentGw
+                ? "GW pts"
+                : `GW${m.lastScoredGameweek} pts`;
+
+            const memberHistory = gwHistory[String(m.member)] ?? [];
+            // Hide history chips for OTHER private-league members who haven't
+            // revealed for any GW yet — chips would just be empty anyway.
+            const showHistory = memberHistory.length > 0 && (!league.isPrivate || isMe || hasEverRevealed);
 
             return (
               <View key={String(m.address)} style={[s.memberRow, isMe && s.memberRowMe]}>
@@ -394,14 +408,28 @@ function LeaderboardSheet({
                   <Text style={s.memberTotal}>
                     {totalHidden ? "—  total pts" : `${m.totalScore} total pts`}
                   </Text>
+                  {showHistory && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={s.gwHistoryRow}
+                    >
+                      {memberHistory.map((h) => (
+                        <View key={h.gw} style={s.gwHistoryChip}>
+                          <Text style={s.gwHistoryChipGw}>GW{h.gw}</Text>
+                          <Text style={s.gwHistoryChipScore}>{h.score}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
                 <View style={s.scoreBlock}>
-                  {currentGwHidden ? (
+                  {showLock ? (
                     <Text style={s.gwScoreLocked}>🔒</Text>
                   ) : (
-                    <Text style={[s.gwScore, gw === 0 && s.gwScoreZero]}>{gw}</Text>
+                    <Text style={[s.gwScore, scoreVal === 0 && s.gwScoreZero]}>{scoreVal}</Text>
                   )}
-                  <Text style={s.gwLabel}>{currentGwHidden ? "private" : "GW pts"}</Text>
+                  <Text style={s.gwLabel}>{scoreLabel}</Text>
                 </View>
               </View>
             );
@@ -630,8 +658,18 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     loadLeaderboard,
     loadEligibleBets,
     loadMemberScoreState,
+    loadLeague,
+    loadGameweekHistory,
     refresh,
   } = useLeague(walletPubkey);
+
+  // Per-member gameweek history (off-chain snapshot) for the currently-viewed
+  // league. Keyed by member pubkey → ordered [{gw, score}, …].
+  const [gwHistory, setGwHistory] = useState<Record<string, GameweekScoreEntry[]>>({});
+  const refreshHistory = useCallback(async (addr: string) => {
+    const h = await loadGameweekHistory(addr);
+    setGwHistory(h);
+  }, [loadGameweekHistory]);
 
   const busy = status === "building" || status === "signing";
   const notify = useNotify();
@@ -676,10 +714,11 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     setSelectedLeague(league);
     loadLeaderboard(String(league.address));
     loadEligibleBets(String(league.address), league.isPrivate);
+    refreshHistory(String(league.address));
     if (league.isPrivate && walletPubkey) {
       loadMemberScoreState(String(league.address));
     }
-  }, [loadLeaderboard, loadEligibleBets, loadMemberScoreState, walletPubkey]);
+  }, [loadLeaderboard, loadEligibleBets, loadMemberScoreState, refreshHistory, walletPubkey]);
 
   // Auto-recover stuck state: if the user is a member of a private league but
   // the PrivateMemberScore PDA is missing (init_member_score never landed —
@@ -800,11 +839,20 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     try {
       await advanceGameweek(String(selectedLeague.address));
       notify.update(id, { kind: "success", message: "Next gameweek is on — good luck!" });
-      loadLeaderboard(String(selectedLeague.address));
+      const addr = String(selectedLeague.address);
+      // Refresh the in-memory league so league.gameweek bumps — otherwise the
+      // reveal CTA stays hidden until the user closes and re-opens the sheet.
+      const updated = await loadLeague(addr);
+      if (updated) setSelectedLeague(updated);
+      loadLeaderboard(addr);
+      refreshHistory(addr);
+      if (selectedLeague.isPrivate && walletPubkey) {
+        loadMemberScoreState(addr);
+      }
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't advance the gameweek.") });
     }
-  }, [selectedLeague, advanceGameweek, loadLeaderboard, notify]);
+  }, [selectedLeague, advanceGameweek, loadLeague, loadLeaderboard, loadMemberScoreState, refreshHistory, walletPubkey, notify]);
 
   const handleJoinFromSheet = useCallback(async () => {
     if (!selectedLeague || !walletPubkey) return;
@@ -827,13 +875,15 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       notify.update(id, { kind: "success", message: "Your league points are in! Pull to refresh." });
       // Reload after a delay to catch the callback landing
       setTimeout(() => {
-        loadMemberScoreState(String(selectedLeague.address));
-        loadLeaderboard(String(selectedLeague.address));
+        const addr = String(selectedLeague.address);
+        loadMemberScoreState(addr);
+        loadLeaderboard(addr);
+        refreshHistory(addr);
       }, 6000);
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't reveal your score — please try again.") });
     }
-  }, [selectedLeague, revealMemberScore, loadMemberScoreState, loadLeaderboard, notify]);
+  }, [selectedLeague, revealMemberScore, loadMemberScoreState, loadLeaderboard, refreshHistory, notify]);
 
   const handleResetScore = useCallback(async () => {
     if (!selectedLeague) return;
@@ -940,6 +990,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
           <LeaderboardSheet
             league={selectedLeague}
             members={leaderboard}
+            gwHistory={gwHistory}
             loading={loadingLeaderboard}
             myPubkey={walletPubkey}
             isCreator={walletPubkey === String(selectedLeague.creator)}
@@ -1048,6 +1099,10 @@ const s = StyleSheet.create({
   gwScoreZero:  { color: "#374151" },
   gwScoreLocked: { fontSize: 16 },
   gwLabel:      { fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: 0.4 },
+  gwHistoryRow:        { flexDirection: "row", gap: 6, marginTop: 6, paddingRight: 6 },
+  gwHistoryChip:       { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#111827", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 0.5, borderColor: "#1f2937" },
+  gwHistoryChipGw:     { fontSize: 9, color: "#6b7280", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.3 },
+  gwHistoryChipScore:  { fontSize: 11, color: "#22c55e", fontWeight: "700" },
   privateNote:  { fontSize: 10, color: "#6366f1", fontWeight: "600" },
 
   privateActionsSection: { flexDirection: "row", alignItems: "center", backgroundColor: "#0f0b1f", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 0.5, borderColor: "#312e81", gap: 10 },

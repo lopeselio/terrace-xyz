@@ -220,7 +220,7 @@ async function fetchMemberLeagues(member: string): Promise<LeagueMember[]> {
   });
 }
 
-async function fetchLeagueMembersForLeague(leagueAddress: string): Promise<LeagueMember[]> {
+export async function fetchLeagueMembersForLeague(leagueAddress: string): Promise<LeagueMember[]> {
   const res = await rpcPost({
     jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
     params: [TERRACE_PROGRAM_ID, {
@@ -273,6 +273,45 @@ async function persistAddress(pubkey: string, leagueAddress: string): Promise<vo
       await SecureStore.setItemAsync(persistedKey(pubkey), JSON.stringify([...existing, leagueAddress]));
     }
   } catch {}
+}
+
+// ── Per-gameweek score history (off-chain) ────────────────────────────────────
+// On-chain LeagueMember only carries the most-recent revealed score
+// (gameweekScore + lastScoredGameweek). To show "GW1: 2, GW2: 4, …" we snapshot
+// every (member, gw, score) we observe via loadLeaderboard. First observation
+// wins per (league, member, gw) so the value captured is the revealed one — not
+// a zero seen later after a record_league_win lazy-resets the slot.
+
+export interface GameweekScoreEntry { gw: number; score: number }
+type LeagueHistory = Record<string /* memberPubkey */, GameweekScoreEntry[]>;
+
+function historyKey(leagueAddress: string) { return `terrace:gw-history:${leagueAddress}`; }
+
+export async function loadHistory(leagueAddress: string): Promise<LeagueHistory> {
+  try {
+    const raw = await SecureStore.getItemAsync(historyKey(leagueAddress));
+    return raw ? (JSON.parse(raw) as LeagueHistory) : {};
+  } catch { return {}; }
+}
+
+export async function snapshotHistory(leagueAddress: string, members: LeagueMember[]): Promise<void> {
+  try {
+    const current = await loadHistory(leagueAddress);
+    let changed = false;
+    for (const m of members) {
+      if (m.lastScoredGameweek <= 0) continue;
+      const pk = String(m.member);
+      const entries = current[pk] ?? [];
+      if (entries.some((e) => e.gw === m.lastScoredGameweek)) continue;
+      entries.push({ gw: m.lastScoredGameweek, score: m.gameweekScore });
+      entries.sort((a, b) => a.gw - b.gw);
+      current[pk] = entries;
+      changed = true;
+    }
+    if (changed) {
+      await SecureStore.setItemAsync(historyKey(leagueAddress), JSON.stringify(current));
+    }
+  } catch { /* best-effort */ }
 }
 
 // ── Arcium helpers ────────────────────────────────────────────────────────────
@@ -416,11 +455,25 @@ export function useLeague(ownerPubkey?: string | null) {
       // Sort by gameweek_score desc, then total_score desc
       members.sort((a, b) => b.gameweekScore - a.gameweekScore || b.totalScore - a.totalScore);
       setLeaderboard(members);
+      // Fire-and-forget per-GW history snapshot. Capturing now (while the
+      // revealed slot is still plaintext on-chain) keeps the data even after
+      // the next GW's first record_league_win lazy-resets it.
+      snapshotHistory(leagueAddress, members);
     } catch (e) {
       console.warn(`${LOG} loadLeaderboard error`, e);
     } finally {
       setLoadingLeaderboard(false);
     }
+  }, []);
+
+  // Single-league refresh — used after advance_gameweek to update the
+  // currently-viewed league's gameweek without bouncing through full refresh().
+  const loadLeague = useCallback(async (leagueAddress: string): Promise<League | null> => {
+    return fetchLeagueByAddress(leagueAddress);
+  }, []);
+
+  const loadGameweekHistory = useCallback(async (leagueAddress: string) => {
+    return loadHistory(leagueAddress);
   }, []);
 
   const loadEligibleBets = useCallback(async (leagueAddress: string, isPrivate?: boolean) => {
@@ -1143,6 +1196,8 @@ export function useLeague(ownerPubkey?: string | null) {
     loadLeaderboard,
     loadEligibleBets,
     loadMemberScoreState,
+    loadLeague,
+    loadGameweekHistory,
     refresh,
   };
 }
