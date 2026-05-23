@@ -15,6 +15,7 @@ import type { Matchup } from "@terrace/sdk";
 import { useMatchup } from "../hooks/useMatchup";
 import { useLeague } from "../hooks/useLeague";
 import { useLeagueAdvanceNotifications, type AdvanceNotification } from "../hooks/useLeagueAdvanceNotifications";
+import { useLeagueWinnerNotifications, type WinnerNotification } from "../hooks/useLeagueWinnerNotifications";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import { TerraceMark, PolyJupLogos, POLYMARKET_LOGO, JUPITER_LOGO_URI } from "../components/BrandIcons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -471,18 +472,20 @@ interface NotifPanelProps {
   visible: boolean;
   challenges: Matchup[];
   advances: AdvanceNotification[];
+  winners: WinnerNotification[];
   busy: boolean;
   marketQuestionMap: Map<string, string>;
   challengerNameMap: Map<string, string>;
   onAccept: (m: Matchup) => void;
   onDecline: (m: Matchup) => void;
   onAdvanceTap: (leagueAddress: string) => void;
+  onWinnerTap: (leagueAddress: string, gameweek: number) => void;
   onViewAll: () => void;
   onClose: () => void;
 }
 
-function ChallengeNotificationPanel({ visible, challenges, advances, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onAdvanceTap, onViewAll, onClose }: NotifPanelProps) {
-  const isEmpty = challenges.length === 0 && advances.length === 0;
+function ChallengeNotificationPanel({ visible, challenges, advances, winners, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onAdvanceTap, onWinnerTap, onViewAll, onClose }: NotifPanelProps) {
+  const isEmpty = challenges.length === 0 && advances.length === 0 && winners.length === 0;
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <Pressable style={notif.backdrop} onPress={onClose}>
@@ -501,9 +504,39 @@ function ChallengeNotificationPanel({ visible, challenges, advances, busy, marke
             </View>
           ) : (
             <ScrollView style={notif.list} contentContainerStyle={{ gap: 10 }}>
+              {winners.length > 0 && (
+                <>
+                  <Text style={notif.sectionTitle}>GAMEWEEK WINNERS</Text>
+                  {winners.map((w) => {
+                    const winnerLabel = shortAddr(w.winnerPubkey);
+                    return (
+                      <TouchableOpacity
+                        key={`${w.leagueAddress}:${w.gameweek}`}
+                        style={notif.card}
+                        onPress={() => { onWinnerTap(w.leagueAddress, w.gameweek); onClose(); }}
+                        activeOpacity={0.75}
+                      >
+                        <View style={notif.cardTop}>
+                          <View style={[notif.avatar, { backgroundColor: "#fbbf24" }]}>
+                            <Text style={notif.avatarText}>🏆</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={notif.challengeFrom}>{winnerLabel} won GW{w.gameweek}</Text>
+                            <Text style={notif.challengerAddr}>{w.leagueName}</Text>
+                            <Text style={notif.stakeText}>
+                              {w.winnerScore} {w.winnerScore === 1 ? "pt" : "pts"} · {w.totalMembers} members revealed
+                            </Text>
+                          </View>
+                          <Text style={notif.arrowChev}>›</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
               {advances.length > 0 && (
                 <>
-                  <Text style={notif.sectionTitle}>LEAGUE GAMEWEEKS</Text>
+                  <Text style={[notif.sectionTitle, winners.length > 0 && { marginTop: 8 }]}>LEAGUE GAMEWEEKS</Text>
                   {advances.map((a) => (
                     <TouchableOpacity
                       key={a.leagueAddress}
@@ -686,8 +719,10 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
   }, [myLeagues, joinedLeagues]);
   const { advances: gwAdvances, markSeen: markAdvanceSeen } =
     useLeagueAdvanceNotifications(walletPubkey, allLeagues);
+  const { winners: gwWinners, markSeen: markWinnerSeen } =
+    useLeagueWinnerNotifications(walletPubkey, allLeagues);
 
-  const totalNotifCount = pendingChallenges.length + gwAdvances.length;
+  const totalNotifCount = pendingChallenges.length + gwAdvances.length + gwWinners.length;
 
   const marketQuestionMap = useMemo(
     () => new Map(markets.map((m) => [m.id as string, m.question])),
@@ -990,6 +1025,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       visible={showNotifPanel}
       challenges={pendingChallenges}
       advances={gwAdvances}
+      winners={gwWinners}
       busy={matchupBusy}
       marketQuestionMap={marketQuestionMap}
       challengerNameMap={challengerNameMap}
@@ -1000,6 +1036,10 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
         // We don't yet have a deep-link to a specific league sheet, so this
         // surfaces them to the leagues screen where they can open it.
         markAdvanceSeen(leagueAddress);
+        onNavigateLeague?.();
+      }}
+      onWinnerTap={(leagueAddress, gameweek) => {
+        markWinnerSeen(leagueAddress, gameweek);
         onNavigateLeague?.();
       }}
       onViewAll={() => onNavigateMatchup?.()}
