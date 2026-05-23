@@ -102,6 +102,30 @@ export function PrivyLogo({ size = 20 }: { size?: number }) {
   );
 }
 
+export function ArciumLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/arcium-logo.png"
+      alt="Arcium"
+      width={size}
+      height={size}
+      style={{ borderRadius: size / 2, objectFit: "cover" }}
+    />
+  );
+}
+
+export function SolanaMobileLogo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      src="/solana-mobile-logo.png"
+      alt="Solana Mobile"
+      width={size}
+      height={size}
+      style={{ borderRadius: Math.round(size * 0.22), objectFit: "cover", flexShrink: 0 }}
+    />
+  );
+}
+
 export function SolanaLogo({ size = 20 }: { size?: number }) {
   return (
     <img
