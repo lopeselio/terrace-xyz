@@ -1,14 +1,16 @@
 # Terrace
 
-On-chain football prediction markets on Solana (devnet).
+On-chain football prediction markets on Solana (devnet). Public matchups, 1v1 challenges, parlays, **private fan leagues with encrypted scores via Arcium MPC**, and a live notification fabric that surfaces every move your league-mates make.
 
 ## Stack
 
-- **Program** — Anchor 0.30, Solana devnet
-- **Client** — React Native + Expo (Seeker / Android)
-- **Wallet** — Privy embedded wallet + Mobile Wallet Adapter
-- **RPC** — Helius
+- **Program** — Anchor 0.30, Solana devnet (program id `8dDXHX1x6didMogjFcMCNL6ZoY4XkP2RkSCKcCiaQssF`)
+- **Client** — React Native + Expo SDK 54, ships to Seeker via the Solana Mobile dApp Store
+- **Wallet** — Privy embedded wallet (email / Google) + Mobile Wallet Adapter (Seeker Seed Vault)
+- **Confidential compute** — Arcium MPC for private market reveal + private league scoring
+- **RPC** — Helius (devnet) + Helius WebSocket subscriptions for live events
 - **Settlement token** — devnet USDC (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`)
+- **Off-chain infra** — Cloudflare Worker for push fan-out + Telegram wallet linking; Expo Push for OS notifications
 
 ---
 
@@ -95,6 +97,47 @@ Both types follow the same on-chain lifecycle. Flash markets have `is_flash = tr
 
 ---
 
+## Private Fan Leagues (Arcium MPC)
+
+Fantasy-style competition layered on top of the regular betting flow. Friends create a league, place bets through the gameweek, and scores stay **encrypted on-chain through Arcium's MPC network** until the gameweek ends and each member chooses to reveal.
+
+### Lifecycle
+
+```
+create_league  (any wallet)                                     ┐
+   ↓ status: Active, gameweek: 1                                │
+join_league    (members)         ──→  init_member_score (Arcium)│ private
+   ↓                                                            │ leagues:
+record_league_win (bet wins counted toward GW score)            │ score is
+   • public league  → LeagueMember.gameweek_score++             │ encrypted
+   • private league → MXE-encrypted increment_member_score      │ MXE state
+   ↓                                                            │
+advance_gameweek (creator) — bumps League.gameweek              │
+   ↓                                                            │
+reveal_member_score (Arcium reveal MPC circuit)                 │
+   • MXE decrypts → callback writes plaintext to LeagueMember   │
+   • Seen as "🎉 You scored N points" celebration on device     │
+   ↓                                                            │
+reset_member_score (re-initialises encrypted slot to 0 for GW+1)┘
+```
+
+### What's encrypted vs. plaintext
+
+| Field | State |
+|---|---|
+| Individual gameweek score (private league) | Encrypted in `PrivateMemberScore` until the member chooses to reveal |
+| Revealed score (after the Arcium callback lands) | Plaintext on the `LeagueMember` PDA — anyone can read it |
+| Total cumulative score | Plaintext — used for the leaderboard once members start revealing |
+| Public-league scores | Plaintext throughout — no MPC overhead |
+
+### Reveal UX (client)
+
+`useLeague.pollMemberScoreRevealed()` polls `PrivateMemberScore.is_revealed` every 2 s for up to 90 s after submitting `reveal_member_score`. If the Arcium callback lands → success toast, confetti, leaderboard refresh, off-chain per-GW history snapshot. If it doesn't land → an in-app toast with a **Retry reveal** action so the user is never stuck on a stale spinner.
+
+The off-chain history index (`SecureStore` keyed `terrace:gw-history:{league}`) captures every `(member, gameweek, score)` tuple seen via `loadLeaderboard`, since the on-chain `LeagueMember` only carries the **most recent** revealed slot before the next GW's first win lazy-resets it. Rendered as `GW1 · 2 / GW2 · 4` chips under each member on the leaderboard.
+
+---
+
 ## Important notes
 
 - **Creator ≠ Bettor for reputation purposes.** Settling a market you created does not affect your Reputation PDA. Only placing bets and then claiming/losing does.
@@ -108,24 +151,75 @@ Both types follow the same on-chain lifecycle. Flash markets have `is_flash = tr
 
 | Account | Seeds | Key fields |
 |---------|-------|-----------|
-| Market PDA | `[b"market", creator, nonce_le]` | question, expiry, creator, outcome, total_volume, status, is_flash, is_private |
-| Bet PDA | `[b"bet", market, bettor]` | outcome, amount, claimed, result_recorded |
-| Reputation PDA | `[b"reputation", owner]` | total_bets, winning_bets, win_rate_bps, current_streak, badge_tier |
-| Parlay PDA | `[b"parlay", owner, nonce_le]` | legs[], stake_usdc, status |
+| `Market` | `[b"market", creator, nonce_le]` | question, expiry, creator, outcome, total_volume, status, is_flash, is_private |
+| `Bet` | `[b"bet", market, bettor]` | outcome, amount, claimed, result_recorded |
+| `Reputation` | `[b"reputation", owner]` | total_bets, winning_bets, win_rate_bps, current_streak, badge_tier |
+| `Parlay` | `[b"parlay", owner, nonce_le]` | legs[], stake_usdc, status |
+| `Matchup` | `[b"matchup", challenger, nonce_le]` | market, challenger, opponent, stake, challenger_outcome, status |
+| `League` | `[b"league", creator, nonce_le]` | name, season, gameweek, member_count, max_members, is_private, entry_fee_usdc, prize_pool, vault, status |
+| `LeagueMember` | `[b"league_member", league, member]` | gameweek_score, total_score, last_scored_gameweek, member_slot |
+| `PrivateMemberScore` | `[b"member_score", league, member]` | encrypted_score `[u8;32]`, nonce u128, scores_gameweek, is_revealed |
+| `LeagueScoreRecord` | `[b"league_score", league, member, bet]` | marker PDA — existence prevents double-scoring the same bet |
+
+---
+
+## Real-time notifications
+
+Three independent layers feed the bell icon on Home + the device notification shade.
+
+### Sources
+
+| Source | Drives | Storage |
+|---|---|---|
+| **On-chain polling** (`useLeagueAdvanceNotifications`) | "League advanced to GW N — reveal your score" | SecureStore `last-seen` per (wallet, league) |
+| **On-chain polling** (`useLeagueWinnerNotifications`) | "X won GW N in Y league" — fires once every member has revealed for a completed GW | SecureStore `seen` per (league, gw) |
+| **Push fan-out** (Cloudflare Worker → Expo Push) | Real-time alerts when a league-mate joins / wins / advances / reveals / creates a market | AsyncStorage activity log (`useLeagueActivityFeed`), capped at 40 entries, deduped by notification id |
+
+### Worker endpoints used by the app
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /register` | Register Expo push token + follow graph |
+| `POST /league-register` | Sync the user's league membership into the worker's KV indexes (`member_leagues:{pubkey}` ↔ `league_members:{league}`) |
+| `POST /league-event` | Fan-out a push to every member of one league (join / win / advance / reveal) |
+| `POST /league-event-broadcast` | Fan-out across **every** league the actor belongs to — used when the create-market screen doesn't know the leagues (e.g. `market_create`) |
+| `POST /webhook` | Helius enhanced-tx webhook → fan-out to followers of the actor |
+
+### Confetti + haptic cues
+
+`utils/cues.ts` centralises `expo-haptics` calls (`cueSuccess`, `cueError`, `cueWin`, `cueTap`, `cueSubmit`) so every win moment fires a consistent two-stage taptic burst. `Confetti.tsx` is a dependency-free RN Animated component that fires at three sites: the league reveal celebration, matchup "Bragging Rights" banner, and bet/parlay claim success. Toast variants use a circular tinted icon badge with a spring scale-in on appear and on kind promote (loading → success/error).
+
+> Audio cues are scaffolded via `expo-av` but the sound assets aren't wired yet. Drop `win.mp3` / `error.mp3` / `tap.mp3` into `packages/app/src/assets/sounds/` and the `cues` helper will start playing them automatically.
 
 ---
 
 ## Integrations
 
-### Arcium MPC (private markets)
+### Arcium MPC
 
-Client-side implementation is complete. Encrypted bet placement uses X25519 ECDH against the MXE's pubkey — ephemeral keypair generated per bet, outcome + amount XOR-encrypted field-by-field. A `blake3(outcome_byte || secret_32_bytes)` commitment is stored on-chain; the secret is persisted to `expo-secure-store` keyed by the `privateBetRecord` PDA so `claimWinnings` needs no outcome param.
+Two distinct surfaces use Arcium for confidential compute on-chain.
 
-Three on-chain MPC computation definitions are registered (`init_private_market_state`, `place_private_bet`, `reveal_private_market`) via `packages/programs/scripts/init-arcium-comp-defs.ts`. The `usePrivateMarket` hook covers the full flow: `placeBet` → `revealMarket` (queues MPC circuit) → `claimWinnings`.
+#### 1. Private markets (encrypted bets)
 
-**Gap**: `revealMarket` submits the instruction and queues the computation — the MPC callback that auto-settles the market runs on Arcium's network. Full round-trip requires Arcium's MXE node to be live and watching the program ID on devnet.
+Encrypted bet placement uses X25519 ECDH against the MXE's pubkey — ephemeral keypair generated per bet, outcome + amount XOR-encrypted field-by-field. A `blake3(outcome_byte || secret_32_bytes)` commitment is stored on-chain; the secret is persisted to `expo-secure-store` keyed by the `privateBetRecord` PDA so `claimWinnings` needs no outcome param.
 
-UI surface: `ArciumBadge`, `ArciumPrivacyBanner`, `ArciumSettledBanner` components; `PrivateBetPanel` in `MarketDetailSheet`; "Reveal market (Arcium MPC)" button in Profile → Created tab.
+Three computation definitions: `init_private_market_state`, `place_private_bet`, `reveal_private_market`. Registered via `packages/programs/scripts/init-arcium-comp-defs.ts`. The `usePrivateMarket` hook covers the full flow: `placeBet` → `revealMarket` (queues MPC circuit) → `claimWinnings`. The `revealMarket` MPC callback auto-settles the market when it lands.
+
+UI surface: `ArciumBadge`, `ArciumPrivacyBanner`, `ArciumSettledBanner`; `PrivateBetPanel` in `MarketDetailSheet`; "Reveal market (Arcium MPC)" button in Profile → Created tab.
+
+#### 2. Private fan leagues (encrypted gameweek scores)
+
+Four computation definitions backing the league lifecycle: `init_member_score`, `increment_member_score`, `reveal_member_score`, and an `init_member_score_v2` callback wired to `reset_member_score` for re-initialising the encrypted slot at GW boundaries.
+
+End-to-end client flow lives in `useLeague`:
+- `joinLeague` → `initMemberScore` (creates the encrypted `PrivateMemberScore` PDA)
+- `recordWin` → queues `increment_member_score` (the MXE adds 1 to the encrypted balance)
+- `revealMemberScore` → queues `reveal_member_score`; `pollMemberScoreRevealed` watches `is_revealed` for up to 90 s
+- `resetMemberScore` → re-initialises the encrypted slot to 0 for the next gameweek
+
+The reveal callback writes plaintext to `LeagueMember.gameweek_score` and `last_scored_gameweek` — visible on-chain to everyone from that moment forward. The UI labels the column accordingly (`GW{n} pts`) until the member earns their first win in the next GW, at which point `record_league_win` lazy-resets the slot.
+
+**Live status**: full round-trip working on devnet. Multi-member leagues (>2 wallets) and mainnet cluster cutover are still untested.
 
 ---
 
@@ -133,15 +227,16 @@ UI surface: `ArciumBadge`, `ArciumPrivacyBanner`, `ArciumSettledBanner` componen
 
 | Integration | What's built | Status |
 |---|---|---|
-| **Arcium MPC** | Private markets — encrypted bet placement, MPC reveal, claim via SecureStore secret | Client complete; MXE callback depends on Arcium devnet being live |
+| **Arcium MPC** | Private markets (encrypted bet placement, MPC reveal) + private fan leagues (encrypted GW scores, reveal-on-demand with 90 s poll + retry CTA) | Devnet — full round-trip working for both surfaces; multi-member league test pending |
 | **Jupiter Prediction Markets** | `JupiterMarketsClient` — events, markets, orderbook, leaderboard, positions; unified with native Terrace markets | Full |
 | **Helius RPC** | All RPC calls via Helius endpoint; WebSocket subscription for live events in `useHeliusEvents`; Anchor event discriminator parsing for 6 event types | Full |
-| **Privy** | Embedded wallet via `@privy-io/expo`; `setPrivySigner` wired in `App.tsx`; dual-track wallet (`mwa` for Seeker Seed Vault, `privy` for email/Google auth) | Full |
-| **Mobile Wallet Adapter** | `@solana-mobile/mobile-wallet-adapter-protocol-web3js`; `transact()` for Seeker Seed Vault signing | Full |
+| **Privy** | Embedded wallet via `@privy-io/expo`; `setPrivySigner` wired in `App.tsx`; dual-track wallet (`mwa` for Seeker Seed Vault, `privy` for email/Google auth); idle-ping noise filtered via `utils/silencePrivyPing` | Full |
+| **Solana Mobile / Mobile Wallet Adapter** | `@solana-mobile/mobile-wallet-adapter-protocol-web3js` for Seeker Seed Vault signing; shipping to the Solana Mobile dApp Store | Full |
+| **Cloudflare Worker** | Push token registration, Helius webhook follow-graph fan-out, league-membership KV index, per-event league fan-out (`/league-event`, `/league-event-broadcast`), Telegram wallet linking, deep-link routing | Full |
+| **Expo Push Notifications** | Token registered on launch; inbound `terraceKind: "league_event"` pushes captured into AsyncStorage and rendered in the bell-icon activity feed; notification tap → deep links to market / league | Full |
 | **Telegram Bot** | `/flash` creates markets; `/leaderboard`, `/profile`, `/link` wallet linking; Gemini AI for market suggestion; in-memory sentiment votes | Full |
-| **Cloudflare Worker** | Push token registration, Helius webhook fan-out, Telegram wallet linking via KV, deep link routing | Full |
-| **Expo Push Notifications** | Token registered on launch, notification tap → deep links to market | Full |
-| **Gemini AI** | AI-assisted market suggestion and sentiment analysis in Telegram bot | Full |
+| **Google Gemini** | AI-assisted market suggestion and sentiment analysis in Telegram bot | Full |
+| **Polymarket** | Sports markets piped into the unified market feed via `usePolymarketEvents` | Full |
 
 ---
 
