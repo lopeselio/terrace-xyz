@@ -71,6 +71,9 @@ export default {
     if (request.method === "POST" && url.pathname === "/league-event")
       return cors(await handleLeagueEvent(request, env));
 
+    if (request.method === "POST" && url.pathname === "/league-event-broadcast")
+      return cors(await handleLeagueEventBroadcast(request, env));
+
     const ua = request.headers.get("User-Agent") ?? "";
 
     // GET /m/<matchup-address>  — HTTPS deep-link redirect page
@@ -321,6 +324,76 @@ async function handleLeagueEvent(request: Request, env: Env): Promise<Response> 
   }
 
   return new Response(JSON.stringify({ delivered: pushBatch.length }), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// Broadcast a league event to every league the actor belongs to. Used for
+// "market_create" where the app doesn't carry the actor's league list.
+async function handleLeagueEventBroadcast(request: Request, env: Env): Promise<Response> {
+  let body: {
+    actorPubkey?: string;
+    kind?: LeagueEventKind;
+    payload?: Record<string, unknown>;
+  };
+  try { body = await request.json(); }
+  catch { return new Response("Bad JSON", { status: 400 }); }
+
+  const { actorPubkey, kind, payload = {} } = body;
+  if (!actorPubkey || !kind) {
+    return new Response("Missing actorPubkey / kind", { status: 400 });
+  }
+
+  const leaguesRaw = await env.DEVICES.get(`member_leagues:${actorPubkey}`);
+  const leagues = leaguesRaw ? safeArr(leaguesRaw) : [];
+  if (leagues.length === 0) {
+    return new Response(JSON.stringify({ delivered: 0, leagues: 0 }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  let totalDelivered = 0;
+  for (const leagueAddress of leagues) {
+    const memRaw = await env.DEVICES.get(`league_members:${leagueAddress}`);
+    if (!memRaw) continue;
+    const members: string[] = safeArr(memRaw);
+    const { title, body: pushBody } = leagueEventCopy(kind, actorPubkey, payload);
+    const pushBatch: ExpoPushMessage[] = [];
+    for (const member of members) {
+      if (member === actorPubkey) continue;
+      const deviceRaw = await env.DEVICES.get(`device:${member}`);
+      if (!deviceRaw) continue;
+      let entry: DeviceEntry;
+      try { entry = JSON.parse(deviceRaw); }
+      catch { continue; }
+      if (!entry.token.startsWith("ExponentPushToken[")) continue;
+      pushBatch.push({
+        to: entry.token,
+        title,
+        body: pushBody,
+        sound: "default",
+        data: {
+          terraceKind: "league_event",
+          leagueAddress,
+          actorPubkey,
+          kind,
+          ...payload,
+        },
+      });
+    }
+    if (pushBatch.length > 0) {
+      for (let i = 0; i < pushBatch.length; i += 100) {
+        await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
+          body: JSON.stringify(pushBatch.slice(i, i + 100)),
+        }).catch(() => {});
+      }
+      totalDelivered += pushBatch.length;
+    }
+  }
+
+  return new Response(JSON.stringify({ delivered: totalDelivered, leagues: leagues.length }), {
     headers: { "Content-Type": "application/json" },
   });
 }

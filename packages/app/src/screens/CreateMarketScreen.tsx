@@ -15,6 +15,7 @@ import {
 import { useCreateMarket } from "../hooks/useCreateMarket";
 import type { UnifiedMarket } from "@terrace/sdk";
 import { ArciumBadge } from "../components/ArciumBadge";
+import { broadcastLeagueEvent } from "../utils/leagueNotify";
 
 // ---------------------------------------------------------------------------
 // Expiry presets
@@ -86,6 +87,13 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
       isPrivate,
     };
     onMarketCreated(optimistic);
+    // Fan out a "market_create" event to every league the creator belongs to.
+    if (walletPubkey) {
+      broadcastLeagueEvent(walletPubkey, "market_create", {
+        marketAddress,
+        question: optimistic.question,
+      });
+    }
     // Reset form
     setQuestion("");
     setExpiryOffset(86_400);
@@ -93,7 +101,7 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
     setIsFlash(false);
     setIsPrivate(false);
     reset();
-  }, [marketAddress, question, expiryOffset, creatorFeePct, isFlash, isPrivate, onMarketCreated, reset]);
+  }, [marketAddress, question, expiryOffset, creatorFeePct, isFlash, isPrivate, onMarketCreated, reset, walletPubkey]);
 
   // ── Success state ─────────────────────────────────────────────────────────
   if (status === "success") {

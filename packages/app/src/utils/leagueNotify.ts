@@ -43,3 +43,18 @@ export function publishLeagueEvent(
     body: JSON.stringify({ leagueAddress, actorPubkey, kind, payload }),
   }).catch(() => {});
 }
+
+// Broadcasts to every league the actor belongs to. Used when the action
+// isn't tied to a specific league (e.g. creating a public market).
+export function broadcastLeagueEvent(
+  actorPubkey: string,
+  kind: LeagueEventKind,
+  payload: LeagueEventPayload = {},
+): void {
+  if (!actorPubkey) return;
+  fetch(`${WORKER_URL}/league-event-broadcast`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actorPubkey, kind, payload }),
+  }).catch(() => {});
+}
