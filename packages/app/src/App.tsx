@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { NotificationProvider } from "./components/NotificationProvider";
+import { AppSplash } from "./components/AppSplash";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
@@ -384,6 +385,17 @@ export default function App() {
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
+
+  // JS-rendered splash. Stays up for ~1.2s after the bundle mounts, then
+  // fades out. Hands off cleanly from the native splash configured in app.json.
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashMounted, setSplashMounted] = useState(true);
+  useEffect(() => {
+    const hide = setTimeout(() => setSplashVisible(false), 1200);
+    // Unmount after the fade animation finishes (320ms in AppSplash).
+    const unmount = setTimeout(() => setSplashMounted(false), 1700);
+    return () => { clearTimeout(hide); clearTimeout(unmount); };
+  }, []);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<UnifiedMarket | null>(null);
@@ -746,6 +758,7 @@ export default function App() {
         })}
       </View>
       </NotificationProvider>
+      {splashMounted && <AppSplash visible={splashVisible} />}
     </SafeAreaView>
   );
 }
