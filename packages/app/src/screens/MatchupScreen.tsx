@@ -46,6 +46,7 @@ import { useWalletBalances } from "../hooks/useWalletBalances";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import type { BadgeTier } from "../hooks/useLeaderboard";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
+import { Confetti } from "../components/Confetti";
 import { useFollowedSources } from "../hooks/useFollowedSources";
 import type { UserSource } from "../hooks/useFollowedSources";
 
@@ -754,6 +755,9 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
       </View>
 
       {/* Always-visible status banners — above the tab content */}
+      {settleResult?.currentUserWon && (
+        <Confetti trigger={settleResult} height={260} />
+      )}
       {settleResult ? (
         settleResult.currentUserWon ? (
           <View style={[styles.successBanner, styles.winBanner]}>

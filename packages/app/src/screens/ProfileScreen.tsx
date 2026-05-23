@@ -26,6 +26,7 @@ import { useClaimWinnings } from "../hooks/useClaimWinnings";
 import { usePrivateMarket } from "../hooks/usePrivateMarket";
 import { useLeague } from "../hooks/useLeague";
 import { ArciumBadge } from "../components/ArciumBadge";
+import { Confetti } from "../components/Confetti";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -1363,6 +1364,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
     {claimSuccess && (
       <View style={styles.claimOverlay}>
         <TouchableOpacity style={styles.claimBackdrop} activeOpacity={1} onPress={() => setClaimSuccess(null)} />
+        <Confetti trigger={claimSuccess} />
         <View style={styles.claimCard}>
           <Text style={styles.claimEmoji}>{claimSuccess.emoji}</Text>
           <Text style={styles.claimTitle}>{claimSuccess.title}</Text>

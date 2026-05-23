@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from "react-native";
+import { Confetti } from "./Confetti";
 
 type Props = {
   visible: boolean;
@@ -31,6 +32,9 @@ export function RevealCelebrationModal({ visible, gameweek, score, onDismiss }: 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={s.backdrop}>
+        {/* Confetti is keyed off the visible gameweek so each reveal triggers
+            a fresh burst. Renders behind the card via the absolute layer. */}
+        <Confetti trigger={visible ? gameweek : null} />
         <Animated.View style={[s.card, { opacity, transform: [{ scale }] }]}>
           <Text style={s.emoji}>🎉</Text>
           <Text style={s.kicker}>YOU SCORED</Text>
