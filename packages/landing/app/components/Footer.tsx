@@ -21,7 +21,7 @@ export default function Footer() {
               { label: "Privacy", href: "#" },
               { label: "Docs", href: "#" },
               { label: "GitHub", href: "#" },
-              { label: "Twitter", href: "https://x.com/terracedotsol" },
+              { label: "Twitter", href: "https://x.com/terrace_social" },
             ].map(({ label, href }) => (
               <a
                 key={label}

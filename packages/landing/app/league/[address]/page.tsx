@@ -70,7 +70,7 @@ export default function LeagueInvitePage() {
           <p className="text-[#4b5563] text-xs text-center mt-6">
             App not opening?{" "}
             <a
-              href="https://x.com/terracedotsol"
+              href="https://x.com/terrace_social"
               className="text-[#22c55e] underline"
               target="_blank"
               rel="noopener noreferrer"
