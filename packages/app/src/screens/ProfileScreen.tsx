@@ -27,6 +27,7 @@ import { usePrivateMarket } from "../hooks/usePrivateMarket";
 import { useLeague } from "../hooks/useLeague";
 import { ArciumBadge } from "../components/ArciumBadge";
 import { Confetti } from "../components/Confetti";
+import { cueWin } from "../utils/cues";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -975,6 +976,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         title: "You called it!",
         body: "Winnings are on their way to your wallet. Your win rate just went up.",
       });
+      cueWin();
     } catch {}
     setClaimingBet(null);
     refreshBets();
@@ -988,6 +990,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         title: "Parlay cashed!",
         body: `You hit all ${p.legs.length} legs. USDC is landing in your wallet now.`,
       });
+      cueWin();
     } catch {}
     refreshParlays();
   };

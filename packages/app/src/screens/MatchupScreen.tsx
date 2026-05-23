@@ -47,6 +47,7 @@ import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import type { BadgeTier } from "../hooks/useLeaderboard";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 import { Confetti } from "../components/Confetti";
+import { cueWin } from "../utils/cues";
 import { useFollowedSources } from "../hooks/useFollowedSources";
 import type { UserSource } from "../hooks/useFollowedSources";
 
@@ -682,6 +683,7 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
       const potUsdc        = `$${(Number(matchup.stakeUsdc * 2n) / 1_000_000).toFixed(2)}`;
       const marketQuestion = marketQuestionMap.get(matchup.market as string) ?? shortAddr(matchup.market as string);
       setSettleResult({ currentUserWon, winnerDisplay, potUsdc, marketQuestion });
+      if (currentUserWon) cueWin();
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from "react-native";
 import { Confetti } from "./Confetti";
+import { cueWin } from "../utils/cues";
 
 type Props = {
   visible: boolean;
@@ -21,6 +22,7 @@ export function RevealCelebrationModal({ visible, gameweek, score, onDismiss }: 
 
   useEffect(() => {
     if (!visible) return;
+    cueWin();
     scale.setValue(0.85);
     opacity.setValue(0);
     Animated.parallel([
