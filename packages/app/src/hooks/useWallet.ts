@@ -175,9 +175,12 @@ async function signTransaction(base64Tx: string): Promise<string> {
     if (msg.includes("CancellationException")) {
       throw new Error("Wallet signing was cancelled. Please try again.");
     }
-    // Ping timeout = Seed Vault signing took too long and the MWA keepalive expired
-    if (msg.includes("Ping reached timeout") || msg.includes("Ping") && msg.includes("timeout")) {
-      throw new Error("Wallet timed out while signing. Please try again — it may be faster on the second attempt.");
+    // Ping timeout = Privy's embedded-wallet iframe bridge (EmbeddedWalletProxy.ping)
+    // didn't respond inside 15s. Benign background pings are filtered in
+    // utils/silencePrivyPing; reaching here means a sign attempt coincided with
+    // a bridge stall, so surface a retry-friendly message.
+    if (msg.includes("Ping reached timeout") || (msg.includes("Ping") && msg.includes("timeout"))) {
+      throw new Error("Wallet bridge stalled. Please try again — it usually recovers on the second attempt.");
     }
     // Session closed before signing completed (e.g. wallet was backgrounded)
     if (msg.includes("ERROR_SESSION_CLOSED") || msg.includes("ERROR_SESSION_TIMEOUT")) {

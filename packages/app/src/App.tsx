@@ -1,3 +1,6 @@
+// Must run before anything imports Privy. Filters the recurring 15s ping
+// heartbeat timeout noise that otherwise floods logcat / Expo LogBox.
+import "./utils/silencePrivyPing";
 import React, { useState, useEffect, useRef } from "react";
 import { VersionedTransaction } from "@solana/web3.js";
 import {
