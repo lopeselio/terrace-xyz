@@ -187,7 +187,7 @@ export default function CreatorTools() {
               {
                 icon: "📊",
                 title: "Creator dashboard",
-                desc: "Track every market you deployed — volume, fee earned, open/settled status, and live expiry countdown.",
+                desc: "Track every market you deployed: volume, fee earned, open/settled status, and live expiry countdown.",
                 color: "text-sol",
                 bg: "bg-sol/10",
                 border: "border-sol/20",
@@ -195,7 +195,7 @@ export default function CreatorTools() {
               {
                 icon: "🔒",
                 title: "Private markets (coming soon)",
-                desc: "Encrypt your market with Light Protocol. Positions are hidden until settlement — perfect for group competitions.",
+                desc: "Encrypt your market with Light Protocol. Positions are hidden until settlement. Perfect for group competitions.",
                 color: "text-text-muted",
                 bg: "bg-white/5",
                 border: "border-white/10",

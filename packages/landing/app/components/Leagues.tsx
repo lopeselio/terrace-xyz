@@ -56,7 +56,7 @@ export default function Leagues() {
             </h2>
             <p className="text-white/50">
               Not a sportsbook. Not a prediction market aggregator. A social
-              prediction layer — owned by the crowd.
+              prediction layer, owned by the crowd.
             </p>
           </div>
 
@@ -116,7 +116,7 @@ export default function Leagues() {
                               ✓
                             </span>
                           ) : (
-                            <span className="text-text-muted text-base">—</span>
+                            <span className="text-text-muted text-base">–</span>
                           )}
                         </td>
                       )

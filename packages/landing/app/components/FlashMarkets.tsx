@@ -171,7 +171,7 @@ export default function FlashMarkets() {
             {
               icon: "⚡",
               title: "15–90 min windows",
-              desc: "Markets designed for in-match action. Open, bet, settle — inside a half.",
+              desc: "Markets designed for in-match action. Open, bet, settle, all inside a half.",
             },
             {
               icon: "⏱️",

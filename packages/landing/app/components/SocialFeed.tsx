@@ -172,7 +172,7 @@ export default function SocialFeed() {
             <p className="text-white/50 text-lg leading-relaxed mb-8">
               Every bet, win, and market creation streams live. Follow
               top predictors and get notified the second they back a take. The
-              crowd&rsquo;s wisdom — real-time.
+              crowd&rsquo;s wisdom, real-time.
             </p>
 
             <div className="flex flex-col gap-4">
@@ -185,7 +185,7 @@ export default function SocialFeed() {
                 {
                   icon: "👥",
                   title: "Following feed",
-                  desc: "Your personal feed shows only people you follow — their bets, wins, markets.",
+                  desc: "Your personal feed shows only people you follow: their bets, wins, markets.",
                 },
                 {
                   icon: "🔔",

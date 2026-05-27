@@ -39,7 +39,7 @@ export default function LeagueInvitePage() {
         </p>
         <h1 className="text-2xl font-bold text-center mb-2">League Invite</h1>
         <p className="text-[#6b7280] text-sm text-center mb-8">
-          You've been invited to join a league on Terrace — on‑chain football predictions.
+          You've been invited to join a league on Terrace, the on‑chain football prediction app.
         </p>
 
         {/* League address card */}

@@ -91,7 +91,7 @@ export default function Hero() {
 
         {/* Sub-headline */}
         <p className="text-[clamp(1rem,2.5vw,1.4rem)] text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-          Terrace is the social sports prediction layer football deserves —
+          Terrace is the social sports prediction layer football deserves.
           open markets, live flash bets, parlay chains, and a
           reputation that follows you everywhere.
         </p>

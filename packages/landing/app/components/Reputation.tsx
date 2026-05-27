@@ -64,7 +64,7 @@ export default function Reputation() {
               Verifiable.
             </h2>
             <p className="text-white/50 text-lg leading-relaxed mb-8">
-              Every bet, every win, every parlay — recorded permanently and
+              Every bet, every win, every parlay: recorded permanently and
               visible to everyone. Your badge tier isn&rsquo;t given.
               It&rsquo;s earned.
             </p>

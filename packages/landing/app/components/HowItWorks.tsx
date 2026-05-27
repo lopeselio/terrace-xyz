@@ -4,7 +4,7 @@ const steps = [
   {
     n: "01",
     title: "Connect your wallet",
-    desc: "Use Phantom, Solflare, or any Solana wallet via Mobile Wallet Adapter. Or sign in with email — we create an embedded Solana wallet automatically via Privy.",
+    desc: "Use Phantom, Solflare, or any Solana wallet via Mobile Wallet Adapter. Or sign in with email. We create an embedded Solana wallet automatically via Privy.",
     icon: "🔑",
     color: "text-sol",
     border: "border-sol/20",
@@ -12,7 +12,7 @@ const steps = [
   {
     n: "02",
     title: "Browse or create markets",
-    desc: "Explore pre-match markets, flash in-play windows, and Polymarket sports feeds — or deploy your own question with a custom creator fee in under 30 seconds.",
+    desc: "Explore pre-match markets, flash in-play windows, and Polymarket sports feeds, or deploy your own question with a custom creator fee in under 30 seconds.",
     icon: "🎯",
     color: "text-pitch",
     border: "border-pitch/20",
@@ -20,7 +20,7 @@ const steps = [
   {
     n: "03",
     title: "Back your take",
-    desc: "Back your pick on any market. Chain multiple legs into a parlay for multiplied payouts. Your positions are yours — always.",
+    desc: "Back your pick on any market. Chain multiple legs into a parlay for multiplied payouts. Your positions are yours. Always.",
     icon: "⚡",
     color: "text-fire",
     border: "border-fire/20",
@@ -28,7 +28,7 @@ const steps = [
   {
     n: "04",
     title: "Win. Build rep. Repeat.",
-    desc: "Correct calls build your permanent reputation. Win rate, streak, badge tier — all verifiable. Earn the Legend crown. People will follow your bets.",
+    desc: "Correct calls build your permanent reputation. Win rate, streak, badge tier: all verifiable. Earn the Legend crown. People will follow your bets.",
     icon: "👑",
     color: "text-yellow-400",
     border: "border-yellow-400/20",
@@ -45,7 +45,7 @@ export default function HowItWorks() {
             How Terrace works
           </h2>
           <p className="text-white/50 text-lg max-w-xl mx-auto">
-            From sign-up to a permanent reputation — the full loop,
+            From sign-up to a permanent reputation. The full loop,
             on Solana.
           </p>
         </div>

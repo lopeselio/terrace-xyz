@@ -18,7 +18,7 @@ type Partner = {
 const partners: Partner[] = [
   {
     name: "Arcium",
-    blurb: "Encrypted MPC for private fan leagues — scores stay sealed until reveal.",
+    blurb: "Encrypted MPC for private fan leagues. Scores stay sealed until reveal.",
     Icon: ArciumLogo,
   },
   {
@@ -53,7 +53,7 @@ const partners: Partner[] = [
   },
   {
     name: "Solana Mobile",
-    blurb: "First-class Seeker support — Mobile Wallet Adapter, dApp store ready.",
+    blurb: "First-class Seeker support. Mobile Wallet Adapter, dApp store ready.",
     Icon: SolanaMobileLogo,
   },
 ];

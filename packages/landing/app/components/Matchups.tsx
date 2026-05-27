@@ -9,7 +9,7 @@ const steps = [
     bg: "bg-pitch/10",
     border: "border-pitch/30",
     title: "Issue the challenge",
-    detail: "Pick a market, choose your side, set the stake. Your stake is locked automatically — no intermediary holds it.",
+    detail: "Pick a market, choose your side, set the stake. Your stake is locked automatically. No intermediary holds it.",
     tag: "STEP 01",
   },
   {
@@ -18,7 +18,7 @@ const steps = [
     bg: "bg-sol/10",
     border: "border-sol/30",
     title: "They accept",
-    detail: "Your opponent sees the open challenge and locks in equal stake. They automatically take the other side — no negotiating.",
+    detail: "Your opponent sees the open challenge and locks in equal stake. They automatically take the other side. No negotiating.",
     tag: "STEP 02",
   },
   {
@@ -27,7 +27,7 @@ const steps = [
     bg: "bg-yellow-400/10",
     border: "border-yellow-400/30",
     title: "Market settles automatically",
-    detail: "The underlying market resolves. Either player taps Settle — the outcome is read and the full pot goes to the winner. No fees, no middleman.",
+    detail: "The underlying market resolves. Either player taps Settle. The outcome is read and the full pot goes to the winner. No fees, no middleman.",
     tag: "STEP 03",
   },
 ];
@@ -85,7 +85,7 @@ export default function Matchups() {
             <span className="text-pitch glow-green">your mouth is.</span>
           </h2>
           <p className="text-white/50 text-lg max-w-xl mx-auto">
-            Challenge any fan directly. Equal stakes, opposing sides, one winner. Pure peer-to-peer 1v1 — no house, no spread.
+            Challenge any fan directly. Equal stakes, opposing sides, one winner. Pure peer-to-peer 1v1. No house, no spread.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export default function Matchups() {
               <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3">Key rules</p>
               <ul className="flex flex-col gap-2">
                 {[
-                  { icon: "⚖️", text: "Equal stake on both sides — not an AMM" },
+                  { icon: "⚖️", text: "Equal stake on both sides, not an AMM" },
                   { icon: "🏆", text: "Winner takes 2× their stake" },
                   { icon: "↩️", text: "No response? Challenger reclaims their stake" },
                 ].map((r) => (

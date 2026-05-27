@@ -14,6 +14,14 @@
       --indigo-2: #8b5cf6;
       --green: #22c55e;
       --amber: #fbbf24;
+      --code-bg: #0d0d12;
+      --code-line: #1a1a22;
+      --kw: #c4b5fd;     /* keyword purple */
+      --ty: #67e8f9;     /* type cyan */
+      --fn: #fbbf24;     /* fn amber */
+      --str: #86efac;    /* string green */
+      --num: #f9a8d4;    /* literal pink */
+      --cmt: #6b7280;    /* comment grey */
     }
     html, body { margin: 0; padding: 0; background: #000; color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", system-ui, sans-serif; }
@@ -27,11 +35,12 @@
         radial-gradient(900px 500px at 88% 100%, rgba(139,92,246,0.12), transparent 60%),
         linear-gradient(180deg, #07070a 0%, #0a0a0a 100%);
       display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
+      grid-template-columns: 1.12fr 0.88fr;
       box-sizing: border-box;
-      padding: 56px 64px;
+      padding: 44px 56px;
       position: relative;
       overflow: hidden;
+      gap: 28px;
     }
 
     /* subtle dot grid */
@@ -45,37 +54,37 @@
     }
 
     /* ── Left column ─────────────────────────────────────────── */
-    .left { position: relative; z-index: 1; display: flex; flex-direction: column; }
+    .left { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
     .brand {
-      display: inline-flex; align-items: center; gap: 12px;
-      padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
       background: rgba(255,255,255,0.03); width: fit-content;
-      font-size: 13px; color: var(--muted); letter-spacing: 0.3px;
+      font-size: 12px; color: var(--muted); letter-spacing: 0.3px;
     }
     .brand .tx { font-weight: 700; color: #fff; letter-spacing: 0.5px; }
-    .brand .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
     .brand .logo {
-      width: 22px; height: 22px; border-radius: 6px; display: block;
+      width: 20px; height: 20px; border-radius: 6px; display: block;
       box-shadow: 0 0 14px rgba(34,197,94,0.25);
     }
     .brand .arcium {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 3px 9px; border-radius: 999px;
+      padding: 3px 9px 3px 6px; border-radius: 999px;
       background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
       border: 1px solid rgba(139,92,246,0.45);
-      color: #c4b5fd; font-weight: 700; font-size: 11px;
+      color: #c4b5fd; font-weight: 700; font-size: 10.5px;
       text-transform: uppercase; letter-spacing: 0.8px;
     }
-    .brand .arcium::before {
-      content: ""; width: 9px; height: 9px; border-radius: 50%;
-      background: conic-gradient(from 0deg, #6366f1, #8b5cf6, #6366f1);
+    .brand .arcium .alogo {
+      width: 16px; height: 16px; display: block;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(139,92,246,0.55);
     }
 
     h1 {
-      font-size: 50px;
+      font-size: 44px;
       line-height: 1.02;
-      margin: 18px 0 8px 0;
-      letter-spacing: -1.4px;
+      margin: 14px 0 8px 0;
+      letter-spacing: -1.2px;
       font-weight: 800;
     }
     h1 .accent {
@@ -83,111 +92,216 @@
       -webkit-background-clip: text; background-clip: text;
       color: transparent;
     }
-    .sub {
-      color: var(--muted);
-      font-size: 17px; line-height: 1.4;
-      max-width: 520px;
-    }
-    .sub .em { color: #e5e7eb; font-weight: 600; }
-
-    .flowline {
-      margin-top: 14px;
-      display: inline-flex; align-items: center; gap: 10px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(99,102,241,0.35);
-      background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(139,92,246,0.10));
-      width: fit-content;
-      font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase;
+    .tagline {
+      margin: 4px 0 10px 0;
+      font-size: 18px;
       font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.3px;
+      line-height: 1.3;
+      max-width: 560px;
     }
-    .flowline-step  { color: #c7d2fe; }
-    .flowline-arrow { color: #6b7280; }
-    .flowline-step.accent {
+    .tagline .hl {
       background: linear-gradient(90deg, #a5b4fc, #c4b5fd);
       -webkit-background-clip: text; background-clip: text;
       color: transparent;
     }
+    .sub {
+      color: var(--muted);
+      font-size: 14.5px; line-height: 1.45;
+      max-width: 560px;
+    }
+    .sub .em { color: #e5e7eb; font-weight: 600; }
+    .sub code {
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12.5px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      border: 1px solid rgba(99,102,241,0.35);
+      background: rgba(99,102,241,0.10);
+      color: #c4b5fd;
+    }
 
-    .usps {
+    /* ── Compute pipeline (stages of the MPC loop) ───────────── */
+    .pipeline {
       margin-top: 14px;
       display: grid;
-      gap: 8px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(17,17,20,0.55);
+      overflow: hidden;
+    }
+    .stage {
+      padding: 9px 10px;
+      border-right: 1px solid var(--line);
+      position: relative;
+    }
+    .stage:last-child { border-right: none; }
+    .stage .n {
+      font-size: 9.5px; color: #6b7280;
+      letter-spacing: 1px; text-transform: uppercase; font-weight: 700;
+    }
+    .stage .label {
+      margin-top: 3px; font-size: 12px; font-weight: 700; color: #fff;
+      line-height: 1.15;
+    }
+    .stage .prim {
+      margin-top: 3px;
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px; color: #c4b5fd; line-height: 1.2;
+    }
+    .stage.compute {
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.14));
+    }
+    .stage.compute .label { color: #c4b5fd; }
+
+    /* ── Tech USPs (name the primitive) ───────────────────────── */
+    .usps {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
     }
     .usp {
       display: grid;
-      grid-template-columns: 26px 1fr;
-      gap: 12px;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
       align-items: start;
-      padding: 9px 12px;
+      padding: 7px 10px;
       border: 1px solid var(--line);
       background: rgba(17,17,20,0.6);
-      border-radius: 12px;
-      backdrop-filter: blur(2px);
+      border-radius: 10px;
     }
     .usp .ic {
-      width: 28px; height: 28px;
+      width: 22px; height: 22px;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 8px;
+      border-radius: 6px;
       background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
-      color: #c7d2fe; font-size: 14px;
+      color: #c7d2fe; font-size: 12px;
       border: 1px solid rgba(99,102,241,0.45);
     }
-    .usp .t { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
-    .usp .d { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+    .usp .t {
+      font-size: 12.5px; font-weight: 700; color: #fff; line-height: 1.2;
+    }
+    .usp .t code {
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11.5px; color: #c4b5fd; font-weight: 700;
+    }
+    .usp .d {
+      font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.3;
+    }
+    .usp .d code {
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px; color: #c4b5fd;
+    }
 
     .footer {
-      margin-top: auto; padding-top: 14px;
+      margin-top: auto; padding-top: 10px;
       display: flex; align-items: center; justify-content: space-between;
-      color: var(--muted); font-size: 13px;
+      color: var(--muted); font-size: 12px;
     }
     .footer .url { color: #fff; font-weight: 700; letter-spacing: 0.3px; }
 
-    /* ── Right column: phones ───────────────────────────────── */
+    /* ── Right column: code card + phones ─────────────────────── */
     .right {
       position: relative; z-index: 1;
-      display: grid; place-items: center;
+      display: flex; flex-direction: column;
+      gap: 16px;
+      min-width: 0;
     }
+
+    /* Code card — the actual circuit running on the Arx MPC */
+    .code-card {
+      border-radius: 12px;
+      border: 1px solid #23232b;
+      background: linear-gradient(180deg, #0c0c12 0%, #0a0a10 100%);
+      box-shadow:
+        0 14px 40px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 22px rgba(99,102,241,0.12);
+      overflow: hidden;
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
+    }
+    .code-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1c1c24;
+      background: rgba(255,255,255,0.02);
+    }
+    .code-head .dots { display: flex; gap: 5px; }
+    .code-head .dots span {
+      width: 9px; height: 9px; border-radius: 50%; display: block;
+      background: #333; opacity: 0.7;
+    }
+    .code-head .dots span:nth-child(1) { background: #ff5f57; opacity: 0.85; }
+    .code-head .dots span:nth-child(2) { background: #febc2e; opacity: 0.85; }
+    .code-head .dots span:nth-child(3) { background: #28c840; opacity: 0.85; }
+    .code-head .file {
+      font-size: 11px; color: #9ca3af;
+      letter-spacing: 0.3px; font-weight: 600;
+    }
+    .code-head .file b { color: #c4b5fd; font-weight: 700; }
+    .code-head .badge {
+      margin-left: auto;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 9.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+      color: #c4b5fd;
+      border: 1px solid rgba(139,92,246,0.5);
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
+    }
+    .code {
+      padding: 10px 14px 12px 14px;
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: #e5e7eb;
+      white-space: pre;
+      overflow: hidden;
+    }
+    .code .kw  { color: var(--kw); }
+    .code .ty  { color: var(--ty); }
+    .code .fn  { color: var(--fn); }
+    .code .num { color: var(--num); }
+    .code .str { color: var(--str); }
+    .code .cmt { color: var(--cmt); font-style: italic; }
+    .code .at  { color: #c4b5fd; }
+    .code .p   { color: #9ca3af; } /* punctuation */
+
+    /* Phones row */
     .phones {
       position: relative;
-      width: 100%; height: 100%;
+      flex: 1;
+      min-height: 0;
     }
     .phone {
       position: absolute;
-      width: 270px; height: 540px;
-      border-radius: 30px;
+      width: 210px; height: 420px;
+      border-radius: 26px;
       background: #000;
       border: 2px solid #1f2937;
       box-shadow:
-        0 30px 80px rgba(0,0,0,0.55),
+        0 22px 56px rgba(0,0,0,0.55),
         0 0 0 1px rgba(255,255,255,0.04) inset,
-        0 0 28px rgba(99,102,241,0.14);
+        0 0 22px rgba(99,102,241,0.14);
       overflow: hidden;
     }
     .phone img {
       width: 100%; height: 100%; display: block;
       object-fit: cover; object-position: top center;
     }
-    .phone.left  { left: 10px;  top: 60px; transform: rotate(-5deg); z-index: 1; }
-    .phone.right { right: 0px;  top: 0px;  transform: rotate(4deg);  z-index: 2; }
+    .phone.left  { left: 0;    top: 6px;  transform: rotate(-5deg); z-index: 1; }
+    .phone.right { right: -6px; top: -2px; transform: rotate(4deg);  z-index: 2; }
 
     .stamp {
-      position: absolute; right: 0; top: -18px;
-      padding: 6px 12px;
-      font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      position: absolute; right: -2px; top: -22px;
+      padding: 5px 10px;
+      font-size: 10px; font-weight: 800; letter-spacing: 1px;
       color: #fbbf24; text-transform: uppercase;
       border: 1px solid rgba(251,191,36,0.45);
       background: rgba(251,191,36,0.08);
       border-radius: 999px;
       z-index: 4;
     }
-
-    .caption {
-      position: absolute; bottom: 6px; left: 0; right: 0;
-      text-align: center; color: var(--muted); font-size: 12px;
-      letter-spacing: 0.4px;
-    }
-    .caption b { color: #c4b5fd; }
   </style>
 </head>
 <body>
@@ -198,48 +312,71 @@
         <img src="./terrace-logo.png" alt="Terrace" class="logo" />
         <span class="tx">Terrace</span>
         <span style="opacity:0.5">·</span>
-        <span class="arcium">Arcium MPC</span>
+        <span class="arcium"><img src="./arcium-logo.png" alt="Arcium" class="alogo" />Arcium MPC</span>
       </div>
 
       <h1>
         Sweat your bets<br />
         <span class="accent">in private.</span>
       </h1>
+      <p class="tagline">End-to-end ciphertext — <span class="hl">including the math.</span></p>
       <p class="sub">
-        Fan-league picks on Terrace now run on Arcium. Your YES/NO stays
-        <span class="em">encrypted on Solana</span> — and Arcium's MPC
-        scores it <span class="em">without ever decrypting</span>.
-        No copying the leader mid-season. No trusted backend.
+        Fan-league picks on Terrace run on Arcium. Picks are encrypted client-side with
+        <span class="em">x25519 + RescueCipher</span>, sealed on Solana as
+        <code>Enc&lt;Mxe, u64&gt;</code>, and scored by a committee of
+        <span class="em">Arx nodes</span> running our circuit over secret shares —
+        no Arx node, server, or indexer ever sees the plaintext.
       </p>
 
-      <div class="flowline">
-        <span class="flowline-step">Encrypted picks</span>
-        <span class="flowline-arrow">→</span>
-        <span class="flowline-step">MPC scoring</span>
-        <span class="flowline-arrow">→</span>
-        <span class="flowline-step accent">reveal on-chain</span>
+      <!-- The actual MPC compute loop, with named primitives -->
+      <div class="pipeline">
+        <div class="stage">
+          <div class="n">1 · Client</div>
+          <div class="label">Encrypt pick</div>
+          <div class="prim">x25519 + RescueCipher</div>
+        </div>
+        <div class="stage">
+          <div class="n">2 · Solana</div>
+          <div class="label">Queue computation</div>
+          <div class="prim">queue_computation()</div>
+        </div>
+        <div class="stage compute">
+          <div class="n">3 · Arx MPC</div>
+          <div class="label">Score in ciphertext</div>
+          <div class="prim">Enc&lt;Mxe, u64&gt;</div>
+        </div>
+        <div class="stage">
+          <div class="n">4 · Solana</div>
+          <div class="label">Write back</div>
+          <div class="prim">#[arcium_callback]</div>
+        </div>
+        <div class="stage">
+          <div class="n">5 · User</div>
+          <div class="label">Opt-in reveal</div>
+          <div class="prim">.reveal()</div>
+        </div>
       </div>
 
       <div class="usps">
         <div class="usp">
-          <span class="ic">🔒</span>
+          <span class="ic">🔐</span>
           <div>
-            <div class="t">Picks stay sealed all week</div>
-            <div class="d">Your YES/NO is encrypted on Solana. No teammate, no server, no indexer can see it.</div>
+            <div class="t">Pick never leaves the device in plaintext</div>
+            <div class="d">Encrypted to the MXE cluster pubkey via <code>RescueCipher</code> + x25519 key exchange. Solana stores ciphertext, never YES/NO.</div>
           </div>
         </div>
         <div class="usp">
-          <span class="ic">⚙️</span>
+          <span class="ic">🧮</span>
           <div>
-            <div class="t">Scored without decryption</div>
-            <div class="d">Arcium MPC compares each encrypted pick to the result and updates scores — picks never leave ciphertext.</div>
+            <div class="t">MPC compare over secret shares — no single Arx sees your pick</div>
+            <div class="d">Arx node committee evaluates <code>if pick == winning_outcome</code>. Both branches execute (MPC invariant); the bit stays sharded across nodes.</div>
           </div>
         </div>
         <div class="usp">
-          <span class="ic">⏱️</span>
+          <span class="ic">🔁</span>
           <div>
-            <div class="t">Reveal on your terms</div>
-            <div class="d">End of GW, you tap reveal. Plaintext lands trustlessly on-chain.</div>
+            <div class="t">Sealed state chains ciphertext → ciphertext</div>
+            <div class="d">Scores persist as <code>Enc&lt;Mxe, u64&gt;</code> in a PDA. <code>#[arcium_callback]</code> writes the new ciphertext back on-chain. <code>.reveal()</code> is opt-in.</div>
           </div>
         </div>
       </div>
@@ -250,8 +387,31 @@
       </div>
     </div>
 
-    <!-- Right: phones -->
+    <!-- Right: code card + phones -->
     <div class="right">
+      <div class="code-card">
+        <div class="code-head">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <span class="file">encrypted-ixs/src/<b>lib.rs</b></span>
+          <span class="badge">Arcis circuit · runs on MPC</span>
+        </div>
+<div class="code"><span class="at">#[encrypted]</span> <span class="kw">mod</span> circuits <span class="p">{</span>
+  <span class="at">#[instruction]</span>
+  <span class="kw">pub fn</span> <span class="fn">record_private_league_win</span><span class="p">(</span>
+    sealed_pick<span class="p">:</span> <span class="ty">Enc</span><span class="p">&lt;</span><span class="ty">Mxe</span><span class="p">,</span> <span class="ty">u64</span><span class="p">&gt;,</span>
+    winning<span class="p">:</span>     <span class="ty">u64</span><span class="p">,</span>
+    score<span class="p">:</span>       <span class="ty">Enc</span><span class="p">&lt;</span><span class="ty">Mxe</span><span class="p">,</span> <span class="ty">u64</span><span class="p">&gt;,</span>
+  <span class="p">) -&gt;</span> <span class="ty">Enc</span><span class="p">&lt;</span><span class="ty">Mxe</span><span class="p">,</span> <span class="ty">u64</span><span class="p">&gt; {</span>
+    <span class="kw">let</span> pick <span class="p">=</span> sealed_pick<span class="p">.</span><span class="fn">to_arcis</span><span class="p">();</span>
+    <span class="kw">let</span> s    <span class="p">=</span> score<span class="p">.</span><span class="fn">to_arcis</span><span class="p">();</span>
+    <span class="cmt">// MPC: both branches execute over secret shares;</span>
+    <span class="cmt">// no Arx node reconstructs `pick` in plaintext.</span>
+    <span class="kw">let</span> inc <span class="p">=</span> <span class="kw">if</span> pick <span class="p">==</span> winning <span class="p">{</span> <span class="num">1</span> <span class="p">}</span> <span class="kw">else</span> <span class="p">{</span> <span class="num">0</span> <span class="p">};</span>
+    score<span class="p">.</span>owner<span class="p">.</span><span class="fn">from_arcis</span><span class="p">(</span>s <span class="p">+</span> inc<span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></div>
+      </div>
+
       <div class="phones">
         <div class="stamp">Live on devnet</div>
         <div class="phone left">
