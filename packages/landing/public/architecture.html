@@ -68,7 +68,66 @@
   .bet-flash   { border-color: #fbbf24; }
   .bet-private { border-color: #f87171; }
   .divider { height: 1px; background: #1a1a1a; margin: 32px 0; }
-  @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  /* ── Logo icons ── */
+  .logo-icon {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    vertical-align: middle;
+    display: inline-block;
+  }
+
+  /* ── Arcium Updates panel ── */
+  .arcium-panel {
+    background: linear-gradient(180deg, #140b1f 0%, #0f0a18 100%);
+    border: 1px solid #3b1e63;
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .arcium-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .arcium-panel-title { font-size: 14px; font-weight: 700; color: #d8b4fe; letter-spacing: 0.2px; }
+  .arcium-panel-sub { font-size: 11px; color: #888; }
+  .arcium-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .arcium-item { background: rgba(192,132,252,0.04); border: 1px solid #2a1840; border-radius: 8px; padding: 12px 14px; }
+  .arcium-item-title { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .arcium-item-body { font-size: 11px; color: #9b8baf; line-height: 1.55; }
+  .arcium-status { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; }
+  .arcium-status-shipped { color: #4ade80; background: #052e16; border: 1px solid #166534; }
+  .arcium-status-wip     { color: #fbbf24; background: #1c1300; border: 1px solid #92400e; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    body { padding: 24px 14px; }
+    h1 { font-size: 22px; }
+    .subtitle { font-size: 12px; margin-bottom: 28px; }
+    .navbar { padding: 0 12px; height: 52px; }
+    .navbar-left { gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .navbar-logo { font-size: 14px; }
+    .navbar-sep { display: none; }
+    .navbar-demo { font-size: 9px; padding: 2px 7px; letter-spacing: 0.7px; }
+    .navbar-badge { font-size: 9px; padding: 2px 7px; }
+    .navbar-link { font-size: 10px; padding: 3px 8px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 11px; letter-spacing: 1.2px; margin-bottom: 12px; }
+    .card { padding: 14px; }
+    .card-title { font-size: 12px; }
+    .card-body { font-size: 11px; line-height: 1.6; }
+    .flow-box { font-size: 10px; padding: 3px 8px; }
+    .flow-arrow { font-size: 12px; }
+    .tag { font-size: 9px; padding: 2px 6px; }
+    .mermaid { padding: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .mermaid svg { min-width: 640px; }
+    .arcium-list { grid-template-columns: 1fr; }
+    .arcium-panel { padding: 14px; border-radius: 12px; }
+    .divider { margin: 24px 0; }
+  }
+  @media (max-width: 420px) {
+    .navbar-right .navbar-link + .navbar-link { display: none; }
+    .navbar-badge { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -209,7 +268,7 @@
     </div>
 
     <div class="card bet-card bet-private">
-      <div class="card-title">🔒 Private Market (Arcium)</div>
+      <div class="card-title"><img src="/arcium-logo.png" class="logo-icon" alt="Arcium" /> Private Market (Arcium)</div>
       <div class="card-body">
         Encrypted bet amounts via MPC. Positions are hidden until settlement — prevents front-running.
         <div class="flow-row">
@@ -227,9 +286,9 @@
     </div>
 
     <div class="card">
-      <div class="card-title">🏆 Leagues (Upcoming)</div>
+      <div class="card-title"><img src="/arcium-logo.png" class="logo-icon" alt="Arcium" /> Private Group Leagues</div>
       <div class="card-body">
-        Weekly leaderboard competitions across a shared pool of markets. Private group entry with Arcium-encrypted standings until reveal.
+        Weekly leaderboard competitions across a shared pool of markets. Private group entry with Arcium-encrypted standings, scored on encrypted data and revealed at settlement.
         <br><br>
         <span class="tag tag-yellow">League PDA</span>
         <span class="tag tag-red">Arcium Private Compute</span>
@@ -237,6 +296,84 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ── ARCIUM UPDATES ─────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Arcium MPC · Shipped Updates</div>
+  <div class="arcium-panel">
+    <div class="arcium-panel-header">
+      <img src="/arcium-logo.png" alt="Arcium" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" />
+      <div>
+        <div class="arcium-panel-title">Encrypted picks. Private leaderboards. Verifiable settlement.</div>
+        <div class="arcium-panel-sub">Live on devnet via arcium_anchor + arcium_macros, with RescueCipher / x25519 encryption end-to-end.</div>
+      </div>
+    </div>
+
+    <div class="arcium-list">
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          Private Markets (create + bet)
+          <span class="arcium-status arcium-status-shipped">Shipped</span>
+        </div>
+        <div class="arcium-item-body">
+          <code style="color:#c084fc;">init_private_market_state</code> + <code style="color:#c084fc;">place_private_bet</code> store positions as <code style="color:#c084fc;">Enc&lt;Shared, T&gt;</code> ciphertexts. Settlement vault wired to USDC.
+        </div>
+      </div>
+
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          Reveal + Settle Flow
+          <span class="arcium-status arcium-status-shipped">Shipped</span>
+        </div>
+        <div class="arcium-item-body">
+          <code style="color:#c084fc;">reveal_private_market</code> queues an Arcium computation that decrypts aggregates only. End-to-end script: <code style="color:#c084fc;">reveal-then-settle</code> runs the full lifecycle.
+        </div>
+      </div>
+
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          Private Group Leagues
+          <span class="arcium-status arcium-status-shipped">Shipped</span>
+        </div>
+        <div class="arcium-item-body">
+          Weekly leagues where every participant's picks are encrypted. Scoring runs on encrypted data, so the leaderboard is provably fair without anyone reading bets.
+        </div>
+      </div>
+
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          RescueCipher Verification
+          <span class="arcium-status arcium-status-shipped">Shipped</span>
+        </div>
+        <div class="arcium-item-body">
+          <code style="color:#c084fc;">verify-rescue-cipher</code> script validates client-side encryption matches the Arcis circuit expectations. Catches ciphertext mismatches before they hit the MPC cluster.
+        </div>
+      </div>
+
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          Devnet Scripts
+          <span class="arcium-status arcium-status-shipped">Shipped</span>
+        </div>
+        <div class="arcium-item-body">
+          <code style="color:#c084fc;">create-private-markets</code>, <code style="color:#c084fc;">reveal-private-markets</code>, <code style="color:#c084fc;">settle-private-markets</code> — reproducible end-to-end harness for the whole encrypted bet lifecycle.
+        </div>
+      </div>
+
+      <div class="arcium-item">
+        <div class="arcium-item-title">
+          App + SDK Integration
+          <span class="arcium-status arcium-status-wip">In Progress</span>
+        </div>
+        <div class="arcium-item-body">
+          Mobile app hooks (<code style="color:#c084fc;">usePrivateMarket</code>, <code style="color:#c084fc;">useLeague</code>) talk to the SDK encryption layer. Wallet-bound x25519 keys handle the client side. Polish round before mainnet.
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -341,7 +478,7 @@ graph LR
     </div>
 
     <div class="card">
-      <div class="card-title">💬 packages/telegram-bot</div>
+      <div class="card-title"><img src="/telegram-logo.png" class="logo-icon" alt="Telegram" /> packages/telegram-bot</div>
       <div class="card-body">
         Grammy · Node.js
         <br><br>
@@ -524,7 +661,7 @@ flowchart TD
   <div class="grid grid-4">
 
     <div class="card">
-      <div class="card-title">⚡ Helius</div>
+      <div class="card-title"><span style="font-size:14px;">⚡</span> Helius</div>
       <div class="card-body">
         RPC provider + websocket event streaming. Powers real-time market feed, settlement detection, and notification triggers.
         <br><br>
@@ -535,7 +672,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">🪐 Jupiter</div>
+      <div class="card-title"><span style="font-size:14px;">🪐</span> Jupiter</div>
       <div class="card-body">
         Swap aggregation. Fans don't need USDC pre-loaded — Jupiter converts any token to USDC at bet time.
         <br><br>
@@ -546,7 +683,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">🔐 Arcium</div>
+      <div class="card-title"><img src="/arcium-logo.png" class="logo-icon" alt="Arcium" /> Arcium</div>
       <div class="card-body">
         Multi-party computation for private markets. Bet positions encrypted until settlement — prevents front-running.
         <br><br>
@@ -557,7 +694,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">🤖 Gemini AI</div>
+      <div class="card-title"><img src="/gemini-logo.png" class="logo-icon" alt="Gemini" /> Gemini AI</div>
       <div class="card-body">
         2.0 Flash via REST API. Generates punchy 2–3 sentence reputation narratives for Telegram /me and /sharp commands.
         <br><br>
@@ -568,7 +705,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">🔑 Privy</div>
+      <div class="card-title"><img src="/privy-logo.png" class="logo-icon" alt="Privy" style="border-radius:4px;" /> Privy</div>
       <div class="card-body">
         Embedded wallet + email auth. Abstracts seed phrases for non-crypto-native fans. Fallback to MWA/Phantom for power users.
         <br><br>
@@ -579,7 +716,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">📲 Solana Mobile Stack</div>
+      <div class="card-title"><img src="/solana-mobile-logo.png" class="logo-icon" alt="Solana Mobile" style="border-radius:4px;" /> Solana Mobile Stack</div>
       <div class="card-body">
         MWA protocol for native signing via Phantom, Seed Vault, and other MWA-compatible wallets on Android.
         <br><br>
@@ -601,7 +738,7 @@ flowchart TD
     </div>
 
     <div class="card">
-      <div class="card-title">📊 Polymarket</div>
+      <div class="card-title"><img src="/polymarket-logo.png" class="logo-icon" alt="Polymarket" /> Polymarket</div>
       <div class="card-body">
         External prediction market source. Surfaces Polymarket markets in the app feed alongside native markets for day-one liquidity depth.
         <br><br>
@@ -641,7 +778,7 @@ flowchart TD
       </div>
     </div>
     <div class="card">
-      <div class="card-title">⛓️ Anchor + Solana</div>
+      <div class="card-title"><img src="/solana-logo.png" class="logo-icon" alt="Solana" /> Anchor + Solana</div>
       <div class="card-body">
         <span class="tag tag-green">Anchor 0.30</span>
         <span class="tag tag-green">Devnet deployed</span>
