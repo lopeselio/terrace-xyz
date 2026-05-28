@@ -237,6 +237,106 @@
       .nav, .notes { display:none !important; }
       .in { animation:none !important; opacity:1 !important; transform:none !important; }
     }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+
+    /* Tablet — smaller type, 4-col → 2-col */
+    @media (max-width: 1024px) {
+      :root {
+        --hero: 60px;
+        --h1:   44px;
+        --h2:   32px;
+        --h3:   22px;
+        --body: 17px;
+        --sm:   15px;
+        --xs:   12px;
+      }
+      .slide { padding: 44px 40px; }
+      .c4    { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+      .mval  { font-size: 56px; letter-spacing: -2.5px; }
+    }
+
+    /* Phone — collapse grids, allow vertical scroll inside each slide,
+       use dynamic viewport so iOS Safari address-bar doesn't cut content. */
+    @media (max-width: 768px) {
+      :root {
+        --hero: 44px;
+        --h1:   32px;
+        --h2:   24px;
+        --h3:   19px;
+        --body: 15px;
+        --sm:   14px;
+        --xs:   11px;
+      }
+
+      .deck { height: 100dvh; }
+      .slide {
+        height: 100dvh;
+        padding: 28px 18px 70px;
+        justify-content: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .c2, .c3, .c4 { grid-template-columns: 1fr; gap: 14px; }
+
+      .card, .cg, .cp, .cf, .cr { padding: 18px; border-radius: 14px; }
+
+      .metric { padding: 18px 12px; }
+      .mval { font-size: 46px; letter-spacing: -2px; }
+      .mlbl { font-size: 12px; }
+
+      .blist li { padding: 12px 0 12px 22px; font-size: var(--sm); }
+      .blist li::before { width: 6px; height: 6px; }
+
+      .tbl { font-size: 13px; display: block; overflow-x: auto; white-space: nowrap; }
+      .tbl th, .tbl td { padding: 8px 12px; }
+
+      .quote { padding: 20px 18px 20px 32px; border-radius: 0 12px 12px 0; }
+      .quote::before { font-size: 44px; left: 10px; top: 2px; }
+
+      .divider { width: 40px; height: 2px; margin: 16px 0; }
+
+      .badge { padding: 5px 12px; }
+      .pill  { padding: 8px 14px; }
+
+      .sn { top: 14px; right: 16px; font-size: 11px; }
+
+      .step-n { width: 28px; height: 28px; font-size: 13px; }
+
+      /* Nav: always visible on touch, no hover trigger */
+      .nav { opacity: 1; padding: 10px 14px; }
+      .nav-bar { max-width: 100px; margin: 0 12px; }
+      .nbtn { padding: 6px 10px; font-size: 11px; }
+
+      .notes {
+        bottom: 56px; left: 14px; right: 14px;
+        padding: 12px 14px;
+        font-size: 13px; max-height: 140px;
+        border-radius: 10px;
+      }
+    }
+
+    /* Small phone */
+    @media (max-width: 420px) {
+      :root {
+        --hero: 36px;
+        --h1:   26px;
+        --h2:   20px;
+        --h3:   17px;
+        --body: 14px;
+        --sm:   13px;
+        --xs:   10px;
+      }
+      .slide { padding: 22px 14px 66px; }
+      .card, .cg, .cp, .cf, .cr { padding: 14px; border-radius: 12px; }
+      .mval { font-size: 38px; }
+    }
+
+    /* Touch / no-hover: keep nav visible regardless of viewport width */
+    @media (hover: none) {
+      .nav { opacity: 1; }
+    }
   </style>
 </head>
 <body>
