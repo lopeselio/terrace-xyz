@@ -45,31 +45,35 @@ export default function Navbar() {
         </div>
 
         {/* CTAs */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <a
             href="/architecture.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:border-emerald-400/50 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            aria-label="Frontier Demo"
+            title="Frontier Demo"
+            className="inline-flex items-center gap-1.5 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:border-emerald-400/50 text-sm font-medium px-2.5 sm:px-4 py-2 rounded-lg transition-colors"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Frontier Demo
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+            <span className="hidden sm:inline">Frontier Demo</span>
           </a>
           <a
             href="/pitch-deck.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            aria-label="Pitch Deck"
+            title="Pitch Deck"
+            className="inline-flex items-center gap-1.5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 text-sm font-medium px-2.5 sm:px-4 py-2 rounded-lg transition-colors"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
             </svg>
-            Pitch Deck
+            <span className="hidden sm:inline">Pitch Deck</span>
           </a>
           <a
             href="#waitlist"
-            className="bg-pitch text-black text-sm font-semibold px-4 py-2 rounded-lg hover:bg-pitch-dim transition-colors"
+            className="bg-pitch text-black text-sm font-semibold px-3 sm:px-4 py-2 rounded-lg hover:bg-pitch-dim transition-colors whitespace-nowrap"
           >
             Join Waitlist
           </a>
