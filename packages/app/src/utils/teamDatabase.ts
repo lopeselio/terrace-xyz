@@ -3,6 +3,8 @@
 // TheSportsDB is used as dynamic fallback via useTeamCrest for unlisted teams.
 
 const ESPN = (id: number) => `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`;
+// flagcdn.com — reliable, no auth, ISO 3166-1 alpha-2 codes (plus gb-eng/sct/wls)
+const FLAG = (code: string) => `https://flagcdn.com/w320/${code}.png`;
 
 export interface TeamEntry {
   tla: string;          // 3-letter abbreviation
@@ -98,18 +100,53 @@ const RAW: Array<[string[], TeamEntry]> = [
   [["shakhtar", "shakhtar donetsk"],    { tla: "SHA", color: "#f7a21b", crest: ESPN(430)  }],
 
   // ── National teams ─────────────────────────────────────────────────
-  [["england"],   { tla: "ENG", color: "#003090" }],
-  [["france"],    { tla: "FRA", color: "#003189" }],
-  [["germany"],   { tla: "GER", color: "#000000" }],
-  [["spain"],     { tla: "ESP", color: "#c60b1e" }],
-  [["brazil"],    { tla: "BRA", color: "#009c3b" }],
-  [["argentina"], { tla: "ARG", color: "#74acdf" }],
-  [["portugal"],  { tla: "POR", color: "#cc0000" }],
-  [["netherlands", "holland"], { tla: "NED", color: "#ff6600" }],
-  [["italy"],     { tla: "ITA", color: "#003189" }],
-  [["usa", "united states"],  { tla: "USA", color: "#002868" }],
-  [["mexico"],    { tla: "MEX", color: "#006847" }],
-  [["morocco"],   { tla: "MAR", color: "#c1272d" }],
+  // Crest uses country flag (flagcdn) so we don't depend on TheSportsDB's
+  // search collapsing to whichever club it indexes first (the "Arsenal for
+  // every country" bug).
+  [["england", "eng"],                     { tla: "ENG", color: "#003090", crest: FLAG("gb-eng") }],
+  [["france", "fra", "les bleus"],         { tla: "FRA", color: "#003189", crest: FLAG("fr")     }],
+  [["germany", "ger", "deutschland"],      { tla: "GER", color: "#000000", crest: FLAG("de")     }],
+  [["spain", "esp", "la roja"],            { tla: "ESP", color: "#c60b1e", crest: FLAG("es")     }],
+  [["brazil", "bra", "brasil", "selecao"], { tla: "BRA", color: "#009c3b", crest: FLAG("br")     }],
+  [["argentina", "arg", "albiceleste"],    { tla: "ARG", color: "#74acdf", crest: FLAG("ar")     }],
+  [["portugal", "por"],                    { tla: "POR", color: "#cc0000", crest: FLAG("pt")     }],
+  [["netherlands", "ned", "holland", "oranje"], { tla: "NED", color: "#ff6600", crest: FLAG("nl") }],
+  [["italy", "ita", "italia", "azzurri"],  { tla: "ITA", color: "#003189", crest: FLAG("it")     }],
+  [["usa", "usmnt", "united states"],      { tla: "USA", color: "#002868", crest: FLAG("us")     }],
+  [["mexico", "mex"],                      { tla: "MEX", color: "#006847", crest: FLAG("mx")     }],
+  [["morocco", "mar"],                     { tla: "MAR", color: "#c1272d", crest: FLAG("ma")     }],
+  [["croatia", "cro"],                     { tla: "CRO", color: "#ff0000", crest: FLAG("hr")     }],
+  [["belgium", "bel"],                     { tla: "BEL", color: "#ed2939", crest: FLAG("be")     }],
+  [["uruguay", "uru"],                     { tla: "URU", color: "#7ab3e8", crest: FLAG("uy")     }],
+  [["japan", "jpn"],                       { tla: "JPN", color: "#bc002d", crest: FLAG("jp")     }],
+  [["south korea", "korea", "kor"],        { tla: "KOR", color: "#cd2e3a", crest: FLAG("kr")     }],
+  [["canada", "can"],                      { tla: "CAN", color: "#ff0000", crest: FLAG("ca")     }],
+  [["switzerland", "sui"],                 { tla: "SUI", color: "#d52b1e", crest: FLAG("ch")     }],
+  [["denmark", "den"],                     { tla: "DEN", color: "#c60c30", crest: FLAG("dk")     }],
+  [["poland", "pol"],                      { tla: "POL", color: "#dc143c", crest: FLAG("pl")     }],
+  [["senegal", "sen"],                     { tla: "SEN", color: "#00853f", crest: FLAG("sn")     }],
+  [["ghana", "gha"],                       { tla: "GHA", color: "#006b3f", crest: FLAG("gh")     }],
+  [["cameroon", "cmr"],                    { tla: "CMR", color: "#007a5e", crest: FLAG("cm")     }],
+  [["nigeria", "nga"],                     { tla: "NGA", color: "#008751", crest: FLAG("ng")     }],
+  [["wales", "wal"],                       { tla: "WAL", color: "#d30731", crest: FLAG("gb-wls") }],
+  [["scotland", "sco"],                    { tla: "SCO", color: "#0065bd", crest: FLAG("gb-sct") }],
+  [["ireland", "irl"],                     { tla: "IRL", color: "#169b62", crest: FLAG("ie")     }],
+  [["austria", "aut"],                     { tla: "AUT", color: "#ed2939", crest: FLAG("at")     }],
+  [["sweden", "swe"],                      { tla: "SWE", color: "#006aa7", crest: FLAG("se")     }],
+  [["norway", "nor"],                      { tla: "NOR", color: "#ef2b2d", crest: FLAG("no")     }],
+  [["serbia", "srb"],                      { tla: "SRB", color: "#c6363c", crest: FLAG("rs")     }],
+  [["turkey", "tur"],                      { tla: "TUR", color: "#e30a17", crest: FLAG("tr")     }],
+  [["ecuador", "ecu"],                     { tla: "ECU", color: "#ffd200", crest: FLAG("ec")     }],
+  [["colombia", "col"],                    { tla: "COL", color: "#fdd116", crest: FLAG("co")     }],
+  [["chile", "chi"],                       { tla: "CHI", color: "#d52b1e", crest: FLAG("cl")     }],
+  [["peru", "per"],                        { tla: "PER", color: "#d91023", crest: FLAG("pe")     }],
+  [["paraguay", "par"],                    { tla: "PAR", color: "#d52b1e", crest: FLAG("py")     }],
+  [["australia", "aus", "socceroos"],      { tla: "AUS", color: "#00843d", crest: FLAG("au")     }],
+  [["qatar", "qat"],                       { tla: "QAT", color: "#8d1b3d", crest: FLAG("qa")     }],
+  [["saudi arabia", "ksa"],                { tla: "KSA", color: "#006c35", crest: FLAG("sa")     }],
+  [["iran", "irn"],                        { tla: "IRN", color: "#239f40", crest: FLAG("ir")     }],
+  [["tunisia", "tun"],                     { tla: "TUN", color: "#e70013", crest: FLAG("tn")     }],
+  [["costa rica", "crc"],                  { tla: "CRC", color: "#002b7f", crest: FLAG("cr")     }],
 ];
 
 // Build flat lookup map: normalized alias → TeamEntry
