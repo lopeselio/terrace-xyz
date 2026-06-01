@@ -11,18 +11,31 @@ import {
   Share,
   Clipboard,
   RefreshControl,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
+
+// Enable LayoutAnimation on Android (no-op on iOS where it's enabled by default).
+// Used by the bets section collapse/expand toggle.
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { League, LeagueMember } from "@terrace/sdk";
 import { useLeague } from "../hooks/useLeague";
 import type { EligibleBet, GameweekScoreEntry } from "../hooks/useLeague";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { JerseyAvatar } from "../components/JerseyAvatar";
 import * as SecureStore from "expo-secure-store";
 import { ArciumBadge, ArciumPrivacyBanner } from "../components/ArciumBadge";
 import { useNotify } from "../components/NotificationProvider";
+import { ScoreWinCelebrationModal } from "../components/ScoreWinCelebrationModal";
+import { GameweekWinnerModal } from "../components/GameweekWinnerModal";
 import { RevealCelebrationModal } from "../components/RevealCelebrationModal";
 import { friendlyError } from "../utils/friendlyError";
 import { registerLeagues, publishLeagueEvent } from "../utils/leagueNotify";
+import { useLeagueActivityFeed } from "../hooks/useLeagueActivityFeed";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,12 +52,7 @@ function shortAddr(addr: string) { return `${addr.slice(0, 5)}…${addr.slice(-4
 function fmtUsdc(n: bigint) { return `$${(Number(n) / 1_000_000).toFixed(2)}`; }
 
 function MemberAvatar({ pubkey, size = 36 }: { pubkey: string; size?: number }) {
-  const bg = avatarColorFromPubkey(pubkey);
-  return (
-    <View style={[av.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      <Text style={[av.initial, { fontSize: size * 0.38 }]}>{pubkey.slice(0, 1).toUpperCase()}</Text>
-    </View>
-  );
+  return <JerseyAvatar pubkey={pubkey} size={size} />;
 }
 const av = StyleSheet.create({
   circle:  { alignItems: "center", justifyContent: "center" },
@@ -138,12 +146,19 @@ function LeaderboardSheet({
   onRetryInit: () => void;
   onAdvanceGameweek: () => void;
   onJoinLeague: () => void;
-  onScoreWin: (betAddress: string, marketAddress: string) => void;
+  onScoreWin: (betAddress: string, marketAddress: string, betType: "public" | "private") => void;
   onRevealScore: () => void;
   onResetScore: () => void;
   onClose: () => void;
 }) {
   const [pendingScore, setPendingScore] = useState<EligibleBet | null>(null);
+  // Collapsed by default so the leaderboard fits in the initial viewport.
+  // Users can tap the section header to expand and score their wins.
+  const [betsExpanded, setBetsExpanded] = useState(false);
+  const toggleBets = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setBetsExpanded((v) => !v);
+  }, []);
 
   const handleShare = useCallback(async () => {
     const link = inviteUrl(String(league.address));
@@ -190,6 +205,13 @@ function LeaderboardSheet({
         )}
       </View>
 
+      {/* Scrollable body — everything below the fixed header/actions. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+
       {/* Score your wins */}
       {loadingEligible ? (
         <ActivityIndicator color="#22c55e" style={{ marginBottom: 16 }} />
@@ -207,12 +229,26 @@ function LeaderboardSheet({
         </TouchableOpacity>
       ) : eligibleBets.length > 0 ? (
         <View style={s.eligibleSection}>
-          <Text style={s.eligibleTitle}>
-            {league.isPrivate
-              ? `Your bets this GW (${eligibleBets.length})`
-              : `Score your wins (${eligibleBets.length})`}
-          </Text>
-          {eligibleBets.map((b) => (
+          {/* Section header — tap to expand/collapse so the leaderboard
+              stays visible without scrolling when there are many bets. */}
+          <TouchableOpacity
+            style={s.eligibleHeader}
+            onPress={toggleBets}
+            activeOpacity={0.7}
+          >
+            <Text style={s.eligibleTitle}>
+              {league.isPrivate
+                ? `Your bets this GW (${eligibleBets.length})`
+                : `Score your wins (${eligibleBets.length})`}
+            </Text>
+            <Text style={s.eligibleChevron}>{betsExpanded ? "▴" : "▾"}</Text>
+          </TouchableOpacity>
+          {!betsExpanded && (
+            <Text style={s.eligibleHint}>
+              Tap to {league.isPrivate ? "see your bets" : "score your wins"}
+            </Text>
+          )}
+          {betsExpanded && eligibleBets.map((b) => (
             b.isActive ? (
               // Market not yet settled — show as "in play" (private league Arcium-protected bet)
               <View key={String(b.betAddress)} style={[s.eligibleRow, { opacity: 0.75 }]}>
@@ -367,7 +403,11 @@ function LeaderboardSheet({
       ) : members.length === 0 ? (
         <Text style={s.emptyText}>No scores yet this gameweek</Text>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        // Downgraded from ScrollView to View — the outer body ScrollView now
+        // handles vertical scrolling for the whole sheet. Nested vertical
+        // scroll containers were preventing the leaderboard from being
+        // reachable when many eligible bets pushed it off-screen.
+        <View>
           {members.map((m, idx) => {
             const isMe = myPubkey === String(m.member);
             const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
@@ -435,8 +475,11 @@ function LeaderboardSheet({
               </View>
             );
           })}
-        </ScrollView>
+        </View>
       )}
+
+      </ScrollView>
+      {/* End of scrollable body */}
 
       {/* Score confirmation modal */}
       {pendingScore && (
@@ -455,7 +498,7 @@ function LeaderboardSheet({
                 onPress={() => {
                   const b = pendingScore;
                   setPendingScore(null);
-                  onScoreWin(String(b.betAddress), b.marketAddress);
+                  onScoreWin(String(b.betAddress), b.marketAddress, b.betType ?? "public");
                 }}
               >
                 {busy
@@ -633,6 +676,17 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
   const [tab, setTab] = useState<Tab>("My Leagues");
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   // (Per-screen toast state removed — NotificationProvider handles it globally.)
+  // Score-win celebration: opens with the bet's question + how many wins are
+  // still unscored this gameweek. Set by handleScoreWin on success.
+  const [scoreCelebration, setScoreCelebration] = useState<{ question: string; remaining: number; isPrivateBet: boolean } | null>(null);
+  // GW winner popup — fires when the previous gameweek is fully revealed by
+  // all members. Shares the same SecureStore "seen" key as the HomeScreen
+  // bell winner notification so dismissing from either side suppresses both.
+  const [gwWinnerPopup, setGwWinnerPopup] = useState<{ gameweek: number; winnerPubkey: string; winnerScore: number; totalMembers: number } | null>(null);
+  // Local activity-feed logger so the bell tray on HomeScreen picks up the
+  // current user's own actions instantly (push fan-out targets OTHER members
+  // — the actor needs this self-log path).
+  const { recordLocal: recordLocalActivity } = useLeagueActivityFeed(walletPubkey);
 
   const {
     myLeagues,
@@ -774,6 +828,53 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     return () => { cancelled = true; };
   }, [selectedLeague, memberScoreState, leaderboard, walletPubkey, celebratedKey]);
 
+  // GW winner detection — when the league is on GW N (N >= 2), inspect the
+  // history snapshots to see if every current member has a revealed score
+  // for GW N-1. If yes and we haven't shown the modal for this (league, gw),
+  // open the GameweekWinnerModal. Uses the SAME SecureStore "seen" key as
+  // useLeagueWinnerNotifications so dismissing here also clears the bell.
+  useEffect(() => {
+    if (!selectedLeague || !walletPubkey) return;
+    const completedGw = selectedLeague.gameweek - 1;
+    if (completedGw < 1) return;
+    if (leaderboard.length < 2) return;
+
+    const scores: { member: string; score: number }[] = [];
+    for (const m of leaderboard) {
+      const pk = String(m.member);
+      const entry = gwHistory[pk]?.find((e) => e.gw === completedGw);
+      if (!entry) return; // not yet complete
+      scores.push({ member: pk, score: entry.score });
+    }
+
+    const winner = scores.reduce((best, cur) => (cur.score > best.score ? cur : best));
+    const seenKey = `terrace:gw-winner-seen:${walletPubkey}:${String(selectedLeague.address)}:${completedGw}`;
+    let cancelled = false;
+    (async () => {
+      try {
+        const seen = await SecureStore.getItemAsync(seenKey);
+        if (seen || cancelled) return;
+        setGwWinnerPopup({
+          gameweek: completedGw,
+          winnerPubkey: winner.member,
+          winnerScore: winner.score,
+          totalMembers: leaderboard.length,
+        });
+      } catch { /* SecureStore unavailable — skip */ }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLeague, leaderboard, gwHistory, walletPubkey]);
+
+  const handleDismissGwWinner = useCallback(async () => {
+    if (!gwWinnerPopup || !selectedLeague || !walletPubkey) {
+      setGwWinnerPopup(null);
+      return;
+    }
+    const seenKey = `terrace:gw-winner-seen:${walletPubkey}:${String(selectedLeague.address)}:${gwWinnerPopup.gameweek}`;
+    try { await SecureStore.setItemAsync(seenKey, "1"); } catch { /* best-effort */ }
+    setGwWinnerPopup(null);
+  }, [gwWinnerPopup, selectedLeague, walletPubkey]);
+
   const handleDismissCelebration = useCallback(async () => {
     if (!celebration || !selectedLeague) return setCelebration(null);
     try {
@@ -785,18 +886,43 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     setCelebration(null);
   }, [celebration, selectedLeague, celebratedKey]);
 
-  const handleScoreWin = useCallback(async (betAddress: string, marketAddress: string) => {
+  const handleScoreWin = useCallback(async (
+    betAddress: string,
+    marketAddress: string,
+    betType: "public" | "private",
+  ) => {
     if (!selectedLeague) return;
-    const id = notify.show({ kind: "loading", message: "Logging your win…" });
+    // Capture the bet's question + count of OTHER scoreable bets BEFORE the
+    // tx + refresh — so the celebration can show "X more wins to score" with
+    // the right number, regardless of how fast loadEligibleBets repopulates.
+    const scoredBet = eligibleBets.find((b) => String(b.betAddress) === betAddress);
+    const questionAtScore = scoredBet?.marketQuestion ?? "Your winning bet";
+    const remainingAfter = eligibleBets.filter(
+      (b) => String(b.betAddress) !== betAddress && !b.isActive,
+    ).length;
+    // For private bets the on-chain side can't reject losers (the outcome is
+    // encrypted) — the MPC circuit does the comparison invisibly. The
+    // celebration copy is honest about this.
+    const isPrivateBet = betType === "private";
+
+    const loadingMsg = isPrivateBet ? "Sealing your pick…" : "Logging your win…";
+    const successMsg = isPrivateBet
+      ? "Pick locked in — score updates if you called it right."
+      : "+1 league point — your win is in!";
+
+    const id = notify.show({ kind: "loading", message: loadingMsg });
     try {
       await recordWin({
         leagueAddress: String(selectedLeague.address),
         marketAddress,
         isPrivate: selectedLeague.isPrivate,
+        betType,
       });
-      notify.update(id, { kind: "success", message: "+1 league point — your win is in!" });
+      notify.update(id, { kind: "success", message: successMsg });
       loadLeaderboard(String(selectedLeague.address));
       loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
+      // Fire the fan-friendly celebration on top of the toast.
+      setScoreCelebration({ question: questionAtScore, remaining: remainingAfter, isPrivateBet });
       if (walletPubkey) {
         publishLeagueEvent(
           String(selectedLeague.address),
@@ -804,11 +930,17 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
           "win",
           { leagueName: selectedLeague.name, gameweek: selectedLeague.gameweek },
         );
+        recordLocalActivity({
+          leagueAddress: String(selectedLeague.address),
+          leagueName: selectedLeague.name,
+          kind: "win",
+          gameweek: selectedLeague.gameweek,
+        });
       }
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't log this win — please try again.") });
     }
-  }, [selectedLeague, recordWin, loadLeaderboard, loadEligibleBets, walletPubkey, notify]);
+  }, [selectedLeague, eligibleBets, recordWin, loadLeaderboard, loadEligibleBets, walletPubkey, notify, recordLocalActivity]);
 
   const handleCreate = useCallback(async (params: {
     name: string;
@@ -828,6 +960,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       setTab("My Leagues");
       // Treat creation as a join so the index includes the creator from t0.
       publishLeagueEvent(leagueAddress, walletPubkey, "join", { leagueName: params.name });
+      recordLocalActivity({ leagueAddress, leagueName: params.name, kind: "join" });
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't create the league — please try again.") });
     }
@@ -840,6 +973,8 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       await joinLeague(address);
       notify.update(id, { kind: "success", message: "You're in! Welcome to the league." });
       setTab("My Leagues");
+      publishLeagueEvent(address, walletPubkey, "join");
+      recordLocalActivity({ leagueAddress: address, kind: "join" });
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't join — please try again.") });
     }
@@ -866,6 +1001,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
           leagueName: selectedLeague.name,
           gameweek: (updated ?? selectedLeague).gameweek,
         });
+        recordLocalActivity({
+          leagueAddress: addr,
+          leagueName: selectedLeague.name,
+          kind: "advance",
+          gameweek: (updated ?? selectedLeague).gameweek,
+        });
       }
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't advance the gameweek.") });
@@ -886,6 +1027,11 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         "join",
         { leagueName: selectedLeague.name },
       );
+      recordLocalActivity({
+        leagueAddress: String(selectedLeague.address),
+        leagueName: selectedLeague.name,
+        kind: "join",
+      });
     } catch (e: any) {
       notify.update(id, { kind: "error", message: friendlyError(e, "Couldn't join — please try again.") });
     }
@@ -912,6 +1058,12 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         if (walletPubkey) {
           publishLeagueEvent(addr, walletPubkey, "reveal", {
             leagueName: selectedLeague.name,
+            gameweek: targetGw,
+          });
+          recordLocalActivity({
+            leagueAddress: addr,
+            leagueName: selectedLeague.name,
+            kind: "reveal",
             gameweek: targetGw,
           });
         }
@@ -1080,6 +1232,34 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         onDismiss={handleDismissCelebration}
       />
 
+      {/* Score-win celebration — fires after a successful record_win.
+          "Find more markets" closes the league sheet AND this screen so the
+          user lands back on home where they can place new bets. */}
+      <ScoreWinCelebrationModal
+        visible={scoreCelebration !== null}
+        marketQuestion={scoreCelebration?.question ?? ""}
+        remainingCount={scoreCelebration?.remaining ?? 0}
+        isPrivateBet={scoreCelebration?.isPrivateBet ?? false}
+        onDismiss={() => setScoreCelebration(null)}
+        onFindMoreMarkets={() => {
+          setScoreCelebration(null);
+          setSelectedLeague(null);
+          onClose();
+        }}
+      />
+
+      {/* GW winner crown — fires when previous gameweek is fully revealed */}
+      <GameweekWinnerModal
+        visible={gwWinnerPopup !== null}
+        winnerPubkey={gwWinnerPopup?.winnerPubkey ?? ""}
+        winnerLabel={gwWinnerPopup ? shortAddr(gwWinnerPopup.winnerPubkey) : ""}
+        gameweek={gwWinnerPopup?.gameweek ?? 0}
+        winnerScore={gwWinnerPopup?.winnerScore ?? 0}
+        totalMembers={gwWinnerPopup?.totalMembers ?? 0}
+        isMe={gwWinnerPopup?.winnerPubkey === walletPubkey}
+        onDismiss={handleDismissGwWinner}
+      />
+
       {/* Notifications render globally via <NotificationProvider /> in App.tsx */}
     </SafeAreaView>
   );
@@ -1137,7 +1317,10 @@ const s = StyleSheet.create({
   actionBtnText: { fontSize: 12, fontWeight: "600", color: "#9ca3af" },
   advanceBtn:   { borderColor: "#92400e" },
   eligibleSection:  { backgroundColor: "#052e16", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 0.5, borderColor: "#166534" },
-  eligibleTitle:    { fontSize: 12, fontWeight: "700", color: "#4ade80", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 },
+  eligibleTitle:    { fontSize: 12, fontWeight: "700", color: "#4ade80", textTransform: "uppercase", letterSpacing: 0.6 },
+  eligibleHeader:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  eligibleChevron:  { fontSize: 14, color: "#4ade80", fontWeight: "700", paddingHorizontal: 4 },
+  eligibleHint:     { fontSize: 11, color: "#86efac", fontStyle: "italic" },
   eligibleRow:      { flexDirection: "row", alignItems: "center", backgroundColor: "#0a3320", borderRadius: 8, padding: 10, marginBottom: 6 },
   eligibleQuestion: { fontSize: 13, color: "#e5e5e5", fontWeight: "500", lineHeight: 18 },
   eligibleMeta:     { fontSize: 11, color: "#6b7280", marginTop: 2 },
