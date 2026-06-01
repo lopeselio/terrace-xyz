@@ -529,22 +529,71 @@ export function useLeague(ownerPubkey?: string | null) {
         candidateBets.push({ betAddress: pubkey as Address, marketAddress: b58(raw.slice(8, 40)), claimed, betType: "public" });
       }
 
-      // PrivateBetRecord accounts for private leagues (dataSize=232, bettor@40, market@8, amount@72)
+      // PrivateBetRecord accounts for private leagues (dataSize=280, market@8, bettor@40).
+      // See packages/programs/programs/terrace/src/state/private.rs:31 — SPACE = 280.
+      // Hoisted out of the if-block so the amounts loop below can read it too.
+      let privateBetsRes: any = null;
       if (isPrivate) {
-        const PRIVATE_BET_DISCRIMINATOR_B64 = Buffer.from([248, 33, 174, 240, 96, 84, 217, 101]).toString("base64");
-        const privateBetsRes = await rpcPost({
+        privateBetsRes = await rpcPost({
           jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
           params: [TERRACE_PROGRAM_ID, {
             encoding: "base64", commitment: "confirmed",
             filters: [
-              { dataSize: 232 },
+              { dataSize: 280 },
               { memcmp: { offset: 40, bytes: publicKey } },
             ],
           }],
         });
+        // First pass: collect raw private bet rows that pass the bet-level
+        // mxe_outcome_sealed check. We'll then look up PrivateMarketState for
+        // each unique market to filter out markets that haven't been revealed.
+        type PrivateRow = { pubkey: string; marketAddr: string };
+        const privateRows: PrivateRow[] = [];
         for (const { pubkey, account } of privateBetsRes.result ?? []) {
           const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
           const marketAddr = b58(raw.slice(8, 40));
+          // PrivateBetRecord layout (state/private.rs:31): the last meaningful
+          // byte is `mxe_outcome_sealed: bool` at offset 274. If false, the
+          // bet's outcome was never sealed by the place_private_bet_v4
+          // callback (old contract version, or callback never landed) — the
+          // bet is permanently unscoreable. Hide it from YOUR BETS THIS GW
+          // so the user doesn't tap into a dead error.
+          const mxeOutcomeSealed = raw[274] === 1;
+          if (!mxeOutcomeSealed) continue;
+          privateRows.push({ pubkey, marketAddr });
+        }
+
+        // Second pass: fetch PrivateMarketState for each unique market and
+        // filter out bets whose market has is_revealed=false. The on-chain
+        // `record_private_league_win_v2` account constraint
+        // (league_private.rs:695) requires private_state.is_revealed → if
+        // false, scoring will fail with "Private market totals not yet
+        // revealed." So we hide these bets too.
+        //
+        // PrivateMarketState layout (state/private.rs:3): is_revealed at
+        // offset 136 (after 8 disc + 32 market + 32+16 no_total + 32+16
+        // yes_total).
+        const uniqueMarkets = [...new Set(privateRows.map((r) => r.marketAddr))];
+        const marketRevealed: Record<string, boolean> = {};
+        await Promise.all(uniqueMarkets.map(async (mAddr) => {
+          try {
+            const [psPda] = await getPrivateStatePda(
+              mAddr as Address,
+              TERRACE_PROGRAM_ID as Address,
+            );
+            const psRes = await rpcPost({
+              jsonrpc: "2.0", id: 1, method: "getAccountInfo",
+              params: [String(psPda), { encoding: "base64", commitment: "confirmed" }],
+            });
+            const b64 = psRes.result?.value?.data?.[0];
+            if (!b64) { marketRevealed[mAddr] = false; return; }
+            const psRaw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+            marketRevealed[mAddr] = psRaw[136] === 1;
+          } catch { marketRevealed[mAddr] = false; }
+        }));
+
+        for (const { pubkey, marketAddr } of privateRows) {
+          if (!marketRevealed[marketAddr]) continue;
           candidateBets.push({ betAddress: pubkey as Address, marketAddress: marketAddr, claimed: false, betType: "private" });
         }
       }
@@ -596,20 +645,41 @@ export function useLeague(ownerPubkey?: string | null) {
         return true;
       });
 
-      // 5. Bet amounts (u64 at offset 72 for both Bet and PrivateBetRecord)
+      // 5. Bet amounts (u64 at offset 72 for both Bet and PrivateBetRecord).
+      // Previously only iterated public bets — private bet records fell through
+      // to ?? 0n below and rendered as "$0.00 stake". Iterate both so private
+      // bets show their real stake.
       const betAmounts: Record<string, bigint> = {};
-      for (const { pubkey, account } of betsRes.result ?? []) {
-        const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
-        const view = new DataView(raw.buffer, raw.byteOffset);
-        betAmounts[pubkey] = view.getBigUint64(72, true);
-      }
+      const ingestAmounts = (results: any[] | undefined) => {
+        for (const { pubkey, account } of results ?? []) {
+          const raw = Uint8Array.from(atob(account.data[0]), (c) => c.charCodeAt(0));
+          const view = new DataView(raw.buffer, raw.byteOffset);
+          betAmounts[pubkey] = view.getBigUint64(72, true);
+        }
+      };
+      ingestAmounts(betsRes.result);
+      if (privateBetsRes) ingestAmounts(privateBetsRes.result);
 
+      // Build the eligible list. When the same question text appears on more
+      // than one distinct market (artifact of old test sessions creating
+      // duplicates), append a #N ordinal so the user can tell them apart.
+      // Different bet PDAs → independently scoreable; suffix is purely visual.
+      const questionCounts: Record<string, number> = {};
+      for (const b of eligible) {
+        const q = marketMeta[b.marketAddress]?.question ?? `${b.marketAddress.slice(0, 8)}…`;
+        questionCounts[q] = (questionCounts[q] ?? 0) + 1;
+      }
+      const seenSoFar: Record<string, number> = {};
       setEligibleBets(eligible.map((b) => {
         const meta = marketMeta[b.marketAddress];
+        const baseQuestion = meta?.question ?? `${b.marketAddress.slice(0, 8)}…`;
+        const total = questionCounts[baseQuestion] ?? 1;
+        const ordinal = (seenSoFar[baseQuestion] = (seenSoFar[baseQuestion] ?? 0) + 1);
+        const question = total > 1 ? `${baseQuestion}  #${ordinal}` : baseQuestion;
         return {
           betAddress: b.betAddress,
           marketAddress: b.marketAddress,
-          marketQuestion: meta?.question ?? `${b.marketAddress.slice(0, 8)}…`,
+          marketQuestion: question,
           amount: betAmounts[String(b.betAddress)] ?? 0n,
           isActive: b.betType === "private" ? false : (meta ? meta.status !== "Settled" : false),
           betType: b.betType,
