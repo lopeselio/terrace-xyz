@@ -31,55 +31,34 @@ import { useWallet } from "./useWallet";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
-// ── Encryption helpers ────────────────────────────────────────────────────────
+// ── Encryption ────────────────────────────────────────────────────────────────
 //
-// ⚠️ KNOWN-BROKEN cipher (XOR + SHA256). arcis 0.9.x's `Enc<Shared, T>` actually
-// needs RescueCipher over BN254 from @arcium-hq/client — the e2e + SDK use it
-// correctly. We tried to use it in the app too, but bundling @arcium-hq/client
-// into React Native pulled in @coral-xyz/anchor + Node's `crypto`, `fs`, and
-// other stdlib modules. The bundle compiled with shims but threw at module
-// eval ("Cannot read property 'n' of undefined"). See the session log for the
-// debug trail.
-//
-// For now the app's `place_private_bet` flow uses this hand-rolled XOR scheme
-// so the build is green. New bets placed from the app will be silently scored
-// as zero by the chained MPC (the sealed outcome decodes to garbage). The
-// `record_private_league_win` flow — scoring bets that were already sealed
-// on-chain (e.g. via the e2e script) — works fine because that path doesn't
-// touch the client-side cipher.
-//
-// TODO: port the RescueCipher math from @arcium-hq/client/src/cryptography/
-// into a self-contained packages/app/src/lib/rescueCipher.ts (no anchor /
-// no Node deps), or wire react-native-quick-crypto + rebuild the dev client.
+// Real RescueCipher over Curve25519 base field — pure-JS port of
+// @arcium-hq/client/src/cryptography/rescueCipher{,Common}.ts, byte-verified
+// against the reference (packages/programs/scripts/verify-rescue-cipher.ts).
+// No Node stdlib deps; safe to bundle in React Native.
+
+import { RescueCipher } from "../lib/rescueCipher";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { sha256 } = require("@noble/hashes/sha2") as { sha256: (data: Uint8Array) => Uint8Array };
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { x25519 } = require("@noble/curves/ed25519") as {
+const { x25519 } = require("@noble/curves/ed25519.js") as {
   x25519: {
-    utils: { randomPrivateKey: () => Uint8Array };
+    utils: { randomSecretKey: () => Uint8Array };
     getPublicKey: (priv: Uint8Array) => Uint8Array;
     getSharedSecret: (priv: Uint8Array, pub: Uint8Array) => Uint8Array;
   };
 };
 
-function deriveFieldKey(shared: Uint8Array, idx: number): Uint8Array {
-  const pre = new Uint8Array(shared.length + 1);
-  pre.set(shared);
-  pre[shared.length] = idx;
-  return sha256(pre);
-}
-function xor32(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const out = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) out[i] = a[i] ^ b[i];
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { blake3 } = require("@noble/hashes/blake3.js") as { blake3: (data: Uint8Array) => Uint8Array };
+
+function nonceToBytes16(n: bigint): Uint8Array {
+  const out = new Uint8Array(16);
+  const dv = new DataView(out.buffer);
+  dv.setBigUint64(0, n & 0xFFFFFFFFFFFFFFFFn, true);
+  dv.setBigUint64(8, (n >> 64n) & 0xFFFFFFFFFFFFFFFFn, true);
   return out;
 }
-function padU8To32(v: number): Uint8Array {
-  const out = new Uint8Array(32); out[0] = v; return out;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { blake3 } = require("@noble/hashes/blake3") as { blake3: (data: Uint8Array) => Uint8Array };
 
 function computeOutcomeCommitment(outcome: 0 | 1, secret: Uint8Array): Uint8Array {
   // blake3(outcome_byte || secret_32_bytes) — must match on-chain commitment check
@@ -231,13 +210,19 @@ export function usePrivateMarket() {
         // X25519 ECDH → RescueCipher encrypt the outcome as Enc<Shared, u64>.
         // Amount is plaintext — it's already publicly observable from the USDC
         // settlement transfer, so encrypting it inside the MPC adds no privacy.
-        const clientPriv   = x25519.utils.randomPrivateKey();
+        const clientPriv   = x25519.utils.randomSecretKey();
         const clientPub    = x25519.getPublicKey(clientPriv);
         const sharedSecret = x25519.getSharedSecret(clientPriv, x25519Pubkey);
-        const betNonce     = BigInt(Date.now()) ^ (BigInt(Math.random() * 0xFFFFFFFF | 0) << 32n);
-        const cipher       = new RescueCipher(sharedSecret);
-        const ctBlocks     = cipher.encrypt([BigInt(params.outcome)], nonceToBytes16(betNonce));
-        const outcomeCt    = new Uint8Array(ctBlocks[0]);
+        // Unsigned 32-bit halves (>>> 0 not | 0) so betNonce stays a non-negative u64 —
+        // the SDK feeds it to setBigUint64 for PDA derivation and rejects negatives.
+        const r32a = (Math.random() * 0x100000000) >>> 0;
+        const r32b = (Math.random() * 0x100000000) >>> 0;
+        const betNonce     = (BigInt(r32a) << 32n) | BigInt(r32b);
+        // Real RescueCipher (CTR over Curve25519 base field) — encrypts the outcome
+        // as Enc<Shared, u64>. Sealed outcome decodes correctly in MPC for scoring.
+        const cipher    = new RescueCipher(sharedSecret);
+        const ctBlocks  = cipher.encrypt([BigInt(params.outcome)], nonceToBytes16(betNonce));
+        const outcomeCt = new Uint8Array(ctBlocks[0]);
 
         const secret = new Uint8Array(32);
         crypto.getRandomValues(secret);
@@ -245,7 +230,7 @@ export function usePrivateMarket() {
 
         // Persist secret + bettor outcome so claim can reproduce the blake3 commitment
         await SecureStore.setItemAsync(
-          `terrace:bet_secret:${privateBetRecord}`,
+          `terrace_bet_secret_${privateBetRecord}`,
           JSON.stringify({ secret: Buffer.from(secret).toString("hex"), outcome: params.outcome })
         );
 
@@ -362,7 +347,7 @@ export function usePrivateMarket() {
         const [privateState]  = await getPrivateStatePda(params.market, programId);
         const [privateBetRecord] = await getPrivateBetRecordPda(params.market, bettor, programId);
 
-        const stored = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
+        const stored = await SecureStore.getItemAsync(`terrace_bet_secret_${privateBetRecord}`);
         if (!stored) throw new Error("Bet secret not found — cannot claim");
         const parsed = JSON.parse(stored) as { secret: string; outcome: 0 | 1 };
         const secret = new Uint8Array(Buffer.from(parsed.secret, "hex"));
@@ -381,7 +366,7 @@ export function usePrivateMarket() {
 
         setStatus("signing");
         const sig = await buildAndSend(publicKey, [ix], signTransaction);
-        await SecureStore.deleteItemAsync(`terrace:bet_secret:${privateBetRecord}`);
+        await SecureStore.deleteItemAsync(`terrace_bet_secret_${privateBetRecord}`);
         setTxSig(sig);
         setStatus("success");
         return sig;
