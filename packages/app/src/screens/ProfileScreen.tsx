@@ -24,7 +24,7 @@ import { useCreatedMarkets, type CreatedMarket } from "../hooks/useCreatedMarket
 import { useSettleMarket } from "../hooks/useSettleMarket";
 import { useClaimWinnings } from "../hooks/useClaimWinnings";
 import { usePrivateMarket } from "../hooks/usePrivateMarket";
-import { useLeague } from "../hooks/useLeague";
+import { useLeague, loadHistory, type GameweekScoreEntry } from "../hooks/useLeague";
 import { ArciumBadge } from "../components/ArciumBadge";
 import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
@@ -748,16 +748,19 @@ const cm = StyleSheet.create({
 // Position filter chips
 // ---------------------------------------------------------------------------
 
-type PositionFilter = "All" | "Bets" | "Parlays" | "Matchups";
+type PositionFilter = "All" | "Bets" | "Parlays" | "Matchups" | "Leagues";
 
 function FilterChips({
   filter,
   onChange,
   counts,
+  includeLeagues = false,
 }: {
   filter: PositionFilter;
   onChange: (f: PositionFilter) => void;
-  counts: { bets: number; parlays: number; matchups: number };
+  counts: { bets: number; parlays: number; matchups: number; leagues?: number };
+  /** Show the "Leagues" chip (Profile→History only — Active has no league history). */
+  includeLeagues?: boolean;
 }) {
   const chips: { label: string; value: PositionFilter; count: number }[] = [
     { label: "All", value: "All", count: counts.bets + counts.parlays + counts.matchups },
@@ -765,6 +768,9 @@ function FilterChips({
     { label: "Parlays", value: "Parlays", count: counts.parlays },
     { label: "Matchups", value: "Matchups", count: counts.matchups },
   ];
+  if (includeLeagues) {
+    chips.push({ label: "Leagues", value: "Leagues", count: counts.leagues ?? 0 });
+  }
   return (
     <View style={fc.row}>
       {chips.map((c) => (
@@ -881,6 +887,157 @@ const lgStyles = StyleSheet.create({
   notJoined:   { fontSize: 11, color: "#4b5563", fontStyle: "italic" },
   openBtn:     { backgroundColor: "#1a1a1a", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 0.5, borderColor: "#2a2a2a", marginTop: 4 },
   openBtnText: { fontSize: 13, fontWeight: "600", color: "#9ca3af" },
+});
+
+// ---------------------------------------------------------------------------
+// History → Leagues list — per-league GW score ledger
+// ---------------------------------------------------------------------------
+
+interface LeagueHistoryRow {
+  leagueAddress: string;
+  leagueName: string;
+  isPrivate: boolean;
+  entries: GameweekScoreEntry[];  // user's own GW scores
+  total: number;                  // sum across all GWs in entries
+  currentGw: number;              // league.gameweek (so we can label "current")
+}
+
+function HistoryLeaguesList({ walletPubkey, onOpen }: { walletPubkey: string | null; onOpen: () => void }) {
+  const { myLeagues, joinedLeagues, loading } = useLeague(walletPubkey);
+  const [rows, setRows] = useState<LeagueHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const allLeagues = useMemo(() => {
+    return [
+      ...myLeagues,
+      ...joinedLeagues.filter((jl) => !myLeagues.some((ml) => String(ml.address) === String(jl.address))),
+    ];
+  }, [myLeagues, joinedLeagues]);
+
+  // Load each league's history snapshot and pluck the user's own GW entries.
+  useEffect(() => {
+    if (!walletPubkey || allLeagues.length === 0) { setRows([]); return; }
+    let cancelled = false;
+    setHistoryLoading(true);
+    (async () => {
+      const out: LeagueHistoryRow[] = [];
+      for (const league of allLeagues) {
+        const history = await loadHistory(String(league.address));
+        const myEntries = history[walletPubkey] ?? [];
+        const total = myEntries.reduce((acc, e) => acc + e.score, 0);
+        out.push({
+          leagueAddress: String(league.address),
+          leagueName: league.name,
+          isPrivate: league.isPrivate,
+          entries: myEntries,
+          total,
+          currentGw: league.gameweek,
+        });
+      }
+      if (!cancelled) {
+        setRows(out);
+        setHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [walletPubkey, allLeagues]);
+
+  if (loading || historyLoading) {
+    return <ActivityIndicator color="#22c55e" style={{ marginTop: 32 }} />;
+  }
+
+  if (rows.length === 0) {
+    return (
+      <View style={historyLeagueStyles.empty}>
+        <Text style={historyLeagueStyles.emptyEmoji}>🏆</Text>
+        <Text style={historyLeagueStyles.emptyTitle}>No league history yet</Text>
+        <Text style={historyLeagueStyles.emptyText}>
+          Join a private league and play a gameweek. Your per-GW scores will
+          show up here.
+        </Text>
+        <TouchableOpacity style={historyLeagueStyles.openBtn} onPress={onOpen}>
+          <Text style={historyLeagueStyles.openBtnText}>Open Leagues</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      {rows.map((row) => (
+        <TouchableOpacity
+          key={row.leagueAddress}
+          style={historyLeagueStyles.card}
+          onPress={onOpen}
+          activeOpacity={0.8}
+        >
+          <View style={historyLeagueStyles.cardHeader}>
+            <Text style={historyLeagueStyles.leagueName} numberOfLines={1}>
+              {row.leagueName}
+            </Text>
+            {row.isPrivate && (
+              <View style={historyLeagueStyles.privateBadge}>
+                <Text style={historyLeagueStyles.privateBadgeText}>🔒 Private</Text>
+              </View>
+            )}
+          </View>
+
+          {row.entries.length === 0 ? (
+            <Text style={historyLeagueStyles.noGws}>
+              No revealed gameweeks yet. {row.currentGw === 1 ? "Season just started." : `Currently on GW${row.currentGw}.`}
+            </Text>
+          ) : (
+            <View style={historyLeagueStyles.gwGrid}>
+              {row.entries.map((e) => (
+                <View key={e.gw} style={historyLeagueStyles.gwChip}>
+                  <Text style={historyLeagueStyles.gwChipLabel}>GW{e.gw}</Text>
+                  <Text style={historyLeagueStyles.gwChipScore}>{e.score}</Text>
+                </View>
+              ))}
+              {/* Show current GW as in-progress if it hasn't been revealed yet */}
+              {!row.entries.some((e) => e.gw === row.currentGw) && (
+                <View style={[historyLeagueStyles.gwChip, historyLeagueStyles.gwChipPending]}>
+                  <Text style={historyLeagueStyles.gwChipLabel}>GW{row.currentGw}</Text>
+                  <Text style={historyLeagueStyles.gwChipPendingText}>•••</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={historyLeagueStyles.footer}>
+            <Text style={historyLeagueStyles.footerLabel}>Career total</Text>
+            <Text style={historyLeagueStyles.footerTotal}>
+              {row.total} {row.total === 1 ? "pt" : "pts"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+const historyLeagueStyles = StyleSheet.create({
+  card:         { backgroundColor: "#111", borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: "#1f2937" },
+  cardHeader:   { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  leagueName:   { fontSize: 15, fontWeight: "700", color: "#fff", flex: 1 },
+  privateBadge: { backgroundColor: "#1a0a40", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 0.5, borderColor: "#5b21b6" },
+  privateBadgeText: { fontSize: 10, color: "#c4b5fd", fontWeight: "700" },
+  noGws:        { fontSize: 12, color: "#6b7280", fontStyle: "italic", marginBottom: 12 },
+  gwGrid:       { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  gwChip:       { backgroundColor: "#0a0a0a", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 0.5, borderColor: "#1f2937", minWidth: 56 },
+  gwChipPending:{ borderStyle: "dashed", borderColor: "#5b21b6" },
+  gwChipLabel:  { fontSize: 9, color: "#6b7280", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  gwChipScore:  { fontSize: 16, fontWeight: "800", color: "#22c55e", fontVariant: ["tabular-nums"], marginTop: 1 },
+  gwChipPendingText: { fontSize: 14, fontWeight: "700", color: "#c4b5fd", marginTop: 1 },
+  footer:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#1f2937", paddingTop: 10 },
+  footerLabel:  { fontSize: 11, color: "#6b7280", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6 },
+  footerTotal:  { fontSize: 18, fontWeight: "800", color: "#fbbf24", fontVariant: ["tabular-nums"] },
+  empty:        { alignItems: "center", paddingVertical: 32, gap: 8 },
+  emptyEmoji:   { fontSize: 36, marginBottom: 4 },
+  emptyTitle:   { fontSize: 14, fontWeight: "700", color: "#e5e7eb" },
+  emptyText:    { fontSize: 12, color: "#6b7280", textAlign: "center", maxWidth: 280, lineHeight: 18 },
+  openBtn:      { backgroundColor: "#22c55e", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 24, marginTop: 12 },
+  openBtnText:  { fontSize: 13, fontWeight: "700", color: "#0a0a0a" },
 });
 
 // ---------------------------------------------------------------------------
@@ -1345,7 +1502,14 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
                 filter={positionFilter}
                 onChange={setPositionFilter}
                 counts={{ bets: historyBets.length, parlays: historyParlays.length, matchups: historyMatchups.length }}
+                includeLeagues
               />
+              {positionFilter === "Leagues" ? (
+                <HistoryLeaguesList
+                  walletPubkey={walletPubkey}
+                  onOpen={() => onNavigateLeague?.()}
+                />
+              ) : (
               <HistoryPositions
                 bets={positionFilter === "All" || positionFilter === "Bets" ? historyBets : []}
                 parlays={positionFilter === "All" || positionFilter === "Parlays" ? historyParlays : []}
@@ -1353,6 +1517,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
                 walletPubkey={walletPubkey}
                 marketSummaries={marketSummaries}
               />
+              )}
             </>
           );
         })()}
