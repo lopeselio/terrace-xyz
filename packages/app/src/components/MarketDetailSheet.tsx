@@ -19,6 +19,7 @@ import { usePrivateMarket } from "../hooks/usePrivateMarket";
 import { useWallet } from "../hooks/useWallet";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { ArciumBadge, ArciumPrivacyBanner, ArciumSettledBanner } from "./ArciumBadge";
+import { BetPlacedCelebrationModal } from "./BetPlacedCelebrationModal";
 
 interface Props {
   market: UnifiedMarket | null;
@@ -37,21 +38,13 @@ function fmtExpiry(d: Date | null | undefined) {
 
 // ── Status badge ────────────────────────────────────────────────────────────
 
-function TxStatusBanner({ status, error, txSig }: {
+function TxStatusBanner({ status, error }: {
   status: string;
   error: string | null;
-  txSig: string | null;
 }) {
-  if (status === "idle") return null;
-  if (status === "success") {
-    return (
-      <View style={[banner.root, banner.success]}>
-        <Text style={banner.text}>
-          ✅ Bet placed!{txSig ? `  ${txSig.slice(0, 8)}…` : ""}
-        </Text>
-      </View>
-    );
-  }
+  // Success is intentionally not rendered here — BetPlacedCelebrationModal
+  // owns the success moment now (full-screen fan-friendly celebration).
+  if (status === "idle" || status === "success") return null;
   if (status === "error") {
     return (
       <View style={[banner.root, banner.error]}>
@@ -82,7 +75,13 @@ const banner = StyleSheet.create({
 function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: () => void }) {
   const [outcome, setOutcome] = useState<0 | 1 | null>(null);
   const [amountStr, setAmountStr] = useState("");
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
   const { placeBet, status, error, txSignature } = usePlaceBet();
+
+  // Open the celebration the moment the tx confirms.
+  useEffect(() => {
+    if (status === "success" && txSignature) setCelebrationOpen(true);
+  }, [status, txSignature]);
 
   const busy = status !== "idle" && status !== "success" && status !== "error";
 
@@ -101,9 +100,22 @@ function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: (
     }
   };
 
+  const stakeForCelebration = amountStr ? parseFloat(amountStr) : null;
+  const outcomeLabelForCelebration: "YES" | "NO" = outcome === 1 ? "NO" : "YES";
+
   return (
     <View>
-      <TxStatusBanner status={status} error={error} txSig={txSignature ?? null} />
+      <TxStatusBanner status={status} error={error} />
+      <BetPlacedCelebrationModal
+        visible={celebrationOpen}
+        marketQuestion={market.question}
+        outcomeLabel={outcomeLabelForCelebration}
+        stakeUsdc={stakeForCelebration}
+        isPrivate={false}
+        txSignature={txSignature ?? null}
+        onDismiss={() => setCelebrationOpen(false)}
+        onBackAnother={() => { setCelebrationOpen(false); onClose(); }}
+      />
 
       {/* Outcome toggle */}
       <View style={s.outcomeRow}>
@@ -155,11 +167,21 @@ function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: (
 
 // ── Private bet panel ────────────────────────────────────────────────────────
 
-function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
+function PrivateBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: () => void }) {
   const [outcome, setOutcome] = useState<0 | 1 | null>(null);
   const [amountStr, setAmountStr] = useState("");
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
   const { placeBet, revealMarket, claimWinnings, status, error, txSig } = usePrivateMarket();
   const { publicKey } = useWallet();
+
+  // Open the celebration once the encrypted bet tx confirms. Only fires on
+  // placeBet success (status flips through building→signing→success); reveal
+  // and claim go through the same status field but those don't need a bet
+  // celebration so we gate on the user having a pending outcome selection.
+  useEffect(() => {
+    if (status === "success" && txSig && outcome !== null) setCelebrationOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, txSig]);
 
   // Claim state — populated if user has an unclaimed private bet on this market
   const [hasBetSecret, setHasBetSecret] = useState(false);
@@ -175,7 +197,7 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
           publicKey as any,
           TERRACE_PROGRAM_ID
         );
-        const stored = await SecureStore.getItemAsync(`terrace:bet_secret:${privateBetRecord}`);
+        const stored = await SecureStore.getItemAsync(`terrace_bet_secret_${privateBetRecord}`);
         if (!cancelled && stored) {
           const parsed = JSON.parse(stored) as { secret: string; outcome: 0 | 1 };
           setHasBetSecret(true);
@@ -229,7 +251,7 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
     return (
       <View>
         <ArciumSettledBanner />
-        <TxStatusBanner status={status} error={error} txSig={txSig} />
+        <TxStatusBanner status={status} error={error} />
         {hasBetSecret ? (
           <View style={s.claimSection}>
             <Text style={s.claimText}>
@@ -263,10 +285,23 @@ function PrivateBetPanel({ market }: { market: UnifiedMarket }) {
     );
   }
 
+  const stakeForCelebration = amountStr ? parseFloat(amountStr) : null;
+  const outcomeLabelForCelebration: "YES" | "NO" = outcome === 1 ? "NO" : "YES";
+
   return (
     <View>
-      <ArciumPrivacyBanner subtitle="Your position is invisible until settlement" />
-      <TxStatusBanner status={status} error={error} txSig={txSig} />
+      <ArciumPrivacyBanner subtitle="Your pick stays sealed until full-time" />
+      <TxStatusBanner status={status} error={error} />
+      <BetPlacedCelebrationModal
+        visible={celebrationOpen}
+        marketQuestion={market.question}
+        outcomeLabel={outcomeLabelForCelebration}
+        stakeUsdc={stakeForCelebration}
+        isPrivate={true}
+        txSignature={txSig ?? null}
+        onDismiss={() => setCelebrationOpen(false)}
+        onBackAnother={() => { setCelebrationOpen(false); onClose(); }}
+      />
 
       <View style={s.outcomeRow}>
         <TouchableOpacity
@@ -372,7 +407,7 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
 
           {/* Bet panel — private vs public */}
           {market.isPrivate ? (
-            <PrivateBetPanel market={market} />
+            <PrivateBetPanel market={market} onClose={onClose} />
           ) : market.status === "Open" ? (
             <PublicBetPanel market={market} onClose={onClose} />
           ) : (
