@@ -58,19 +58,19 @@ interface BannerProps {
 }
 
 const DEFAULT_BULLETS = [
-  "🔒  Your pick stays yours — no one else can see it",
-  "👁  Hidden from the bookmaker, your friends, and the league",
-  "⚡  Revealed only when the market settles",
+  "🔒  Your pick stays yours. Nobody else gets a peek.",
+  "👁  Hidden from your friends, your league, and the house.",
+  "⚡  Only revealed when the final whistle blows.",
 ];
 
 const SETTLED_BULLETS = [
-  "✅  Final result is in",
-  "🔒  Every bet stayed private the whole time",
-  "💰  If you won, claim your USDC below",
+  "✅  Full-time. The result is in.",
+  "🔒  Every pick stayed under wraps the whole match.",
+  "💰  Called it right? Claim your winnings below.",
 ];
 
 export function ArciumPrivacyBanner({
-  subtitle = "Powered by Arcium · your picks stay yours",
+  subtitle = "Powered by Arcium · picks stay sealed",
   bullets = DEFAULT_BULLETS,
 }: BannerProps) {
   return (
@@ -107,7 +107,7 @@ export function ArciumPrivacyBanner({
 export function ArciumSettledBanner() {
   return (
     <ArciumPrivacyBanner
-      subtitle="The result is in"
+      subtitle="Final whistle. Time to see who called it."
       bullets={SETTLED_BULLETS}
     />
   );
