@@ -455,10 +455,11 @@ export function useLeague(ownerPubkey?: string | null) {
       // Sort by gameweek_score desc, then total_score desc
       members.sort((a, b) => b.gameweekScore - a.gameweekScore || b.totalScore - a.totalScore);
       setLeaderboard(members);
-      // Fire-and-forget per-GW history snapshot. Capturing now (while the
-      // revealed slot is still plaintext on-chain) keeps the data even after
-      // the next GW's first record_league_win lazy-resets it.
-      snapshotHistory(leagueAddress, members);
+      // Per-GW history snapshot. Awaited so callers that follow with
+      // loadGameweekHistory read fresh data — previously this was
+      // fire-and-forget which caused 'NO DATA' in the dropdown view on the
+      // first open after a reveal.
+      await snapshotHistory(leagueAddress, members);
     } catch (e) {
       console.warn(`${LOG} loadLeaderboard error`, e);
     } finally {

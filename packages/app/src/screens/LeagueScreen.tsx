@@ -160,6 +160,16 @@ function LeaderboardSheet({
     setBetsExpanded((v) => !v);
   }, []);
 
+  // Leaderboard gameweek selector — defaults to the league's current GW.
+  // Picking a past GW switches each row's score column to that GW's history
+  // snapshot (read from gwHistory) and hides the in-flight current-GW lock.
+  const [selectedGameweek, setSelectedGameweek] = useState<number>(league.gameweek);
+  const [gwPickerOpen, setGwPickerOpen] = useState(false);
+  // Snap to current GW whenever the league advances (e.g. creator just
+  // tapped Advance GW). Without this the dropdown sticks to a stale value.
+  useEffect(() => { setSelectedGameweek(league.gameweek); }, [league.gameweek]);
+  const viewingPastGw = selectedGameweek < league.gameweek;
+
   const handleShare = useCallback(async () => {
     const link = inviteUrl(String(league.address));
     try {
@@ -389,14 +399,68 @@ function LeaderboardSheet({
         return null;
       })()}
 
+      {/* User's own career total — always visible above the leaderboard
+          regardless of which gameweek is selected from the dropdown. */}
+      {(() => {
+        const me = members.find((m) => String(m.member) === myPubkey);
+        if (!me) return null;
+        return (
+          <View style={s.careerTotalCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.careerTotalKicker}>YOUR CAREER TOTAL</Text>
+              <Text style={s.careerTotalValue}>
+                {me.totalScore} {me.totalScore === 1 ? "pt" : "pts"}
+              </Text>
+            </View>
+            <Text style={s.careerTotalIcon}>🏆</Text>
+          </View>
+        );
+      })()}
+
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 }}>
-        <Text style={[s.leaderboardTitle, { marginBottom: 0, flex: 1 }]}>
-          Gameweek {league.gameweek} Leaderboard
-        </Text>
-        {league.isPrivate && (
+        {/* Gameweek picker — discreet dropdown so members can peek at past
+            gameweek scores without leaving the league sheet. */}
+        <TouchableOpacity
+          style={s.gwPicker}
+          onPress={() => setGwPickerOpen((v) => !v)}
+          activeOpacity={0.75}
+        >
+          <Text style={s.gwPickerLabel}>
+            Gameweek {selectedGameweek} Leaderboard
+          </Text>
+          <Text style={s.gwPickerChevron}>{gwPickerOpen ? "▴" : "▾"}</Text>
+        </TouchableOpacity>
+        {league.isPrivate && !viewingPastGw && (
           <Text style={s.privateNote}>🔒 Scores hidden until reveal</Text>
         )}
+        {viewingPastGw && (
+          <Text style={s.privateNote}>📜 History view</Text>
+        )}
       </View>
+
+      {/* GW picker dropdown — opens inline so the sheet keeps scrolling
+          naturally. Lists every GW from 1 → current; tapping picks it. */}
+      {gwPickerOpen && (
+        <View style={s.gwPickerList}>
+          {Array.from({ length: league.gameweek }, (_, i) => league.gameweek - i).map((gw) => {
+            const isSelected = gw === selectedGameweek;
+            const isCurrent = gw === league.gameweek;
+            return (
+              <TouchableOpacity
+                key={gw}
+                style={[s.gwPickerItem, isSelected && s.gwPickerItemActive]}
+                onPress={() => { setSelectedGameweek(gw); setGwPickerOpen(false); }}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.gwPickerItemText, isSelected && s.gwPickerItemTextActive]}>
+                  Gameweek {gw}{isCurrent ? " · current" : ""}
+                </Text>
+                {isSelected && <Text style={s.gwPickerItemCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {loading ? (
         <ActivityIndicator color="#22c55e" style={{ marginTop: 24 }} />
@@ -412,57 +476,67 @@ function LeaderboardSheet({
             const isMe = myPubkey === String(m.member);
             const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
 
-            // On-chain LeagueMember keeps the most-recent revealed score as
-            // plaintext (gameweekScore + lastScoredGameweek) until a new GW's
-            // first record_league_win lazy-resets the slot. So the score for
-            // their last revealed GW is publicly readable — we should show it,
-            // labelled with the GW it actually belongs to, not always 0/locked.
             const hasEverRevealed = m.lastScoredGameweek > 0;
-            const showsCurrentGw = m.lastScoredGameweek === league.gameweek;
+            const memberHistory = gwHistory[String(m.member)] ?? [];
             const totalHidden = league.isPrivate && !isMe && !hasEverRevealed;
 
-            // Score block: prefer the on-chain revealed slot (current OR prior
-            // GW). Only lock the column when nothing has been revealed yet for
-            // a private league non-self row.
-            const showLock = league.isPrivate && !isMe && !hasEverRevealed;
-            const scoreVal = hasEverRevealed ? m.gameweekScore : 0;
-            const scoreLabel = showLock
-              ? "private"
-              : showsCurrentGw
-                ? "GW pts"
-                : `GW${m.lastScoredGameweek} pts`;
-
-            const memberHistory = gwHistory[String(m.member)] ?? [];
-            // Hide history chips for OTHER private-league members who haven't
-            // revealed for any GW yet — chips would just be empty anyway.
-            const showHistory = memberHistory.length > 0 && (!league.isPrivate || isMe || hasEverRevealed);
+            // Score column behaviour depends on which gameweek is selected.
+            //   • Past GW: read from gwHistory snapshot (per-member, frozen).
+            //   • Current GW: prefer on-chain LeagueMember.gameweekScore (the
+            //     most recent revealed). Lock for other private-league
+            //     members who haven't revealed yet.
+            // Score column logic:
+            //   • Past GW view: read from gwHistory snapshot.
+            //   • Current GW view: show ONLY the current GW's score. If the
+            //     member's lastScoredGameweek doesn't match the current GW,
+            //     they haven't scored anything in the current GW yet → show 0,
+            //     NOT a stale leftover from the previous GW. (Past GW data is
+            //     reachable via the dropdown.)
+            let scoreVal = 0;
+            let scoreLabel = `GW${selectedGameweek} pts`;
+            let showLock = false;
+            if (viewingPastGw) {
+              const h = memberHistory.find((e) => e.gw === selectedGameweek);
+              if (h) {
+                scoreVal = h.score;
+              } else {
+                showLock = true;
+                scoreLabel = "no data";
+              }
+            } else {
+              const isCurrentGw = m.lastScoredGameweek === league.gameweek;
+              // Lock the column only for OTHER private-league members who have
+              // never revealed anything at all (no plaintext to show).
+              showLock = league.isPrivate && !isMe && !hasEverRevealed;
+              if (showLock) {
+                scoreLabel = "private";
+              } else if (isCurrentGw) {
+                // Their on-chain gameweekScore IS this GW's score.
+                scoreVal = m.gameweekScore;
+              } else {
+                // hasn't scored in current GW yet — surface 0, not the
+                // leftover from a prior GW.
+                scoreVal = 0;
+              }
+            }
 
             return (
               <View key={String(m.address)} style={[s.memberRow, isMe && s.memberRowMe]}>
                 {isMe && <View style={s.memberAccent} />}
                 <Text style={medal ? s.rankMedal : s.rank}>{medal ?? `#${idx + 1}`}</Text>
-                <MemberAvatar pubkey={String(m.member)} size={30} />
+                {/* Avatar column — jersey + a small "career total" pill stacked
+                    underneath so a member's running total reads at a glance
+                    next to their kit. */}
+                <View style={s.avatarCol}>
+                  <MemberAvatar pubkey={String(m.member)} size={30} />
+                  <Text style={[s.totalPill, totalHidden && s.totalPillHidden]}>
+                    {totalHidden ? "🔒" : `${m.totalScore} pts`}
+                  </Text>
+                </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={[s.memberAddr, isMe && s.memberAddrMe]}>
                     {isMe ? "You" : shortAddr(String(m.member))}
                   </Text>
-                  <Text style={s.memberTotal}>
-                    {totalHidden ? "—  total pts" : `${m.totalScore} total pts`}
-                  </Text>
-                  {showHistory && (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={s.gwHistoryRow}
-                    >
-                      {memberHistory.map((h) => (
-                        <View key={h.gw} style={s.gwHistoryChip}>
-                          <Text style={s.gwHistoryChipGw}>GW{h.gw}</Text>
-                          <Text style={s.gwHistoryChipScore}>{h.score}</Text>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
                 </View>
                 <View style={s.scoreBlock}>
                   {showLock ? (
@@ -726,6 +800,13 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     const h = await loadGameweekHistory(addr);
     setGwHistory(h);
   }, [loadGameweekHistory]);
+  // Whenever the leaderboard updates (loadLeaderboard wrote new snapshots),
+  // re-read the gameweek history so the dropdown view doesn't show stale
+  // 'no data' for entries that were just persisted.
+  useEffect(() => {
+    if (!selectedLeague) return;
+    refreshHistory(String(selectedLeague.address));
+  }, [leaderboard, selectedLeague, refreshHistory]);
 
   const busy = status === "building" || status === "signing";
   const notify = useNotify();
@@ -766,14 +847,17 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeague, initMemberScore, loadMemberScoreState, notify]);
 
-  const handleOpenLeague = useCallback((league: League) => {
+  const handleOpenLeague = useCallback(async (league: League) => {
     setSelectedLeague(league);
-    loadLeaderboard(String(league.address));
+    // Run leaderboard first and await so its snapshotHistory write completes
+    // before we read history into local state. Other loaders fire in
+    // parallel — they don't depend on each other.
     loadEligibleBets(String(league.address), league.isPrivate);
-    refreshHistory(String(league.address));
     if (league.isPrivate && walletPubkey) {
       loadMemberScoreState(String(league.address));
     }
+    await loadLeaderboard(String(league.address));
+    await refreshHistory(String(league.address));
   }, [loadLeaderboard, loadEligibleBets, loadMemberScoreState, refreshHistory, walletPubkey]);
 
   // Auto-recover stuck state: if the user is a member of a private league but
@@ -1327,6 +1411,28 @@ const s = StyleSheet.create({
   eligibleCta:      { fontSize: 13, fontWeight: "700", color: "#22c55e", marginLeft: 8 },
   eligibleCtaLocked: { fontSize: 11, fontWeight: "600", color: "#6366f1", marginLeft: 8 },
   leaderboardTitle: { fontSize: 13, fontWeight: "600", color: "#6b7280", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8 },
+
+  // Gameweek picker — discreet inline dropdown above the leaderboard.
+  gwPicker:        { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, paddingVertical: 4 },
+  gwPickerLabel:   { fontSize: 13, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.8 },
+  gwPickerChevron: { fontSize: 12, color: "#9ca3af", fontWeight: "700" },
+  gwPickerList:    { backgroundColor: "#0d0d0d", borderRadius: 10, borderWidth: 0.5, borderColor: "#1e1e1e", marginBottom: 12, paddingVertical: 4 },
+  gwPickerItem:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 9 },
+  gwPickerItemActive: { backgroundColor: "#052e16" },
+  gwPickerItemText:   { fontSize: 12, color: "#9ca3af", fontWeight: "600" },
+  gwPickerItemTextActive: { color: "#22c55e", fontWeight: "700" },
+  gwPickerItemCheck:  { fontSize: 12, color: "#22c55e", fontWeight: "700" },
+
+  // Leaderboard row: jersey + total pill stacked column.
+  avatarCol: { alignItems: "center", width: 48 },
+  totalPill: { fontSize: 10, fontWeight: "700", color: "#fbbf24", marginTop: 4, paddingHorizontal: 6, paddingVertical: 1, backgroundColor: "rgba(251, 191, 36, 0.10)", borderRadius: 999, fontVariant: ["tabular-nums"] },
+  totalPillHidden: { color: "#6b7280", backgroundColor: "rgba(107, 114, 128, 0.10)" },
+
+  // Career-total banner above the leaderboard.
+  careerTotalCard: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(251, 191, 36, 0.08)", borderRadius: 12, borderWidth: 0.5, borderColor: "rgba(251, 191, 36, 0.35)", padding: 12, marginBottom: 14 },
+  careerTotalKicker: { fontSize: 10, fontWeight: "700", color: "#fbbf24", letterSpacing: 1, textTransform: "uppercase" },
+  careerTotalValue: { fontSize: 22, fontWeight: "800", color: "#fff", marginTop: 2, fontVariant: ["tabular-nums"] },
+  careerTotalIcon: { fontSize: 28 },
 
   memberRow:    { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: "#141414", gap: 0 },
   memberRowMe:  { backgroundColor: "#060f06", borderRadius: 10, borderWidth: 0.5, borderColor: "#1a3a1a", marginBottom: 2, paddingHorizontal: 4 },
