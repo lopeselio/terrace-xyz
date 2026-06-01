@@ -479,8 +479,18 @@ export function useLeague(ownerPubkey?: string | null) {
     setLoadingLeaderboard(true);
     try {
       const members = await fetchLeagueMembersForLeague(leagueAddress);
-      // Sort by gameweek_score desc, then total_score desc
-      members.sort((a, b) => b.gameweekScore - a.gameweekScore || b.totalScore - a.totalScore);
+      // Sort by career total (total_score) desc as the primary key — that's
+      // the visible 'X pts' pill under each jersey and the most intuitive
+      // ranking. Use gameweek_score desc as the tiebreaker so members with
+      // the same career total are ordered by their most recently revealed
+      // gameweek performance.
+      //
+      // We deliberately do NOT lead with gameweek_score, because in a private
+      // league most members' gameweek_score reads 0 until they personally
+      // call reveal_member_score for the current GW — which would otherwise
+      // sort a 10-career-pts member below a 4-career-pts member just because
+      // the 10-pts member hasn't revealed yet.
+      members.sort((a, b) => b.totalScore - a.totalScore || b.gameweekScore - a.gameweekScore);
       setLeaderboard(members);
       // Per-GW history snapshot. Awaited so callers that follow with
       // loadGameweekHistory read fresh data — previously this was
