@@ -665,14 +665,39 @@ export function useLeague(ownerPubkey?: string | null) {
       // from prior GWs that were never scored (e.g. on the losing side, or
       // skipped) keep leaking into the current GW's bets list.
       //
-      // First-run safety: if no gw-start record exists for the current GW,
-      // backfill it to (Date.now() - 10 min) so the user's most-recently-
-      // created markets stay visible without breaking older sessions.
+      // advanceGameweek is the canonical writer of the gw-start timestamp.
+      // When no record exists (legacy data, advance happened before this
+      // fix landed, etc.) we backfill to (Date.now() - 48h) as a session-
+      // only fallback — wide enough to cover markets created during a test
+      // sprint, and NOT persisted so the next real advance overwrites it.
+      //
+      // If a stored record exists but is so recent that it would exclude
+      // ALL of the user's currently-unscored private bets (i.e. a stale
+      // backfill artifact from a prior session), fall back to the wide
+      // window instead — otherwise the user is silently locked out of
+      // scoring their existing bets.
+      const earliestUnscoredNonce = unscored.reduce<bigint | null>((acc, b) => {
+        const n = marketMeta[b.marketAddress]?.nonce;
+        if (n === undefined || n === 0n) return acc;
+        return acc === null || n < acc ? n : acc;
+      }, null);
+
       let gwStart: number | null = null;
       if (currentGameweek && currentGameweek > 0) {
-        gwStart = await loadGameweekStart(leagueAddress, currentGameweek);
-        if (gwStart === null) {
-          gwStart = Date.now() - 10 * 60_000;
+        const saved = await loadGameweekStart(leagueAddress, currentGameweek);
+        const wideBackfill = Date.now() - 48 * 60 * 60_000;
+        if (saved !== null) {
+          // Stale-record guard: saved value can't be later than the oldest
+          // unscored bet's market nonce, otherwise the filter eats existing
+          // bets the user is about to score.
+          if (earliestUnscoredNonce !== null && BigInt(saved) > earliestUnscoredNonce) {
+            gwStart = wideBackfill;
+          } else {
+            gwStart = saved;
+          }
+        } else {
+          // First time we see this GW; use the wide backfill and persist.
+          gwStart = wideBackfill;
           await saveGameweekStart(leagueAddress, currentGameweek, gwStart);
         }
       }
