@@ -18,6 +18,7 @@ import { useLeagueAdvanceNotifications, type AdvanceNotification } from "../hook
 import { useLeagueWinnerNotifications, type WinnerNotification } from "../hooks/useLeagueWinnerNotifications";
 import { useLeagueActivityFeed, type LeagueActivityEntry } from "../hooks/useLeagueActivityFeed";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { JerseyAvatar } from "../components/JerseyAvatar";
 import { TerraceMark, PolyJupLogos, POLYMARKET_LOGO, JUPITER_LOGO_URI } from "../components/BrandIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePlaceBet } from "../hooks/usePlaceBet";
@@ -73,7 +74,10 @@ function SourceChipContent({ filterKey, active }: { filterKey: SourceFilter; act
   return <Text style={textStyle}>All markets</Text>;
 }
 
-const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
+// "World Cup" is rendered as a HOT chip (fire emoji + orange accent) because
+// it's a global event that surfaces above the regular club leagues.
+const HOT_CHIP = "World Cup";
+const LEAGUE_CHIPS = ["All", HOT_CHIP, "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
 
 function matchesLeague(eventTitle: string, league: string): boolean {
   if (league === "All") return true;
@@ -85,6 +89,13 @@ function matchesLeague(eventTitle: string, league: string): boolean {
   if (league === "Serie A") return /serie a|juventus|inter|milan|napoli|roma|lazio|atalanta|fiorentina/i.test(t);
   if (league === "Ligue 1") return /ligue 1|psg|paris|lyon|marseille|monaco|lille/i.test(t);
   if (league === "Europa League") return /europa league|uel/i.test(t);
+  if (league === "World Cup") {
+    // Match on tournament keywords OR country-vs-country titles. The country
+    // safety net covers Polymarket events that don't say "World Cup" in the
+    // title (e.g. "France vs Spain — Match result").
+    return /world cup|fifa|wcup|wc 2026|qualifier/i.test(t)
+      || /\b(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\s+(vs\.?|v\.?)\s+(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\b/i.test(t);
+  }
   return true;
 }
 
@@ -617,13 +628,10 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                 <Text style={notif.sectionTitle}>PENDING CHALLENGES</Text>
               )}
               {challenges.map((m) => {
-                const bg = avatarColorFromPubkey(m.challenger);
                 return (
                   <View key={m.address} style={notif.card}>
                     <View style={notif.cardTop}>
-                      <View style={[notif.avatar, { backgroundColor: bg }]}>
-                        <Text style={notif.avatarText}>{m.challenger.slice(0, 1).toUpperCase()}</Text>
-                      </View>
+                      <JerseyAvatar pubkey={m.challenger} size={36} />
                       <View style={{ flex: 1 }}>
                         <Text style={notif.challengeFrom}>Challenge from</Text>
                         <Text style={notif.challengerAddr}>
@@ -992,18 +1000,32 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.leagueChipsRow}
                   >
-                    {LEAGUE_CHIPS.map((chip) => (
-                      <TouchableOpacity
-                        key={chip}
-                        style={[styles.leagueChip, leagueFilter === chip && styles.leagueChipActive]}
-                        onPress={() => setLeagueFilter(chip)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.leagueChipText, leagueFilter === chip && styles.leagueChipTextActive]}>
-                          {chip}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {LEAGUE_CHIPS.map((chip) => {
+                      const isHot = chip === HOT_CHIP;
+                      const isActive = leagueFilter === chip;
+                      return (
+                        <TouchableOpacity
+                          key={chip}
+                          style={[
+                            styles.leagueChip,
+                            isHot && styles.leagueChipHot,
+                            isActive && (isHot ? styles.leagueChipHotActive : styles.leagueChipActive),
+                          ]}
+                          onPress={() => setLeagueFilter(chip)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.leagueChipText,
+                              isHot && styles.leagueChipTextHot,
+                              isActive && (isHot ? styles.leagueChipTextHotActive : styles.leagueChipTextActive),
+                            ]}
+                          >
+                            {isHot ? `🔥 ${chip}` : chip}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 )}
 
@@ -1177,6 +1199,12 @@ const styles = StyleSheet.create({
   leagueChipActive: { backgroundColor: "#052e16", borderColor: "#22c55e" },
   leagueChipText: { fontSize: 11, fontWeight: "500", color: "#888" },
   leagueChipTextActive: { color: "#22c55e", fontWeight: "600" },
+  // World Cup "hot" treatment — always orange-tinted so it stands out from
+  // green league chips. Bright orange border when active.
+  leagueChipHot:           { backgroundColor: "#2a1605", borderColor: "#f97316" },
+  leagueChipHotActive:     { backgroundColor: "#451a03", borderColor: "#fb923c" },
+  leagueChipTextHot:       { color: "#fb923c", fontWeight: "600" },
+  leagueChipTextHotActive: { color: "#fed7aa", fontWeight: "700" },
 
   // Market row
   loadingRow: { alignItems: "center", paddingVertical: 40 },
