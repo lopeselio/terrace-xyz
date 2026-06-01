@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -827,6 +827,30 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     refreshHistory(String(selectedLeague.address));
   }, [leaderboard, selectedLeague, refreshHistory]);
 
+  // Effective history: merge the SecureStore-backed gwHistory with whatever
+  // the current leaderboard exposes (LeagueMember.lastScoredGameweek + the
+  // matching gameweekScore). The on-chain LeagueMember always holds the most
+  // recently-revealed plaintext slot — even after a GW advance and a
+  // MemberScore reset, those fields aren't cleared. Merging them here means
+  // the dropdown 'history view' shows the latest revealed GW even when
+  // SecureStore is silently failing or hasn't been written yet.
+  const effectiveGwHistory = useMemo(() => {
+    const merged: Record<string, GameweekScoreEntry[]> = {};
+    for (const [pk, entries] of Object.entries(gwHistory)) {
+      merged[pk] = [...entries];
+    }
+    for (const m of leaderboard) {
+      if (m.lastScoredGameweek <= 0) continue;
+      const pk = String(m.member);
+      const existing = merged[pk] ?? [];
+      if (existing.some((e) => e.gw === m.lastScoredGameweek)) continue;
+      existing.push({ gw: m.lastScoredGameweek, score: m.gameweekScore });
+      existing.sort((a, b) => a.gw - b.gw);
+      merged[pk] = existing;
+    }
+    return merged;
+  }, [gwHistory, leaderboard]);
+
   const busy = status === "building" || status === "signing";
   const notify = useNotify();
 
@@ -1311,7 +1335,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
           <LeaderboardSheet
             league={selectedLeague}
             members={leaderboard}
-            gwHistory={gwHistory}
+            gwHistory={effectiveGwHistory}
             loading={loadingLeaderboard}
             myPubkey={walletPubkey}
             isCreator={walletPubkey === String(selectedLeague.creator)}
