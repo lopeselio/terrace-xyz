@@ -144,31 +144,36 @@ function normalise(name: string): string {
 }
 
 /**
- * Look up a team by name. Tries:
- * 1. Direct match on normalised name
- * 2. Starts-with on normalised name
- * 3. Any alias that the input contains or that contains the input
+ * Look up a team by name.
  *
- * Returns undefined if no match.
+ * Order:
+ *   1. Direct hit on normalised name
+ *   2. Whole-word match — the longest alias appearing as a token in the query wins
+ *
+ * Anti-collapse rules (the old code returned the first alias whose key was a
+ * substring of the query — that picked Arsenal for nearly every short or
+ * unrecognised name because "arsenal" is the first DB entry):
+ *   - Query and alias must each be ≥ 3 normalised chars
+ *   - Alias must match on token boundaries, not arbitrary substring
+ *   - Among multiple hits, the longest alias wins (e.g. "manchester city" beats "city")
  */
 export function lookupTeam(name: string): TeamEntry | undefined {
   const norm = normalise(name);
-  if (!norm) return undefined;
+  if (!norm || norm.length < 3) return undefined;
 
-  // Direct hit
   if (DB.has(norm)) return DB.get(norm);
 
-  // Starts-with
-  for (const [key, entry] of DB) {
-    if (norm.startsWith(key) || key.startsWith(norm)) return entry;
+  let best: { entry: TeamEntry; len: number } | undefined;
+  const paddedQuery = ` ${norm} `;
+  for (const [rawKey, entry] of DB) {
+    const key = rawKey.replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
+    if (key.length < 3) continue;
+    if (paddedQuery.includes(` ${key} `) && (!best || key.length > best.len)) {
+      best = { entry, len: key.length };
+    }
   }
 
-  // Substring match (handles "Man City" matching "manchester city" after strip)
-  for (const [key, entry] of DB) {
-    if (norm.includes(key) || key.includes(norm)) return entry;
-  }
-
-  return undefined;
+  return best?.entry;
 }
 
 /** Fallback palette when team not in DB — cycles by first char code */

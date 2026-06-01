@@ -121,3 +121,5 @@ export type {
   UnifiedMarket,
   MarketSource,
 } from "./jupiter-types";
+export { ApiFootballClient, isFixtureLive, isFixtureFinished } from "./football-data";
+export type { LiveFixture, FixturePrediction, ApiFootballTeam } from "./football-data";

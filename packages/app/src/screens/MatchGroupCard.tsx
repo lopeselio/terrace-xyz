@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image, ActivityIndicator } from "react-native";
 import type { GroupedMatch } from "../utils/groupMarkets";
-import type { UnifiedMarket } from "@terrace/sdk";
+import type { UnifiedMarket, LiveFixture } from "@terrace/sdk";
+import { isFixtureLive, isFixtureFinished } from "@terrace/sdk";
 import { lookupTeam, fallbackColor } from "../utils/teamDatabase";
 import { useTeamCrest } from "../hooks/useTeamCrest";
+import { useLiveFixture } from "../hooks/useLiveFixture";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -134,6 +136,7 @@ async function fetchMatchInsights(
   homeOdds: number | null,
   drawOdds: number | null,
   awayOdds: number | null,
+  liveContext: string | null,
 ): Promise<InsightData> {
   if (!GEMINI_KEY) throw new Error("EXPO_PUBLIC_GEMINI_API_KEY not set — restart Metro after adding to .env");
 
@@ -141,9 +144,10 @@ async function fetchMatchInsights(
 
 Match: ${homeTeam} vs ${awayTeam}
 Odds: ${homeTeam} ${homeOdds !== null ? Math.round(homeOdds * 100) + "c" : "—"} | Draw ${drawOdds !== null ? Math.round(drawOdds * 100) + "c" : "—"} | ${awayTeam} ${awayOdds !== null ? Math.round(awayOdds * 100) + "c" : "—"}
+${liveContext ? `Live state: ${liveContext}` : ""}
 
 Respond with exactly this JSON shape (all values plain text strings, no bullet chars, no newlines inside values):
-{"form":"[Home abbr] last 5: W D W L W | [Away abbr] last 5: L W D W W","h2h":"[1 sentence: head-to-head record and one key stat]","angle":"[1 sentence: which side the odds favour and the betting case]"}`;
+{"form":"[Home abbr] last 5: W D W L W | [Away abbr] last 5: L W D W W","h2h":"[1 sentence: head-to-head record and one key stat]","angle":"[1 sentence: which side the odds favour AND, if a live state is given, how the scoreline / minute changes the case]"}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
@@ -208,6 +212,46 @@ function InsightsPanel({ data }: { data: InsightData }) {
 }
 
 // ---------------------------------------------------------------------------
+// Live score badge — Sportradar / API-Football scoreline + status
+// ---------------------------------------------------------------------------
+
+function formatStatusShort(short: string, elapsed: number | null): string {
+  if (short === "NS") return "Kick-off soon";
+  if (short === "HT") return "Half-time";
+  if (short === "FT") return "Full-time";
+  if (short === "AET") return "After ET";
+  if (short === "PEN") return "Penalties";
+  if (elapsed != null && (short === "1H" || short === "2H" || short === "ET")) {
+    return `${elapsed}'`;
+  }
+  return short;
+}
+
+function LiveScoreBadge({ fixture }: { fixture: LiveFixture }) {
+  const live = isFixtureLive(fixture);
+  const finished = isFixtureFinished(fixture);
+  const score = fixture.homeScore != null && fixture.awayScore != null
+    ? `${fixture.homeScore}–${fixture.awayScore}`
+    : "–";
+
+  return (
+    <View style={[styles.liveBadge, live && styles.liveBadgeLive, finished && styles.liveBadgeFinished]}>
+      {live && <View style={styles.livePulse} />}
+      <Text style={[styles.liveBadgeStatus, live && styles.liveBadgeStatusLive]}>
+        {live ? "LIVE" : formatStatusShort(fixture.statusShort, fixture.elapsed).toUpperCase()}
+      </Text>
+      <Text style={styles.liveBadgeScore}>{score}</Text>
+      {live && (
+        <Text style={styles.liveBadgeMinute}>
+          {formatStatusShort(fixture.statusShort, fixture.elapsed)}
+        </Text>
+      )}
+      <Text style={styles.liveBadgeLeague} numberOfLines={1}>{fixture.league.name}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Event image thumbnail
 // ---------------------------------------------------------------------------
 
@@ -253,6 +297,14 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
 
   const isSettled = status === "Settled" || status === "Closed";
 
+  // Live fixture lookup — only meaningful for head-to-head matches with two
+  // identified teams. Futures/league markets don't have a single fixture.
+  const liveFixture = useLiveFixture(
+    !isFutures && !isSettled ? homeTeam : "",
+    !isFutures && !isSettled ? awayTeam : "",
+    expiry,
+  );
+
   const handleSelect = (market: UnifiedMarket | null, label: string) => {
     if (!market || status !== "Open") return;
     setSelected(market.id);
@@ -289,6 +341,9 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
           <Text style={styles.volTagText}>🏆 {formatVol(totalVolumeUsdc)}</Text>
         </View>
       </View>
+
+      {/* ── Live scoreline + status (head-to-head only) ── */}
+      {liveFixture && <LiveScoreBadge fixture={liveFixture} />}
 
       {/* ── YES / DRAW / NO outcome buttons ───────────── */}
       <View style={styles.oddsRow}>
@@ -328,11 +383,15 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
             if (insights) return;
             setInsightsLoading(true);
             try {
+              const liveContext = liveFixture
+                ? `${homeTeam} ${liveFixture.homeScore ?? 0}-${liveFixture.awayScore ?? 0} ${awayTeam}, ${formatStatusShort(liveFixture.statusShort, liveFixture.elapsed)}, ${liveFixture.league.name}`
+                : null;
               const text = await fetchMatchInsights(
                 homeTeam, awayTeam,
                 outcomes.home?.yesPrice ?? null,
                 outcomes.draw?.yesPrice ?? null,
                 outcomes.away?.yesPrice ?? null,
+                liveContext,
               );
               setInsights(text);
             } catch (err) {
@@ -409,6 +468,44 @@ const styles = StyleSheet.create({
 
   volTag: { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   volTagText: { fontSize: 9, fontWeight: "500", color: "#4ade80" },
+
+  // Live score badge
+  liveBadge: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#0d0d0d",
+    borderWidth: 0.5,
+    borderColor: "#1f1f1f",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  liveBadgeLive: { borderColor: "#dc2626", backgroundColor: "#1a0a0a" },
+  liveBadgeFinished: { opacity: 0.6 },
+  livePulse: {
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: "#ef4444",
+    shadowColor: "#ef4444", shadowOpacity: 1, shadowRadius: 4,
+  },
+  liveBadgeStatus: {
+    fontSize: 10, fontWeight: "800", letterSpacing: 0.8,
+    color: "#9ca3af",
+  },
+  liveBadgeStatusLive: { color: "#ef4444" },
+  liveBadgeScore: {
+    fontSize: 14, fontWeight: "800", color: "#f9fafb",
+    fontVariant: ["tabular-nums"],
+  },
+  liveBadgeMinute: {
+    fontSize: 10, fontWeight: "700", color: "#fca5a5",
+    fontVariant: ["tabular-nums"],
+  },
+  liveBadgeLeague: {
+    fontSize: 10, color: "#6b7280", marginLeft: "auto", maxWidth: 120,
+  },
 
   // Outcome buttons
   oddsRow: {
