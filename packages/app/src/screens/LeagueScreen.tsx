@@ -579,7 +579,10 @@ function LeaderboardSheet({
                     next to their kit. */}
                 <View style={s.avatarCol}>
                   <MemberAvatar pubkey={String(m.member)} size={30} />
-                  <Text style={[s.totalPill, totalHidden && s.totalPillHidden]}>
+                  <Text
+                    numberOfLines={1}
+                    style={[s.totalPill, totalHidden && s.totalPillHidden]}
+                  >
                     {totalHidden ? "🔒" : `Total: ${m.totalScore} pts`}
                   </Text>
                 </View>
@@ -1505,7 +1508,7 @@ const s = StyleSheet.create({
   gwPickerItemCheck:  { fontSize: 12, color: "#22c55e", fontWeight: "700" },
 
   // Leaderboard row: jersey + total pill stacked column.
-  avatarCol: { alignItems: "center", width: 48 },
+  avatarCol: { alignItems: "center", width: 68 },
   totalPill: { fontSize: 10, fontWeight: "700", color: "#fbbf24", marginTop: 4, paddingHorizontal: 6, paddingVertical: 1, backgroundColor: "rgba(251, 191, 36, 0.10)", borderRadius: 999, fontVariant: ["tabular-nums"] },
   totalPillHidden: { color: "#6b7280", backgroundColor: "rgba(107, 114, 128, 0.10)" },
 
