@@ -400,10 +400,23 @@ function LeaderboardSheet({
       })()}
 
       {/* User's own career total — always visible above the leaderboard
-          regardless of which gameweek is selected from the dropdown. */}
+          regardless of which gameweek is selected from the dropdown.
+          Position is computed by totalScore (not gameweekScore) so it's
+          gameweek-agnostic.  */}
       {(() => {
         const me = members.find((m) => String(m.member) === myPubkey);
         if (!me) return null;
+        // Career rank by total score (not the gameweek-sorted order). Ties
+        // resolve to the first-seen member — fine for the position chip.
+        const sortedByTotal = [...members].sort((a, b) => b.totalScore - a.totalScore);
+        const myRank = sortedByTotal.findIndex((m) => String(m.member) === myPubkey);
+        // 0-indexed → ordinal display: 1st / 2nd / 3rd / #4+
+        const trophy = myRank === 0 ? "🏆" : myRank === 1 ? "🥈" : myRank === 2 ? "🥉" : null;
+        const positionLabel = myRank === 0
+          ? "1st"
+          : myRank === 1 ? "2nd"
+          : myRank === 2 ? "3rd"
+          : `#${myRank + 1}`;
         return (
           <View style={s.careerTotalCard}>
             <View style={{ flex: 1 }}>
@@ -412,7 +425,10 @@ function LeaderboardSheet({
                 {me.totalScore} {me.totalScore === 1 ? "pt" : "pts"}
               </Text>
             </View>
-            <Text style={s.careerTotalIcon}>🏆</Text>
+            <View style={s.careerPositionCol}>
+              <Text style={s.careerTotalIcon}>{trophy ?? "🎯"}</Text>
+              <Text style={s.careerPositionLabel}>{positionLabel}</Text>
+            </View>
           </View>
         );
       })()}
@@ -504,18 +520,21 @@ function LeaderboardSheet({
                 scoreLabel = "no data";
               }
             } else {
-              const isCurrentGw = m.lastScoredGameweek === league.gameweek;
-              // Lock the column only for OTHER private-league members who have
-              // never revealed anything at all (no plaintext to show).
-              showLock = league.isPrivate && !isMe && !hasEverRevealed;
-              if (showLock) {
-                scoreLabel = "private";
-              } else if (isCurrentGw) {
-                // Their on-chain gameweekScore IS this GW's score.
+              // Current GW view in a private league: every member's score
+              // stays encrypted until THEY personally call reveal_member_score
+              // for THIS GW. The on-chain LeagueMember.gameweekScore only
+              // becomes the current-GW plaintext once lastScoredGameweek ===
+              // league.gameweek (i.e. they've revealed). Until then, lock the
+              // column — including for the local user, since their own score
+              // is also encrypted on-chain.
+              const revealedForThisGw = m.lastScoredGameweek === league.gameweek;
+              if (league.isPrivate && !revealedForThisGw) {
+                showLock = true;
+                scoreLabel = "hidden";
+              } else if (revealedForThisGw) {
                 scoreVal = m.gameweekScore;
               } else {
-                // hasn't scored in current GW yet — surface 0, not the
-                // leftover from a prior GW.
+                // Public league — score is just whatever LeagueMember shows.
                 scoreVal = 0;
               }
             }
@@ -1440,6 +1459,8 @@ const s = StyleSheet.create({
   careerTotalKicker: { fontSize: 10, fontWeight: "700", color: "#fbbf24", letterSpacing: 1, textTransform: "uppercase" },
   careerTotalValue: { fontSize: 22, fontWeight: "800", color: "#fff", marginTop: 2, fontVariant: ["tabular-nums"] },
   careerTotalIcon: { fontSize: 28 },
+  careerPositionCol: { alignItems: "center" },
+  careerPositionLabel: { fontSize: 12, fontWeight: "800", color: "#fbbf24", marginTop: 2, letterSpacing: 0.5 },
 
   memberRow:    { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: "#141414", gap: 0 },
   memberRowMe:  { backgroundColor: "#060f06", borderRadius: 10, borderWidth: 0.5, borderColor: "#1a3a1a", marginBottom: 2, paddingHorizontal: 4 },
