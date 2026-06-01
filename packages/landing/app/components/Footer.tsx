@@ -17,17 +17,15 @@ export default function Footer() {
           {/* Links */}
           <div className="flex gap-6 text-sm text-text-muted">
             {[
-              { label: "Terms", href: "#" },
-              { label: "Privacy", href: "#" },
-              { label: "Docs", href: "#" },
-              { label: "GitHub", href: "#" },
+              { label: "GitHub", href: "https://github.com/lopeselio/terrace-xyz" },
               { label: "Twitter", href: "https://x.com/terrace_social" },
             ].map(({ label, href }) => (
               <a
                 key={label}
                 href={href}
                 className="hover:text-white transition-colors"
-                {...(href !== "#" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {label}
               </a>
@@ -37,7 +35,7 @@ export default function Footer() {
 
         <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-text-muted">
           <p>
-            © 2025 Terrace. All activity is final. Not financial advice.
+            © 2026 Terrace. All activity is final. Not financial advice.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="w-1.5 h-1.5 rounded-full bg-pitch animate-pulse flex-shrink-0" />
