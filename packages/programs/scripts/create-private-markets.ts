@@ -33,10 +33,10 @@ const PS_TOTALS_END  = 120;
 
 // ── Markets to create ────────────────────────────────────────────────────────
 const MARKETS_TO_CREATE = [
-  "France vs Spain — France wins",
-  "Brazil vs Argentina — over 2.5 goals",
-  "Germany vs England — both teams to score",
-  "Netherlands vs Belgium — Netherlands wins",
+  "Portugal vs Italy — Portugal wins",
+  "Argentina vs Croatia — over 2.5 goals",
+  "Belgium vs Senegal — both teams to score",
+  "Japan vs South Korea — Japan wins",
 ];
 const EXPIRY_HOURS = 6;
 
