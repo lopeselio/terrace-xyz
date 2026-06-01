@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import type { LeagueEventKind } from "../utils/leagueNotify";
+import { syncLeagueActivityFromChain } from "../utils/leagueChainSync";
 
 /**
  * In-app activity feed for league-mate events. Captures pushes that the
@@ -76,11 +77,24 @@ function entryFromNotification(
 export function useLeagueActivityFeed(walletPubkey: string | null) {
   const [entries, setEntries] = useState<LeagueActivityEntry[]>([]);
 
-  // Hydrate from storage when wallet changes.
+  // Hydrate from storage when wallet changes. AFTER hydration, pull a chain
+  // sync to catch any events that arrived while this wallet wasn't active
+  // (push missed, app reinstalled, switched from another wallet, etc.).
+  // Chain is the source of truth; pushes are a real-time enhancement.
   useEffect(() => {
     if (!walletPubkey) { setEntries([]); return; }
     let cancelled = false;
-    loadEntries(walletPubkey).then((e) => { if (!cancelled) setEntries(e); });
+    (async () => {
+      const stored = await loadEntries(walletPubkey);
+      if (cancelled) return;
+      setEntries(stored);
+      // Fire-and-forget chain sync. notifyAll triggers re-hydration if any
+      // new entries were synthesised.
+      const result = await syncLeagueActivityFromChain(walletPubkey);
+      if (!cancelled && result.newEntryCount > 0) {
+        notifyAll(walletPubkey);
+      }
+    })();
     return () => { cancelled = true; };
   }, [walletPubkey]);
 
@@ -189,7 +203,14 @@ export function useLeagueActivityFeed(walletPubkey: string | null) {
     });
   }, [walletPubkey]);
 
+  /** Force a chain re-sync. Call when the bell opens for a "Refresh now" feel. */
+  const refresh = useCallback(async () => {
+    if (!walletPubkey) return;
+    const result = await syncLeagueActivityFromChain(walletPubkey);
+    if (result.newEntryCount > 0) notifyAll(walletPubkey);
+  }, [walletPubkey]);
+
   const unseenCount = entries.filter((e) => !e.seen).length;
 
-  return { entries, unseenCount, markAllSeen, clear, recordLocal };
+  return { entries, unseenCount, markAllSeen, clear, recordLocal, refresh };
 }

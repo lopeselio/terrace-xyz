@@ -781,7 +781,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
     useLeagueAdvanceNotifications(walletPubkey, allLeagues);
   const { winners: gwWinners, markSeen: markWinnerSeen } =
     useLeagueWinnerNotifications(walletPubkey, allLeagues);
-  const { entries: leagueActivity, unseenCount: leagueActivityUnseen, markAllSeen: markLeagueActivitySeen } =
+  const { entries: leagueActivity, unseenCount: leagueActivityUnseen, markAllSeen: markLeagueActivitySeen, refresh: refreshLeagueActivity } =
     useLeagueActivityFeed(walletPubkey);
 
   const totalNotifCount =
@@ -876,7 +876,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
         <View style={styles.navRight}>
           <TouchableOpacity
             style={styles.navIconBtn}
-            onPress={() => setShowNotifPanel(true)}
+            onPress={() => { setShowNotifPanel(true); refreshLeagueActivity(); }}
             activeOpacity={0.7}
           >
             <Text>🔔</Text>
