@@ -28,6 +28,7 @@ import { useLeague } from "../hooks/useLeague";
 import { ArciumBadge } from "../components/ArciumBadge";
 import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
+import { JerseyAvatar } from "../components/JerseyAvatar";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -1144,7 +1145,6 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   }
 
   const shortKey = `${walletPubkey.slice(0, 6)}…${walletPubkey.slice(-4)}`;
-  const initial = walletPubkey.slice(0, 1).toUpperCase();
 
   return (
   <View style={{ flex: 1 }}>
@@ -1167,9 +1167,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
 
       {/* ── Identity ────────────────────────────── */}
       <View style={styles.identityRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarInitial}>{initial}</Text>
-        </View>
+        <JerseyAvatar pubkey={walletPubkey} size={56} />
         <View style={styles.identityMeta}>
           <Text style={styles.username} numberOfLines={1}>
             {snsName ?? `@${walletPubkey.slice(0, 5)}....${walletPubkey.slice(-5)}`}
@@ -1414,7 +1412,7 @@ const styles = StyleSheet.create({
   // Identity
   identityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16, backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 8 },
   avatar:        { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1d4ed8", alignItems: "center", justifyContent: "center" },
-  avatarInitial: { fontSize: 18, fontWeight: "700", color: "#fff" },
+  avatarInitial: { fontSize: 22, fontWeight: "700", color: "#fff" },
   identityMeta:  { flex: 1 },
   username:      { fontSize: 15, fontWeight: "600", color: "#fff" },
   addressRow:    { flexDirection: "row", alignItems: "center", marginTop: 2 },

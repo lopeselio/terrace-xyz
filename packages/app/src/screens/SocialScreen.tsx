@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { HeliusMark, TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 import { avatarColorFromPubkey, truncatePubkey, useLeaderboard, type BadgeTier, type SharpEntry } from "../hooks/useLeaderboard";
+import { JerseyAvatar } from "../components/JerseyAvatar";
 import { useHeliusEvents, type LiveEvent } from "../hooks/useHeliusEvents";
 import { useFollowing } from "../hooks/useFollowing";
 import { useTerraceUsers, type TerraceFan } from "../hooks/useTerraceUsers";
@@ -176,9 +177,7 @@ function ActorHeader({
         disabled={!onAvatarPress}
         activeOpacity={0.75}
       >
-        <View style={[styles.actorAvatar, { backgroundColor: bg }]}>
-          <Text style={styles.actorAvatarText}>{actor.pubkey.slice(0, 1).toUpperCase()}</Text>
-        </View>
+        <JerseyAvatar pubkey={actor.pubkey} size={44} />
       </TouchableOpacity>
       <View style={styles.actorMeta}>
         <View style={styles.actorNameRow}>
@@ -410,9 +409,9 @@ function GroupedBetCard({ group, marketMeta }: {
           {group.actors.slice(0, 3).map((pk, i) => (
             <View
               key={pk}
-              style={[styles.stackAvatar, { backgroundColor: avatarColorFromPubkey(pk), marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}
+              style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i, backgroundColor: "transparent" }]}
             >
-              <Text style={styles.stackAvatarText}>{pk.slice(0, 1).toUpperCase()}</Text>
+              <JerseyAvatar pubkey={pk} size={32} />
             </View>
           ))}
         </View>
@@ -723,9 +722,7 @@ function FanProfileSheet({
 
           {/* ── Header ── */}
           <View style={sheetStyles.header}>
-            <View style={[sheetStyles.avatar, { backgroundColor: bg }]}>
-              <Text style={sheetStyles.avatarText}>{pubkey.slice(0, 1).toUpperCase()}</Text>
-            </View>
+            <JerseyAvatar pubkey={pubkey} size={56} />
             <View style={sheetStyles.headerMeta}>
               <View style={sheetStyles.nameRow}>
                 <Text style={sheetStyles.badgeEmoji}>{BADGE_EMOJI[badge]}</Text>

@@ -44,6 +44,7 @@ import { useFollowing } from "../hooks/useFollowing";
 import { useTerraceUsers } from "../hooks/useTerraceUsers";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { JerseyAvatar } from "../components/JerseyAvatar";
 import type { BadgeTier } from "../hooks/useLeaderboard";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 import { Confetti } from "../components/Confetti";
@@ -108,12 +109,9 @@ const STATUS_LABEL: Record<string, string> = {
 // FriendAvatar — colored circle with initial + badge pip
 // ---------------------------------------------------------------------------
 function FriendAvatar({ pubkey, badge, size = 40 }: { pubkey: string; badge?: BadgeTier; size?: number }) {
-  const bg = avatarColorFromPubkey(pubkey);
   return (
     <View style={{ width: size, height: size }}>
-      <View style={[avStyle.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-        <Text style={[avStyle.initial, { fontSize: size * 0.38 }]}>{pubkey.slice(0, 1).toUpperCase()}</Text>
-      </View>
+      <JerseyAvatar pubkey={pubkey} size={size} />
       {badge && (
         <View style={avStyle.pip}>
           <Text style={avStyle.pipText}>{BADGE_EMOJI[badge]}</Text>
