@@ -77,7 +77,7 @@ export class ApiFootballClient {
   private async request<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
     if (!this.apiKey) throw new Error("ApiFootballClient: missing API key");
     const qs = new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)]),
+      Object.entries(params).map(([k, v]): [string, string] => [k, String(v)]),
     ).toString();
     const url = `${API_BASE}${path}${qs ? `?${qs}` : ""}`;
     const res = await this.fetchImpl(url, {
