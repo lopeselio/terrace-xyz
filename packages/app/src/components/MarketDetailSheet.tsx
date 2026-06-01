@@ -18,6 +18,7 @@ import * as SecureStore from "expo-secure-store";
 import { usePrivateMarket } from "../hooks/usePrivateMarket";
 import { useWallet } from "../hooks/useWallet";
 import { usePlaceBet } from "../hooks/usePlaceBet";
+import { useMarketVaultBalance } from "../hooks/useMarketVaultBalance";
 import { ArciumBadge, ArciumPrivacyBanner, ArciumSettledBanner } from "./ArciumBadge";
 import { BetPlacedCelebrationModal } from "./BetPlacedCelebrationModal";
 
@@ -309,16 +310,23 @@ function PrivateBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: 
           onPress={() => setOutcome(0)}
         >
           <Text style={s.outcomeLbl}>YES</Text>
-          <Text style={s.outcomePrice}>—</Text>
+          <Text style={s.outcomePriceSealed}>🔒</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.outcomeBtn, s.noBg, outcome === 1 && s.outcomeSel]}
           onPress={() => setOutcome(1)}
         >
           <Text style={s.outcomeLbl}>NO</Text>
-          <Text style={s.outcomePrice}>—</Text>
+          <Text style={s.outcomePriceSealed}>🔒</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Pre-reveal explainer: private markets have no price curve.
+          Every YES is equal weight, every NO too — the pool decides at
+          full-time after Arcium MPC reveals the encrypted totals. */}
+      <Text style={s.sealedHint}>
+        Pre-reveal: every YES and every NO is equal. The pool decides at full-time.
+      </Text>
 
       <View style={s.amountRow}>
         <Text style={s.currencyLabel}>USDC</Text>
@@ -365,6 +373,13 @@ function PrivateBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: 
 // ── Sheet root ───────────────────────────────────────────────────────────────
 
 export function MarketDetailSheet({ market, visible, onClose }: Props) {
+  // Hook must run before any early return.
+  // For private markets the on-chain total_volume is intentionally never
+  // updated, so we read the market vault's USDC ATA balance instead. This
+  // leaks total pool (every YES + every NO summed) but not per-side volumes.
+  const vaultBalance = useMarketVaultBalance(
+    market?.isPrivate ? (market.nativeMarketAddress ?? market.id) : null,
+  );
   if (!market) return null;
 
   return (
@@ -400,7 +415,15 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
               {market.source === "jupiter" ? "Polymarket" : "Terrace"}
             </Text>
             <Text style={s.metaMuted}>Expires {fmtExpiry(market.expiry)}</Text>
-            <Text style={s.metaMuted}>Vol {fmt(market.totalVolumeUsdc)} USDC</Text>
+            {market.isPrivate ? (
+              // Pool size read from the market vault's USDC ATA. Per-side
+              // volumes stay sealed in Arcium; only total pool is visible.
+              <Text style={s.metaMutedPool}>
+                🏆 Pool {vaultBalance !== null ? `$${vaultBalance.toFixed(2)}` : "—"}
+              </Text>
+            ) : (
+              <Text style={s.metaMuted}>Vol {fmt(market.totalVolumeUsdc)} USDC</Text>
+            )}
           </View>
 
           <View style={s.divider} />
@@ -454,6 +477,24 @@ const s = StyleSheet.create({
   noBg:       { backgroundColor: "#7f1d1d" },
   outcomeLbl: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
   outcomePrice: { fontSize: 20, fontWeight: "800", color: "#f9fafb", marginTop: 2 },
+  outcomePriceSealed: { fontSize: 18, color: "#c4b5fd", marginTop: 4 },
+
+  sealedHint: {
+    fontSize: 11.5,
+    color: "#a78bfa",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: -6, marginBottom: 14,
+    paddingHorizontal: 8,
+    lineHeight: 16,
+  },
+
+  metaMutedPool: {
+    fontSize: 11,
+    color: "#fbbf24",
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
 
   amountRow:    { flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a1a", borderRadius: 12, paddingHorizontal: 14, marginBottom: 14 },
   currencyLabel: { fontSize: 13, color: "#6b7280", fontWeight: "600", marginRight: 8 },

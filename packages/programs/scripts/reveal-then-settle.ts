@@ -32,10 +32,10 @@ const WINNING_OUTCOME = 1; // YES
 
 // Fresh WC-themed markets minted by create-private-markets.ts on 2026-06-01 at ~08:20 UTC.
 const MARKETS: { question: string; address: string }[] = [
-  { question: "France vs Spain — France wins",            address: "9YNEefdpirHFwQMfT4z77xDZkBjh4Fb4bReo1Hgok1hw" },
-  { question: "Brazil vs Argentina — over 2.5 goals",     address: "4XHVnHnRJn5zMVZK61Dffz2e2FoxyhC7sMV5BeYg2PyY" },
-  { question: "Germany vs England — both teams to score", address: "Fwnv9rmeLBb6C118RPjVJgN72itTPiWEZ3N4xZpZ6TT8" },
-  { question: "Netherlands vs Belgium — Netherlands wins",address: "5sqUVHGHCDofSkEE1JpPx2jRrkEW8bSyPN1BmziSwCZ2" },
+  { question: "Portugal vs Italy — Portugal wins",          address: "H1XdRsEGi57Te2psHYiBCb6hhAmeqAkw6cUMVoAZDsR2" },
+  { question: "Argentina vs Croatia — over 2.5 goals",      address: "DrceYT14m9dX7XfbQ9VKd99a9dUTFtqZaqhjDy3cwoqr" },
+  { question: "Belgium vs Senegal — both teams to score",   address: "G9xPHmdbUTuDqviQtwGrRsiUS9ZKhFLgzF18k8TEQgzZ" },
+  { question: "Japan vs South Korea — Japan wins",          address: "977MYnKAXXf1yr17x5dT1hVEUzdMrdabaQPnC5uxxDCQ" },
 ];
 
 function u32Le(n: number): Buffer { const b = Buffer.alloc(4); b.writeUInt32LE(n, 0); return b; }
