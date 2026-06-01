@@ -515,9 +515,40 @@ function LeaderboardSheet({
               const h = memberHistory.find((e) => e.gw === selectedGameweek);
               if (h) {
                 scoreVal = h.score;
-              } else {
+              } else if (m.lastScoredGameweek === selectedGameweek) {
+                // Chain still holds the plaintext: member's most-recent
+                // reveal IS for this past GW, so gameweekScore is the answer.
+                scoreVal = m.gameweekScore;
+              } else if (selectedGameweek > m.lastScoredGameweek) {
+                // Past GW that the member never revealed for. There's no
+                // honest answer — score stays encrypted on-chain.
                 showLock = true;
-                scoreLabel = "no data";
+                scoreLabel = league.isPrivate ? "hidden" : "no data";
+              } else {
+                // Derive by subtraction: total_score = Σ gameweek_score across
+                // all revealed GWs. If we have snapshots for every revealed GW
+                // EXCEPT this one, the missing value is total minus the rest.
+                // Without this, viewing GW1 always shows 'no data' because the
+                // history snapshot was first captured after GW2 advanced.
+                const knownByGw = new Map<number, number>();
+                for (const e of memberHistory) {
+                  if (!knownByGw.has(e.gw)) knownByGw.set(e.gw, e.score);
+                }
+                let allOthersCovered = true;
+                let knownSum = 0;
+                for (let gw = 1; gw <= m.lastScoredGameweek; gw++) {
+                  if (gw === selectedGameweek) continue;
+                  const v = knownByGw.get(gw);
+                  if (v === undefined) { allOthersCovered = false; break; }
+                  knownSum += v;
+                }
+                const derived = m.totalScore - knownSum;
+                if (allOthersCovered && derived >= 0) {
+                  scoreVal = derived;
+                } else {
+                  showLock = true;
+                  scoreLabel = "no data";
+                }
               }
             } else {
               // Current GW view in a private league: every member's score
@@ -549,7 +580,7 @@ function LeaderboardSheet({
                 <View style={s.avatarCol}>
                   <MemberAvatar pubkey={String(m.member)} size={30} />
                   <Text style={[s.totalPill, totalHidden && s.totalPillHidden]}>
-                    {totalHidden ? "🔒" : `${m.totalScore} pts`}
+                    {totalHidden ? "🔒" : `Total: ${m.totalScore} pts`}
                   </Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
