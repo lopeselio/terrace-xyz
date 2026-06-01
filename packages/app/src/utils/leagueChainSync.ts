@@ -160,8 +160,9 @@ export async function syncLeagueActivityFromChain(walletPubkey: string): Promise
   // Threshold above which a first-sync surface as 'seen' (silent) to avoid
   // flooding the bell badge on app install for a long-running league. Under
   // the threshold, surface as unseen so the user sees real activity right
-  // when they log in.
-  const FIRST_SYNC_SILENT_THRESHOLD = 10;
+  // when they log in. Set fairly high — fresh-signin should show mate
+  // activity by default; only very chatty leagues get silenced.
+  const FIRST_SYNC_SILENT_THRESHOLD = 30;
 
   for (const leagueAddress of leagues) {
     try {

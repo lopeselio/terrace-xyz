@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import type { LeagueEventKind } from "../utils/leagueNotify";
 import { syncLeagueActivityFromChain } from "../utils/leagueChainSync";
+
+/** How often to poll the chain for new league activity while the app is foreground. */
+const POLL_INTERVAL_MS = 60_000;
 
 /**
  * In-app activity feed for league-mate events. Captures pushes that the
@@ -108,6 +112,32 @@ export function useLeagueActivityFeed(walletPubkey: string | null) {
     };
     subscribers.add(onChange);
     return () => { subscribers.delete(onChange); };
+  }, [walletPubkey]);
+
+  // Sync the bell tray on app foreground transitions and on a slow poll
+  // while the app stays open. Together with the on-mount sync and the
+  // bell-open refresh, this means mate activity surfaces without the user
+  // having to take any action — push is a real-time enhancement, chain is
+  // the source of truth.
+  useEffect(() => {
+    if (!walletPubkey) return;
+
+    const runSync = async () => {
+      const result = await syncLeagueActivityFromChain(walletPubkey);
+      if (result.newEntryCount > 0) notifyAll(walletPubkey);
+    };
+
+    const onAppState = (next: AppStateStatus) => {
+      if (next === "active") void runSync();
+    };
+    const appSub = AppState.addEventListener("change", onAppState);
+
+    const pollId = setInterval(() => { void runSync(); }, POLL_INTERVAL_MS);
+
+    return () => {
+      appSub.remove();
+      clearInterval(pollId);
+    };
   }, [walletPubkey]);
 
   // Subscribe to inbound pushes (foreground + tapped-from-background).
