@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Terrace · Your league. Your bell.</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: #111111;
+      --line: #1f1f23;
+      --ink: #ffffff;
+      --muted: #9ca3af;
+      --green: #22c55e;
+      --green-2: #4ade80;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+      --purple: #a78bfa;
+    }
+    html, body { margin: 0; padding: 0; background: #000; color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", system-ui, sans-serif; }
+
+    /* Twitter summary_large_image: 1200×675 */
+    .card {
+      width: 1200px;
+      height: 675px;
+      background:
+        radial-gradient(900px 600px at 10% -10%, rgba(34,197,94,0.16), transparent 60%),
+        radial-gradient(900px 600px at 95% 110%, rgba(251,191,36,0.10), transparent 60%),
+        linear-gradient(180deg, #06070a 0%, #0a0a0a 100%);
+      display: grid;
+      grid-template-columns: 1.18fr 0.82fr;
+      box-sizing: border-box;
+      padding: 50px 60px;
+      position: relative;
+      overflow: hidden;
+      gap: 36px;
+    }
+
+    /* subtle dot grid */
+    .card::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+      mask-image: radial-gradient(ellipse at center, black 50%, transparent 90%);
+    }
+
+    /* Soft pulse rings on the right for the "real-time" feel */
+    .pulse {
+      position: absolute;
+      width: 540px; height: 540px;
+      right: -180px; top: 80px;
+      border-radius: 50%;
+      border: 1px solid rgba(34,197,94,0.10);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .pulse.inner { width: 420px; height: 420px; right: -120px; top: 140px; border-color: rgba(34,197,94,0.18); }
+    .pulse.core  { width: 300px; height: 300px; right: -60px;  top: 200px; border-color: rgba(34,197,94,0.30); }
+
+    /* ── Left column ─────────────────────────────────────────── */
+    .left { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    .brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+      background: rgba(255,255,255,0.03); width: fit-content;
+      font-size: 12px; color: var(--muted); letter-spacing: 0.3px;
+    }
+    .brand .tx { font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+    .brand .logo {
+      width: 20px; height: 20px; border-radius: 6px; display: block;
+      box-shadow: 0 0 14px rgba(34,197,94,0.25);
+    }
+    .brand .live {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.45);
+      color: #86efac; font-weight: 700; font-size: 10.5px;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .brand .live .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34,197,94,0.85);
+    }
+
+    /* Slide indicator - sits inline next to the brand chip in the left
+       column. Positioned in the left column (not absolute on the card) so
+       it doesn't fight with the "Live on Devnet" stamp over the phone. */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px;
+    }
+    .slide-num {
+      font-size: 10px; font-weight: 800; letter-spacing: 1.4px;
+      color: #6b7280; text-transform: uppercase;
+      padding: 5px 11px;
+      border: 1px solid #1f2937;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.02);
+      white-space: nowrap;
+    }
+
+    h1 {
+      font-size: 56px;
+      line-height: 1.0;
+      margin: 22px 0 14px 0;
+      letter-spacing: -1.6px;
+      font-weight: 800;
+    }
+    h1 .accent {
+      background: linear-gradient(90deg, #86efac, #fbbf24);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+    }
+
+    .lede {
+      margin: 0 0 26px 0;
+      font-size: 20px;
+      line-height: 1.35;
+      color: #e5e7eb;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+      max-width: 560px;
+    }
+
+    /* ── Three moment cards - the story ─────────────────────── */
+    .moments {
+      display: grid;
+      gap: 12px;
+      max-width: 580px;
+    }
+    .moment {
+      display: grid;
+      grid-template-columns: 48px 1fr 28px;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(17, 17, 20, 0.6);
+      position: relative;
+    }
+    .moment .icon-tile {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .moment.a .icon-tile { background: rgba(96,165,250,0.18); border: 1px solid rgba(96,165,250,0.4); }
+    .moment.b .icon-tile { background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.4); }
+    .moment.c .icon-tile { background: rgba(167,139,250,0.18); border: 1px solid rgba(167,139,250,0.4); }
+
+    .moment .body { min-width: 0; }
+    .moment .title {
+      font-size: 15px; font-weight: 700; color: #fff;
+      line-height: 1.2;
+    }
+    .moment .sub {
+      font-size: 13px; color: var(--muted); margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .moment .ding {
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      color: #fbbf24;
+      background: rgba(251,191,36,0.10);
+      border: 1px solid rgba(251,191,36,0.35);
+    }
+
+    .footer {
+      margin-top: auto; padding-top: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      color: var(--muted); font-size: 13px;
+    }
+    .footer .handle { color: #86efac; font-weight: 800; }
+    .footer .url    { color: #fff;     font-weight: 800; letter-spacing: 0.3px; }
+    .footer .dot {
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #374151;
+      margin: 0 8px;
+      vertical-align: middle;
+    }
+
+    /* ── Right column: hero phone with bell tray ─────────────── */
+    .right {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Floating "ping" emojis representing mates */
+    .mate {
+      position: absolute;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #fff;
+      border: 2px solid rgba(255,255,255,0.10);
+      background: linear-gradient(135deg, #1f2937, #111827);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+      z-index: 2;
+    }
+    .mate .badge {
+      position: absolute;
+      top: -4px; right: -4px;
+      min-width: 18px; height: 18px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0 5px;
+      border: 2px solid #0a0a0a;
+    }
+    .mate.m1 { top: 14px;   left: 4px;  background: linear-gradient(135deg,#1e40af,#1e3a8a); }
+    .mate.m2 { bottom: 80px; left: 14px; background: linear-gradient(135deg,#166534,#14532d); }
+    .mate.m3 { top: 50%;    right: 0;   background: linear-gradient(135deg,#7c2d12,#7c2d12); transform: translateY(-50%); }
+
+    /* Curved arrow connectors (pure CSS) */
+    .arrow {
+      position: absolute;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 1px dashed rgba(134, 239, 172, 0.55);
+      z-index: 1;
+    }
+    .arrow.a1 { top: 40px;  left: 56px; }
+    .arrow.a2 { bottom: 110px; left: 70px; }
+    .arrow.a3 { top: 50%; right: 56px; transform: translateY(-50%); }
+
+    .phone {
+      position: relative;
+      width: 260px; height: 520px;
+      border-radius: 32px;
+      background: #000;
+      border: 3px solid #1f2937;
+      box-shadow:
+        0 28px 72px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 0 28px rgba(34,197,94,0.18);
+      overflow: hidden;
+      z-index: 3;
+    }
+    /* Top notch (decorative pill at the top of the screen) */
+    .notch {
+      position: absolute;
+      top: 4px; left: 50%;
+      transform: translateX(-50%);
+      width: 90px; height: 18px;
+      background: #000;
+      border-radius: 0 0 14px 14px;
+      z-index: 4;
+    }
+
+    /* ── Pure-CSS bell tray inside the phone screen ──────────── */
+    /* No external image - always renders, no path/aspect issues */
+    .screen {
+      position: absolute; inset: 0;
+      background: #0a0a0a;
+      padding: 30px 12px 12px 12px;
+      box-sizing: border-box;
+      color: #fff;
+      font-family: -apple-system, "Inter", "SF Pro Text", sans-serif;
+    }
+    .topnav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; opacity: 0.55;
+    }
+    .topnav .lhs {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 700; color: #fff;
+    }
+    .topnav .tmark {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid #2a2a2a;
+      color: #fff;
+      font-size: 9px; font-weight: 900;
+      display: inline-flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .topnav .tmark::after {
+      content: "";
+      position: absolute; bottom: 1px; right: 1px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+    .topnav .rhs {
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .topnav .bell { font-size: 13px; }
+    .topnav .wbadge {
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.10);
+      border: 1px solid #166534;
+      color: #4ade80;
+      font-size: 8px; font-weight: 700;
+    }
+
+    .notif {
+      background: #111111;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 12px;
+      opacity: 1;
+    }
+    .notif-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 9px;
+      border-bottom: 1px solid #1f1f23;
+      margin-bottom: 11px;
+    }
+    .notif-head .nt {
+      font-size: 12px; font-weight: 800; color: #fff;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .notif-head .nt .nbell { color: #fbbf24; }
+    .notif-head .x { color: #6b7280; font-size: 13px; }
+
+    .kicker {
+      font-size: 8.5px; font-weight: 700;
+      color: #6b7280;
+      letter-spacing: 0.9px;
+      margin-bottom: 8px;
+    }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 26px 1fr 10px;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      background: #0d0d0d;
+      border-radius: 9px;
+      border: 1px solid #1f1f23;
+      margin-bottom: 5px;
+    }
+    .entry.unseen { border-color: #22c55e; }
+    .entry .av {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #0ea5e9;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    /* avatar colour per event kind - mirrors HomeScreen.tsx:500 */
+    .entry.join     .av { background: #0ea5e9; }                   /* sky */
+    .entry.win      .av { background: #22c55e; }                   /* green */
+    .entry.advance  .av { background: #ea580c; }                   /* orange */
+    .entry.reveal   .av { background: #8b5cf6; }                   /* purple */
+    .entry.market   .av { background: #fbbf24; color: #0a0a0a; }   /* amber */
+    .entry.winner   .av { background: #fbbf24; color: #0a0a0a; }   /* gold */
+
+    .entry .l1 { font-size: 8.5px; color: #6b7280; font-weight: 600; }
+    .entry .l2 {
+      font-size: 10px; color: #e5e7eb; font-weight: 700;
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      margin-top: 1px;
+    }
+    .entry .l3 {
+      font-size: 8px; color: #22c55e; font-weight: 600;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+    .entry .chev { color: #6b7280; font-size: 12px; }
+
+    .kicker {
+      font-size: 8px; font-weight: 800;
+      color: #6b7280;
+      letter-spacing: 1px;
+      margin: 7px 0 5px;
+    }
+    .kicker:first-child { margin-top: 0; }
+
+    .view-all {
+      margin-top: 9px;
+      padding: 8px;
+      border-radius: 9px;
+      border: 1px solid #2a2a2a;
+      text-align: center;
+      font-size: 9.5px; color: #6b7280;
+    }
+
+    .stamp {
+      position: absolute;
+      right: -10px; top: 6px;
+      padding: 6px 11px;
+      font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+      color: #22c55e; text-transform: uppercase;
+      border: 1px solid rgba(34,197,94,0.45);
+      background: rgba(34,197,94,0.10);
+      border-radius: 999px;
+      z-index: 5;
+      transform: rotate(6deg);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Background pulse rings -->
+    <div class="pulse"></div>
+    <div class="pulse inner"></div>
+    <div class="pulse core"></div>
+
+    <!-- ── Left: the story ─────────────────────────────────── -->
+    <div class="left">
+      <div class="topbar">
+        <div class="brand">
+          <img src="./terrace-logo.png" alt="Terrace" class="logo" />
+          <span class="tx">Terrace</span>
+          <span style="opacity:0.5">·</span>
+          <span class="live"><span class="dot"></span>Group chat for football fans</span>
+        </div>
+        <div class="slide-num">1 / 2 · The story</div>
+      </div>
+
+      <h1>
+        Your league.<br />
+        <span class="accent">Always pinging.</span>
+      </h1>
+
+      <p class="lede">
+        Football is more fun when your mates are watching too.
+        Terrace tells you the moment <i>they</i> make a move.
+      </p>
+
+      <!-- The three moments - a story, not a stack -->
+      <div class="moments">
+        <div class="moment a">
+          <span class="icon-tile">👋</span>
+          <div class="body">
+            <div class="title">A mate joins your league</div>
+            <div class="sub">Your bell pulses. New rival on board.</div>
+          </div>
+          <span class="ding">🔔</span>
+        </div>
+        <div class="moment b">
+          <span class="icon-tile">⚽</span>
+          <div class="body">
+            <div class="title">Someone scores a point</div>
+            <div class="sub">Their pick paid off. Yours might be next.</div>
+          </div>
+          <span class="ding">🔔</span>
+        </div>
+        <div class="moment c">
+          <span class="icon-tile">🔓</span>
+          <div class="body">
+            <div class="title">Full-time, scores revealed</div>
+            <div class="sub">All picks were sealed. Now everyone sees who called it.</div>
+          </div>
+          <span class="ding">🔔</span>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div>
+          <span class="handle">@terrace_social</span>
+          <span class="dot"></span>
+          on Solana Mobile
+        </div>
+        <div class="url">terrace.social</div>
+      </div>
+    </div>
+
+    <!-- ── Right: the moment, on a phone ───────────────────── -->
+    <div class="right">
+      <div class="stage">
+        <!-- Background "mates" that the bell is connecting -->
+        <span class="mate m1">⚽<span class="badge">1</span></span>
+        <span class="mate m2">🥅</span>
+        <span class="mate m3">👕</span>
+
+        <!-- Decorative arcs -->
+        <div class="arrow a1"></div>
+        <div class="arrow a2"></div>
+        <div class="arrow a3"></div>
+
+        <div class="stamp">Live on Devnet</div>
+        <div class="phone">
+          <div class="notch"></div>
+          <!-- Pure-CSS bell tray screen - mirrors the in-app design -->
+          <div class="screen">
+            <div class="topnav">
+              <div class="lhs">
+                <span class="tmark">T</span>
+                Terrace
+              </div>
+              <div class="rhs">
+                <span class="bell">🔔</span>
+                <span class="wbadge">-- W</span>
+              </div>
+            </div>
+
+            <div class="notif">
+              <div class="notif-head">
+                <span class="nt"><span class="nbell">🔔</span> Notifications</span>
+                <span class="x">✕</span>
+              </div>
+
+              <!-- ▼ Sections mirror HomeScreen.tsx ChallengeNotificationPanel
+                   order: winners → activity → advances → challenges -->
+
+              <div class="kicker">GAMEWEEK WINNERS</div>
+              <div class="entry winner">
+                <span class="av">🏆</span>
+                <div>
+                  <div class="l1">6Gr3R…KZuq won GW1</div>
+                  <div class="l2">WorldCup</div>
+                  <div class="l3">10 pts · 3 members revealed</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+
+              <div class="kicker">LEAGUE ACTIVITY</div>
+
+              <div class="entry join unseen">
+                <span class="av">👋</span>
+                <div>
+                  <div class="l1">New rival joined</div>
+                  <div class="l2">3ZRAg…zgDP</div>
+                  <div class="l3">Tap to see who's in the league</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+
+              <div class="entry win">
+                <span class="av">🎯</span>
+                <div>
+                  <div class="l1">League point scored</div>
+                  <div class="l2">HDDYb…BiLB</div>
+                  <div class="l3">Cashed a bet · +1 league point</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+
+              <div class="entry reveal">
+                <span class="av">🔓</span>
+                <div>
+                  <div class="l1">Score revealed</div>
+                  <div class="l2">UwV7H…j7bA</div>
+                  <div class="l3">Revealed their GW1 score</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+
+              <div class="entry advance">
+                <span class="av">📅</span>
+                <div>
+                  <div class="l1">Gameweek advanced</div>
+                  <div class="l2">WorldCup</div>
+                  <div class="l3">Now in GW2. Reveal your score.</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+
+              <div class="view-all">View all matchups →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
