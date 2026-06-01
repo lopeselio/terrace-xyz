@@ -38,14 +38,31 @@ export function RevealCelebrationModal({ visible, gameweek, score, onDismiss }: 
             a fresh burst. Renders behind the card via the absolute layer. */}
         <Confetti trigger={visible ? gameweek : null} />
         <Animated.View style={[s.card, { opacity, transform: [{ scale }] }]}>
-          <Text style={s.emoji}>🎉</Text>
+          <Text style={s.emoji}>{score === 0 ? "🤷" : "🎉"}</Text>
           <Text style={s.kicker}>YOU SCORED</Text>
           <Text style={s.score}>{score}</Text>
           <Text style={s.unit}>{score === 1 ? "point" : "points"}</Text>
           <Text style={s.context}>in Gameweek {gameweek}</Text>
-          <Text style={s.sub}>Revealed via Arcium MPC — only you can see this until the leaderboard reset.</Text>
+
+          {/* Arcium MPC explainer — what just happened, in plain English. */}
+          <View style={s.explainerBox}>
+            <Text style={s.explainerKicker}>🔒 Sealed → 🔓 Revealed</Text>
+            <Text style={s.explainerText}>
+              Your picks have been counted in private all gameweek. Arcium MPC
+              just decoded only YOUR total — the league still can&apos;t see it
+              until they reveal theirs.
+            </Text>
+          </View>
+
+          {score === 0 && (
+            <Text style={s.zeroHint}>
+              No points this week. Back another match next gameweek — long
+              season ahead.
+            </Text>
+          )}
+
           <TouchableOpacity style={s.cta} onPress={onDismiss} activeOpacity={0.85}>
-            <Text style={s.ctaText}>Nice. Continue →</Text>
+            <Text style={s.ctaText}>{score === 0 ? "Onwards →" : "Nice. Continue →"}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -107,6 +124,39 @@ const s = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     lineHeight: 18,
+  },
+  explainerBox: {
+    width: "100%",
+    backgroundColor: "rgba(168, 85, 247, 0.08)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(168, 85, 247, 0.25)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 14,
+  },
+  explainerKicker: {
+    color: "#c4b5fd",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textAlign: "center",
+  },
+  explainerText: {
+    color: "#a78bfa",
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  zeroHint: {
+    color: "#9ca3af",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 10,
+    fontStyle: "italic",
+    lineHeight: 17,
+    paddingHorizontal: 6,
   },
   cta: {
     marginTop: 22,
