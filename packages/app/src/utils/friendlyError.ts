@@ -74,6 +74,9 @@ export function friendlyError(e: unknown, fallback?: string): string {
   if (/AlreadyRevealed/i.test(raw)) {
     return "Already revealed.";
   }
+  if (/NotYetRevealed|not yet revealed/i.test(raw)) {
+    return "This bet can't be scored — its outcome wasn't sealed by Arcium. Skip and try another one.";
+  }
   if (/AlreadyClaimed/i.test(raw)) {
     return "You've already claimed this.";
   }
@@ -85,6 +88,14 @@ export function friendlyError(e: unknown, fallback?: string): string {
   }
   if (/LeagueFull/i.test(raw)) {
     return "This league is full.";
+  }
+  // League join — wrong/missing address
+  if (/league not found/i.test(raw)) {
+    return "Hmm, no league at that link. Double-check with whoever created it. Sometimes a character gets lost in the paste.";
+  }
+  // Invalid base58 / pubkey format — user pasted junk or a partial link
+  if (/non[- ]?base58|invalid (public[- ]?key|base58|address)|expected.*base58/i.test(raw)) {
+    return "That link doesn't look right. Get a fresh invite from the friend who created the league.";
   }
 
   // Catch-all: never expose raw program errors
