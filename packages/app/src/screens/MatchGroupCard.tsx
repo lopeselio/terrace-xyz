@@ -51,13 +51,18 @@ interface TeamBadgeProps {
 
 function TeamBadge({ name, size = 28 }: TeamBadgeProps) {
   const team = lookupTeam(name);
-  const dynamicCrest = useTeamCrest(name);
+  // Only consult TheSportsDB when we have no static crest — otherwise the loose
+  // search occasionally returned Arsenal (or a stale cached result) and beat
+  // our curated DB. Pass empty string to short-circuit the fetch.
+  const dynamicCrest = useTeamCrest(team?.crest ? "" : name);
   const bg = team?.color ?? fallbackColor(name);
   const radius = size * 0.28;
-  // Track every URI that failed so we cascade: TheSportsDB → ESPN CDN → letter
+  // Track every URI that failed so we cascade: static → dynamic → letter
   const [failedUris, setFailedUris] = useState<ReadonlySet<string>>(new Set());
 
-  const candidates = [dynamicCrest, team?.crest].filter((c): c is string => !!c);
+  // Static (DB-curated) crest wins over the dynamic TheSportsDB lookup. The
+  // dynamic path is only a fallback for teams not yet in the DB.
+  const candidates = [team?.crest, dynamicCrest].filter((c): c is string => !!c);
   const activeCrest = candidates.find((c) => !failedUris.has(c));
 
   const markFailed = (uri: string) =>
