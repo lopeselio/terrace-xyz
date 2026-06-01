@@ -21,6 +21,14 @@ import type { LeagueEventKind } from "../utils/leagueNotify";
 const STORAGE_KEY = (pubkey: string) => `terrace:league-activity:${pubkey}`;
 const MAX_ENTRIES = 40;
 
+// Module-level pubsub so hook instances on different screens (HomeScreen
+// bell + LeagueScreen actions) share state. When one screen records a local
+// entry, all mounted hook instances re-render.
+const subscribers = new Set<(pubkey: string) => void>();
+function notifyAll(pubkey: string) {
+  for (const fn of subscribers) fn(pubkey);
+}
+
 export interface LeagueActivityEntry {
   id: string;             // notification request id (Expo-generated)
   leagueAddress: string;
@@ -76,6 +84,18 @@ export function useLeagueActivityFeed(walletPubkey: string | null) {
     return () => { cancelled = true; };
   }, [walletPubkey]);
 
+  // Subscribe to cross-screen updates so e.g. an action on LeagueScreen
+  // refreshes the bell badge in HomeScreen instantly.
+  useEffect(() => {
+    if (!walletPubkey) return;
+    const onChange = (pubkey: string) => {
+      if (pubkey !== walletPubkey) return;
+      loadEntries(walletPubkey).then(setEntries);
+    };
+    subscribers.add(onChange);
+    return () => { subscribers.delete(onChange); };
+  }, [walletPubkey]);
+
   // Subscribe to inbound pushes (foreground + tapped-from-background).
   useEffect(() => {
     if (!walletPubkey) return;
@@ -121,7 +141,55 @@ export function useLeagueActivityFeed(walletPubkey: string | null) {
     try { await AsyncStorage.removeItem(STORAGE_KEY(walletPubkey)); } catch {}
   }, [walletPubkey]);
 
+  /**
+   * Log a local activity entry — used when the user takes an action
+   * themselves (score, advance, reveal). The worker fans the same event out
+   * to OTHER members as push notifications; this path mirrors it so the
+   * actor's own bell tray shows their own activity too. Without this, the
+   * tray would be empty for anyone testing solo or on a dev wallet without
+   * push permissions.
+   */
+  const recordLocal = useCallback((params: {
+    leagueAddress: string;
+    leagueName?: string;
+    kind: LeagueEventKind;
+    gameweek?: number;
+  }) => {
+    if (!walletPubkey) return;
+    const entry: LeagueActivityEntry = {
+      // Local entries get a stable-enough id from kind + timestamp so dedup
+      // against any incoming push that the worker may also have queued.
+      id: `local-${params.kind}-${params.leagueAddress.slice(0, 8)}-${Date.now()}`,
+      leagueAddress: params.leagueAddress,
+      leagueName: params.leagueName,
+      actorPubkey: walletPubkey,
+      kind: params.kind,
+      gameweek: params.gameweek,
+      receivedAt: Date.now(),
+      seen: false,
+    };
+    setEntries((prev) => {
+      // Skip if an identical-recent entry already exists (e.g. the push race
+      // beat us by milliseconds). Match on (leagueAddress, kind, gameweek)
+      // within the last 3 seconds.
+      const now = Date.now();
+      const dupe = prev.some((e) =>
+        e.leagueAddress === entry.leagueAddress &&
+        e.kind === entry.kind &&
+        e.gameweek === entry.gameweek &&
+        now - e.receivedAt < 3000,
+      );
+      if (dupe) return prev;
+      const next = [entry, ...prev].slice(0, MAX_ENTRIES);
+      saveEntries(walletPubkey, next);
+      // Notify other hook instances (e.g. bell on HomeScreen) so they pick
+      // up the new entry without waiting for a remount.
+      queueMicrotask(() => notifyAll(walletPubkey));
+      return next;
+    });
+  }, [walletPubkey]);
+
   const unseenCount = entries.filter((e) => !e.seen).length;
 
-  return { entries, unseenCount, markAllSeen, clear };
+  return { entries, unseenCount, markAllSeen, clear, recordLocal };
 }
