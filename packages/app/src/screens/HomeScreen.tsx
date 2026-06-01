@@ -515,8 +515,36 @@ function activityCopy(e: LeagueActivityEntry): { title: string; emoji: string; b
   }
 }
 
+// Unified item type for the league-side feed so winners + advances + activity
+// can be merged into a single list and sorted by timestamp.
+type LeagueFeedItem =
+  | { kind: "winner";   sortTs: number; data: WinnerNotification }
+  | { kind: "advance";  sortTs: number; data: AdvanceNotification }
+  | { kind: "activity"; sortTs: number; data: LeagueActivityEntry };
+
 function ChallengeNotificationPanel({ visible, challenges, advances, winners, activity, busy, marketQuestionMap, challengerNameMap, onAccept, onDecline, onAdvanceTap, onWinnerTap, onActivityTap, onViewAll, onClose }: NotifPanelProps) {
   const isEmpty = challenges.length === 0 && advances.length === 0 && winners.length === 0 && activity.length === 0;
+
+  // Build a merged league feed sorted by timestamp desc. Activity entries
+  // have a real receivedAt; winners and advances are derived from chain
+  // state without a persistent discovered-at, so we synthesise a "just now"
+  // timestamp keyed off gameweek (higher GW ranks higher within ties).
+  const now = Date.now();
+  const leagueFeed: LeagueFeedItem[] = useMemo(() => {
+    const items: LeagueFeedItem[] = [
+      ...winners.map<LeagueFeedItem>((w) => ({ kind: "winner",  sortTs: now + w.gameweek, data: w })),
+      ...advances.map<LeagueFeedItem>((a) => ({ kind: "advance", sortTs: now + a.gameweek - 1, data: a })),
+      ...activity.map<LeagueFeedItem>((e) => ({ kind: "activity", sortTs: e.receivedAt, data: e })),
+    ];
+    items.sort((x, y) => y.sortTs - x.sortTs);
+    return items;
+  }, [winners, advances, activity, now]);
+
+  // Matchups sorted by nonce desc (nonce is monotonic on creation).
+  const matchupsSorted = useMemo(
+    () => [...challenges].sort((a, b) => Number(b.nonce - a.nonce)),
+    [challenges],
+  );
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <Pressable style={notif.backdrop} onPress={onClose}>
@@ -535,40 +563,60 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
             </View>
           ) : (
             <ScrollView style={notif.list} contentContainerStyle={{ gap: 10 }}>
-              {winners.length > 0 && (
+              {leagueFeed.length > 0 && (
                 <>
-                  <Text style={notif.sectionTitle}>GAMEWEEK WINNERS</Text>
-                  {winners.map((w) => {
-                    const winnerLabel = shortAddr(w.winnerPubkey);
-                    return (
-                      <TouchableOpacity
-                        key={`${w.leagueAddress}:${w.gameweek}`}
-                        style={notif.card}
-                        onPress={() => { onWinnerTap(w.leagueAddress, w.gameweek); onClose(); }}
-                        activeOpacity={0.75}
-                      >
-                        <View style={notif.cardTop}>
-                          <View style={[notif.avatar, { backgroundColor: "#fbbf24" }]}>
-                            <Text style={notif.avatarText}>🏆</Text>
+                  <Text style={notif.sectionTitle}>🏆  LEAGUES</Text>
+                  {leagueFeed.map((item) => {
+                    if (item.kind === "winner") {
+                      const w = item.data;
+                      const winnerLabel = shortAddr(w.winnerPubkey);
+                      return (
+                        <TouchableOpacity
+                          key={`win:${w.leagueAddress}:${w.gameweek}`}
+                          style={notif.card}
+                          onPress={() => { onWinnerTap(w.leagueAddress, w.gameweek); onClose(); }}
+                          activeOpacity={0.75}
+                        >
+                          <View style={notif.cardTop}>
+                            <View style={[notif.avatar, { backgroundColor: "#fbbf24" }]}>
+                              <Text style={notif.avatarText}>🏆</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={notif.challengeFrom}>{winnerLabel} won GW{w.gameweek}</Text>
+                              <Text style={notif.challengerAddr}>{w.leagueName}</Text>
+                              <Text style={notif.stakeText}>
+                                {w.winnerScore} {w.winnerScore === 1 ? "pt" : "pts"} · {w.totalMembers} members revealed
+                              </Text>
+                            </View>
+                            <Text style={notif.arrowChev}>›</Text>
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={notif.challengeFrom}>{winnerLabel} won GW{w.gameweek}</Text>
-                            <Text style={notif.challengerAddr}>{w.leagueName}</Text>
-                            <Text style={notif.stakeText}>
-                              {w.winnerScore} {w.winnerScore === 1 ? "pt" : "pts"} · {w.totalMembers} members revealed
-                            </Text>
+                        </TouchableOpacity>
+                      );
+                    }
+                    if (item.kind === "advance") {
+                      const a = item.data;
+                      return (
+                        <TouchableOpacity
+                          key={`adv:${a.leagueAddress}:${a.gameweek}`}
+                          style={notif.card}
+                          onPress={() => { onAdvanceTap(a.leagueAddress); onClose(); }}
+                          activeOpacity={0.75}
+                        >
+                          <View style={notif.cardTop}>
+                            <View style={[notif.avatar, { backgroundColor: "#ea580c" }]}>
+                              <Text style={notif.avatarText}>📊</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={notif.challengeFrom}>League advanced</Text>
+                              <Text style={notif.challengerAddr}>{a.leagueName}</Text>
+                              <Text style={notif.stakeText}>Now in Gameweek {a.gameweek} · reveal your score</Text>
+                            </View>
+                            <Text style={notif.arrowChev}>›</Text>
                           </View>
-                          <Text style={notif.arrowChev}>›</Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </>
-              )}
-              {activity.length > 0 && (
-                <>
-                  <Text style={[notif.sectionTitle, winners.length > 0 && { marginTop: 8 }]}>LEAGUE ACTIVITY</Text>
-                  {activity.map((e) => {
+                        </TouchableOpacity>
+                      );
+                    }
+                    const e = item.data;
                     const meta = activityCopy(e);
                     const short = `${e.actorPubkey.slice(0, 5)}…${e.actorPubkey.slice(-4)}`;
                     return (
@@ -596,79 +644,50 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                   })}
                 </>
               )}
-              {advances.length > 0 && (
-                <>
-                  <Text style={[notif.sectionTitle, (winners.length > 0 || activity.length > 0) && { marginTop: 8 }]}>LEAGUE GAMEWEEKS</Text>
-                  {advances.map((a) => (
-                    <TouchableOpacity
-                      key={a.leagueAddress}
-                      style={notif.card}
-                      onPress={() => { onAdvanceTap(a.leagueAddress); onClose(); }}
-                      activeOpacity={0.75}
-                    >
-                      <View style={notif.cardTop}>
-                        <View style={[notif.avatar, { backgroundColor: "#ea580c" }]}>
-                          <Text style={notif.avatarText}>📊</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={notif.challengeFrom}>League advanced</Text>
-                          <Text style={notif.challengerAddr}>{a.leagueName}</Text>
-                          <Text style={notif.stakeText}>Now in Gameweek {a.gameweek} · reveal your score</Text>
-                        </View>
-                        <Text style={notif.arrowChev}>›</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </>
+
+              {matchupsSorted.length > 0 && (
+                <Text style={[notif.sectionTitle, leagueFeed.length > 0 && { marginTop: 8 }]}>⚔️  MATCHUPS</Text>
               )}
-              {challenges.length > 0 && advances.length > 0 && (
-                <Text style={[notif.sectionTitle, { marginTop: 8 }]}>PENDING CHALLENGES</Text>
-              )}
-              {challenges.length > 0 && advances.length === 0 && (
-                <Text style={notif.sectionTitle}>PENDING CHALLENGES</Text>
-              )}
-              {challenges.map((m) => {
-                return (
-                  <View key={m.address} style={notif.card}>
-                    <View style={notif.cardTop}>
-                      <JerseyAvatar pubkey={m.challenger} size={36} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={notif.challengeFrom}>Challenge from</Text>
-                        <Text style={notif.challengerAddr}>
-                          {challengerNameMap.get(m.challenger) ?? shortAddr(m.challenger)}
-                        </Text>
-                        <Text style={notif.stakeText}>
-                          {fmtUsdc(m.stakeUsdc)} each · pot {fmtUsdc(m.stakeUsdc * 2n)}
-                        </Text>
-                      </View>
-                      <View style={[notif.outcomePill, m.challengerOutcome === 1 ? notif.yesPill : notif.noPill]}>
-                        <Text style={notif.outcomeText}>
-                          {m.challengerOutcome === 1 ? "They: YES" : "They: NO"}
-                        </Text>
-                      </View>
+              {matchupsSorted.map((m) => (
+                <View key={m.address} style={notif.card}>
+                  <View style={notif.cardTop}>
+                    <JerseyAvatar pubkey={m.challenger} size={36} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={notif.challengeFrom}>Challenge from</Text>
+                      <Text style={notif.challengerAddr}>
+                        {challengerNameMap.get(m.challenger) ?? shortAddr(m.challenger)}
+                      </Text>
+                      <Text style={notif.stakeText}>
+                        {fmtUsdc(m.stakeUsdc)} each · pot {fmtUsdc(m.stakeUsdc * 2n)}
+                      </Text>
                     </View>
-                    <Text style={notif.marketAddr} numberOfLines={2}>
-                      📍 {marketQuestionMap.get(m.market as string) ?? shortAddr(m.market)}
-                    </Text>
-                    <View style={notif.actions}>
-                      <TouchableOpacity
-                        style={[notif.btn, notif.acceptBtn]}
-                        onPress={() => { onAccept(m); onClose(); }}
-                        disabled={busy}
-                      >
-                        <Text style={notif.btnText}>✓ Accept</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[notif.btn, notif.declineBtn]}
-                        onPress={() => { onDecline(m); onClose(); }}
-                        disabled={busy}
-                      >
-                        <Text style={[notif.btnText, { color: "#ef4444" }]}>✕ Decline</Text>
-                      </TouchableOpacity>
+                    <View style={[notif.outcomePill, m.challengerOutcome === 1 ? notif.yesPill : notif.noPill]}>
+                      <Text style={notif.outcomeText}>
+                        {m.challengerOutcome === 1 ? "They: YES" : "They: NO"}
+                      </Text>
                     </View>
                   </View>
-                );
-              })}
+                  <Text style={notif.marketAddr} numberOfLines={2}>
+                    📍 {marketQuestionMap.get(m.market as string) ?? shortAddr(m.market)}
+                  </Text>
+                  <View style={notif.actions}>
+                    <TouchableOpacity
+                      style={[notif.btn, notif.acceptBtn]}
+                      onPress={() => { onAccept(m); onClose(); }}
+                      disabled={busy}
+                    >
+                      <Text style={notif.btnText}>✓ Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[notif.btn, notif.declineBtn]}
+                      onPress={() => { onDecline(m); onClose(); }}
+                      disabled={busy}
+                    >
+                      <Text style={[notif.btnText, { color: "#ef4444" }]}>✕ Decline</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
             </ScrollView>
           )}
 
