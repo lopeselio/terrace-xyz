@@ -275,6 +275,33 @@ async function persistAddress(pubkey: string, leagueAddress: string): Promise<vo
   } catch {}
 }
 
+// ── Per-gameweek start timestamp ──────────────────────────────────────────────
+// SecureStore-backed per (league, gw) timestamp captured at advance_gameweek
+// time. Used by loadEligibleBets to scope the bets list to markets created
+// after the current GW started, so bets from prior GWs don't leak into the
+// current view. New leagues capture GW1 start at creation.
+
+function gwStartKey(leagueAddress: string, gw: number) {
+  return `terrace:gw-start:${leagueAddress}:${gw}`;
+}
+
+export async function saveGameweekStart(leagueAddress: string, gw: number, timestampMs: number): Promise<void> {
+  try {
+    // Only write if not already saved — preserves the FIRST recorded start,
+    // which is the authoritative one.
+    const existing = await SecureStore.getItemAsync(gwStartKey(leagueAddress, gw));
+    if (existing) return;
+    await SecureStore.setItemAsync(gwStartKey(leagueAddress, gw), String(timestampMs));
+  } catch { /* best-effort */ }
+}
+
+export async function loadGameweekStart(leagueAddress: string, gw: number): Promise<number | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(gwStartKey(leagueAddress, gw));
+    return raw ? Number(raw) : null;
+  } catch { return null; }
+}
+
 // ── Per-gameweek score history (off-chain) ────────────────────────────────────
 // On-chain LeagueMember only carries the most-recent revealed score
 // (gameweekScore + lastScoredGameweek). To show "GW1: 2, GW2: 4, …" we snapshot
@@ -477,7 +504,7 @@ export function useLeague(ownerPubkey?: string | null) {
     return loadHistory(leagueAddress);
   }, []);
 
-  const loadEligibleBets = useCallback(async (leagueAddress: string, isPrivate?: boolean) => {
+  const loadEligibleBets = useCallback(async (leagueAddress: string, isPrivate?: boolean, currentGameweek?: number) => {
     if (!publicKey) return;
     setLoadingEligible(true);
     setEligibleBets([]);
@@ -612,9 +639,12 @@ export function useLeague(ownerPubkey?: string | null) {
         if (!res.result?.value) unscored.push(b);
       }));
 
-      // 3. Fetch market accounts for question text and status
+      // 3. Fetch market accounts for question, status, and nonce. Nonce is
+      // ~Date.now() at creation (set by create-private-markets.ts) and is
+      // used by the GW-start filter below to scope the bets list to markets
+      // created during the current gameweek.
       const marketAddrs = [...new Set(unscored.map((b) => b.marketAddress))];
-      type MarketMeta = { question: string; status: string };
+      type MarketMeta = { question: string; status: string; nonce: bigint };
       const marketMeta: Record<string, MarketMeta> = {};
       await Promise.all(marketAddrs.map(async (addr) => {
         try {
@@ -626,17 +656,38 @@ export function useLeague(ownerPubkey?: string | null) {
           if (!b64) return;
           const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
           const m = deserializeMarketAccount(raw, addr as Address);
-          marketMeta[addr] = { question: m.question, status: m.status };
-        } catch { marketMeta[addr] = { question: `${addr.slice(0, 8)}…`, status: "Settled" }; }
+          marketMeta[addr] = { question: m.question, status: m.status, nonce: m.nonce };
+        } catch { marketMeta[addr] = { question: `${addr.slice(0, 8)}…`, status: "Settled", nonce: 0n }; }
       }));
 
-      // 4. Apply market-status filter:
+      // 4. GW-start scoping. Restrict eligible bets to markets created during
+      // the current gameweek (market.nonce >= gwStart). Without this, bets
+      // from prior GWs that were never scored (e.g. on the losing side, or
+      // skipped) keep leaking into the current GW's bets list.
+      //
+      // First-run safety: if no gw-start record exists for the current GW,
+      // backfill it to (Date.now() - 10 min) so the user's most-recently-
+      // created markets stay visible without breaking older sessions.
+      let gwStart: number | null = null;
+      if (currentGameweek && currentGameweek > 0) {
+        gwStart = await loadGameweekStart(leagueAddress, currentGameweek);
+        if (gwStart === null) {
+          gwStart = Date.now() - 10 * 60_000;
+          await saveGameweekStart(leagueAddress, currentGameweek, gwStart);
+        }
+      }
+      const gwStartBig = gwStart !== null ? BigInt(gwStart) : null;
+
+      // 5. Apply market-status filter:
       //    Public bets in private leagues — Open/Closed (in-play) OR won+claimed
       //    Private bet records — only Settled markets (private_state.is_revealed required by program)
       //    Public leagues — only won+claimed (Settled, claimed=1); already filtered above
       const eligible = unscored.filter((b) => {
         const meta = marketMeta[b.marketAddress];
         if (!meta) return false;
+        // GW-start scope: bets on markets created before this GW started
+        // belong to a previous GW's bets list, not this one.
+        if (gwStartBig !== null && meta.nonce < gwStartBig) return false;
         if (b.betType === "private") {
           return meta.status === "Settled";
         }

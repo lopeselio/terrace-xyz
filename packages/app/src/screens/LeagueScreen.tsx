@@ -23,7 +23,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 }
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { League, LeagueMember } from "@terrace/sdk";
-import { useLeague } from "../hooks/useLeague";
+import { useLeague, saveGameweekStart } from "../hooks/useLeague";
 import type { EligibleBet, GameweekScoreEntry } from "../hooks/useLeague";
 import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
 import { JerseyAvatar } from "../components/JerseyAvatar";
@@ -852,7 +852,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     // Run leaderboard first and await so its snapshotHistory write completes
     // before we read history into local state. Other loaders fire in
     // parallel — they don't depend on each other.
-    loadEligibleBets(String(league.address), league.isPrivate);
+    loadEligibleBets(String(league.address), league.isPrivate, league.gameweek);
     if (league.isPrivate && walletPubkey) {
       loadMemberScoreState(String(league.address));
     }
@@ -1004,7 +1004,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       });
       notify.update(id, { kind: "success", message: successMsg });
       loadLeaderboard(String(selectedLeague.address));
-      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
+      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate, selectedLeague.gameweek);
       // Fire the fan-friendly celebration on top of the toast.
       setScoreCelebration({ question: questionAtScore, remaining: remainingAfter, isPrivateBet });
       if (walletPubkey) {
@@ -1042,6 +1042,9 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
         action: { label: "Copy", onPress: () => { /* copy handled by share button on screen */ } },
       });
       setTab("My Leagues");
+      // Capture GW1 start now so the eligible-bets filter scopes to markets
+      // created from this moment onward.
+      await saveGameweekStart(leagueAddress, 1, Date.now());
       // Treat creation as a join so the index includes the creator from t0.
       publishLeagueEvent(leagueAddress, walletPubkey, "join", { leagueName: params.name });
       recordLocalActivity({ leagueAddress, leagueName: params.name, kind: "join" });
@@ -1075,6 +1078,10 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
       // reveal CTA stays hidden until the user closes and re-opens the sheet.
       const updated = await loadLeague(addr);
       if (updated) setSelectedLeague(updated);
+      // Snapshot the timestamp the new GW started so the eligible-bets
+      // filter knows which markets belong to it. saveGameweekStart preserves
+      // the FIRST recorded value (idempotent on re-advances).
+      if (updated) await saveGameweekStart(addr, updated.gameweek, Date.now());
       loadLeaderboard(addr);
       refreshHistory(addr);
       if (selectedLeague.isPrivate && walletPubkey) {
@@ -1103,7 +1110,7 @@ export function LeagueScreen({ walletPubkey, onConnectWallet, onClose }: Props) 
     try {
       await joinLeague(String(selectedLeague.address));
       notify.update(id, { kind: "success", message: "You're in! Your wins will score from here." });
-      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate);
+      loadEligibleBets(String(selectedLeague.address), selectedLeague.isPrivate, selectedLeague.gameweek);
       loadLeaderboard(String(selectedLeague.address));
       publishLeagueEvent(
         String(selectedLeague.address),
