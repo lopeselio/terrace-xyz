@@ -1,0 +1,92 @@
+<!-- @dsCard group="Components" name="Swipe card ★" subtitle="Tinder-stack matchday call — right=back, left=fade, up=detail, down=skip" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Swipe Card</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#0a0a0a; color:#f9fafb; padding:28px; display:flex; gap:34px; flex-wrap:wrap; }
+  .stage{ position:relative; width:330px; }
+  .under{ position:absolute; inset:0; transform:scale(.94) translateY(14px); opacity:.55; }
+  .card{ position:relative; width:330px; height:430px; background:#111; border-radius:24px; border:.5px solid #262626; padding:18px; box-shadow:0 12px 30px rgba(0,0,0,.55); display:flex; flex-direction:column; }
+  /* meta */
+  .meta{ display:flex; align-items:center; gap:6px; }
+  .src{ display:inline-flex; align-items:center; gap:4px; background:#1e3a5f; color:#60a5fa; font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px; }
+  .clock{ margin-left:auto; background:#1a1a1a; border:.5px solid #2a2a2a; color:#f59e0b; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; }
+  /* hero */
+  .hero{ flex:1; display:flex; align-items:center; justify-content:center; gap:14px; }
+  .crest{ display:flex; flex-direction:column; align-items:center; gap:8px; width:108px; }
+  .badge{ width:72px; height:72px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; color:#fff; }
+  .cname{ font-size:12px; font-weight:600; color:#d1d5db; }
+  .vs{ font-size:13px; font-weight:700; color:#4b5563; }
+  /* statement */
+  .ctx{ font-size:12px; color:#6b7280; font-weight:600; margin-top:4px; }
+  .stmt{ font-size:20px; font-weight:800; letter-spacing:-.3px; line-height:26px; margin-top:4px; }
+  /* foot */
+  .foot{ display:flex; align-items:center; justify-content:space-between; margin-top:14px; }
+  .oddschip{ display:inline-flex; align-items:center; gap:8px; background:#0d0d0d; border:.5px solid #1f1f1f; border-radius:10px; padding:7px 12px; }
+  .oy{ color:#22c55e; font-weight:800; font-size:13px; } .on{ color:#ef4444; font-weight:800; font-size:13px; } .dv{ color:#374151; }
+  .pool{ font-size:12px; font-weight:600; color:#9ca3af; }
+  /* stamps */
+  .stamp{ position:absolute; top:26px; border:3px solid; border-radius:10px; padding:4px 12px; font-size:30px; font-weight:900; letter-spacing:1px; }
+  .stamp.y{ left:22px; color:#22c55e; border-color:#22c55e; transform:rotate(-14deg); }
+  /* action bar */
+  .actions{ display:flex; justify-content:center; align-items:center; gap:16px; margin-top:18px; }
+  .act{ border-radius:999px; border:1.5px solid; display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .a-no{ width:58px; height:58px; background:#1a0a0a; border-color:#ef4444; color:#ef4444; font-size:24px; }
+  .a-skip{ width:46px; height:46px; background:#141414; border-color:#374151; color:#6b7280; font-size:20px; }
+  .a-info{ width:46px; height:46px; background:#0b1a2e; border-color:#3b82f6; color:#60a5fa; font-size:20px; }
+  .a-yes{ width:58px; height:58px; background:#052e16; border-color:#22c55e; color:#22c55e; font-size:26px; }
+  .legend{ font-size:11px; color:#4b5563; font-weight:600; margin-top:26px; max-width:280px; line-height:1.7; }
+  .legend b{ color:#9ca3af; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="stage">
+      <div class="card under"></div>
+      <div class="card">
+        <div class="stamp y">YES</div>
+        <div class="meta">
+          <span class="src">◎ Polymarket</span>
+          <span class="clock">⏱ 4h 12m</span>
+        </div>
+        <div class="hero">
+          <div class="crest"><div class="badge" style="background:#EF0107">ARS</div><div class="cname">Arsenal</div></div>
+          <div class="vs">vs</div>
+          <div class="crest"><div class="badge" style="background:#034694">CHE</div><div class="cname">Chelsea</div></div>
+        </div>
+        <div class="ctx">Arsenal vs Chelsea — Match result</div>
+        <div class="stmt">Arsenal to win</div>
+        <div class="foot">
+          <div class="oddschip"><span class="oy">YES 61¢</span><span class="dv">·</span><span class="on">NO 39¢</span></div>
+          <span class="pool">🏆 $1.2K pool</span>
+        </div>
+      </div>
+    </div>
+    <div class="actions" style="width:330px">
+      <div class="act a-no">✕</div>
+      <div class="act a-skip">↓</div>
+      <div class="act a-info">ℹ</div>
+      <div class="act a-yes">✓</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:10px">Gestures</div>
+    <b>Swipe right →</b> back YES · opens bet sheet on the YES contract<br/>
+    <b>← Swipe left</b> fade NO · opens bet sheet on the NO contract<br/>
+    <b>↑ Swipe up</b> open full market detail<br/>
+    <b>↓ Swipe down</b> skip to the next call<br/><br/>
+    A green <b>YES</b> / red <b>NO</b> stamp fades in as you drag; light haptic on
+    threshold cross, medium on commit. The card underneath peeks at 94% scale.
+    Deck = open, non-flash markets, highest pool first, capped at 40. Filters
+    (source · league) narrow the deck so "matchday only" is one chip away.<br/><br/>
+    Built on core <b>Animated + PanResponder</b> — no reanimated / gesture-handler
+    dependency, runs on the Seeker dev build unchanged.
+  </div>
+</body>
+</html>

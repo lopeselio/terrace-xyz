@@ -1,0 +1,110 @@
+<!-- @dsCard group="Components" name="Core controls" subtitle="Back/fade odds, CTA, filter chips, source & status badges, market row" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Core Components</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#0a0a0a; color:#f9fafb; padding:28px; max-width:460px; }
+  h2{ font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#6b7280; margin:24px 0 12px; }
+  h2:first-child{ margin-top:0; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  /* odds pair */
+  .odds{ display:flex; gap:8px; }
+  .odd{ flex:1; display:flex; justify-content:space-between; align-items:center; border-radius:10px; padding:12px 14px; border:.5px solid transparent; }
+  .odd .k{ font-size:12px; font-weight:700; letter-spacing:.5px; }
+  .odd .v{ font-size:15px; font-weight:800; }
+  .yes{ background:#14532d; } .yes .k{ color:#4ade80; } .yes .v{ color:#f9fafb; }
+  .no{ background:#450a0a; } .no .k{ color:#f87171; } .no .v{ color:#f9fafb; }
+  .odd.sel-yes{ background:#052e16; border-color:#22c55e; }
+  .odd.sel-no{ background:#3b0a0a; border-color:#ef4444; }
+  /* cta */
+  .cta{ border-radius:14px; padding:16px; text-align:center; font-size:15px; font-weight:700; }
+  .cta.back{ background:#22c55e; color:#000; }
+  .cta.fade{ background:#22c55e; color:#000; }
+  .cta.ghost{ background:#1a1a1a; color:#9ca3af; border:.5px solid #262626; }
+  /* chips */
+  .chip{ padding:6px 13px; border-radius:16px; background:#1a1a1a; border:1px solid #2a2a2a; font-size:12px; font-weight:600; color:#888; display:inline-flex; gap:5px; align-items:center; }
+  .chip.on{ background:#052e16; border-color:#22c55e; color:#22c55e; }
+  .chip.poly.on{ background:#0f172a; border-color:#6366f1; color:#818cf8; }
+  .chip.hot{ background:#2a1605; border-color:#f97316; color:#fb923c; }
+  /* badges */
+  .badge{ padding:3px 8px; border-radius:8px; font-size:10px; font-weight:700; }
+  .b-open{ background:#22c55e; color:#000; }
+  .b-resolving{ background:#f59e0b; color:#000; }
+  .b-settled{ background:#1a1a1a; color:#6b7280; border:.5px solid #333; }
+  .b-flash{ background:#4c1d95; color:#c4b5fd; }
+  .b-private{ background:#2e1065; color:#c4b5fd; }
+  .b-terrace{ background:#052e16; color:#4ade80; }
+  .b-poly{ background:#1e3a5f; color:#60a5fa; }
+  /* market row */
+  .mrow{ display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:.5px solid #1e1e1e; }
+  .thumb{ width:52px; height:52px; border-radius:12px; background:#064e3b; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .mrow .nm{ font-size:13px; font-weight:600; }
+  .mrow .lg{ font-size:10px; color:#888; margin-top:1px; }
+  .tags{ display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+  .tag{ font-size:9px; font-weight:600; padding:2px 7px; border-radius:8px; }
+</style>
+</head>
+<body>
+  <h2>Back / fade odds — the core decision</h2>
+  <div class="odds" style="margin-bottom:8px">
+    <div class="odd yes"><span class="k">YES</span><span class="v">53¢</span></div>
+    <div class="odd no"><span class="k">NO</span><span class="v">47¢</span></div>
+  </div>
+  <div class="odds">
+    <div class="odd sel-yes"><span class="k" style="color:#22c55e">YES · picked</span><span class="v" style="color:#22c55e">53¢</span></div>
+    <div class="odd sel-no"><span class="k" style="color:#ef4444">NO · picked</span><span class="v" style="color:#ef4444">47¢</span></div>
+  </div>
+
+  <h2>Primary CTA</h2>
+  <div style="display:grid; gap:8px">
+    <div class="cta back">Back YES · $5 USDC</div>
+    <div class="cta fade">Fade NO · $5 USDC</div>
+    <div class="cta ghost">View all matchups →</div>
+  </div>
+
+  <h2>Filter chips</h2>
+  <div class="row" style="margin-bottom:8px">
+    <span class="chip poly on">All markets</span>
+    <span class="chip">Terrace</span>
+    <span class="chip">Polymarket</span>
+  </div>
+  <div class="row">
+    <span class="chip on">All</span>
+    <span class="chip hot">🔥 World Cup</span>
+    <span class="chip">Premier League</span>
+    <span class="chip">Champions League</span>
+  </div>
+
+  <h2>State & source badges</h2>
+  <div class="row">
+    <span class="badge b-open">Open</span>
+    <span class="badge b-resolving">Resolving</span>
+    <span class="badge b-settled">✓ Settled</span>
+    <span class="badge b-flash">⚡ Flash</span>
+    <span class="badge b-private">🔒 Private</span>
+    <span class="badge b-terrace">Terrace</span>
+    <span class="badge b-poly">Polymarket</span>
+  </div>
+
+  <h2>Market row</h2>
+  <div class="mrow">
+    <div class="thumb">⚽</div>
+    <div style="flex:1">
+      <div class="nm">Arsenal to win vs Chelsea</div>
+      <div class="lg">Premier League · Match result</div>
+      <div class="tags">
+        <span class="tag" style="background:#1e1e1e;color:#aaa">YES 61¢</span>
+        <span class="tag" style="background:#1a2e1a;color:#4ade80">Vol $1.2K</span>
+        <span class="tag" style="background:#7f1d1d;color:#f87171">● Open</span>
+        <span class="tag" style="background:#1e3a5f;color:#60a5fa">Polymarket</span>
+      </div>
+    </div>
+    <span style="color:#444;font-size:16px">›</span>
+  </div>
+</body>
+</html>
