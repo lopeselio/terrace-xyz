@@ -78,7 +78,7 @@ function SourceChipContent({ filterKey, active }: { filterKey: SourceFilter; act
 // "World Cup" is rendered as a HOT chip (fire emoji + orange accent) because
 // it's a global event that surfaces above the regular club leagues.
 const HOT_CHIP = "World Cup";
-const LEAGUE_CHIPS = ["All", HOT_CHIP, "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
+const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
 
 function matchesLeague(eventTitle: string, league: string): boolean {
   if (league === "All") return true;
