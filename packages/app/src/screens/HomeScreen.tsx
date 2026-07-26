@@ -27,6 +27,7 @@ import { useTerraceUsers } from "../hooks/useTerraceUsers";
 import { groupMarkets } from "../utils/groupMarkets";
 import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
+import { SwipeDeck } from "./SwipeDeck";
 import type { UnifiedMarket } from "@terrace/sdk";
 
 // ---------------------------------------------------------------------------
@@ -758,10 +759,15 @@ interface SelectedBet {
   yesPrice: number | null;
   question: string | null;
   source: "native" | "jupiter";
+  isYes: boolean;
 }
+
+const MARKET_VIEWS = ["List", "Swipe"] as const;
+type MarketView = (typeof MARKET_VIEWS)[number];
 
 export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onNavigateLeague, onRefreshMarkets }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
+  const [marketView, setMarketView] = useState<MarketView>("List");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("All");
   const [leagueFilter, setLeagueFilter] = useState<string>("All");
@@ -850,7 +856,21 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
   const handleSelectOutcome = (marketId: string, label: string, yesPrice: number | null) => {
     reset();
     const market = markets.find((m) => m.id === marketId);
-    setSelectedBet({ marketId, label, yesPrice, question: market?.question ?? null, source: (market?.source === "native" ? "native" : "jupiter") });
+    setSelectedBet({ marketId, label, yesPrice, question: market?.question ?? null, source: (market?.source === "native" ? "native" : "jupiter"), isYes: true });
+  };
+
+  // Swipe deck: right = back YES, left = fade (NO). Opens the bet sheet
+  // pre-committed to the swiped side, priced on that side's contract.
+  const handleSwipeBet = (market: UnifiedMarket, isYes: boolean) => {
+    reset();
+    setSelectedBet({
+      marketId: market.id,
+      label: isYes ? "YES" : "NO",
+      yesPrice: isYes ? market.yesPrice : (market.noPrice > 0 ? market.noPrice : 1 - market.yesPrice),
+      question: market.question,
+      source: market.source === "native" ? "native" : "jupiter",
+      isYes,
+    });
   };
 
   const handleDismissBet = () => {
@@ -858,12 +878,12 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
     setSelectedBet(null);
   };
 
-  const handleConfirmBet = async (amountUsdc: number) => {
+  const handleConfirmBet = async (amountUsdc: number, isYes: boolean) => {
     if (!selectedBet) return;
     const market = markets.find((m) => m.id === selectedBet.marketId);
     await placeBet({
       marketId: selectedBet.marketId,
-      isYes: true,
+      isYes,
       amountUsdc,
       source: market?.source ?? "jupiter",
     });
@@ -979,6 +999,10 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                   matchesLeague(g.type === "grouped" ? g.eventTitle : g.market.jupiterEventTitle ?? g.market.question, leagueFilter)
                 )
               : grouped;
+            // Flat market list for the swipe deck — same source/league filters
+            const deckMarkets = showLeagueChips
+              ? sourceFiltered.filter((m) => matchesLeague(m.jupiterEventTitle ?? m.question, leagueFilter))
+              : sourceFiltered;
             return (
               <>
                 {/* Source filter */}
@@ -1048,7 +1072,31 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                   </ScrollView>
                 )}
 
-                {filteredGroups.length === 0 ? (
+                {/* List / Swipe view toggle */}
+                <View style={styles.viewToggleRow}>
+                  <View style={styles.viewToggle}>
+                    {MARKET_VIEWS.map((v) => (
+                      <TouchableOpacity
+                        key={v}
+                        style={[styles.viewToggleBtn, marketView === v && styles.viewToggleBtnActive]}
+                        onPress={() => setMarketView(v)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.viewToggleText, marketView === v && styles.viewToggleTextActive]}>
+                          {v === "Swipe" ? "🎴 Swipe" : "☰ List"}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {marketView === "Swipe" ? (
+                  <SwipeDeck
+                    markets={deckMarkets}
+                    onBet={handleSwipeBet}
+                    onDetail={onSelectMarket}
+                  />
+                ) : filteredGroups.length === 0 ? (
                   <View style={styles.comingSoon}>
                     {sourceFilter === "Terrace" ? (
                       <Text style={styles.comingSoonEmoji}>⚡</Text>
@@ -1106,6 +1154,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
           outcomeLabel={selectedBet.label}
           marketQuestion={selectedBet.question ?? undefined}
           source={selectedBet.source}
+          isYes={selectedBet.isYes}
           yesPrice={selectedBet.yesPrice}
           onConfirm={handleConfirmBet}
           onDismiss={handleDismissBet}
@@ -1224,6 +1273,14 @@ const styles = StyleSheet.create({
   leagueChipHotActive:     { backgroundColor: "#451a03", borderColor: "#fb923c" },
   leagueChipTextHot:       { color: "#fb923c", fontWeight: "600" },
   leagueChipTextHotActive: { color: "#fed7aa", fontWeight: "700" },
+
+  // List / Swipe view toggle
+  viewToggleRow: { paddingHorizontal: 14, paddingBottom: 10, alignItems: "flex-start" },
+  viewToggle: { flexDirection: "row", backgroundColor: "#1a1a1a", borderRadius: 12, padding: 3, borderWidth: 0.5, borderColor: "#2a2a2a" },
+  viewToggleBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 9 },
+  viewToggleBtnActive: { backgroundColor: "#22c55e" },
+  viewToggleText: { fontSize: 12, fontWeight: "700", color: "#888" },
+  viewToggleTextActive: { color: "#000" },
 
   // Market row
   loadingRow: { alignItems: "center", paddingVertical: 40 },

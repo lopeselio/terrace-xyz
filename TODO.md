@@ -87,10 +87,43 @@
 - [x] `usePrivateMarket.claimWinnings` no longer requires `outcome` param — reads it from SecureStore JSON alongside the bet secret (stored at bet time)
 - [x] `MarketDetailSheet` `PrivateBetPanel`: Settled state shows "Claim private winnings" button for bettors with an unclaimed secret in SecureStore; shows "No unclaimed private bet found" otherwise
 
+## Sprint 12 — Public devnet beta (Rekto-inspired, sequenced)
+
+Sourced from RektoFun competitive review (2026-06-02). Four waves; lower waves block higher waves.
+
+### Wave 1 — Foundation polish (parallel, no blockers)
+- [ ] **#8 Tight launch scope: 1 league + crypto sidecar** — Rekto ships IPL + FIFA + Crypto + MMA on day 1 and their leaderboard is empty. Pick ONE league for beta (EPL or upcoming international window) + small crypto sidecar (BTC/ETH/SOL price-by-date). Update league filters in `HomeScreen` + `MatchGroupCard`. Add "Coming soon: La Liga, Serie A" placeholder. *Unblocks: #2, #6*
+- [ ] **#11 Counter / Resolving / Expired state badges on market cards** — Audit `MarketDetailSheet` + `MatchGroupCard` so every card surfaces an unambiguous state: COUNTER (green, takeable), RESOLVING (yellow, oracle pending), EXPIRED (red), SETTLED (gray with winner avatar). Include time-ago + countdown.
+- [ ] **#1 Decode on-chain activity into human-readable Live Feed** — Current activity surfaces raw market data / hex. Build a decoder: Helius webhook → resolve market PDA → render "@username bet $5 on 'Korea to score first' · 1m ago". Replace any hex/base58 with usernames + titles. Critical for shareability.
+- [ ] **#5 Flexible market expiry picker** — In Create Market sheet, replace fixed dropdown with quick chips (15m / 30m / 1h / 2h / 4h / 8h / 24h / Until match start) + "Custom" → wheel/stepper for hours+minutes. Display computed "Expires in 3d 19h" preview.
+
+### Wave 2 — Identity & quality
+- [ ] **#2 Email/social onboarding with auto-username + auto-avatar** *(blocked by #8)* — Privy email signup (or stick with Phantom embedded). On first login: (a) random username (adjective+noun+suffix) editable to custom, (b) deterministic avatar (dicebear from wallet), (c) "Top up SOL + USDC" panel with devnet faucet links + copy-to-clipboard address, (d) "you're ready to predict" CTA. Biggest UX gap vs Rekto.
+- [ ] **#6 AI statement validator before market creation** *(blocked by #8)* — On Create Market, call Claude Haiku to: (a) classify verifiable / ambiguous / unverifiable, (b) suggest 2–3 cleaner rewordings, (c) inline green/yellow/red badge. Blocks ambiguous markets at creation → easier future AI-oracle resolution → fewer disputes. Mirrors Rekto's "Validate Statement" + "Suggested Valid Statements".
+- [ ] **#3 Player profile: W/L stats, badges, follow button** *(blocked by #2)* — Enhance profile with markets created, wins, losses, win%, earnings, rank, badge tier (from Reputation PDA), follow/unfollow (off-chain follow graph in Postgres), grid of recent markets with outcome. Mobile cards should feel tradable. Surface following + follower counts.
+- [ ] **#12 Terrace Points (TP) ledger** *(blocked by #2)* — Mirror Rekto: +100 per referred signup, +20 per won market, +10 per lost market (participation), +X per validator vote on AI oracle resolution. Persist per-wallet in off-chain table (Helius webhooks → Postgres). Mainnet path: snapshot TP → seed future token / NFT allocations. Surface points on profile + every win/loss toast.
+
+### Wave 3 — Growth loops
+- [ ] **#13 Public leaderboard screen (Wins / Losses / Win% / Earnings)** *(blocked by #12)* — Mobile leaderboard: top stat cards (Markets Created, Total Players, Total USDC Settled, Total Points), sortable list — Rank, Avatar+Username, Wins, Losses, Markets, Win%, Earnings. Cute cards consistent with our brand (not Rekto's pastel). Filter chips: All-time / Season 1 / Weekly.
+- [ ] **#4 Referral system with shareable link + Refer Leaderboard** *(blocked by #12, #2)* — `/?ref=<code>` link generator on profile, redeem code field. Rewards: 100 TP per referred signup, bonus 50 TP when referee places first bet, ongoing 5% of their winnings as TP rev share for season. Stat cards: "Friends Referred", "Your TP". Referral Leaderboard tab. Crucial for cold-start on Seeker.
+- [ ] **#10 Find Masters / Discover Players grid** *(blocked by #3, #12)* — Discovery surface like Rekto's "Find Masters": grid of player cards with banner color, avatar, username, Markets / Wins / Losses, View Profile + Follow. Filter by category, sort by win%, earnings, or recent activity. Mobile: 2-column grid of taller cards.
+
+### Wave 4 — Differentiation
+- [x] **#9 Swipe-based market interaction (Seeker-native)** — Shipped `SwipeDeck.tsx`: Tinder-stack on Home behind a List/Swipe toggle in the Trending → Markets view. right = back YES, left = fade NO, up = open detail, down = skip; tap action bar mirrors the gestures. Card shows crest pair (reuses `TeamBadge`) / event image + statement + YES·NO odds + pool + live countdown, with YES/NO drag stamps. Right/left open `BetSheet` pre-committed to the swiped side (YES green "Back", NO green "Fade"); side + side-priced payout flow through `usePlaceBet` (extended `handleConfirmBet`/`BetSheet` to honour `isYes`). Uses core Animated + PanResponder + `useWindowDimensions` (no reanimated/gesture-handler dep). Verified live on Seeker: both YES and NO paths open the sheet with correct price. Respects source/league filters so "matchday" is one chip away.
+- [ ] **#7 AI Oracle resolution UI scaffold** *(blocked by #6, #12)* — Front-end shell before full backend. Tabs: Pending, Resolved, My Votes. Each pending card: market title, evidence sources, Resolve True/False, live validation count (X/threshold), validator sidebar (Total Resolved, Accuracy %, Streak). Confirm modal: "if correct +40 TP, if wrong −20 TP". Gate by badge tier (Reputation PDA), not NFT. 3-hour dispute window UX. Supersedes the "AI oracle" line in Layer 3.
+
+### Divergences from Rekto (deliberate)
+- **Swipe-first, not tap-grid** — Seeker-native; Rekto only promises this for Q3.
+- **Reputation PDA, not NFT gate** — we have on-chain reputation; their 1500-NFT validator gate is an artificial bottleneck.
+- **Tight launch scope** — their empty leaderboard is the cautionary tale.
+- **Group-chat framing front and center** — "your group chat takes vanish; here they stay permanent" is our wedge. Rekto's "battle other degens" is generic.
+
+---
+
 ## Layer 3 (future)
 - [ ] Bonding curve AMM — price moves with volume (Meteora-style), early movers rewarded
 - [ ] Leverage layer — borrow against open positions, opt-in risk parameter
-- [ ] AI oracle — agent reads match result from sports data API, calls `settle_market` automatically
+- [ ] AI oracle — agent reads match result from sports data API, calls `settle_market` automatically  *(superseded by Sprint 12 #7 for the human-validator scaffold; this remains the autonomous-agent layer)*
 - [ ] AI market sentiment feed — per-market conviction analysis surfaced in market detail sheet
 
 ## Layer 4 (future)
