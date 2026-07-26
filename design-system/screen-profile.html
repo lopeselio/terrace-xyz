@@ -1,0 +1,153 @@
+<!-- @dsCard group="Screens" name="Profile" subtitle="Tier-tinted hero, record strip, social row, tidy wallet, Active/History/Created/Leagues" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Profile</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#141414; padding:24px; display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
+  .phone{ width:360px; background:#0a0a0a; border-radius:36px; overflow:hidden; border:1px solid #222; color:#f9fafb; }
+  .pad{ padding:16px 16px 0; }
+  .title{ font-size:22px; font-weight:800; letter-spacing:-.4px; margin-bottom:14px; }
+
+  /* HERO — tinted by badge tier */
+  .hero{ border-radius:20px; padding:16px; background:linear-gradient(150deg,#0b2f1c 0%,#111 60%); border:.5px solid #14532d; position:relative; }
+  .hero .disc{ position:absolute; top:14px; right:14px; font-size:11px; color:#6b7280; background:#1a1a1a; border:.5px solid #2a2a2a; padding:5px 10px; border-radius:999px; }
+  .idrow{ display:flex; align-items:center; gap:12px; }
+  .av{ width:56px; height:56px; border-radius:16px; background:#16a34a; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#04120a; box-shadow:0 0 0 2px #22c55e33; }
+  .name{ font-size:17px; font-weight:700; }
+  .tierpill{ display:inline-flex; align-items:center; gap:5px; margin-top:4px; background:#052e16; border:.5px solid #22c55e55; color:#4ade80; font-size:10px; font-weight:800; letter-spacing:.5px; padding:3px 9px; border-radius:999px; }
+  .addr{ display:inline-flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; color:#6b7280; font-family:ui-monospace,monospace; }
+  /* win-rate focal */
+  .focal{ display:flex; align-items:flex-end; gap:16px; margin-top:16px; }
+  .wr{ font-size:44px; font-weight:900; letter-spacing:-1.5px; line-height:1; color:#f9fafb; }
+  .wr small{ font-size:16px; color:#4ade80; font-weight:800; margin-left:2px; }
+  .wrlabel{ font-size:10px; font-weight:700; letter-spacing:1px; color:#6b7280; text-transform:uppercase; margin-top:6px; }
+  .streak{ display:inline-flex; align-items:center; gap:5px; background:#1a1206; border:.5px solid #78350f; color:#fbbf24; font-weight:800; font-size:13px; padding:6px 11px; border-radius:12px; }
+  .callsub{ font-size:11px; color:#6b7280; margin-left:auto; align-self:center; }
+
+  /* SOCIAL row (target state) */
+  .social{ display:flex; gap:8px; margin-top:12px; }
+  .scount{ flex:1; background:#0d0d0d; border:.5px solid #1f1f1f; border-radius:12px; padding:9px 12px; }
+  .scount b{ font-size:15px; font-weight:800; } .scount span{ font-size:10px; color:#6b7280; display:block; margin-top:1px; }
+  .share{ background:#22c55e; color:#000; font-weight:800; font-size:12px; border-radius:12px; padding:0 16px; display:flex; align-items:center; }
+
+  /* RECORD strip */
+  h2{ font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#6b7280; margin:18px 4px 8px; }
+  .tiles{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .tile{ background:#111; border:.5px solid #1e1e1e; border-radius:14px; padding:12px; }
+  .tile .v{ font-size:20px; font-weight:800; letter-spacing:-.3px; }
+  .tile .l{ font-size:10px; color:#6b7280; margin-top:2px; }
+  .tile .s{ font-size:9px; color:#4b5563; }
+
+  /* WALLET card */
+  .wallet{ background:#111; border:.5px solid #1e1e1e; border-radius:16px; padding:14px; margin-top:8px; }
+  .wline{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; }
+  .wline+.wline{ border-top:.5px solid #1a1a1a; }
+  .wnet{ font-size:11px; color:#9ca3af; font-weight:600; } .wnet.muted{ color:#4b5563; }
+  .wval{ font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .wmuted{ color:#6b7280; font-weight:600; }
+  .faucet{ font-size:10px; color:#60a5fa; margin-top:8px; }
+
+  /* TABS */
+  .tabs{ display:flex; gap:6px; background:#111; border-radius:14px; padding:4px; margin:16px 0 10px; }
+  .tab{ flex:1; text-align:center; font-size:12px; font-weight:700; padding:8px 0; border-radius:10px; color:#6b7280; }
+  .tab.on{ background:#22c55e; color:#000; }
+  .chips{ display:flex; gap:6px; margin-bottom:10px; }
+  .chip{ font-size:11px; font-weight:600; padding:5px 11px; border-radius:14px; background:#1a1a1a; border:.5px solid #2a2a2a; color:#888; }
+  .chip.on{ background:#052e16; border-color:#22c55e; color:#22c55e; }
+  /* position row */
+  .prow{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:.5px solid #1a1a1a; }
+  .pth{ width:40px; height:40px; border-radius:10px; background:#1e3a5f; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .pnm{ font-size:13px; font-weight:600; } .psub{ font-size:10px; color:#6b7280; }
+  .pside{ margin-left:auto; text-align:right; } .pside b{ font-size:12px; font-weight:800; } .pside span{ font-size:10px; color:#6b7280; display:block; }
+
+  .tabbar{ display:flex; justify-content:space-around; padding:12px 0 16px; border-top:.5px solid #1a1a1a; background:#0d0d0d; margin-top:14px; }
+  .tb{ font-size:10px; color:#555; text-align:center; } .tb.on{ color:#22c55e; } .tb .i{ font-size:18px; display:block; }
+  .note{ max-width:300px; font-size:11px; color:#6b7280; line-height:1.7; }
+  .note b{ color:#9ca3af; } .tag{ color:#f59e0b; font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="pad">
+      <div class="title">Profile</div>
+
+      <div class="hero">
+        <div class="disc">Disconnect</div>
+        <div class="idrow">
+          <div class="av">L</div>
+          <div>
+            <div class="name">lopeselio.skr</div>
+            <div class="tierpill">🛡 GOLD TIER</div>
+            <div class="addr">7xKq…9fПA 📋</div>
+          </div>
+        </div>
+        <div class="focal">
+          <div>
+            <div class="wr">68<small>%</small></div>
+            <div class="wrlabel">Win rate · 41 calls</div>
+          </div>
+          <div class="streak">🔥 W5</div>
+          <div class="callsub">Google · lopeselio@gmail.com</div>
+        </div>
+        <div class="social">
+          <div class="scount"><b>128</b><span>Followers</span></div>
+          <div class="scount"><b>64</b><span>Following</span></div>
+          <div class="share">↗ Share</div>
+        </div>
+      </div>
+
+      <h2>Record</h2>
+      <div class="tiles">
+        <div class="tile"><div class="v" style="color:#22c55e">28</div><div class="l">Wins</div></div>
+        <div class="tile"><div class="v" style="color:#ef4444">13</div><div class="l">Losses</div></div>
+        <div class="tile"><div class="v">41</div><div class="l">Total calls</div></div>
+        <div class="tile"><div class="v" style="color:#22c55e">+$142.60</div><div class="l">Net P&amp;L</div><div class="s">USDC stake</div></div>
+        <div class="tile"><div class="v" style="color:#f59e0b">+$18.40</div><div class="l">Creator fees</div><div class="s">USDC est.</div></div>
+        <div class="tile"><div class="v" style="color:#a78bfa">1,240</div><div class="l">Terrace Points</div><div class="s tag">soon</div></div>
+      </div>
+
+      <h2>Wallet</h2>
+      <div class="wallet">
+        <div class="wline"><span class="wnet">◎ Mainnet</span><span><span class="wval">2.41 SOL</span> &nbsp; <span class="wval" style="color:#22c55e">$318.20</span></span></div>
+        <div class="wline"><span class="wnet muted">Devnet</span><span><span class="wval wmuted">5.00 SOL</span> &nbsp; <span class="wval wmuted">$1,000.00</span></span></div>
+        <div class="faucet">＋ Top up devnet SOL · USDC (faucet)</div>
+      </div>
+
+      <div class="tabs">
+        <span class="tab on">Active</span><span class="tab">History</span><span class="tab">Created</span><span class="tab">Leagues</span>
+      </div>
+      <div class="chips"><span class="chip on">All</span><span class="chip">Bets</span><span class="chip">Parlays</span><span class="chip">Matchups</span></div>
+      <div class="prow">
+        <div class="pth">⚽</div>
+        <div><div class="pnm">Arsenal to win vs Chelsea</div><div class="psub">Premier League · closes 4h</div></div>
+        <div class="pside"><b style="color:#22c55e">YES</b><span>$5 · 61¢</span></div>
+      </div>
+      <div class="prow">
+        <div class="pth" style="background:#2d1b69">🏆</div>
+        <div><div class="pnm">3-leg parlay · 8.4×</div><div class="psub">2 open · 1 won</div></div>
+        <div class="pside"><b style="color:#a78bfa">PARLAY</b><span>$10 stake</span></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tb"><span class="i">🏠</span>Home</div>
+      <div class="tb"><span class="i">📋</span>Markets</div>
+      <div class="tb"><span class="i">＋</span>Create</div>
+      <div class="tb"><span class="i">👥</span>Social</div>
+      <div class="tb on"><span class="i">🏆</span>Profile</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:10px">Revamp notes</div>
+    <b>Hero</b> tints by badge tier (green=gold/silver ladder) — avatar, name/.skr, tier pill, copyable address, and a <b>big win-rate focal</b> with streak flame. Auth (Google/email) moves inline; Disconnect becomes a quiet pill.<br/><br/>
+    <b>Record strip</b> replaces the two dense stat rows with 6 uniform tiles: Wins · Losses · Total · Net&nbsp;P&amp;L · Creator fees · Terrace Points.<br/><br/>
+    <b>Wallet</b> collapses the SOL/USDC × net grid into two tidy lines — Mainnet prominent, Devnet muted, with a faucet top-up affordance.<br/><br/>
+    <span class="tag">Needs backend before wiring:</span> Followers/Following (off-chain follow graph) and Terrace Points (TP ledger) — shown here as the target state (TODO #3 / #12). Everything else maps to data already in <b>useReputation / useBets / useParlay / useMatchup / useWalletBalances</b>.
+  </div>
+</body>
+</html>

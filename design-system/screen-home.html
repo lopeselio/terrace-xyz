@@ -1,0 +1,92 @@
+<!-- @dsCard group="Screens" name="Home" subtitle="Hero + gradient feature carousel + Flash row + Trending w/ List·Swipe toggle" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Home</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#141414; padding:24px; display:flex; justify-content:center; }
+  .phone{ width:360px; background:#0a0a0a; border-radius:36px; overflow:hidden; border:1px solid #222; color:#f9fafb; }
+  .pad{ padding:16px 18px 0; }
+  .nav{ display:flex; align-items:center; justify-content:space-between; }
+  .logo{ display:flex; align-items:center; gap:8px; }
+  .mark{ width:32px; height:32px; background:#111; border:1px solid #333; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; position:relative; }
+  .mark:after{ content:""; position:absolute; right:4px; bottom:4px; width:7px; height:7px; background:#22c55e; border-radius:50%; }
+  .logo b{ font-size:17px; font-weight:600; letter-spacing:-.3px; }
+  .bell{ width:32px; height:32px; border-radius:50%; background:#1a1a1a; display:flex; align-items:center; justify-content:center; }
+  .hero{ font-size:22px; font-weight:600; letter-spacing:-.3px; margin:12px 0 12px; }
+  .feat{ display:flex; gap:10px; overflow:hidden; }
+  .fc{ min-width:148px; height:110px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:flex-end; position:relative; }
+  .fc .e{ position:absolute; top:10px; right:10px; font-size:24px; }
+  .fc .t{ font-size:14px; font-weight:600; } .fc .s{ font-size:10px; color:rgba(255,255,255,.65); }
+  .g1{ background:linear-gradient(135deg,#064e3b,#16a34a); }
+  .g2{ background:linear-gradient(135deg,#1e3a5f,#3b82f6); }
+  .g3{ background:linear-gradient(135deg,#2d1b69,#7c3aed); }
+  .dots{ display:flex; gap:5px; justify-content:center; padding:14px 0; }
+  .dot{ width:5px; height:5px; border-radius:3px; background:#333; } .dot.on{ width:14px; background:#22c55e; }
+  .sheet{ background:#111; border-radius:20px 20px 0 0; padding:16px 18px 20px; }
+  .sh{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .sh b{ font-size:18px; font-weight:600; }
+  .tabs{ display:flex; gap:6px; }
+  .tab{ font-size:11px; font-weight:500; padding:5px 12px; border-radius:20px; background:#1e1e1e; color:#aaa; }
+  .tab.on{ background:#22c55e; color:#000; }
+  .chips{ display:flex; gap:6px; margin-bottom:10px; }
+  .chip{ font-size:12px; font-weight:600; padding:6px 13px; border-radius:16px; background:#1a1a1a; border:1px solid #2a2a2a; color:#888; }
+  .chip.on{ background:#0f172a; border-color:#6366f1; color:#818cf8; }
+  .toggle{ display:inline-flex; background:#1a1a1a; border:.5px solid #2a2a2a; border-radius:12px; padding:3px; margin-bottom:12px; }
+  .toggle span{ font-size:12px; font-weight:700; padding:6px 14px; border-radius:9px; color:#888; }
+  .toggle span.on{ background:#22c55e; color:#000; }
+  .mrow{ display:flex; gap:12px; align-items:center; padding:11px 0; border-bottom:.5px solid #1e1e1e; }
+  .thumb{ width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .nm{ font-size:13px; font-weight:600; } .lg{ font-size:10px; color:#888; }
+  .tags{ display:flex; gap:5px; margin-top:5px; }
+  .tag{ font-size:9px; font-weight:600; padding:2px 7px; border-radius:8px; }
+  .tabbar{ display:flex; justify-content:space-around; padding:12px 0 16px; border-top:.5px solid #1a1a1a; background:#0d0d0d; }
+  .tb{ font-size:10px; color:#555; text-align:center; } .tb.on{ color:#22c55e; } .tb .i{ font-size:18px; display:block; }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="pad">
+      <div class="nav">
+        <div class="logo"><div class="mark">T</div><b>Terrace</b></div>
+        <div class="bell">🔔</div>
+      </div>
+      <div class="hero">Back your take.</div>
+      <div class="feat">
+        <div class="fc g1"><span class="e">⚽</span><div class="t">Matchups</div><div class="s">Settle group chat bets</div></div>
+        <div class="fc g2"><span class="e">🏆</span><div class="t">Parlays</div><div class="s">Chain your convictions</div></div>
+        <div class="fc g3"><span class="e">⚡</span><div class="t">Flash markets</div><div class="s">In-match, high urgency</div></div>
+      </div>
+      <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    </div>
+    <div class="sheet">
+      <div class="sh"><b>Trending</b><div class="tabs"><span class="tab on">Markets</span><span class="tab">Leagues</span></div></div>
+      <div class="chips"><span class="chip on">All markets</span><span class="chip">Terrace</span><span class="chip">Polymarket</span></div>
+      <div class="toggle"><span>☰ List</span><span class="on">🎴 Swipe</span></div>
+      <div class="mrow">
+        <div class="thumb" style="background:#064e3b">⚽</div>
+        <div style="flex:1"><div class="nm">Arsenal to win vs Chelsea</div><div class="lg">Premier League · Match result</div>
+          <div class="tags"><span class="tag" style="background:#1e1e1e;color:#aaa">YES 61¢</span><span class="tag" style="background:#1a2e1a;color:#4ade80">Vol $1.2K</span><span class="tag" style="background:#7f1d1d;color:#f87171">● Open</span></div></div>
+        <span style="color:#444">›</span>
+      </div>
+      <div class="mrow">
+        <div class="thumb" style="background:#1e3a5f">🔴</div>
+        <div style="flex:1"><div class="nm">Over 2.5 goals — Madrid derby</div><div class="lg">La Liga · Total goals</div>
+          <div class="tags"><span class="tag" style="background:#1e1e1e;color:#aaa">YES 44¢</span><span class="tag" style="background:#1a2e1a;color:#4ade80">Vol $860</span><span class="tag" style="background:#2d1b69;color:#a78bfa">⚡ Flash</span></div></div>
+        <span style="color:#444">›</span>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tb on"><span class="i">🏠</span>Home</div>
+      <div class="tb"><span class="i">📋</span>Markets</div>
+      <div class="tb"><span class="i">＋</span>Create</div>
+      <div class="tb"><span class="i">👥</span>Social</div>
+      <div class="tb"><span class="i">🏆</span>Profile</div>
+    </div>
+  </div>
+</body>
+</html>

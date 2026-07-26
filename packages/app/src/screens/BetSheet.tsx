@@ -17,6 +17,8 @@ interface Props {
   outcomeLabel: string;
   marketQuestion?: string;
   source?: "native" | "jupiter";
+  /** Which side the user is backing — true = YES, false = NO. Defaults to YES. */
+  isYes?: boolean;
   /** YES price in cents (0–100) */
   yesPrice: number | null;
   onConfirm: (amountUsdc: number, isYes: boolean) => void;
@@ -30,6 +32,7 @@ export function BetSheet({
   outcomeLabel,
   marketQuestion,
   source = "native",
+  isYes = true,
   yesPrice,
   onConfirm,
   onDismiss,
@@ -57,7 +60,6 @@ export function BetSheet({
   };
 
   if (status === "success") {
-    const isYes = outcomeLabel.toUpperCase().includes("YES");
     const titles = isYes
       ? ["You're backing it! 🔥", "Call locked in! 🎯", "Conviction placed! ⚡"]
       : ["Bold call! 🧊", "Fading it! 🎯", "Contrarian play! 💡"];
@@ -184,10 +186,10 @@ export function BetSheet({
       ) : (
         <TouchableOpacity
           style={[styles.confirmBtn, amountNum < minStake && styles.confirmBtnDisabled]}
-          onPress={() => onConfirm(amountNum, true)}
+          onPress={() => onConfirm(amountNum, isYes)}
           disabled={amountNum < minStake}
         >
-          <Text style={styles.confirmBtnText}>Back {outcomeLabel} · ${amount} USDC</Text>
+          <Text style={styles.confirmBtnText}>{isYes ? "Back" : "Fade"} {outcomeLabel} · ${amount} USDC</Text>
         </TouchableOpacity>
       )}
 

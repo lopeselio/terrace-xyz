@@ -49,7 +49,7 @@ interface TeamBadgeProps {
   size?: number;
 }
 
-function TeamBadge({ name, size = 28 }: TeamBadgeProps) {
+export function TeamBadge({ name, size = 28 }: TeamBadgeProps) {
   const team = lookupTeam(name);
   // Only consult TheSportsDB when we have no static crest — otherwise the loose
   // search occasionally returned Arsenal (or a stale cached result) and beat

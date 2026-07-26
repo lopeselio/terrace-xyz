@@ -29,6 +29,7 @@ import { ArciumBadge } from "../components/ArciumBadge";
 import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
 import { JerseyAvatar } from "../components/JerseyAvatar";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -73,71 +74,29 @@ function streakColor(streak: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Stat cell
+// Hero tint — the profile hero gradient/accent shifts by badge tier
 // ---------------------------------------------------------------------------
 
-function StatCell({
-  label,
-  value,
-  valueColor,
-  sub,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-  sub?: string;
-}) {
-  return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
-      {sub && <Text style={styles.statSub}>{sub}</Text>}
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+interface HeroTint { grad: readonly [string, string]; border: string; accent: string; pillBg: string; }
+
+function heroTintFor(tier: BadgeTier): HeroTint {
+  switch (tier) {
+    case "Legend": return { grad: ["#2a1605", "#111"], border: "#78350f", accent: "#f59e0b", pillBg: "#1a1206" };
+    case "Sharp":  return { grad: ["#0b1f3a", "#111"], border: "#1e3a5f", accent: "#60a5fa", pillBg: "#0b1a2e" };
+    default:       return { grad: ["#141414", "#111"], border: "#262626", accent: "#9ca3af", pillBg: "#161616" };
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Reputation bar — the core differentiator from Kickr
+// Record-strip stat tile
 // ---------------------------------------------------------------------------
 
-interface RepBarProps {
-  winRate: number;      // 0–1
-  streak: number;       // positive = win streak, negative = loss streak
-  totalCalls: number;
-  badgeTier?: BadgeTier; // on-chain value; falls back to local computation
-}
-
-function RepBar({ winRate, streak, totalCalls, badgeTier }: RepBarProps) {
-  const tier = badgeTier ?? getBadgeTier(winRate);
-  const badge = BADGE_META[tier];
-
+function StatTile({ value, label, sub, color }: { value: string; label: string; sub?: string; color?: string }) {
   return (
-    <View style={styles.repSection}>
-      <Text style={styles.sectionLabel}>REPUTATION</Text>
-
-      <View style={styles.repRow}>
-        {/* Win rate */}
-        <View style={[styles.repCell, styles.repCellBorder]}>
-          <Text style={styles.repValueLarge}>{Math.round(winRate * 100)}%</Text>
-          <Text style={styles.repCellLabel}>Win rate</Text>
-          <Text style={styles.repCellSub}>{totalCalls} calls</Text>
-        </View>
-
-        {/* Streak */}
-        <View style={[styles.repCell, styles.repCellBorder]}>
-          <Text style={[styles.repValueLarge, { color: streakColor(streak) }]}>
-            {streakLabel(streak)}
-          </Text>
-          <Text style={styles.repCellLabel}>Streak</Text>
-        </View>
-
-        {/* Badge tier */}
-        <View style={[styles.repCell, { backgroundColor: badge.bg, borderRadius: 12 }]}>
-          <Text style={styles.repBadgeIcon}>{badge.icon}</Text>
-          <Text style={[styles.repBadgeTier, { color: badge.color }]}>{tier}</Text>
-          <Text style={styles.repCellLabel}>Badge</Text>
-        </View>
-      </View>
+    <View style={styles.tile}>
+      <Text style={[styles.tileValue, color ? { color } : null]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={styles.tileLabel}>{label}</Text>
+      {sub ? <Text style={styles.tileSub}>{sub}</Text> : null}
     </View>
   );
 }
@@ -1261,6 +1220,13 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   const totalCalls  = reputation?.totalBets ?? 0;
   const badgeTier   = reputation?.badgeTier;
 
+  // Hero derived values — tier drives the gradient/accent; local streak wins
+  // over the on-chain one when we have a fresher locally-computed value.
+  const effStreak    = localStreak !== 0 ? localStreak : streak;
+  const effectiveTier = badgeTier ?? getBadgeTier(combinedWinRate);
+  const tierMeta     = BADGE_META[effectiveTier];
+  const heroTint     = heroTintFor(effectiveTier);
+
   if (!walletPubkey) {
     // Logged in via Privy but embedded wallet still initialising — show spinner
     // unless it has been more than 5 s (timed out → fall through to connect UI).
@@ -1322,112 +1288,117 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
         <Text style={styles.screenTitle}>Profile</Text>
       </View>
 
-      {/* ── Identity ────────────────────────────── */}
-      <View style={styles.identityRow}>
-        <JerseyAvatar pubkey={walletPubkey} size={56} />
-        <View style={styles.identityMeta}>
-          <Text style={styles.username} numberOfLines={1}>
-            {snsName ?? `@${walletPubkey.slice(0, 5)}....${walletPubkey.slice(-5)}`}
-          </Text>
-          <TouchableOpacity style={styles.addressRow} onPress={handleCopyAddress} activeOpacity={0.7}>
-            <Text style={styles.address}>{shortKey}</Text>
-            <Text style={styles.copyIcon}>  📋</Text>
-          </TouchableOpacity>
-          {authLabel ? (
-            <Text style={styles.authLabel} numberOfLines={1}>{authLabel}</Text>
-          ) : (
-            <View style={styles.connectedBadge}>
-              <View style={styles.connectedDot} />
-              <Text style={styles.connectedText}>Connected</Text>
-            </View>
-          )}
-        </View>
+      {/* ── Hero (tier-tinted) ──────────────────── */}
+      <LinearGradient
+        colors={heroTint.grad}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { borderColor: heroTint.border }]}
+      >
         {onDisconnect && (
-          <TouchableOpacity style={styles.disconnectBtn} onPress={onDisconnect}>
-            <Text style={styles.disconnectBtnText}>Disconnect</Text>
+          <TouchableOpacity style={styles.discPill} onPress={onDisconnect} activeOpacity={0.7}>
+            <Text style={styles.discPillText}>Disconnect</Text>
           </TouchableOpacity>
         )}
-      </View>
 
-      {/* ── Balances ────────────────────────────── */}
-      <View style={styles.balanceCard}>
-        {/* Header row */}
-        <View style={styles.balanceHeaderRow}>
-          <View style={{ flex: 1 }} />
-          <View style={styles.balanceColHeader}>
-            <Image source={{ uri: "https://cryptologos.cc/logos/solana-sol-logo.png" }} style={styles.coinLogo} />
-            <Text style={styles.balanceColLabel}>SOL</Text>
+        <View style={styles.idRow}>
+          <JerseyAvatar pubkey={walletPubkey} size={56} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.heroName} numberOfLines={1}>
+              {snsName ?? `@${walletPubkey.slice(0, 5)}…${walletPubkey.slice(-5)}`}
+            </Text>
+            <View style={[styles.tierPill, { backgroundColor: heroTint.pillBg, borderColor: heroTint.accent + "55" }]}>
+              <Text style={styles.tierPillIcon}>{tierMeta.icon}</Text>
+              <Text style={[styles.tierPillText, { color: heroTint.accent }]}>{effectiveTier.toUpperCase()} TIER</Text>
+            </View>
+            <TouchableOpacity style={styles.addrRow} onPress={handleCopyAddress} activeOpacity={0.7}>
+              <Text style={styles.addrText}>{shortKey}</Text>
+              <Text style={styles.copyIcon}> 📋</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.balanceDivider} />
-          <View style={styles.balanceColHeader}>
-            <Image source={{ uri: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png" }} style={styles.coinLogo} />
-            <Text style={styles.balanceColLabel}>USDC</Text>
-          </View>
         </View>
-        {/* Mainnet row */}
-        <View style={styles.balanceNetRow}>
-          <Text style={styles.balanceNetLabel}>Mainnet</Text>
-          <Text style={styles.balanceNetValue}>
-            {mainnetSol !== null ? mainnetSol.toFixed(4) : "—"}
-          </Text>
-          <View style={styles.balanceDivider} />
-          <Text style={styles.balanceNetValue}>
-            {mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : "—"}
-          </Text>
-        </View>
-        {/* Devnet row */}
-        <View style={[styles.balanceNetRow, { borderTopWidth: 0.5, borderTopColor: "#1a1a1a" }]}>
-          <Text style={styles.balanceNetLabel}>Devnet</Text>
-          <Text style={styles.balanceNetValue}>
-            {devnetSol !== null ? devnetSol.toFixed(4) : "—"}
-          </Text>
-          <View style={styles.balanceDivider} />
-          <Text style={styles.balanceNetValue}>
-            {devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "—"}
-          </Text>
-        </View>
-      </View>
 
-      {/* ── Reputation bar ──────────────────────── */}
-      {(repLoading || betsLoading) ? (
-        <View style={styles.repLoadingBox}>
-          <ActivityIndicator color="#22c55e" />
+        {/* Win-rate focal */}
+        {(repLoading || betsLoading) ? (
+          <View style={styles.heroLoading}><ActivityIndicator color="#22c55e" /></View>
+        ) : (
+          <View style={styles.focalRow}>
+            <View>
+              <Text style={styles.focalWr}>
+                {totalSettled > 0 ? Math.round(combinedWinRate * 100) : "—"}
+                {totalSettled > 0 ? <Text style={styles.focalPct}>%</Text> : null}
+              </Text>
+              <Text style={styles.focalLabel}>WIN RATE · {totalSettled} CALLS</Text>
+            </View>
+            {effStreak !== 0 && (
+              <View style={styles.streakChip}>
+                <Text style={[styles.streakChipText, { color: streakColor(effStreak) }]}>
+                  {streakLabel(effStreak)}
+                </Text>
+              </View>
+            )}
+            {authLabel ? <Text style={styles.authInline} numberOfLines={1}>{authLabel}</Text> : null}
+          </View>
+        )}
+
+        {/* Social row — placeholders until the off-chain follow graph lands */}
+        <View style={styles.socialRow}>
+          <View style={styles.socialCount}>
+            <Text style={styles.socialNum}>—</Text>
+            <Text style={styles.socialLbl}>Followers</Text>
+          </View>
+          <View style={styles.socialCount}>
+            <Text style={styles.socialNum}>—</Text>
+            <Text style={styles.socialLbl}>Following</Text>
+          </View>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleCopyAddress} activeOpacity={0.85}>
+            <Text style={styles.shareBtnText}>↗ Share</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <RepBar
-          winRate={combinedWinRate}
-          streak={localStreak !== 0 ? localStreak : streak}
-          totalCalls={totalSettled}
-          badgeTier={badgeTier}
+      </LinearGradient>
+
+      {/* ── Record strip ────────────────────────── */}
+      <Text style={styles.stripLabel}>RECORD</Text>
+      <View style={styles.tileGrid}>
+        <StatTile value={String(totalWins)} label="Wins" color="#22c55e" />
+        <StatTile value={String(totalLosses)} label="Losses" color={totalLosses > 0 ? "#ef4444" : undefined} />
+        <StatTile value={String(bets.length + parlays.length)} label="Total calls" />
+        <StatTile
+          value={`${netPL >= 0 ? "+" : ""}$${netPL.toFixed(2)}`}
+          label="Net P&L"
+          sub="USDC stake"
+          color={netPL >= 0 ? "#22c55e" : "#ef4444"}
         />
-      )}
+        <StatTile
+          value={creatorRevenue > 0 ? `+$${creatorRevenue.toFixed(2)}` : "$0.00"}
+          label="Creator fees"
+          sub="USDC est."
+          color="#f59e0b"
+        />
+        <StatTile value="—" label="Terrace Points" sub="soon" color="#a78bfa" />
+      </View>
 
-      {/* ── Performance stats ───────────────────── */}
-      <View style={styles.perfSection}>
-        <Text style={styles.sectionLabel}>PERFORMANCE</Text>
-        <View style={styles.perfRow}>
-          <StatCell label="Wins" value={String(totalWins)} />
-          <StatCell label="Losses" value={String(totalLosses)} valueColor={totalLosses > 0 ? "#ef4444" : undefined} />
-          <StatCell label="Total" value={String(bets.length + parlays.length)} />
-          <StatCell
-            label="Win rate"
-            value={totalSettled > 0 ? `${Math.round(combinedWinRate * 100)}%` : "—"}
-            valueColor="#22c55e"
-          />
+      {/* ── Wallet ──────────────────────────────── */}
+      <Text style={styles.stripLabel}>WALLET</Text>
+      <View style={styles.walletCard}>
+        <View style={styles.walletLine}>
+          <View style={styles.walletNetWrap}>
+            <Image source={{ uri: "https://cryptologos.cc/logos/solana-sol-logo.png" }} style={styles.coinLogo} />
+            <Text style={styles.walletNet}>Mainnet</Text>
+          </View>
+          <View style={styles.walletVals}>
+            <Text style={styles.walletSol}>{mainnetSol !== null ? `${mainnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
+            <Text style={styles.walletUsdc}>{mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : "—"}</Text>
+          </View>
         </View>
-        <View style={[styles.perfRow, { marginTop: 8 }]}>
-          <StatCell
-            label="Creator fees"
-            value={creatorRevenue > 0 ? `+$${creatorRevenue.toFixed(2)}` : "$0.00"}
-            valueColor="#f59e0b"
-            sub="USDC (est.)"
-          />
-          <StatCell
-            label="Net P&L"
-            value={`${netPL >= 0 ? "+" : ""}$${netPL.toFixed(2)}`}
-            valueColor={netPL >= 0 ? "#22c55e" : "#ef4444"}
-            sub="USDC (stake)"
-          />
+        <View style={[styles.walletLine, styles.walletLineBorder]}>
+          <View style={styles.walletNetWrap}>
+            <Text style={[styles.walletNet, styles.walletNetMuted]}>Devnet</Text>
+          </View>
+          <View style={styles.walletVals}>
+            <Text style={styles.walletMuted}>{devnetSol !== null ? `${devnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
+            <Text style={styles.walletMuted}>{devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "—"}</Text>
+          </View>
         </View>
       </View>
 
@@ -1621,6 +1592,50 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 17, fontWeight: "700", color: "#f9fafb" },
   statSub:   { fontSize: 9, color: "#4b5563" },
   statLabel: { fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.4 },
+
+  // ── Revamp: hero, record strip, wallet ──
+  hero: { marginHorizontal: 18, marginBottom: 4, borderRadius: 20, borderWidth: 0.5, padding: 16 },
+  discPill: { position: "absolute", top: 14, right: 14, backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#2a2a2a", borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5, zIndex: 5 },
+  discPillText: { fontSize: 11, color: "#9ca3af", fontWeight: "600" },
+  idRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  heroName: { fontSize: 17, fontWeight: "700", color: "#f9fafb" },
+  tierPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5, borderWidth: 0.5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  tierPillIcon: { fontSize: 10 },
+  tierPillText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  addrRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
+  addrText: { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
+  heroLoading: { height: 74, alignItems: "flex-start", justifyContent: "center" },
+  focalRow: { flexDirection: "row", alignItems: "flex-end", gap: 16, marginTop: 16 },
+  focalWr: { fontSize: 44, fontWeight: "900", letterSpacing: -1.5, color: "#f9fafb", lineHeight: 46 },
+  focalPct: { fontSize: 16, fontWeight: "800", color: "#4ade80" },
+  focalLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, color: "#6b7280", marginTop: 6 },
+  streakChip: { backgroundColor: "#1a1206", borderWidth: 0.5, borderColor: "#78350f", borderRadius: 12, paddingHorizontal: 11, paddingVertical: 6, marginBottom: 4 },
+  streakChipText: { fontSize: 13, fontWeight: "800" },
+  authInline: { flex: 1, textAlign: "right", fontSize: 11, color: "#6b7280", marginBottom: 6 },
+  socialRow: { flexDirection: "row", gap: 8, marginTop: 14 },
+  socialCount: { flex: 1, backgroundColor: "#0d0d0d", borderWidth: 0.5, borderColor: "#1f1f1f", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
+  socialNum: { fontSize: 15, fontWeight: "800", color: "#f9fafb" },
+  socialLbl: { fontSize: 10, color: "#6b7280", marginTop: 1 },
+  shareBtn: { backgroundColor: "#22c55e", borderRadius: 12, paddingHorizontal: 16, justifyContent: "center" },
+  shareBtnText: { fontSize: 12, fontWeight: "800", color: "#000" },
+
+  stripLabel: { fontSize: 10, fontWeight: "700", color: "#6b7280", letterSpacing: 1, textTransform: "uppercase", marginHorizontal: 22, marginTop: 18, marginBottom: 8 },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 18 },
+  tile: { width: "31.6%", backgroundColor: "#111", borderWidth: 0.5, borderColor: "#1e1e1e", borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
+  tileValue: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, color: "#f9fafb" },
+  tileLabel: { fontSize: 10, color: "#6b7280", marginTop: 2 },
+  tileSub: { fontSize: 9, color: "#4b5563", marginTop: 1 },
+
+  walletCard: { backgroundColor: "#111", borderWidth: 0.5, borderColor: "#1e1e1e", borderRadius: 16, marginHorizontal: 18, paddingHorizontal: 14 },
+  walletLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 11 },
+  walletLineBorder: { borderTopWidth: 0.5, borderTopColor: "#1a1a1a" },
+  walletNetWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  walletNet: { fontSize: 12, color: "#9ca3af", fontWeight: "600" },
+  walletNetMuted: { color: "#4b5563" },
+  walletVals: { flexDirection: "row", alignItems: "center", gap: 12 },
+  walletSol: { fontSize: 13, fontWeight: "700", color: "#f9fafb", fontVariant: ["tabular-nums"] },
+  walletUsdc: { fontSize: 13, fontWeight: "700", color: "#22c55e", fontVariant: ["tabular-nums"] },
+  walletMuted: { fontSize: 13, fontWeight: "600", color: "#6b7280", fontVariant: ["tabular-nums"] },
 
   // Tabs
   tabSection: { marginHorizontal: 18 },
