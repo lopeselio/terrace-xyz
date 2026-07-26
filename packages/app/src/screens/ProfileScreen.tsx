@@ -30,7 +30,9 @@ import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
 import { JerseyAvatar } from "../components/JerseyAvatar";
 import { LinearGradient } from "expo-linear-gradient";
-import { font as TF } from "../theme/tokens";
+import { font as TF, color as TC } from "../theme/tokens";
+import { Icon as TIcon } from "../components/Icon";
+import { WalletSheet } from "../components/WalletSheet";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -1114,6 +1116,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   };
   const { mainnetSol, devnetSol, mainnetUsdc, devnetUsdc, refresh: refreshBalances } = useWalletBalances(walletPubkey);
   const [refreshing, setRefreshing] = useState(false);
+  const [walletSheetOpen, setWalletSheetOpen] = useState(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -1381,27 +1384,21 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
 
       {/* ── Wallet ──────────────────────────────── */}
       <Text style={styles.stripLabel}>WALLET</Text>
-      <View style={styles.walletCard}>
-        <View style={styles.walletLine}>
-          <View style={styles.walletNetWrap}>
-            <Image source={{ uri: "https://cryptologos.cc/logos/solana-sol-logo.png" }} style={styles.coinLogo} />
-            <Text style={styles.walletNet}>Mainnet</Text>
+      <TouchableOpacity style={styles.walletCard} onPress={() => setWalletSheetOpen(true)} activeOpacity={0.8}>
+        <View style={[styles.walletLine, { paddingVertical: 14 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.walletAvailLabel}>Available balance</Text>
+            <Text style={styles.walletAvail}>
+              {mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "$0.00"}
+            </Text>
           </View>
-          <View style={styles.walletVals}>
-            <Text style={styles.walletSol}>{mainnetSol !== null ? `${mainnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
-            <Text style={styles.walletUsdc}>{mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : "—"}</Text>
-          </View>
-        </View>
-        <View style={[styles.walletLine, styles.walletLineBorder]}>
-          <View style={styles.walletNetWrap}>
-            <Text style={[styles.walletNet, styles.walletNetMuted]}>Devnet</Text>
-          </View>
-          <View style={styles.walletVals}>
-            <Text style={styles.walletMuted}>{devnetSol !== null ? `${devnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
-            <Text style={styles.walletMuted}>{devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "—"}</Text>
+          <View style={styles.walletChevRow}>
+            <TIcon name="wallet" size={16} color={TC.ink2} />
+            <Text style={styles.walletChevLabel}>Wallet & payouts</Text>
+            <TIcon name="chevronRight" size={16} color={TC.ink3} />
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* ── Active / History / Created tabs ─────── */}
       <View style={styles.tabSection}>
@@ -1503,6 +1500,18 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
       <View style={styles.claimOverlay}>
         <TouchableOpacity style={styles.claimBackdrop} activeOpacity={1} onPress={() => setClaimSuccess(null)} />
         <Confetti trigger={claimSuccess} />
+
+        <WalletSheet
+          visible={walletSheetOpen}
+          onClose={() => setWalletSheetOpen(false)}
+          address={walletPubkey}
+          availableUsdc={mainnetUsdc}
+          inOpenBetsUsdc={0}
+          creatorFeesUsdc={creatorRevenue}
+          mainnetSol={mainnetSol}
+          devnetSol={devnetSol}
+          devnetUsdc={devnetUsdc}
+        />
         <View style={styles.claimCard}>
           <Text style={styles.claimEmoji}>{claimSuccess.emoji}</Text>
           <Text style={styles.claimTitle}>{claimSuccess.title}</Text>
@@ -1628,6 +1637,10 @@ const styles = StyleSheet.create({
   tileSub: { fontSize: 9, color: "#4b5563", marginTop: 1 },
 
   walletCard: { backgroundColor: "#111", borderWidth: 0.5, borderColor: "#1e1e1e", borderRadius: 16, marginHorizontal: 18, paddingHorizontal: 14 },
+  walletAvailLabel: { fontFamily: TF.sans, fontSize: 11, color: "#6b7280", fontWeight: "600" },
+  walletAvail: { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#f9fafb", marginTop: 2 },
+  walletChevRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  walletChevLabel: { fontFamily: TF.sansSemi, fontSize: 12.5, color: "#9ca3af", fontWeight: "600" },
   walletLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 11 },
   walletLineBorder: { borderTopWidth: 0.5, borderTopColor: "#1a1a1a" },
   walletNetWrap: { flexDirection: "row", alignItems: "center", gap: 6 },

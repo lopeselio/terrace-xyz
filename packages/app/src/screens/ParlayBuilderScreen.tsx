@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import type { UnifiedMarket, ParlayLeg } from "@terrace/sdk";
+import { font as TF } from "../theme/tokens";
 import { useParlay } from "../hooks/useParlay";
 import { TerraceMark } from "../components/BrandIcons";
 
@@ -492,7 +493,7 @@ const s = StyleSheet.create({
   header:      { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 14 },
   backBtn:     { marginBottom: 10 },
   backBtnText: { fontSize: 13, color: "#22c55e", fontWeight: "600" },
-  title:    { fontSize: 24, fontWeight: "700", color: "#fff" },
+  title:    { fontFamily: TF.condBold, fontSize: 24, fontWeight: "700", color: "#fff", letterSpacing: 0.3, textTransform: "uppercase" },
   subtitle: { fontSize: 13, color: "#6b7280", marginTop: 4 },
 
   banner:        { flexDirection: "row", alignItems: "center", marginHorizontal: 18, marginBottom: 12, borderRadius: 10, padding: 12 },

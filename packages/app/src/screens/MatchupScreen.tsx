@@ -11,6 +11,7 @@ import {
   Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { font as TF } from "../theme/tokens";
 import type { UnifiedMarket } from "@terrace/sdk";
 import type { Address } from "@solana/kit";
 import type { Matchup } from "@terrace/sdk";
@@ -889,7 +890,7 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: "#0a0a0a" },
   header:        { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16 },
-  headerTitle:   { fontSize: 20, fontWeight: "700", color: "#fff" },
+  headerTitle:   { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.3, textTransform: "uppercase" },
   closeBtn:      { width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   closeBtnText:  { fontSize: 12, color: "#6b7280" },
 

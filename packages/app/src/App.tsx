@@ -18,6 +18,8 @@ import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { AppSplash } from "./components/AppSplash";
 import { TabBar } from "./components/TabBar";
+import { color as TC, font as TF } from "./theme/tokens";
+import { Icon, type IconName } from "./components/Icon";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useAppFonts } from "./theme/fonts";
@@ -305,8 +307,24 @@ function ConnectSheet({
   return (
     <View style={sheet.root}>
       <View style={sheet.handle} />
-      <Text style={sheet.title}>Back your team.</Text>
-      <Text style={sheet.sub}>Bet your take. Build your rep.</Text>
+      <Text style={sheet.title}>Back your take.</Text>
+      <Text style={sheet.sub}>Football calls with your mates. Real odds, instant payouts, no bookmaker.</Text>
+
+      <View style={sheet.valueList}>
+        {([
+          ["pitch", "Every match, every market", "Premier League, UCL, La Liga"],
+          ["cards", "Swipe your matchday calls", "Back or fade in one thumb"],
+          ["users", "Copy the sharpest fans", "Follow, copy, brag"],
+        ] as [IconName, string, string][]).map(([icon, t, s]) => (
+          <View key={t} style={sheet.valueRow}>
+            <View style={sheet.valueIcon}><Icon name={icon} size={20} color={TC.green} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={sheet.valueTitle}>{t}</Text>
+              <Text style={sheet.valueSub}>{s}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
       <TouchableOpacity style={sheet.btn} onPress={onConnectMWA} disabled={connecting}>
         <Text style={sheet.btnText}>{connecting ? "Connecting…" : "Connect Solana wallet"}</Text>
@@ -346,11 +364,16 @@ function ConnectSheet({
 const sheet = StyleSheet.create({
   root:    { backgroundColor: "#111", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 40, gap: 10 },
   handle:  { width: 36, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
-  title:   { fontSize: 24, fontWeight: "700", color: "#fff", letterSpacing: -0.5 },
-  sub:     { fontSize: 15, color: "#9ca3af", marginBottom: 8 },
+  title:   { fontFamily: TF.condXBold, fontSize: 34, fontWeight: "800", color: "#fff", letterSpacing: -0.5, textTransform: "uppercase" },
+  sub:     { fontFamily: TF.sans, fontSize: 14, color: "#9ca3af", marginBottom: 8, lineHeight: 20 },
   back:    { fontSize: 13, color: "#6b7280", marginBottom: 12 },
-  btn:     { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
-  btnText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  valueList: { gap: 4, marginVertical: 6 },
+  valueRow:  { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
+  valueIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: TC.greenDeep, alignItems: "center", justifyContent: "center" },
+  valueTitle:{ fontFamily: TF.sansSemi, fontSize: 14, fontWeight: "600", color: TC.ink },
+  valueSub:  { fontFamily: TF.sans, fontSize: 11.5, color: TC.ink3, marginTop: 1 },
+  btn:     { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 4 },
+  btnText: { fontFamily: TF.sansBold, fontSize: 16, fontWeight: "700", color: "#000" },
   input:   { backgroundColor: "#1a1a1a", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: "#fff", fontSize: 15, borderWidth: 0.5, borderColor: "#333" },
   error:   { fontSize: 12, color: "#ef4444" },
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
