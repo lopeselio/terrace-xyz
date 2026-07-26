@@ -1,0 +1,131 @@
+<!-- @dsCard group="Screens" name="Social" subtitle="Live feed elevated — identity-forward cards, back/fade pills, Tail-this-call, Fans leaderboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Social</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#141414; padding:24px; display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
+  .phone{ width:360px; background:#0a0a0a; border-radius:36px; overflow:hidden; border:1px solid #222; color:#f9fafb; }
+  .pad{ padding:16px 16px 0; }
+  .head{ display:flex; align-items:center; justify-content:space-between; }
+  .title{ font-size:22px; font-weight:800; letter-spacing:-.4px; }
+  .live{ display:inline-flex; align-items:center; gap:6px; background:#052e16; border:.5px solid #14532d; border-radius:999px; padding:5px 11px; }
+  .livedot{ width:6px; height:6px; border-radius:50%; background:#22c55e; box-shadow:0 0 6px #22c55e; }
+  .livetext{ font-size:11px; font-weight:700; color:#4ade80; }
+
+  /* segmented tabs */
+  .tabs{ display:flex; gap:4px; background:#111; border-radius:14px; padding:4px; margin:14px 0 12px; }
+  .tab{ flex:1; text-align:center; font-size:12px; font-weight:700; padding:8px 0; border-radius:10px; color:#6b7280; }
+  .tab.on{ background:#22c55e; color:#000; }
+  .tab .n{ font-size:10px; opacity:.7; }
+
+  /* feed card */
+  .card{ background:#111; border:.5px solid #1e1e1e; border-radius:16px; padding:14px; margin-bottom:10px; }
+  .card.won{ border-color:#14532d; background:linear-gradient(180deg,#0a1f12,#111); }
+  .actor{ display:flex; align-items:center; gap:10px; }
+  .av{ width:42px; height:42px; border-radius:12px; background:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#fff; }
+  .aname{ font-size:13px; font-weight:700; display:flex; align-items:center; gap:5px; }
+  .atime{ font-size:10px; color:#6b7280; margin-top:1px; }
+  .follow{ margin-left:auto; font-size:11px; font-weight:700; color:#9ca3af; border:.5px solid #2a2a2a; border-radius:999px; padding:5px 12px; }
+  .follow.on{ color:#22c55e; border-color:#22c55e33; background:#052e16; }
+  /* action line */
+  .line{ margin-top:10px; font-size:14px; color:#d1d5db; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .pill{ font-size:11px; font-weight:800; border-radius:8px; padding:2px 8px; }
+  .yes{ background:#052e16; color:#4ade80; border:.5px solid #14532d; }
+  .no{ background:#3b0a0a; color:#f87171; border:.5px solid #7f1d1d; }
+  .amt{ font-weight:800; color:#f9fafb; }
+  /* question */
+  .q{ margin-top:10px; background:#0d0d0d; border:.5px solid #1a1a1a; border-radius:12px; padding:11px; }
+  .qtext{ font-size:13px; font-weight:600; color:#f9fafb; line-height:18px; }
+  .qmeta{ font-size:11px; color:#6b7280; margin-top:4px; }
+  /* tail action */
+  .tailrow{ display:flex; gap:8px; margin-top:10px; }
+  .tail{ flex:1; text-align:center; font-size:12px; font-weight:800; border-radius:12px; padding:10px; }
+  .tail.back{ background:#22c55e; color:#000; }
+  .tail.fade{ background:#1a0a0a; color:#f87171; border:.5px solid #7f1d1d; }
+  /* parlay legs */
+  .legs{ margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+  .leg{ font-size:12px; color:#4ade80; } .leg .x{ color:#22c55e; margin-right:6px; font-weight:800; }
+  .profit{ margin-left:auto; color:#22c55e; font-weight:800; }
+
+  /* fans */
+  h2{ font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#6b7280; margin:6px 4px 8px; }
+  .fan{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:.5px solid #1a1a1a; }
+  .rank{ width:20px; font-size:12px; font-weight:800; color:#6b7280; text-align:center; }
+  .fav{ width:34px; height:34px; border-radius:10px; background:#7c3aed; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#fff; }
+  .fname{ font-size:12px; font-weight:700; } .fsub{ font-size:10px; color:#6b7280; }
+  .fwr{ margin-left:auto; text-align:right; } .fwr b{ font-size:13px; font-weight:800; color:#22c55e; } .fwr span{ font-size:9px; color:#6b7280; display:block; }
+
+  .tabbar{ display:flex; justify-content:space-around; padding:12px 0 16px; border-top:.5px solid #1a1a1a; background:#0d0d0d; margin-top:14px; }
+  .tb{ font-size:10px; color:#555; text-align:center; } .tb.on{ color:#22c55e; } .tb .i{ font-size:18px; display:block; }
+  .note{ max-width:300px; font-size:11px; color:#6b7280; line-height:1.7; } .note b{ color:#9ca3af; } .tag{ color:#f59e0b; font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="pad">
+      <div class="head">
+        <div class="title">Social</div>
+        <div class="live"><span class="livedot"></span><span class="livetext">◇ Live</span></div>
+      </div>
+      <div class="tabs">
+        <span class="tab">Following <span class="n">3</span></span>
+        <span class="tab on">Discover</span>
+        <span class="tab">Fans</span>
+      </div>
+
+      <!-- bet card with Tail -->
+      <div class="card">
+        <div class="actor">
+          <div class="av">M</div>
+          <div><div class="aname">👑 messi_merchant</div><div class="atime">2m ago</div></div>
+          <div class="follow on">Following</div>
+        </div>
+        <div class="line">backed <span class="pill yes">YES</span> for <span class="amt">$25</span></div>
+        <div class="q"><div class="qtext">Arsenal to win vs Chelsea — Premier League</div><div class="qmeta">at 61¢ odds · $1.2K pool</div></div>
+        <div class="tailrow">
+          <div class="tail back">↗ Tail · back YES</div>
+          <div class="tail fade">Fade · take NO</div>
+        </div>
+      </div>
+
+      <!-- parlay won -->
+      <div class="card won">
+        <div class="actor">
+          <div class="av" style="background:#16a34a">K</div>
+          <div><div class="aname">⚡ korea_king</div><div class="atime">11m ago</div></div>
+          <div class="follow">Follow</div>
+        </div>
+        <div class="line" style="font-weight:700;color:#f9fafb">🔥 Hit a 3-leg parlay!<span class="profit">+$84.00</span></div>
+        <div class="legs">
+          <div class="leg"><span class="x">✓</span>Korea to score first</div>
+          <div class="leg"><span class="x">✓</span>Over 2.5 goals</div>
+          <div class="leg"><span class="x">✓</span>Son to assist</div>
+        </div>
+      </div>
+
+      <h2>Top Fans this week</h2>
+      <div class="fan"><span class="rank">1</span><div class="fav">M</div><div><div class="fname">👑 messi_merchant</div><div class="fsub">Terrace · 142 calls</div></div><div class="fwr"><b>71%</b><span>WIN</span></div></div>
+      <div class="fan"><span class="rank">2</span><div class="fav" style="background:#1e3a5f">K</div><div><div class="fname">⚡ korea_king</div><div class="fsub">Polymarket · 88 calls</div></div><div class="fwr"><b>64%</b><span>WIN</span></div></div>
+    </div>
+    <div class="tabbar">
+      <div class="tb"><span class="i">🏠</span>Home</div>
+      <div class="tb"><span class="i">📋</span>Markets</div>
+      <div class="tb"><span class="i">＋</span>Create</div>
+      <div class="tb on"><span class="i">👥</span>Social</div>
+      <div class="tb"><span class="i">🏆</span>Profile</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:10px">Revamp notes</div>
+    <b>Visual pass (no new backend):</b> "Feed"→"Social" title + premium Live pill; segmented pill tabs; feed cards get squared avatars, a bolder <b>back/fade</b> outcome pill matching the swipe language, tighter question box, and parlay-win cards tinted green with the profit inline. Fans list gains rank + source + win% so cards feel tradable.<br/><br/>
+    <span class="tag">Proposed new hook (optional):</span> <b>Tail this call</b> — a bet card's "↗ Tail · back YES" / "Fade · take NO" opens the same <b>BetSheet</b> the swipe deck uses, pre-committed to that side/market. This is the group-chat wedge: copy a fan's take in one tap. Wires exactly like the swipe deck (reuses <b>usePlaceBet</b>); ~the same effort. Say the word and it ships with the revamp; otherwise the cards stay read-only.<br/><br/>
+    Everything else maps to existing <b>useHeliusEvents / useFollowing / useTerraceUsers / useLeaderboard</b>.
+  </div>
+</body>
+</html>
