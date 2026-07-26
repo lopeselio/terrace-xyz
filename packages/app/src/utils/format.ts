@@ -4,12 +4,13 @@
 // ---------------------------------------------------------------------------
 
 /**
- * £ is a display relabel of the on-chain USDC amount (1:1, no FX) by default —
- * flip this to false to show "$" instead. See WIRING-NEEDS.md #1.
+ * Currency symbol. Per product decision (WIRING-NEEDS.md #1) we keep the honest
+ * on-chain unit — "$" / USDC — while adopting the sportsbook layout and copy.
+ * Set to "£" here if the currency call ever changes.
  */
-export const USE_GBP_RELABEL = true;
+export const CURRENCY_SYMBOL = "$";
 
-const SYMBOL = USE_GBP_RELABEL ? "£" : "$";
+const SYMBOL = CURRENCY_SYMBOL;
 
 /** Money with thousands separators. `money(14.2)` → "£14.20", `money(1240,0)` → "£1,240". */
 export function money(amount: number, decimals = 2): string {

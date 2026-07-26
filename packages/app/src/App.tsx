@@ -19,6 +19,7 @@ import { NotificationProvider } from "./components/NotificationProvider";
 import { AppSplash } from "./components/AppSplash";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
+import { useAppFonts } from "./theme/fonts";
 
 // Required for Privy OAuth to close the browser and complete the auth session
 // when the deep link redirects back to the app.
@@ -364,6 +365,9 @@ const sheet = StyleSheet.create({
 // App root
 // ---------------------------------------------------------------------------
 export default function App() {
+  // Preload Barlow / Barlow Condensed (non-blocking — system face until ready).
+  useAppFonts();
+
   const { publicKey, connected, connecting, connectMWA, disconnect: disconnectMWA, setPrivySigner } = useWallet();
 
   // Privy hooks

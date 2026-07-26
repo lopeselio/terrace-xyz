@@ -11,22 +11,16 @@ Legend: 🔴 decision needed · 🟠 new wiring · 🟢 reuses existing wiring (
 
 ## 🔴 Product decisions (need your call)
 
-1. **£ currency vs USDC.** The design shows `£14.22`, `Winner takes £10.00`, stakes in
-   `£`. On-chain settlement is **USDC** (and SOL for gas). Options:
-   - **(A, default)** Treat `£` as a pure display relabel of USDC, 1:1, no FX. Fast,
-     but £1 ≠ $1 in reality. Implemented now in `format.ts` behind `formatMoney()`.
-   - **(B)** Apply a live GBP/USD rate (needs an FX feed) — USDC stays the on-chain unit.
-   - **(C)** Keep `$`/USDC labels, adopt only the sportsbook layout.
-   I've defaulted to **(A)** so the UI reads as designed; flip with one flag in `format.ts`.
+1. ✅ **RESOLVED — keep $ / USDC.** Adopt the sportsbook layout + copy, but money stays the
+   honest on-chain unit ($ / USDC), not £. `format.ts` `CURRENCY_SYMBOL = "$"`.
 
 2. **Fractional odds everywhere.** Cents → fractional (`4/9`, `7/2`). Implied % kept only
    in the detail sheet. Implemented as a prob→fraction converter. Confirm you want
    fractional as the *primary* display (it changes how every price reads).
 
-3. **Font licensing / bundling.** Design mandates **Barlow + Barlow Condensed** bundled
-   (OFL, free). Need the `.ttf` files committed to `assets/fonts/`. I can fetch them from
-   Google Fonts and wire `expo-font`, or you drop them in. Until then the app falls back
-   to the system face (layout unaffected, just not the condensed look).
+3. ✅ **RESOLVED — Barlow bundled.** Barlow + Barlow Condensed `.ttf` (OFL, from Google
+   Fonts as the design uses) committed to `src/assets/fonts/`, loaded via `expo-font`
+   (`useAppFonts` in `App.tsx`). System face falls back until loaded.
 
 ---
 
