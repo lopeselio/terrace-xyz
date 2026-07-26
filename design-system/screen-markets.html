@@ -1,0 +1,93 @@
+<!-- @dsCard group="Screens" name="Markets — Swipe" subtitle="Markets tab: League chips + List·Swipe toggle, swipe deck as the default view" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Markets (Swipe)</title>
+<style>
+  :root{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{ box-sizing:border-box; margin:0; }
+  a{ color:#4ade80; text-decoration:none } a:hover{ color:#22c55e }
+  body{ background:#141414; padding:24px; display:flex; justify-content:center; }
+  .phone{ width:360px; background:#0a0a0a; border-radius:36px; overflow:hidden; border:1px solid #222; color:#f9fafb; display:flex; flex-direction:column; }
+  .pad{ padding:16px 18px 0; }
+  .nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .nav b{ font-size:22px; font-weight:600; letter-spacing:-.3px; }
+  .search{ width:32px; height:32px; border-radius:50%; background:#1a1a1a; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .tabs{ display:flex; gap:6px; margin-bottom:10px; }
+  .tab{ font-size:11px; font-weight:500; padding:5px 12px; border-radius:20px; background:#1e1e1e; color:#aaa; }
+  .tab.on{ background:#22c55e; color:#000; }
+  .chips{ display:flex; gap:6px; margin-bottom:12px; }
+  .chip{ font-size:12px; font-weight:600; padding:6px 13px; border-radius:16px; background:#1a1a1a; border:1px solid #2a2a2a; color:#888; }
+  .chip.on{ background:#0f172a; border-color:#6366f1; color:#818cf8; }
+  .toggle{ display:inline-flex; background:#1a1a1a; border:.5px solid #2a2a2a; border-radius:12px; padding:3px; margin-bottom:14px; }
+  .toggle span{ font-size:12px; font-weight:700; padding:6px 14px; border-radius:9px; color:#888; }
+  .toggle span.on{ background:#22c55e; color:#000; }
+  .stage{ position:relative; height:360px; margin:0 4px; }
+  .card{ position:absolute; inset:0; background:#111; border-radius:24px; border:.5px solid #262626; padding:18px; display:flex; flex-direction:column; box-shadow:0 12px 30px rgba(0,0,0,.55); }
+  .under{ transform:scale(.94) translateY(12px); opacity:.5; }
+  .meta{ display:flex; align-items:center; gap:6px; }
+  .src{ display:inline-flex; align-items:center; gap:4px; background:#052e16; color:#4ade80; font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px; }
+  .clock{ margin-left:auto; background:#1a1a1a; border:.5px solid #2a2a2a; color:#f59e0b; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; }
+  .hero{ flex:1; display:flex; align-items:center; justify-content:center; gap:12px; }
+  .crest{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .badge{ width:60px; height:60px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#fff; }
+  .cname{ font-size:11px; font-weight:600; color:#d1d5db; }
+  .vs{ font-size:12px; font-weight:700; color:#4b5563; }
+  .ctx{ font-size:12px; color:#6b7280; font-weight:600; }
+  .stmt{ font-size:19px; font-weight:800; letter-spacing:-.3px; margin-top:3px; }
+  .foot{ display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+  .oddschip{ display:inline-flex; align-items:center; gap:8px; background:#0d0d0d; border:.5px solid #1f1f1f; border-radius:10px; padding:6px 11px; }
+  .oy{ color:#22c55e; font-weight:800; font-size:13px; } .onq{ color:#ef4444; font-weight:800; font-size:13px; } .dv{ color:#374151; }
+  .pool{ font-size:12px; font-weight:600; color:#9ca3af; }
+  .actions{ display:flex; justify-content:center; align-items:center; gap:16px; margin-top:16px; }
+  .act{ border-radius:999px; border:1.5px solid; display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .a-no{ width:56px; height:56px; background:#1a0a0a; border-color:#ef4444; color:#ef4444; font-size:22px; }
+  .a-skip{ width:44px; height:44px; background:#141414; border-color:#374151; color:#6b7280; font-size:18px; }
+  .a-info{ width:44px; height:44px; background:#0b1a2e; border-color:#3b82f6; color:#60a5fa; font-size:18px; }
+  .a-yes{ width:56px; height:56px; background:#052e16; border-color:#22c55e; color:#22c55e; font-size:24px; }
+  .counter{ text-align:center; font-size:11px; color:#4b5563; font-weight:600; margin:12px 0 16px; }
+  .tabbar{ display:flex; justify-content:space-around; padding:12px 0 16px; border-top:.5px solid #1a1a1a; background:#0d0d0d; margin-top:auto; }
+  .tb{ font-size:10px; color:#555; text-align:center; } .tb.on{ color:#22c55e; } .tb .i{ font-size:18px; display:block; }
+</style>
+</head>
+<body>
+  <div class="phone" data-screen-label="Markets — Swipe">
+    <div class="pad">
+      <div class="nav"><b>Markets</b><div class="search">🔍</div></div>
+      <div class="tabs"><span class="tab on">Markets</span><span class="tab">Leagues</span></div>
+      <div class="chips"><span class="chip on">All markets</span><span class="chip">Terrace</span><span class="chip">Polymarket</span></div>
+      <div class="toggle"><span>☰ List</span><span class="on">🎴 Swipe</span></div>
+      <div class="stage">
+        <div class="card under"></div>
+        <div class="card">
+          <div class="meta"><span class="src">◎ Terrace</span><span class="clock">⏱ 2:14</span></div>
+          <div class="hero">
+            <div class="crest"><div class="badge" style="background:#DA291C">KOR</div><div class="cname">Korea</div></div>
+            <div class="vs">vs</div>
+            <div class="crest"><div class="badge" style="background:#BC002D">JPN</div><div class="cname">Japan</div></div>
+          </div>
+          <div class="ctx">Korea vs Japan — Next goal</div>
+          <div class="stmt">Korea to score first</div>
+          <div class="foot">
+            <div class="oddschip"><span class="oy">YES 38¢</span><span class="dv">·</span><span class="onq">NO 62¢</span></div>
+            <span class="pool">🏆 $214 pool</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="act a-no">✕</div><div class="act a-skip">↓</div><div class="act a-info">ℹ</div><div class="act a-yes">✓</div>
+      </div>
+      <div class="counter">18 live calls left · ← fade · back →</div>
+    </div>
+    <div class="tabbar">
+      <div class="tb"><span class="i">🏠</span>Home</div>
+      <div class="tb on"><span class="i">📋</span>Markets</div>
+      <div class="tb"><span class="i">＋</span>Create</div>
+      <div class="tb"><span class="i">👥</span>Social</div>
+      <div class="tb"><span class="i">🏆</span>Profile</div>
+    </div>
+  </div>
+</body>
+</html>
