@@ -17,6 +17,8 @@ import { useHeliusEvents, type LiveEvent } from "../hooks/useHeliusEvents";
 import { useFollowing } from "../hooks/useFollowing";
 import { useTerraceUsers, type TerraceFan } from "../hooks/useTerraceUsers";
 import { useMarketQuestions, type MarketMeta } from "../hooks/useMarketQuestions";
+import { usePlaceBet } from "../hooks/usePlaceBet";
+import { BetSheet } from "./BetSheet";
 
 // ---------------------------------------------------------------------------
 // Feed types
@@ -203,6 +205,8 @@ type CardShared = {
   walletPubkey?: string | null;
   marketMeta?: Record<string, MarketMeta>;
   onAvatarPress?: (pubkey: string, source: UserSource) => void;
+  /** Tail/fade a bet — opens the bet sheet pre-committed to `isYes` on this market. */
+  onTail?: (event: FeedEvent, isYes: boolean) => void;
 };
 
 // Returns human-readable question or falls back gracefully (never shows raw hash)
@@ -248,6 +252,18 @@ function BetPlacedCard({ event, ...s }: { event: FeedEvent } & CardShared) {
           <Text style={styles.priceHint}>at {Math.round(event.priceAtBet * 100)}¢ odds</Text>
         )}
       </View>
+
+      {/* Tail / fade — copy the call or take the other side */}
+      {s.onTail && event.market && s.walletPubkey && s.walletPubkey !== event.actor.pubkey && (
+        <View style={styles.tailRow}>
+          <TouchableOpacity style={[styles.tailBtn, styles.tailBack]} onPress={() => s.onTail!(event, isYes)} activeOpacity={0.85}>
+            <Text style={styles.tailBackText}>↗ Tail · back {isYes ? "YES" : "NO"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tailBtn, styles.tailFade]} onPress={() => s.onTail!(event, !isYes)} activeOpacity={0.85}>
+            <Text style={styles.tailFadeText}>Fade · take {isYes ? "NO" : "YES"}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -925,13 +941,40 @@ export function SocialScreen({ walletPubkey }: Props) {
 
   const followingCount = following.size;
   const sharpsLoading = terraceLoading || jupiterLoading;
-  const shared = { following, onToggleFollow: walletPubkey ? toggleFollow : undefined, walletPubkey, marketMeta, onAvatarPress: openProfile };
+
+  // Tail / fade — copy a fan's call (or take the other side) via the shared bet sheet.
+  const { status: betStatus, txSignature, error: betError, placeBet, reset: resetBet } = usePlaceBet();
+  const [selectedBet, setSelectedBet] = useState<{ marketId: string; label: string; isYes: boolean; yesPrice: number | null; question: string | null } | null>(null);
+
+  const handleTail = useCallback((event: FeedEvent, isYes: boolean) => {
+    if (!event.market) return;
+    const fanTookYes = event.outcome?.toLowerCase() === "yes";
+    const yesAbs = event.priceAtBet !== undefined ? (fanTookYes ? event.priceAtBet : 1 - event.priceAtBet) : null;
+    const sidePrice = yesAbs === null ? null : (isYes ? yesAbs : 1 - yesAbs);
+    resetBet();
+    setSelectedBet({
+      marketId: event.market,
+      label: isYes ? "YES" : "NO",
+      isYes,
+      yesPrice: sidePrice,
+      question: resolveMarket(event.market, marketMeta),
+    });
+  }, [marketMeta, resetBet]);
+
+  const handleConfirmBet = useCallback(async (amountUsdc: number, isYes: boolean) => {
+    if (!selectedBet) return;
+    await placeBet({ marketId: selectedBet.marketId, isYes, amountUsdc, source: "native" });
+  }, [selectedBet, placeBet]);
+
+  const handleDismissBet = useCallback(() => { resetBet(); setSelectedBet(null); }, [resetBet]);
+
+  const shared = { following, onToggleFollow: walletPubkey ? toggleFollow : undefined, walletPubkey, marketMeta, onAvatarPress: openProfile, onTail: walletPubkey ? handleTail : undefined };
 
   return (
     <View style={styles.root}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Feed</Text>
+        <Text style={styles.headerTitle}>Social</Text>
         <View style={[styles.livePill, connected ? styles.livePillOn : styles.livePillOff]}>
           <HeliusMark size={14} />
           <View style={[styles.liveDot, connected ? styles.liveDotOn : styles.liveDotOff]} />
@@ -1014,6 +1057,26 @@ export function SocialScreen({ walletPubkey }: Props) {
         walletPubkey={walletPubkey}
         onClose={() => setProfileTarget(null)}
       />
+
+      {/* Tail bet sheet — pre-committed to the tailed/faded side */}
+      {selectedBet && (
+        <View style={styles.betOverlay}>
+          <Pressable style={styles.betBackdrop} onPress={handleDismissBet} />
+          <BetSheet
+            marketId={selectedBet.marketId}
+            outcomeLabel={selectedBet.label}
+            marketQuestion={selectedBet.question ?? undefined}
+            source="native"
+            isYes={selectedBet.isYes}
+            yesPrice={selectedBet.yesPrice}
+            onConfirm={handleConfirmBet}
+            onDismiss={handleDismissBet}
+            status={betStatus}
+            txSignature={txSignature}
+            error={betError}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -1038,19 +1101,19 @@ const styles = StyleSheet.create({
   livePillTextOn: { color: "#22c55e" },
   livePillTextOff:{ color: "#6b7280" },
 
-  tabBar:        { flexDirection: "row", gap: 6, paddingHorizontal: 18, paddingVertical: 12 },
-  tab:           { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: "#1e1e1e" },
+  tabBar:        { flexDirection: "row", gap: 4, marginHorizontal: 18, marginVertical: 12, backgroundColor: "#111", borderRadius: 14, padding: 4, borderWidth: 0.5, borderColor: "#1e1e1e" },
+  tab:           { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 10 },
   tabActive:     { backgroundColor: "#22c55e" },
-  tabText:       { fontSize: 12, fontWeight: "500", color: "#888" },
-  tabTextActive: { color: "#000", fontWeight: "700" },
+  tabText:       { fontSize: 12, fontWeight: "700", color: "#6b7280" },
+  tabTextActive: { color: "#000", fontWeight: "800" },
 
   feed: { flex: 1 },
 
   sectionHeader: { fontSize: 11, fontWeight: "700", color: "#4b5563", letterSpacing: 0.6, textTransform: "uppercase", paddingHorizontal: 18, paddingTop: 12, paddingBottom: 6 },
 
   // Feed cards
-  feedCard: { backgroundColor: "#111", borderRadius: 14, marginHorizontal: 14, marginBottom: 10, padding: 14, borderWidth: 0.5, borderColor: "#1e1e1e", gap: 8 },
-  cardWon:     { borderColor: "#166534" },
+  feedCard: { backgroundColor: "#111", borderRadius: 16, marginHorizontal: 14, marginBottom: 10, padding: 14, borderWidth: 0.5, borderColor: "#1e1e1e", gap: 8 },
+  cardWon:     { borderColor: "#166534", backgroundColor: "#0c1f14" },
   cardLost:    { borderColor: "#7f1d1d" },
   cardSettled: { borderColor: "#854d0e", backgroundColor: "#111" },
 
@@ -1086,15 +1149,27 @@ const styles = StyleSheet.create({
   betAmountInline:   { fontSize: 13, fontWeight: "700", color: "#22c55e" },
 
   // Market question box (shared across cards)
-  questionBox:  { backgroundColor: "#1a1a1a", borderRadius: 10, padding: 10, gap: 4 },
-  questionText: { fontSize: 13, fontWeight: "500", color: "#e5e7eb", lineHeight: 18 },
-  priceHint:    { fontSize: 10, color: "#6b7280" },
+  questionBox:  { backgroundColor: "#0d0d0d", borderWidth: 0.5, borderColor: "#1a1a1a", borderRadius: 12, padding: 11, gap: 4 },
+  questionText: { fontSize: 13, fontWeight: "600", color: "#f9fafb", lineHeight: 18 },
+  priceHint:    { fontSize: 11, color: "#6b7280" },
 
   // Outcome pill (YES/NO)
-  outcomePill:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
-  yesPill:         { backgroundColor: "#052e16" },
-  noPill:          { backgroundColor: "#450a0a" },
-  outcomePillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
+  outcomePill:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 0.5 },
+  yesPill:         { backgroundColor: "#052e16", borderColor: "#14532d" },
+  noPill:          { backgroundColor: "#3b0a0a", borderColor: "#7f1d1d" },
+  outcomePillText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
+
+  // Tail / fade actions on bet cards
+  tailRow:      { flexDirection: "row", gap: 8, marginTop: 2 },
+  tailBtn:      { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 12 },
+  tailBack:     { backgroundColor: "#22c55e" },
+  tailBackText: { fontSize: 12, fontWeight: "800", color: "#000" },
+  tailFade:     { backgroundColor: "#1a0a0a", borderWidth: 0.5, borderColor: "#7f1d1d" },
+  tailFadeText: { fontSize: 12, fontWeight: "800", color: "#f87171" },
+
+  // Tail bet sheet overlay
+  betOverlay:  { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "flex-end" },
+  betBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
 
   parlayHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   parlayProfit:  { fontSize: 15, fontWeight: "700", color: "#4ade80" },
