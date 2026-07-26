@@ -21,6 +21,10 @@ import { usePlaceBet } from "../hooks/usePlaceBet";
 import { useMarketVaultBalance } from "../hooks/useMarketVaultBalance";
 import { ArciumBadge, ArciumPrivacyBanner, ArciumSettledBanner } from "./ArciumBadge";
 import { BetPlacedCelebrationModal } from "./BetPlacedCelebrationModal";
+import { color as C, font, radius } from "../theme/tokens";
+import { probToFractional, money, moneyWhole, COPY } from "../utils/format";
+import { Badge } from "./ui";
+import { Icon } from "./Icon";
 
 interface Props {
   market: UnifiedMarket | null;
@@ -118,27 +122,21 @@ function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: (
         onBackAnother={() => { setCelebrationOpen(false); onClose(); }}
       />
 
-      {/* Outcome toggle */}
+      {/* Back / Fade */}
       <View style={s.outcomeRow}>
-        <TouchableOpacity
-          style={[s.outcomeBtn, s.yesBg, outcome === 0 && s.outcomeSel]}
-          onPress={() => setOutcome(0)}
-        >
-          <Text style={s.outcomeLbl}>YES</Text>
-          <Text style={s.outcomePrice}>{Math.round(market.yesPrice * 100)}¢</Text>
+        <TouchableOpacity style={[s.oddBtn, s.oddYes, outcome === 0 && s.oddYesOn]} onPress={() => setOutcome(0)}>
+          <Text style={[s.oddLbl, { color: outcome === 0 ? C.green : C.greenInk }]}>BACK</Text>
+          <Text style={[s.oddVal, { color: outcome === 0 ? C.green : C.ink }]}>{probToFractional(market.yesPrice)}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.outcomeBtn, s.noBg, outcome === 1 && s.outcomeSel]}
-          onPress={() => setOutcome(1)}
-        >
-          <Text style={s.outcomeLbl}>NO</Text>
-          <Text style={s.outcomePrice}>{Math.round(market.noPrice * 100)}¢</Text>
+        <TouchableOpacity style={[s.oddBtn, s.oddNo, outcome === 1 && s.oddNoOn]} onPress={() => setOutcome(1)}>
+          <Text style={[s.oddLbl, { color: outcome === 1 ? C.red : C.redInk }]}>FADE</Text>
+          <Text style={[s.oddVal, { color: outcome === 1 ? C.red : C.ink }]}>{probToFractional(market.noPrice > 0 ? market.noPrice : 1 - market.yesPrice)}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Amount input */}
       <View style={s.amountRow}>
-        <Text style={s.currencyLabel}>USDC</Text>
+        <Text style={s.currencyLabel}>$</Text>
         <TextInput
           style={s.amountInput}
           keyboardType="decimal-pad"
@@ -158,7 +156,7 @@ function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: (
           <ActivityIndicator color="#000" />
         ) : (
           <Text style={s.confirmBtnText}>
-            Confirm bet {outcome === 0 ? "YES" : outcome === 1 ? "NO" : ""}
+            {outcome === null ? "Pick a side" : COPY.placeBet}
           </Text>
         )}
       </TouchableOpacity>
@@ -329,7 +327,7 @@ function PrivateBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: 
       </Text>
 
       <View style={s.amountRow}>
-        <Text style={s.currencyLabel}>USDC</Text>
+        <Text style={s.currencyLabel}>$</Text>
         <TextInput
           style={s.amountInput}
           keyboardType="decimal-pad"
@@ -397,33 +395,25 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
         <ScrollView style={s.sheet} bounces={false} keyboardShouldPersistTaps="handled">
           <View style={s.handle} />
 
-          {/* Header */}
+          {/* Header badges */}
           <View style={s.headerRow}>
-            {market.isPrivate && <ArciumBadge label="Private · Arcium MPC" />}
-            {market.isFlash && (
-              <View style={s.flashBadge}>
-                <Text style={s.flashBadgeText}>⚡ Flash</Text>
-              </View>
-            )}
+            <Badge tone={market.source === "jupiter" ? "poly" : "terrace"} label={market.source === "jupiter" ? "Polymarket" : "Terrace"} />
+            {market.isPrivate && <Badge tone="private" label="Arcium · Private" icon="lock" />}
+            {market.isFlash && <Badge tone="flash" label="Flash" icon="bolt" />}
+            {market.status !== "Open" && <Badge tone="settled" label={market.status === "Settled" ? "Settled" : "Closed"} />}
           </View>
 
           <Text style={s.question}>{market.question}</Text>
 
-          {/* Meta */}
+          {/* Meta — matched pool + expiry (per-side volumes stay sealed for private) */}
           <View style={s.metaRow}>
-            <Text style={s.metaChip}>
-              {market.source === "jupiter" ? "Polymarket" : "Terrace"}
-            </Text>
-            <Text style={s.metaMuted}>Expires {fmtExpiry(market.expiry)}</Text>
             {market.isPrivate ? (
-              // Pool size read from the market vault's USDC ATA. Per-side
-              // volumes stay sealed in Arcium; only total pool is visible.
-              <Text style={s.metaMutedPool}>
-                🏆 Pool {vaultBalance !== null ? `$${vaultBalance.toFixed(2)}` : "—"}
-              </Text>
+              <Text style={s.matched}>MATCHED {vaultBalance !== null ? money(vaultBalance) : "—"}</Text>
             ) : (
-              <Text style={s.metaMuted}>Vol {fmt(market.totalVolumeUsdc)} USDC</Text>
+              market.totalVolumeUsdc > 0 ? <Text style={s.matched}>MATCHED {moneyWhole(market.totalVolumeUsdc)}</Text> : <View />
             )}
+            <View style={{ flex: 1 }} />
+            <Text style={s.metaMuted}>Expires {fmtExpiry(market.expiry)}</Text>
           </View>
 
           <View style={s.divider} />
@@ -453,8 +443,8 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
 const s = StyleSheet.create({
   backdrop:     { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
   sheetWrapper: { justifyContent: "flex-end" },
-  sheet:        { backgroundColor: "#111", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 8, maxHeight: "90%" },
-  handle:       { width: 36, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  sheet:        { backgroundColor: "#131313", borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: 18, paddingTop: 8, maxHeight: "90%" },
+  handle:       { width: 38, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 14 },
 
   headerRow:     { flexDirection: "row", gap: 8, marginBottom: 10 },
   privateBadge:  { backgroundColor: "#1e3a5f", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
@@ -462,7 +452,8 @@ const s = StyleSheet.create({
   flashBadge:    { backgroundColor: "#451a03", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   flashBadgeText: { fontSize: 12, color: "#f59e0b", fontWeight: "600" },
 
-  question: { fontSize: 18, fontWeight: "700", color: "#f9fafb", lineHeight: 26, marginBottom: 12 },
+  question: { fontFamily: font.condBold, fontSize: 26, fontWeight: "700", color: C.ink, lineHeight: 30, letterSpacing: 0.3, textTransform: "uppercase", marginBottom: 12 },
+  matched: { fontFamily: font.sansSemi, fontSize: 11, fontWeight: "600", color: C.ink3, letterSpacing: 0.4 },
 
   metaRow:   { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" },
   metaChip:  { fontSize: 11, color: "#22c55e", fontWeight: "600", backgroundColor: "#14532d", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
@@ -478,6 +469,15 @@ const s = StyleSheet.create({
   outcomeLbl: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
   outcomePrice: { fontSize: 20, fontWeight: "800", color: "#f9fafb", marginTop: 2 },
   outcomePriceSealed: { fontSize: 18, color: "#c4b5fd", marginTop: 4 },
+
+  // Back / Fade fractional odd buttons (public panel)
+  oddBtn:   { flex: 1, borderRadius: radius.sm, paddingVertical: 12, alignItems: "center", gap: 3, borderWidth: 1 },
+  oddYes:   { backgroundColor: "#0c1f14", borderColor: "#17422a" },
+  oddNo:    { backgroundColor: "#1d0d0d", borderColor: "#452020" },
+  oddYesOn: { backgroundColor: C.greenDeep, borderColor: C.green },
+  oddNoOn:  { backgroundColor: C.redDeep, borderColor: C.red },
+  oddLbl:   { fontFamily: font.sansSemi, fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
+  oddVal:   { fontFamily: font.condBold, fontSize: 22, fontWeight: "700", letterSpacing: 0.3 },
 
   sealedHint: {
     fontSize: 11.5,
@@ -496,13 +496,13 @@ const s = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
 
-  amountRow:    { flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a1a", borderRadius: 12, paddingHorizontal: 14, marginBottom: 14 },
-  currencyLabel: { fontSize: 13, color: "#6b7280", fontWeight: "600", marginRight: 8 },
-  amountInput:  { flex: 1, fontSize: 20, fontWeight: "700", color: "#f9fafb", paddingVertical: 14 },
+  amountRow:    { flexDirection: "row", alignItems: "center", backgroundColor: C.deep, borderWidth: 1, borderColor: C.line, borderRadius: radius.md, paddingHorizontal: 14, marginBottom: 14 },
+  currencyLabel: { fontFamily: font.sansSemi, fontSize: 19, color: C.ink3, fontWeight: "600", marginRight: 8 },
+  amountInput:  { flex: 1, fontFamily: font.sansSemi, fontSize: 19, fontWeight: "600", color: C.ink, paddingVertical: 14 },
 
-  confirmBtn:         { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
-  confirmBtnDisabled: { opacity: 0.4 },
-  confirmBtnText:     { fontSize: 15, fontWeight: "700", color: "#000" },
+  confirmBtn:         { backgroundColor: C.green, borderRadius: radius.md, height: 52, alignItems: "center", justifyContent: "center" },
+  confirmBtnDisabled: { backgroundColor: "#1c2a20" },
+  confirmBtnText:     { fontFamily: font.sansBold, fontSize: 15, fontWeight: "700", color: C.onGreen, letterSpacing: 0.2 },
 
   // Reveal button (Arcium MPC, creator-only)
   revealBtn: {
