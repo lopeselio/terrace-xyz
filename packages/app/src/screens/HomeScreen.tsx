@@ -29,6 +29,34 @@ import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
 import { SwipeDeck } from "./SwipeDeck";
 import type { UnifiedMarket } from "@terrace/sdk";
+import { color as TC, font as TF } from "../theme/tokens";
+import { Icon, type IconName } from "../components/Icon";
+
+// ---------------------------------------------------------------------------
+// Quick-action tiles (redesign) — replace the gradient category carousel.
+// ---------------------------------------------------------------------------
+function QuickActions({ onMatchup, onParlay, onLeague }: { onMatchup?: () => void; onParlay?: () => void; onLeague?: () => void }) {
+  const tiles: { icon: IconName; label: string; onPress?: () => void }[] = [
+    { icon: "swords", label: "1v1\nmatchups", onPress: onMatchup },
+    { icon: "list", label: "Build a\nparlay", onPress: onParlay },
+    { icon: "trophy", label: "Private\nleagues", onPress: onLeague },
+  ];
+  return (
+    <View style={qa.row}>
+      {tiles.map((t) => (
+        <TouchableOpacity key={t.label} style={qa.tile} onPress={t.onPress} activeOpacity={0.8}>
+          <Icon name={t.icon} size={22} color={TC.green} />
+          <Text style={qa.label}>{t.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+const qa = StyleSheet.create({
+  row: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 6 },
+  tile: { flex: 1, backgroundColor: TC.surface, borderWidth: 1, borderColor: TC.lineSoft, borderRadius: 14, padding: 12, minHeight: 84, justifyContent: "space-between" },
+  label: { fontFamily: TF.sansBold, fontSize: 12.5, fontWeight: "700", color: TC.ink, marginTop: 8, lineHeight: 15 },
+});
 
 // ---------------------------------------------------------------------------
 // Feature cards (horizontal scroll)
@@ -918,7 +946,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             onPress={() => { setShowNotifPanel(true); refreshLeagueActivity(); }}
             activeOpacity={0.7}
           >
-            <Text>🔔</Text>
+            <Icon name="bell" size={18} color={TC.ink2} />
             {totalNotifCount > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>{totalNotifCount}</Text>
@@ -944,8 +972,8 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       {/* ── Hero ────────────────────────────────────────────── */}
       <Text style={styles.heroLabel}>Back your take.</Text>
 
-      {/* ── Feature cards ───────────────────────────────────── */}
-      <FeatureCardRow onParlayPress={onNavigateParlay} onMatchupPress={onNavigateMatchup} onLeaguePress={onNavigateLeague} />
+      {/* ── Quick actions (redesign — replaces gradient carousel) ── */}
+      <QuickActions onMatchup={onNavigateMatchup} onParlay={onNavigateParlay} onLeague={onNavigateLeague} />
 
       {/* ── Flash markets row ───────────────────────────────── */}
       <FlashMarketsRow markets={markets} onSelectMarket={onSelectMarket} />
@@ -1219,7 +1247,7 @@ const styles = StyleSheet.create({
   logoMark:  { width: 32, height: 32, backgroundColor: "#111", borderWidth: 1, borderColor: "#333", borderRadius: 8, alignItems: "center", justifyContent: "center" },
   logoLetter:{ fontSize: 14, fontWeight: "700", color: "#fff" },
   logoDot:   { width: 7, height: 7, backgroundColor: "#22c55e", borderRadius: 4, position: "absolute", bottom: 4, right: 4 },
-  logoName:  { fontSize: 17, fontWeight: "600", color: "#fff", letterSpacing: -0.3 },
+  logoName:  { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.4, textTransform: "uppercase" },
   navRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
   navIconBtn:{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   notifBadge:{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
@@ -1228,7 +1256,7 @@ const styles = StyleSheet.create({
   repBadgeText: { fontSize: 10, fontWeight: "700", color: "#000", letterSpacing: 0.3 },
 
   // Hero
-  heroLabel: { fontSize: 22, fontWeight: "600", color: "#fff", paddingHorizontal: 18, paddingBottom: 12, letterSpacing: -0.3 },
+  heroLabel: { fontFamily: TF.condXBold, fontSize: 30, fontWeight: "800", color: "#fff", paddingHorizontal: 16, paddingBottom: 12, letterSpacing: -0.5 },
 
   // Feature cards
   featureRow: { paddingHorizontal: 18, gap: 10, paddingBottom: 4 },
@@ -1245,7 +1273,7 @@ const styles = StyleSheet.create({
   // Section
   section:       { backgroundColor: "#111", borderTopLeftRadius: 20, borderTopRightRadius: 20, flex: 1 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 },
-  sectionTitle:  { fontSize: 18, fontWeight: "600", color: "#fff" },
+  sectionTitle:  { fontFamily: TF.condBold, fontSize: 18, fontWeight: "700", color: "#fff", letterSpacing: 0.6, textTransform: "uppercase" },
   tabRow: { flexDirection: "row", gap: 6 },
   tab:    { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   tabActive:   { backgroundColor: "#22c55e" },
