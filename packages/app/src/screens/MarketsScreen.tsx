@@ -1,29 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Pressable,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from "react-native";
 import type { UnifiedMarket } from "@terrace/sdk";
 import { SwipeDeck, type SwipeDeckHandle } from "./SwipeDeck";
-import { MarketListScreen } from "./MarketListScreen";
 import { BetSheet } from "./BetSheet";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 
 // ---------------------------------------------------------------------------
-// Markets tab — a Tinder-style swipe deck as the default view, with the
-// existing list kept behind a List · Swipe toggle. Source chips + section tabs
-// filter both views identically. View mode is persisted per user.
+// Markets tab — a Tinder-style swipe deck. Swipe right = back YES, left = fade
+// NO, up = detail, down = skip. Source chips filter the deck.
 // ---------------------------------------------------------------------------
 
-const VIEW_MODE_KEY = "terrace_markets_viewmode";
-
-type ViewMode = "swipe" | "list";
 type SourceFilter = "all" | "terrace" | "polymarket";
 type SectionTab = "Markets" | "Leagues";
 
@@ -49,34 +36,15 @@ interface SelectedBet {
 }
 
 export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("swipe");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [sectionTab, setSectionTab] = useState<SectionTab>("Markets");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
 
   const deckRef = useRef<SwipeDeckHandle>(null);
   const consumed = useRef(false);
-  const fade = useRef(new Animated.Value(1)).current;
 
   const { status: betStatus, txSignature, error: betError, placeBet, reset: resetBet } = usePlaceBet();
 
-  // Restore the last-used view mode (defaults to swipe for first-time users).
-  useEffect(() => {
-    AsyncStorage.getItem(VIEW_MODE_KEY)
-      .then((v) => { if (v === "list" || v === "swipe") setViewMode(v); })
-      .catch(() => {});
-  }, []);
-
-  const changeView = (v: ViewMode) => {
-    if (v === viewMode) return;
-    setViewMode(v);
-    AsyncStorage.setItem(VIEW_MODE_KEY, v).catch(() => {});
-    // Cross-fade (~150ms).
-    fade.setValue(0);
-    Animated.timing(fade, { toValue: 1, duration: 150, useNativeDriver: true }).start();
-  };
-
-  // Both views see the same source-filtered set.
   const filtered = useMemo(
     () =>
       markets.filter((m) =>
@@ -85,7 +53,7 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
     [markets, sourceFilter],
   );
 
-  // ── Tail/back/fade bet flow ─────────────────────────────────────────────
+  // ── back / fade bet flow ────────────────────────────────────────────────
   const handleSwipeBet = (market: UnifiedMarket, isYes: boolean) => {
     resetBet();
     consumed.current = false;
@@ -169,41 +137,16 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
             })}
           </View>
 
-          {/* List · Swipe toggle */}
-          <View style={styles.toggleWrap}>
-            <View style={styles.toggle}>
-              {(["list", "swipe"] as ViewMode[]).map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  style={[styles.toggleSeg, viewMode === v && styles.toggleSegActive]}
-                  onPress={() => changeView(v)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                >
-                  <Text style={[styles.toggleText, viewMode === v && styles.toggleTextActive]}>
-                    {v === "swipe" ? "🎴 Swipe" : "☰ List"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Content */}
-          <Animated.View style={[styles.content, { opacity: fade }]}>
-            {viewMode === "swipe" ? (
-              <SwipeDeck
-                ref={deckRef}
-                markets={filtered}
-                loading={loading}
-                onBet={handleSwipeBet}
-                onDetail={onSelectMarket}
-                cardHeight={360}
-                deferAdvance
-              />
-            ) : (
-              <MarketListScreen markets={filtered} loading={loading} onSelectMarket={onSelectMarket} />
-            )}
-          </Animated.View>
+          {/* Swipe deck */}
+          <SwipeDeck
+            ref={deckRef}
+            markets={filtered}
+            loading={loading}
+            onBet={handleSwipeBet}
+            onDetail={onSelectMarket}
+            cardHeight={380}
+            deferAdvance
+          />
         </>
       )}
 
@@ -244,20 +187,11 @@ const styles = StyleSheet.create({
   sectionTabText: { fontSize: 11, fontWeight: "500", color: "#aaa" },
   sectionTabTextActive: { color: "#000", fontWeight: "700" },
 
-  sourceChips: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 18, paddingBottom: 12 },
+  sourceChips: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 18, paddingBottom: 14 },
   chip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 16, backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a" },
   chipActive: { backgroundColor: "#0f172a", borderColor: "#6366f1" },
   chipText: { fontSize: 12, fontWeight: "600", color: "#888" },
   chipTextActive: { color: "#818cf8", fontWeight: "700" },
-
-  toggleWrap: { paddingHorizontal: 18, marginBottom: 14, alignItems: "flex-start" },
-  toggle: { flexDirection: "row", backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#2a2a2a", borderRadius: 12, padding: 3 },
-  toggleSeg: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 9 },
-  toggleSegActive: { backgroundColor: "#22c55e" },
-  toggleText: { fontSize: 12, fontWeight: "700", color: "#888" },
-  toggleTextActive: { color: "#000" },
-
-  content: { flex: 1 },
 
   leaguesStub: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 32, paddingBottom: 80 },
   leaguesEmoji: { fontSize: 40 },
