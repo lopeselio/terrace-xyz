@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Terrace pre-push hook — reminds you when design-system/ has drifted from the
+# Claude Design project. Non-blocking: your push always continues.
+#
+# Enable once with:  git config core.hooksPath .githooks
+# ---------------------------------------------------------------------------
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+helper="$root/scripts/design-sync.sh"
+[ -x "$helper" ] || exit 0
+
+if ! "$helper" check --quiet; then
+  echo ""
+  echo "⚠️  design-system/ has changed since the last Claude Design sync:"
+  "$helper" check | sed '1d'
+  echo ""
+  echo "→ Ask Claude to push design-system/ to the 'Terrace Design System' project,"
+  echo "  then record the new baseline:  scripts/design-sync.sh mark"
+  echo "  (reminder only — this push will continue)"
+  echo ""
+fi
+exit 0
