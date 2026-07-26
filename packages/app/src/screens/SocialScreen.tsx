@@ -19,6 +19,9 @@ import { useTerraceUsers, type TerraceFan } from "../hooks/useTerraceUsers";
 import { useMarketQuestions, type MarketMeta } from "../hooks/useMarketQuestions";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { BetSheet } from "./BetSheet";
+import { color as TC, font as TF } from "../theme/tokens";
+import { probToFractional, money } from "../utils/format";
+import { Avatar, OddsButton, Badge as UIBadge } from "../components/ui";
 
 // ---------------------------------------------------------------------------
 // Feed types
@@ -179,13 +182,10 @@ function ActorHeader({
         disabled={!onAvatarPress}
         activeOpacity={0.75}
       >
-        <JerseyAvatar pubkey={actor.pubkey} size={44} />
+        <Avatar name={actor.displayName} seed={actor.pubkey} size={38} />
       </TouchableOpacity>
       <View style={styles.actorMeta}>
-        <View style={styles.actorNameRow}>
-          <Text style={styles.actorBadge}>{BADGE_EMOJI[actor.badge]}</Text>
-          <Text style={styles.actorName}>{actor.displayName}</Text>
-        </View>
+        <Text style={styles.actorName} numberOfLines={1}>{actor.displayName}</Text>
         <Text style={styles.actorTime}>{timeStr}</Text>
       </View>
       {onToggleFollow && !isSelf && walletPubkey && (
@@ -230,38 +230,31 @@ function OutcomePill({ outcome }: { outcome: string | undefined }) {
 
 function BetPlacedCard({ event, ...s }: { event: FeedEvent } & CardShared) {
   const question = resolveMarket(event.market, s.marketMeta);
-  const isYes = event.outcome?.toLowerCase() === "yes";
+  const fanTookYes = event.outcome?.toLowerCase() === "yes";
   const amount = event.amountUsdc ?? 0;
+  const priced = event.priceAtBet !== undefined;
+  const theirOdds = probToFractional(event.priceAtBet);
+  const oppOdds = probToFractional(priced ? 1 - (event.priceAtBet as number) : null);
+  const canTail = s.onTail && event.market && s.walletPubkey && s.walletPubkey !== event.actor.pubkey;
+
   return (
     <View style={styles.feedCard}>
-      <ActorHeader actor={event.actor} timeStr={formatTime(event.timestamp)} {...s} />
-      {/* Human-readable sentence */}
-      <View style={styles.betSentenceRow}>
-        <Text style={styles.betSentence}>
-          backed{" "}
-        </Text>
-        <OutcomePill outcome={event.outcome} />
-        <Text style={styles.betSentence}>
-          {" "}for <Text style={styles.betAmountInline}>${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}</Text>
-        </Text>
-      </View>
-      {/* Market question */}
-      <View style={styles.questionBox}>
-        <Text style={styles.questionText} numberOfLines={2}>{question}</Text>
-        {event.priceAtBet !== undefined && (
-          <Text style={styles.priceHint}>at {Math.round(event.priceAtBet * 100)}¢ odds</Text>
-        )}
+      <View style={styles.feedTop}>
+        <View style={{ flex: 1 }}>
+          <ActorHeader actor={event.actor} timeStr={formatTime(event.timestamp)} {...s} />
+        </View>
+        {amount > 0 && <UIBadge tone="open" label={money(amount)} />}
       </View>
 
-      {/* Tail / fade — copy the call or take the other side */}
-      {s.onTail && event.market && s.walletPubkey && s.walletPubkey !== event.actor.pubkey && (
-        <View style={styles.tailRow}>
-          <TouchableOpacity style={[styles.tailBtn, styles.tailBack]} onPress={() => s.onTail!(event, isYes)} activeOpacity={0.85}>
-            <Text style={styles.tailBackText}>↗ Tail · back {isYes ? "YES" : "NO"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tailBtn, styles.tailFade]} onPress={() => s.onTail!(event, !isYes)} activeOpacity={0.85}>
-            <Text style={styles.tailFadeText}>Fade · take {isYes ? "NO" : "YES"}</Text>
-          </TouchableOpacity>
+      <Text style={styles.feedLine}>
+        {fanTookYes ? "Backed" : "Faded"} <Text style={styles.feedLineBold}>{question}</Text>{priced ? ` at ${theirOdds}` : ""}
+      </Text>
+
+      {/* Copy this bet / Fade it */}
+      {canTail && (
+        <View style={styles.copyRow}>
+          <OddsButton label="Copy this bet" tone="yes" value={theirOdds} onPress={() => s.onTail!(event, fanTookYes)} />
+          <OddsButton label="Fade it" tone="no" value={oppOdds} onPress={() => s.onTail!(event, !fanTookYes)} />
         </View>
       )}
     </View>
@@ -974,7 +967,7 @@ export function SocialScreen({ walletPubkey }: Props) {
     <View style={styles.root}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Social</Text>
+        <Text style={styles.headerTitle}>The Feed</Text>
         <View style={[styles.livePill, connected ? styles.livePillOn : styles.livePillOff]}>
           <HeliusMark size={14} />
           <View style={[styles.liveDot, connected ? styles.liveDotOn : styles.liveDotOff]} />
@@ -1089,7 +1082,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0a0a0a" },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 4 },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: -0.4 },
+  headerTitle: { fontFamily: TF.condBold, fontSize: 23, fontWeight: "700", color: "#fff", letterSpacing: 0.2, textTransform: "uppercase" },
 
   livePill:       { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   livePillOn:     { backgroundColor: "#052e16" },
@@ -1104,8 +1097,8 @@ const styles = StyleSheet.create({
   tabBar:        { flexDirection: "row", gap: 4, marginHorizontal: 18, marginVertical: 12, backgroundColor: "#111", borderRadius: 14, padding: 4, borderWidth: 0.5, borderColor: "#1e1e1e" },
   tab:           { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 10 },
   tabActive:     { backgroundColor: "#22c55e" },
-  tabText:       { fontSize: 12, fontWeight: "700", color: "#6b7280" },
-  tabTextActive: { color: "#000", fontWeight: "800" },
+  tabText:       { fontFamily: TF.sansSemi, fontSize: 12.5, fontWeight: "600", color: "#6b7280" },
+  tabTextActive: { color: "#000", fontFamily: TF.sansBold, fontWeight: "700" },
 
   feed: { flex: 1 },
 
@@ -1124,8 +1117,14 @@ const styles = StyleSheet.create({
   actorMeta:      { flex: 1 },
   actorNameRow:   { flexDirection: "row", alignItems: "center", gap: 4 },
   actorBadge:     { fontSize: 11 },
-  actorName:      { fontSize: 13, fontWeight: "600", color: "#fff" },
-  actorTime:      { fontSize: 10, color: "#555", marginTop: 1 },
+  actorName:      { fontFamily: TF.sansSemi, fontSize: 14, fontWeight: "600", color: TC.ink },
+  actorTime:      { fontFamily: TF.sans, fontSize: 11.5, color: TC.ink3, marginTop: 1 },
+
+  // Feed card (sportsbook)
+  feedTop:      { flexDirection: "row", alignItems: "center", gap: 8 },
+  feedLine:     { fontFamily: TF.sans, fontSize: 13.5, color: TC.ink2, lineHeight: 19, marginTop: 8 },
+  feedLineBold: { fontFamily: TF.sansSemi, fontWeight: "600", color: TC.ink },
+  copyRow:      { flexDirection: "row", gap: 6, marginTop: 10 },
 
   // Follow button
   followBtn:           { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: "#22c55e" },
