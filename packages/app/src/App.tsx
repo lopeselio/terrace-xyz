@@ -30,7 +30,7 @@ import { useReputation } from "./hooks/useReputation";
 import { useFollowing } from "./hooks/useFollowing";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { HomeScreen } from "./screens/HomeScreen";
-import { MarketListScreen } from "./screens/MarketListScreen";
+import { MarketsScreen } from "./screens/MarketsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
 import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
@@ -159,7 +159,7 @@ function MarketsTab({
   loading: boolean;
   onSelectMarket: (id: string) => void;
 }) {
-  return <MarketListScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
+  return <MarketsScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
 }
 
 // ---------------------------------------------------------------------------

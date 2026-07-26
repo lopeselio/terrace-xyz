@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
@@ -8,6 +15,7 @@ import {
   PanResponder,
   TouchableOpacity,
   useWindowDimensions,
+  AccessibilityInfo,
   Platform,
 } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -16,16 +24,19 @@ import { TeamBadge } from "./MatchGroupCard";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 
 // ---------------------------------------------------------------------------
-// The swipe deck — a Tinder-style stack for discovering active matchday
-// markets. Each card is a single YES/NO statement.
+// The swipe deck — a Tinder-style stack for triaging open markets.
 //   right → back YES        left  → fade / take NO
 //   up    → open detail      down  → skip
 // Built on core Animated + PanResponder (no reanimated / gesture-handler in
 // the app deps), so it runs on the Seeker dev build unchanged.
+//
+// Used on Home (Trending → Swipe) and as the default view of the Markets tab.
 // ---------------------------------------------------------------------------
 
-const SWIPE_Y = 130; // vertical commit threshold
-const CARD_H = 430;
+const DEFAULT_CARD_H = 430;
+const SWIPE_Y = 120; // vertical commit distance
+const COMMIT_FRACTION = 0.32; // horizontal commit = 32% of card width
+const FLING_VELOCITY = 0.35; // px/ms — a fast flick commits below the distance
 
 type Dir = "yes" | "no" | "detail" | "skip";
 
@@ -70,13 +81,23 @@ function haptic(style: Haptics.ImpactFeedbackStyle) {
   Haptics.impactAsync(style).catch(() => {});
 }
 
-// --- card face -------------------------------------------------------------
+function useReduceMotion(): boolean {
+  const [rm, setRm] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => active && setRm(v)).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setRm);
+    return () => { active = false; sub.remove(); };
+  }, []);
+  return rm;
+}
 
-function CardFace({ market }: { market: UnifiedMarket }) {
+// --- card face (presentational, fed by one market) -------------------------
+
+export function CardFace({ market }: { market: UnifiedMarket }) {
   const eventTitle = market.jupiterEventTitle ?? "";
   const [homeTeam, awayTeam] = splitEventTitle(eventTitle || market.question);
   const isHeadToHead = !!awayTeam;
-  const statement = market.jupiterEventTitle ? market.question : market.question;
   const countdown = useCountdown(market.expiry);
   const yesPct = market.yesPrice > 0 ? Math.round(market.yesPrice * 100) : null;
   const noPct = market.noPrice > 0 ? Math.round(market.noPrice * 100) : yesPct != null ? 100 - yesPct : null;
@@ -85,7 +106,7 @@ function CardFace({ market }: { market: UnifiedMarket }) {
 
   return (
     <View style={styles.cardInner}>
-      {/* Top meta row */}
+      {/* Meta row */}
       <View style={styles.metaRow}>
         <View style={market.source === "native" ? styles.srcNative : styles.srcPoly}>
           {market.source === "native" ? <TerraceMark size={10} /> : <PolyJupLogos size={10} />}
@@ -111,12 +132,12 @@ function CardFace({ market }: { market: UnifiedMarket }) {
         {isHeadToHead ? (
           <View style={styles.crestPair}>
             <View style={styles.crestCol}>
-              <TeamBadge name={homeTeam} size={72} />
+              <TeamBadge name={homeTeam} size={68} />
               <Text style={styles.crestName} numberOfLines={1}>{homeTeam}</Text>
             </View>
             <Text style={styles.vs}>vs</Text>
             <View style={styles.crestCol}>
-              <TeamBadge name={awayTeam} size={72} />
+              <TeamBadge name={awayTeam} size={68} />
               <Text style={styles.crestName} numberOfLines={1}>{awayTeam}</Text>
             </View>
           </View>
@@ -134,11 +155,11 @@ function CardFace({ market }: { market: UnifiedMarket }) {
         )}
       </View>
 
-      {/* Statement */}
+      {/* Context + statement */}
       {!!market.jupiterEventTitle && (
         <Text style={styles.context} numberOfLines={1}>{market.jupiterEventTitle}</Text>
       )}
-      <Text style={styles.statement} numberOfLines={3}>{statement}</Text>
+      <Text style={styles.statement} numberOfLines={2}>{market.question}</Text>
 
       {/* Odds + pool */}
       <View style={styles.footRow}>
@@ -155,19 +176,32 @@ function CardFace({ market }: { market: UnifiedMarket }) {
   );
 }
 
-// --- animated card wrapper -------------------------------------------------
+// --- animated card (gesture wrapper) ---------------------------------------
 
 interface CardProps {
   market: UnifiedMarket;
   isTop: boolean;
   width: number;
-  swipeX: number;
+  cardHeight: number;
+  reduceMotion: boolean;
+  /** yes/no springs back instead of flying off (parent advances on bet confirm) */
+  deferHorizontal: boolean;
   onSwipe: (dir: Dir, market: UnifiedMarket) => void;
 }
 
-function SwipeCard({ market, isTop, width, swipeX, onSwipe }: CardProps) {
+export const SwipeCard = forwardRef<{ flyOff: (dir: Dir) => void }, CardProps>(function SwipeCard(
+  { market, isTop, width, cardHeight, reduceMotion, deferHorizontal, onSwipe },
+  ref,
+) {
   const pan = useRef(new Animated.ValueXY()).current;
+  const entrance = useRef(new Animated.Value(reduceMotion ? 1 : 0.96)).current;
   const cue = useRef<Dir | null>(null);
+  const commitX = COMMIT_FRACTION * width;
+
+  useEffect(() => {
+    if (reduceMotion) { entrance.setValue(1); return; }
+    Animated.spring(entrance, { toValue: 1, useNativeDriver: false, friction: 7, tension: 80 }).start();
+  }, [entrance, reduceMotion]);
 
   const reset = () =>
     Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 6 }).start();
@@ -176,17 +210,25 @@ function SwipeCard({ market, isTop, width, swipeX, onSwipe }: CardProps) {
     const to =
       dir === "yes" ? { x: width * 1.4, y: 0 } :
       dir === "no" ? { x: -width * 1.4, y: 0 } :
-      dir === "skip" ? { x: 0, y: CARD_H * 1.6 } :
+      dir === "skip" ? { x: 0, y: cardHeight * 1.6 } :
       { x: 0, y: 0 };
-    haptic(dir === "detail" ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
-    if (dir === "detail") {
-      onSwipe("detail", market);
+    Animated.timing(pan, { toValue: to, duration: reduceMotion ? 100 : 180, useNativeDriver: false })
+      .start(() => onSwipe(dir, market));
+  };
+
+  // Let the parent fly this card off imperatively (e.g. after a bet confirms).
+  useImperativeHandle(ref, () => ({ flyOff }), [width, cardHeight, reduceMotion]);
+
+  const commitHorizontal = (dir: "yes" | "no") => {
+    haptic(Haptics.ImpactFeedbackStyle.Medium);
+    if (deferHorizontal) {
+      // Notify the parent to open the sheet, then spring back — the card only
+      // leaves the deck if the bet is confirmed (parent calls flyOff()).
+      onSwipe(dir, market);
       reset();
-      return;
+    } else {
+      flyOff(dir);
     }
-    Animated.timing(pan, { toValue: to, duration: 220, useNativeDriver: false }).start(() =>
-      onSwipe(dir, market),
-    );
   };
 
   const responder = useRef(
@@ -198,29 +240,27 @@ function SwipeCard({ market, isTop, width, swipeX, onSwipe }: CardProps) {
           g.dx > 40 ? "yes" : g.dx < -40 ? "no" : g.dy < -40 ? "detail" : g.dy > 40 ? "skip" : null;
         if (next !== cue.current) {
           cue.current = next;
-          if (next && next !== "detail") haptic(Haptics.ImpactFeedbackStyle.Light);
+          if (next) haptic(Haptics.ImpactFeedbackStyle.Light);
         }
       },
       onPanResponderRelease: (_e, g) => {
         cue.current = null;
-        if (g.dx > swipeX) flyOff("yes");
-        else if (g.dx < -swipeX) flyOff("no");
-        else if (g.dy < -SWIPE_Y) flyOff("detail");
-        else if (g.dy > SWIPE_Y) flyOff("skip");
+        const flingX = Math.abs(g.vx) >= FLING_VELOCITY;
+        if (g.dx > commitX || (flingX && g.vx > 0 && g.dx > 20)) commitHorizontal("yes");
+        else if (g.dx < -commitX || (flingX && g.vx < 0 && g.dx < -20)) commitHorizontal("no");
+        else if (g.dy < -SWIPE_Y) { haptic(Haptics.ImpactFeedbackStyle.Light); onSwipe("detail", market); reset(); }
+        else if (g.dy > SWIPE_Y) { haptic(Haptics.ImpactFeedbackStyle.Medium); flyOff("skip"); }
         else reset();
       },
       onPanResponderTerminate: () => reset(),
     }),
   ).current;
 
-  const rotate = pan.x.interpolate({
-    inputRange: [-width, 0, width],
-    outputRange: ["-12deg", "0deg", "12deg"],
-  });
-  const yesOpacity = pan.x.interpolate({ inputRange: [0, swipeX], outputRange: [0, 1], extrapolate: "clamp" });
-  const noOpacity = pan.x.interpolate({ inputRange: [-swipeX, 0], outputRange: [1, 0], extrapolate: "clamp" });
-  const detailOpacity = pan.y.interpolate({ inputRange: [-SWIPE_Y, 0], outputRange: [1, 0], extrapolate: "clamp" });
-  const skipOpacity = pan.y.interpolate({ inputRange: [0, SWIPE_Y], outputRange: [0, 1], extrapolate: "clamp" });
+  const rotate = reduceMotion
+    ? "0deg"
+    : pan.x.interpolate({ inputRange: [-240, 0, 240], outputRange: ["-12deg", "0deg", "12deg"], extrapolate: "clamp" });
+  const yesOpacity = pan.x.interpolate({ inputRange: [0, commitX], outputRange: [0, 1], extrapolate: "clamp" });
+  const noOpacity = pan.x.interpolate({ inputRange: [-commitX, 0], outputRange: [1, 0], extrapolate: "clamp" });
 
   return (
     <Animated.View
@@ -228,44 +268,57 @@ function SwipeCard({ market, isTop, width, swipeX, onSwipe }: CardProps) {
         styles.card,
         {
           width: width - 36,
-          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate }],
+          height: cardHeight,
+          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate }, { scale: entrance }],
         },
       ]}
       {...(isTop ? responder.panHandlers : {})}
     >
-      {/* Directional stamps */}
       <Animated.View style={[styles.stamp, styles.stampYes, { opacity: yesOpacity }]}>
         <Text style={styles.stampTextYes}>YES</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampNo, { opacity: noOpacity }]}>
         <Text style={styles.stampTextNo}>NO</Text>
       </Animated.View>
-      <Animated.View style={[styles.hintTop, { opacity: detailOpacity }]}>
-        <Text style={styles.hintText}>▲ DETAILS</Text>
-      </Animated.View>
-      <Animated.View style={[styles.hintBottom, { opacity: skipOpacity }]}>
-        <Text style={styles.hintText}>SKIP ▼</Text>
-      </Animated.View>
-
       <CardFace market={market} />
     </Animated.View>
   );
-}
+});
 
 // --- deck ------------------------------------------------------------------
+
+export interface SwipeDeckHandle {
+  /** Fly the current top card off and advance (call after a backed/faded bet confirms). */
+  commitTop: (dir?: "yes" | "no") => void;
+}
 
 interface Props {
   markets: UnifiedMarket[];
   onBet: (market: UnifiedMarket, isYes: boolean) => void;
   onDetail: (marketId: string) => void;
+  /** Card/stage height. Home uses 430; the Markets tab uses 360. */
+  cardHeight?: number;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  /**
+   * When true, a yes/no swipe opens the bet sheet but does NOT advance the deck
+   * until the parent confirms via ref.commitTop(). A cancelled sheet keeps the
+   * card. When false (Home), yes/no advances immediately.
+   */
+  deferAdvance?: boolean;
 }
 
-export function SwipeDeck({ markets, onBet, onDetail }: Props) {
+export const SwipeDeck = forwardRef<SwipeDeckHandle, Props>(function SwipeDeck(
+  { markets, onBet, onDetail, cardHeight = DEFAULT_CARD_H, loading = false, error = null, onRetry, deferAdvance = false },
+  ref,
+) {
   const { width } = useWindowDimensions();
-  const swipeX = width * 0.28; // horizontal commit threshold
-  // Only swipeable statements: open, non-flash markets. Highest-pool first so
-  // the juiciest matchday calls surface at the top of the deck.
-  const deck = useMemo(
+  const reduceMotion = useReduceMotion();
+  const topCardRef = useRef<{ flyOff: (dir: Dir) => void }>(null);
+
+  // Open, non-flash markets, highest pool first, capped at 40.
+  const baseDeck = useMemo(
     () =>
       markets
         .filter((m) => m.status === "Open" && !m.isFlash)
@@ -274,100 +327,200 @@ export function SwipeDeck({ markets, onBet, onDetail }: Props) {
     [markets],
   );
 
+  const [override, setOverride] = useState<UnifiedMarket[] | null>(null);
   const [index, setIndex] = useState(0);
-  // Reset the cursor if the underlying deck identity changes (refresh/filter)
-  const deckKey = deck.map((m) => m.id).join("|");
-  useEffect(() => { setIndex(0); }, [deckKey]);
+  const [skipped, setSkipped] = useState<string[]>([]);
 
-  const handleSwipe = (dir: Dir, market: UnifiedMarket) => {
-    if (dir === "detail") { onDetail(market.id); return; }
-    if (dir === "yes") onBet(market, true);
-    else if (dir === "no") onBet(market, false);
-    // yes / no / skip all advance the deck
-    setIndex((i) => i + 1);
-  };
-
-  const remaining = deck.length - index;
-
-  if (deck.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyEmoji}>🎴</Text>
-        <Text style={styles.emptyTitle}>No open markets to swipe</Text>
-        <Text style={styles.emptySub}>Pull to refresh or create the first one from the + tab</Text>
-      </View>
-    );
-  }
-
-  if (remaining <= 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyEmoji}>🏁</Text>
-        <Text style={styles.emptyTitle}>You've seen every matchday call</Text>
-        <Text style={styles.emptySub}>Tap replay to run the deck again</Text>
-        <TouchableOpacity style={styles.replayBtn} onPress={() => setIndex(0)} activeOpacity={0.85}>
-          <Text style={styles.replayText}>↻ Replay deck</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const deck = override ?? baseDeck;
+  const deckKey = baseDeck.map((m) => m.id).join("|");
+  // Reset the session whenever the underlying markets change (refresh / filter).
+  useEffect(() => { setOverride(null); setIndex(0); setSkipped([]); }, [deckKey]);
 
   const top = deck[index];
   const under = deck[index + 1];
+  const remaining = deck.length - index;
+  const exhausted = !loading && !error && deck.length > 0 && remaining <= 0;
 
-  return (
-    <View style={styles.deckWrap}>
-      <View style={styles.stage}>
-        {/* Card beneath (peek) */}
+  const advance = () => setIndex((i) => i + 1);
+
+  useImperativeHandle(ref, () => ({
+    commitTop: (dir: "yes" | "no" = "yes") => { topCardRef.current?.flyOff(dir); },
+  }), []);
+
+  // Prefetch the next few crest/event images.
+  useEffect(() => {
+    for (let i = index; i < Math.min(index + 5, deck.length); i++) {
+      const uri = deck[i]?.imageUrl;
+      if (uri) Image.prefetch(uri).catch(() => {});
+    }
+  }, [index, deckKey]);
+
+  const handleSwipe = (dir: Dir, market: UnifiedMarket) => {
+    if (dir === "detail") { onDetail(market.id); return; }
+    if (dir === "yes" || dir === "no") {
+      onBet(market, dir === "yes");
+      if (!deferAdvance) advance();
+      return;
+    }
+    // skip
+    setSkipped((s) => [...s, market.id]);
+    advance();
+  };
+
+  const reshuffle = () => {
+    const again = baseDeck.filter((m) => skipped.includes(m.id));
+    if (again.length === 0) return;
+    setOverride(again);
+    setIndex(0);
+    setSkipped([]);
+  };
+
+  // Buttons behave exactly like the matching gesture.
+  const tapBet = (isYes: boolean) => {
+    if (!top) return;
+    onBet(top, isYes);
+    // deferAdvance: the parent advances via commitTop() once the bet confirms.
+    if (!deferAdvance) advance();
+  };
+  const tapDetail = () => { if (top) onDetail(top.id); };
+  const tapSkip = () => { if (top) { topCardRef.current?.flyOff("skip"); } };
+
+  // ── Stage content by state ──────────────────────────────────────────────
+  let stage: React.ReactNode;
+  if (loading) {
+    stage = <SkeletonCard width={width} cardHeight={cardHeight} />;
+  } else if (error) {
+    stage = (
+      <View style={[styles.stateBox, { height: cardHeight }]}>
+        <Text style={styles.errorText}>{error}</Text>
+        {onRetry && (
+          <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
+            <Text style={styles.linkBtn}>Retry</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  } else if (deck.length === 0) {
+    stage = (
+      <View style={[styles.stateBox, { height: cardHeight }]}>
+        <Text style={styles.emptyEmoji}>🎴</Text>
+        <Text style={styles.emptyTitle}>No open markets</Text>
+        <Text style={styles.emptySub}>Pull to refresh or create one from the + tab</Text>
+      </View>
+    );
+  } else if (exhausted) {
+    stage = (
+      <View style={[styles.stateBox, { height: cardHeight }]}>
+        <Text style={styles.caughtUp}>You're all caught up</Text>
+        <Text style={styles.emptySub}>You've triaged every open market</Text>
+        {skipped.length > 0 && (
+          <TouchableOpacity onPress={reshuffle} activeOpacity={0.7}>
+            <Text style={styles.linkBtn}>Reshuffle skipped ({skipped.length})</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  } else {
+    stage = (
+      <>
         {under && (
-          <View style={[styles.card, styles.cardUnder, { width: width - 36 }]} pointerEvents="none">
+          <View style={[styles.card, styles.cardUnder, { width: width - 36, height: cardHeight }]} pointerEvents="none">
             <CardFace market={under} />
           </View>
         )}
-        {/* Top card — keyed so a fresh Animated.Value mounts per card */}
-        <SwipeCard key={top.id} market={top} isTop width={width} swipeX={swipeX} onSwipe={handleSwipe} />
-      </View>
+        <SwipeCard
+          ref={topCardRef}
+          key={top.id}
+          market={top}
+          isTop
+          width={width}
+          cardHeight={cardHeight}
+          reduceMotion={reduceMotion}
+          deferHorizontal={deferAdvance}
+          onSwipe={handleSwipe}
+        />
+      </>
+    );
+  }
 
-      {/* Action bar — tap equivalents of the swipe gestures */}
-      <View style={styles.actions}>
-        <TouchableOpacity style={[styles.actBtn, styles.actNo]} onPress={() => handleSwipe("no", top)} activeOpacity={0.8}>
+  const actionsDisabled = loading || !!error || !top;
+
+  return (
+    <View style={styles.deckWrap}>
+      <View style={[styles.stage, { height: cardHeight + 16 }]}>{stage}</View>
+
+      {/* Action row — tap equivalents of the swipe gestures */}
+      <View style={[styles.actions, actionsDisabled && styles.actionsDisabled]} pointerEvents={actionsDisabled ? "none" : "auto"}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Fade" style={[styles.actBtn, styles.actNo]} onPress={() => tapBet(false)} activeOpacity={0.8}>
           <Text style={styles.actNoText}>✕</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actBtn, styles.actSkip]} onPress={() => handleSwipe("skip", top)} activeOpacity={0.8}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Skip" style={[styles.actBtn, styles.actSkip]} onPress={tapSkip} activeOpacity={0.8}>
           <Text style={styles.actSkipText}>↓</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actBtn, styles.actDetail]} onPress={() => handleSwipe("detail", top)} activeOpacity={0.8}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Details" style={[styles.actBtn, styles.actDetail]} onPress={tapDetail} activeOpacity={0.8}>
           <Text style={styles.actDetailText}>ℹ</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actBtn, styles.actYes]} onPress={() => handleSwipe("yes", top)} activeOpacity={0.8}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back" style={[styles.actBtn, styles.actYes]} onPress={() => tapBet(true)} activeOpacity={0.8}>
           <Text style={styles.actYesText}>✓</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.counter}>{remaining} live {remaining === 1 ? "call" : "calls"} left · ← fade · back →</Text>
+      <Text style={styles.counter}>
+        {Math.max(0, remaining)} live {remaining === 1 ? "call" : "calls"} left · ← fade · back →
+      </Text>
+    </View>
+  );
+});
+
+// --- loading skeleton ------------------------------------------------------
+
+function SkeletonCard({ width, cardHeight }: { width: number; cardHeight: number }) {
+  const shimmer = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 700, useNativeDriver: false }),
+        Animated.timing(shimmer, { toValue: 0.4, duration: 700, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
+  const block = (style: object) => <Animated.View style={[styles.skelBlock, style, { opacity: shimmer }]} />;
+  return (
+    <View style={[styles.card, { width: width - 36, height: cardHeight }]}>
+      {block({ width: 90, height: 20, borderRadius: 8 })}
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", gap: 14 }}>
+          {block({ width: 68, height: 68, borderRadius: 18 })}
+          {block({ width: 68, height: 68, borderRadius: 18 })}
+        </View>
+      </View>
+      {block({ width: "70%", height: 22, borderRadius: 6 })}
+      <View style={{ height: 12 }} />
+      {block({ width: 150, height: 30, borderRadius: 10 })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  deckWrap: { paddingTop: 6, paddingBottom: 14 },
-  stage: { height: CARD_H + 16, marginHorizontal: 18, alignItems: "center", justifyContent: "center" },
+  deckWrap: { paddingTop: 4 },
+  stage: { marginHorizontal: 18, alignItems: "center", justifyContent: "center" },
 
   card: {
     position: "absolute",
-    height: CARD_H,
     backgroundColor: "#111",
     borderRadius: 24,
     borderWidth: 0.5,
     borderColor: "#262626",
     padding: 18,
     shadowColor: "#000",
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.55,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  cardUnder: { transform: [{ scale: 0.94 }, { translateY: 14 }], opacity: 0.6 },
+  cardUnder: { transform: [{ scale: 0.94 }, { translateY: 12 }], opacity: 0.5 },
   cardInner: { flex: 1 },
 
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -380,36 +533,34 @@ const styles = StyleSheet.create({
   clockTag: { backgroundColor: "#1a1a1a", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: "#2a2a2a" },
   clockText: { fontSize: 11, fontWeight: "700", color: "#f59e0b", fontVariant: ["tabular-nums"] },
 
-  hero: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 150 },
+  hero: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 130 },
   crestPair: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
-  crestCol: { alignItems: "center", gap: 8, width: 108 },
+  crestCol: { alignItems: "center", gap: 8, width: 104 },
   crestName: { fontSize: 12, fontWeight: "600", color: "#d1d5db" },
   vs: { fontSize: 13, fontWeight: "700", color: "#4b5563" },
   crestSolo: { alignItems: "center" },
-  heroImage: { width: 150, height: 150, borderRadius: 18, backgroundColor: "#1a1a1a" },
+  heroImage: { width: 140, height: 140, borderRadius: 18, backgroundColor: "#1a1a1a" },
 
   context: { fontSize: 12, color: "#6b7280", fontWeight: "600", marginTop: 4 },
-  statement: { fontSize: 20, fontWeight: "800", color: "#f9fafb", lineHeight: 26, marginTop: 4, letterSpacing: -0.3 },
+  statement: { fontSize: 20, fontWeight: "800", color: "#f9fafb", lineHeight: 26, marginTop: 3, letterSpacing: -0.3 },
 
-  footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 },
-  oddsChip: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#0d0d0d", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 0.5, borderColor: "#1f1f1f" },
+  footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
+  oddsChip: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#0d0d0d", borderRadius: 10, paddingHorizontal: 11, paddingVertical: 6, borderWidth: 0.5, borderColor: "#1f1f1f" },
   oddsYes: { fontSize: 13, fontWeight: "800", color: "#22c55e" },
   oddsDivider: { fontSize: 13, color: "#374151" },
   oddsNo: { fontSize: 13, fontWeight: "800", color: "#ef4444" },
   pool: { fontSize: 12, fontWeight: "600", color: "#9ca3af" },
 
   // Stamps
-  stamp: { position: "absolute", top: 26, zIndex: 10, borderWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4, transform: [{ rotate: "-14deg" }] },
-  stampYes: { left: 22, borderColor: "#22c55e" },
-  stampNo: { right: 22, borderColor: "#ef4444", transform: [{ rotate: "14deg" }] },
-  stampTextYes: { fontSize: 30, fontWeight: "900", color: "#22c55e", letterSpacing: 1 },
-  stampTextNo: { fontSize: 30, fontWeight: "900", color: "#ef4444", letterSpacing: 1 },
-  hintTop: { position: "absolute", top: 20, alignSelf: "center", zIndex: 10, backgroundColor: "rgba(96,165,250,0.15)", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 },
-  hintBottom: { position: "absolute", bottom: 20, alignSelf: "center", zIndex: 10, backgroundColor: "rgba(107,114,128,0.15)", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 },
-  hintText: { fontSize: 13, fontWeight: "800", color: "#93c5fd", letterSpacing: 1 },
+  stamp: { position: "absolute", zIndex: 10, borderWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
+  stampYes: { top: 26, left: 22, borderColor: "#22c55e", transform: [{ rotate: "-14deg" }] },
+  stampNo: { top: 24, right: 22, borderColor: "#ef4444", transform: [{ rotate: "14deg" }] },
+  stampTextYes: { fontSize: 28, fontWeight: "900", color: "#22c55e", letterSpacing: 1 },
+  stampTextNo: { fontSize: 28, fontWeight: "900", color: "#ef4444", letterSpacing: 1 },
 
   // Action bar
-  actions: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 18 },
+  actions: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 16 },
+  actionsDisabled: { opacity: 0.4 },
   actBtn: { alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 1.5 },
   actNo: { width: 58, height: 58, backgroundColor: "#1a0a0a", borderColor: "#ef4444" },
   actNoText: { fontSize: 24, fontWeight: "800", color: "#ef4444" },
@@ -420,13 +571,15 @@ const styles = StyleSheet.create({
   actYes: { width: 58, height: 58, backgroundColor: "#052e16", borderColor: "#22c55e" },
   actYesText: { fontSize: 26, fontWeight: "800", color: "#22c55e" },
 
-  counter: { textAlign: "center", fontSize: 11, color: "#4b5563", marginTop: 12, fontWeight: "600" },
+  counter: { textAlign: "center", fontSize: 11, color: "#4b5563", marginTop: 12, marginBottom: 4, fontWeight: "600" },
 
-  // Empty / done
-  empty: { alignItems: "center", justifyContent: "center", paddingVertical: 60, paddingHorizontal: 32, gap: 8 },
+  // States
+  stateBox: { alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 40 },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: "#fff", textAlign: "center" },
-  emptySub: { fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 20 },
-  replayBtn: { marginTop: 16, backgroundColor: "#22c55e", borderRadius: 12, paddingHorizontal: 24, paddingVertical: 11 },
-  replayText: { fontSize: 14, fontWeight: "700", color: "#000" },
+  caughtUp: { fontSize: 19, fontWeight: "800", color: "#f9fafb", textAlign: "center", letterSpacing: -0.3 },
+  emptySub: { fontSize: 12, fontWeight: "600", color: "#6b7280", textAlign: "center", lineHeight: 18 },
+  errorText: { fontSize: 13, color: "#f87171", textAlign: "center" },
+  linkBtn: { fontSize: 14, fontWeight: "700", color: "#4ade80", marginTop: 8 },
+  skelBlock: { backgroundColor: "#1a1a1a", borderRadius: 8 },
 });
