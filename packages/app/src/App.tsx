@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { NotificationProvider } from "./components/NotificationProvider";
 import { AppSplash } from "./components/AppSplash";
+import { TabBar } from "./components/TabBar";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useAppFonts } from "./theme/fonts";
@@ -746,24 +747,7 @@ export default function App() {
         />
       )}
 
-      <View style={styles.bottomNav}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id && !showConnect;
-          const isCreate = tab.id === "Create";
-          return (
-            <Pressable key={tab.id} style={styles.navBtn} onPress={() => handleTabPress(tab.id)}>
-              <View style={[styles.navIconCircle, isCreate && styles.navIconCreate, isActive && !isCreate && styles.navIconActive]}>
-                <Text style={isCreate ? styles.navIconTextCreate : styles.navIconText}>
-                  {tab.icon}
-                </Text>
-              </View>
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <TabBar activeTab={activeTab} onPress={handleTabPress} inactive={showConnect} />
       </NotificationProvider>
       {splashMounted && <AppSplash visible={splashVisible} />}
     </SafeAreaView>
