@@ -30,6 +30,10 @@ import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
 import { JerseyAvatar } from "../components/JerseyAvatar";
 import { LinearGradient } from "expo-linear-gradient";
+import { font as TF, color as TC } from "../theme/tokens";
+import { Icon as TIcon } from "../components/Icon";
+import { WalletSheet } from "../components/WalletSheet";
+import { handleOf } from "../utils/identity";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -265,7 +269,7 @@ function MatchupRow({
     <View style={pos.parlayRow}>
       <View style={pos.parlayHeader}>
         <Text style={pos.parlayTitle}>
-          {isChallenger ? "You challenged" : "Challenge from"} {shortAddr(otherAddr)}
+          {isChallenger ? "You challenged" : "Challenge from"} {handleOf(otherAddr)}
         </Text>
         <Text style={[pos.parlayStatus, { color: MATCHUP_STATUS_COLOR[matchup.status] ?? "#9ca3af" }]}>
           {MATCHUP_STATUS_LABEL[matchup.status] ?? matchup.status}
@@ -1113,6 +1117,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
   };
   const { mainnetSol, devnetSol, mainnetUsdc, devnetUsdc, refresh: refreshBalances } = useWalletBalances(walletPubkey);
   const [refreshing, setRefreshing] = useState(false);
+  const [walletSheetOpen, setWalletSheetOpen] = useState(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -1305,7 +1310,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
           <JerseyAvatar pubkey={walletPubkey} size={56} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.heroName} numberOfLines={1}>
-              {snsName ?? `@${walletPubkey.slice(0, 5)}…${walletPubkey.slice(-5)}`}
+              {handleOf(walletPubkey, snsName)}
             </Text>
             <View style={[styles.tierPill, { backgroundColor: heroTint.pillBg, borderColor: heroTint.accent + "55" }]}>
               <Text style={styles.tierPillIcon}>{tierMeta.icon}</Text>
@@ -1380,27 +1385,21 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
 
       {/* ── Wallet ──────────────────────────────── */}
       <Text style={styles.stripLabel}>WALLET</Text>
-      <View style={styles.walletCard}>
-        <View style={styles.walletLine}>
-          <View style={styles.walletNetWrap}>
-            <Image source={{ uri: "https://cryptologos.cc/logos/solana-sol-logo.png" }} style={styles.coinLogo} />
-            <Text style={styles.walletNet}>Mainnet</Text>
+      <TouchableOpacity style={styles.walletCard} onPress={() => setWalletSheetOpen(true)} activeOpacity={0.8}>
+        <View style={[styles.walletLine, { paddingVertical: 14 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.walletAvailLabel}>Available balance</Text>
+            <Text style={styles.walletAvail}>
+              {mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "$0.00"}
+            </Text>
           </View>
-          <View style={styles.walletVals}>
-            <Text style={styles.walletSol}>{mainnetSol !== null ? `${mainnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
-            <Text style={styles.walletUsdc}>{mainnetUsdc !== null ? `$${mainnetUsdc.toFixed(2)}` : "—"}</Text>
-          </View>
-        </View>
-        <View style={[styles.walletLine, styles.walletLineBorder]}>
-          <View style={styles.walletNetWrap}>
-            <Text style={[styles.walletNet, styles.walletNetMuted]}>Devnet</Text>
-          </View>
-          <View style={styles.walletVals}>
-            <Text style={styles.walletMuted}>{devnetSol !== null ? `${devnetSol.toFixed(3)} SOL` : "— SOL"}</Text>
-            <Text style={styles.walletMuted}>{devnetUsdc !== null ? `$${devnetUsdc.toFixed(2)}` : "—"}</Text>
+          <View style={styles.walletChevRow}>
+            <TIcon name="wallet" size={16} color={TC.ink2} />
+            <Text style={styles.walletChevLabel}>Wallet & payouts</Text>
+            <TIcon name="chevronRight" size={16} color={TC.ink3} />
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* ── Active / History / Created tabs ─────── */}
       <View style={styles.tabSection}>
@@ -1502,6 +1501,18 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
       <View style={styles.claimOverlay}>
         <TouchableOpacity style={styles.claimBackdrop} activeOpacity={1} onPress={() => setClaimSuccess(null)} />
         <Confetti trigger={claimSuccess} />
+
+        <WalletSheet
+          visible={walletSheetOpen}
+          onClose={() => setWalletSheetOpen(false)}
+          address={walletPubkey}
+          availableUsdc={mainnetUsdc}
+          inOpenBetsUsdc={0}
+          creatorFeesUsdc={creatorRevenue}
+          mainnetSol={mainnetSol}
+          devnetSol={devnetSol}
+          devnetUsdc={devnetUsdc}
+        />
         <View style={styles.claimCard}>
           <Text style={styles.claimEmoji}>{claimSuccess.emoji}</Text>
           <Text style={styles.claimTitle}>{claimSuccess.title}</Text>
@@ -1543,7 +1554,7 @@ const styles = StyleSheet.create({
 
   // Header
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 20, paddingBottom: 8 },
-  screenTitle: { fontSize: 24, fontWeight: "700", color: "#fff" },
+  screenTitle: { fontFamily: TF.condBold, fontSize: 24, fontWeight: "700", color: "#fff", letterSpacing: 0.3, textTransform: "uppercase" },
 
   // Identity
   identityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 16, backgroundColor: "#111", borderRadius: 16, marginHorizontal: 18, marginBottom: 8 },
@@ -1598,7 +1609,7 @@ const styles = StyleSheet.create({
   discPill: { position: "absolute", top: 14, right: 14, backgroundColor: "#1a1a1a", borderWidth: 0.5, borderColor: "#2a2a2a", borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5, zIndex: 5 },
   discPillText: { fontSize: 11, color: "#9ca3af", fontWeight: "600" },
   idRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  heroName: { fontSize: 17, fontWeight: "700", color: "#f9fafb" },
+  heroName: { fontFamily: TF.condBold, fontSize: 23, fontWeight: "700", color: "#f9fafb", letterSpacing: 0.2 },
   tierPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5, borderWidth: 0.5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   tierPillIcon: { fontSize: 10 },
   tierPillText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
@@ -1606,15 +1617,15 @@ const styles = StyleSheet.create({
   addrText: { fontSize: 11, color: "#6b7280", fontFamily: "monospace" },
   heroLoading: { height: 74, alignItems: "flex-start", justifyContent: "center" },
   focalRow: { flexDirection: "row", alignItems: "flex-end", gap: 16, marginTop: 16 },
-  focalWr: { fontSize: 44, fontWeight: "900", letterSpacing: -1.5, color: "#f9fafb", lineHeight: 46 },
-  focalPct: { fontSize: 16, fontWeight: "800", color: "#4ade80" },
+  focalWr: { fontFamily: TF.condXBold, fontSize: 46, fontWeight: "800", letterSpacing: -0.5, color: "#f9fafb", lineHeight: 46 },
+  focalPct: { fontFamily: TF.condXBold, fontSize: 18, fontWeight: "800", color: "#4ade80" },
   focalLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, color: "#6b7280", marginTop: 6 },
   streakChip: { backgroundColor: "#1a1206", borderWidth: 0.5, borderColor: "#78350f", borderRadius: 12, paddingHorizontal: 11, paddingVertical: 6, marginBottom: 4 },
   streakChipText: { fontSize: 13, fontWeight: "800" },
   authInline: { flex: 1, textAlign: "right", fontSize: 11, color: "#6b7280", marginBottom: 6 },
   socialRow: { flexDirection: "row", gap: 8, marginTop: 14 },
   socialCount: { flex: 1, backgroundColor: "#0d0d0d", borderWidth: 0.5, borderColor: "#1f1f1f", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
-  socialNum: { fontSize: 15, fontWeight: "800", color: "#f9fafb" },
+  socialNum: { fontFamily: TF.condBold, fontSize: 17, fontWeight: "700", color: "#f9fafb" },
   socialLbl: { fontSize: 10, color: "#6b7280", marginTop: 1 },
   shareBtn: { backgroundColor: "#22c55e", borderRadius: 12, paddingHorizontal: 16, justifyContent: "center" },
   shareBtnText: { fontSize: 12, fontWeight: "800", color: "#000" },
@@ -1622,19 +1633,23 @@ const styles = StyleSheet.create({
   stripLabel: { fontSize: 10, fontWeight: "700", color: "#6b7280", letterSpacing: 1, textTransform: "uppercase", marginHorizontal: 22, marginTop: 18, marginBottom: 8 },
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 18 },
   tile: { width: "31.6%", backgroundColor: "#111", borderWidth: 0.5, borderColor: "#1e1e1e", borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
-  tileValue: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, color: "#f9fafb" },
+  tileValue: { fontFamily: TF.condBold, fontSize: 24, fontWeight: "700", letterSpacing: 0, color: "#f9fafb" },
   tileLabel: { fontSize: 10, color: "#6b7280", marginTop: 2 },
   tileSub: { fontSize: 9, color: "#4b5563", marginTop: 1 },
 
   walletCard: { backgroundColor: "#111", borderWidth: 0.5, borderColor: "#1e1e1e", borderRadius: 16, marginHorizontal: 18, paddingHorizontal: 14 },
+  walletAvailLabel: { fontFamily: TF.sans, fontSize: 11, color: "#6b7280", fontWeight: "600" },
+  walletAvail: { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#f9fafb", marginTop: 2 },
+  walletChevRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  walletChevLabel: { fontFamily: TF.sansSemi, fontSize: 12.5, color: "#9ca3af", fontWeight: "600" },
   walletLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 11 },
   walletLineBorder: { borderTopWidth: 0.5, borderTopColor: "#1a1a1a" },
   walletNetWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
   walletNet: { fontSize: 12, color: "#9ca3af", fontWeight: "600" },
   walletNetMuted: { color: "#4b5563" },
   walletVals: { flexDirection: "row", alignItems: "center", gap: 12 },
-  walletSol: { fontSize: 13, fontWeight: "700", color: "#f9fafb", fontVariant: ["tabular-nums"] },
-  walletUsdc: { fontSize: 13, fontWeight: "700", color: "#22c55e", fontVariant: ["tabular-nums"] },
+  walletSol: { fontFamily: TF.condBold, fontSize: 15, fontWeight: "700", color: "#f9fafb", fontVariant: ["tabular-nums"] },
+  walletUsdc: { fontFamily: TF.condBold, fontSize: 15, fontWeight: "700", color: "#22c55e", fontVariant: ["tabular-nums"] },
   walletMuted: { fontSize: 13, fontWeight: "600", color: "#6b7280", fontVariant: ["tabular-nums"] },
 
   // Tabs

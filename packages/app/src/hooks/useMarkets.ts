@@ -3,6 +3,7 @@ import { JupiterMarketsClient } from "@terrace/sdk";
 import { deserializeMarketAccount } from "@terrace/sdk";
 import type { UnifiedMarket } from "@terrace/sdk";
 import type { Address } from "@solana/kit";
+import { isFootballMarket } from "../utils/football";
 
 const HELIUS_RPC_URL =
   process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
@@ -25,40 +26,9 @@ const FOOTBALL_QUERIES = [
   "euro",
 ];
 
-// Polymarket's "sports" category includes esports, US sports, racing, etc.
-// Jupiter forwards all of them and search ("premier league") still bleeds into
-// esports tournament names. We blocklist by title keyword — a whitelist would
-// risk dropping real football events whose titles only contain team names.
-//
-// Word-boundary regex so "f1" doesn't match "match 1" and "mma" doesn't match
-// "comma". The trailing $|\W keeps short tokens precise.
-const NON_FOOTBALL_BLOCK = new RegExp(
-  [
-    // Esports
-    "counter-?strike", "cs:go", "csgo", "cs2",
-    "dota", "league of legends", "lck", "lcs", "lpl", "lec",
-    "valorant", "vct",
-    "starcraft", "overwatch", "rocket league",
-    "rainbow six", "r6 ", "fortnite", "call of duty", "cod mw",
-    "esports?", "esport",
-    // US sports
-    "nba", "nfl", "mlb", "nhl",
-    // Combat / individual
-    "ufc", "mma", "wwe", "boxing match",
-    // Racing
-    "formula 1", "f1 ", "f1$", "nascar", "indycar", "motogp",
-    // Racquet / other
-    "tennis", "golf", "pga ", "atp ", "wta ",
-    // Cricket leagues (IPL = Indian Premier League — cricket, not football)
-    "cricket", "\\bipl\\b", "bbl ", "t20",
-  ].join("|"),
-  "i",
-);
-
-function isFootballMarket(m: UnifiedMarket): boolean {
-  const haystack = `${m.jupiterEventTitle ?? ""} ${m.question}`;
-  return !NON_FOOTBALL_BLOCK.test(haystack);
-}
+// Football classification lives in utils/football.ts — see `isFootballMarket`.
+// It is applied once, here at the data layer, so every screen's counts and
+// empty states describe the same catalog.
 
 // Cap for plausible market volume in raw u64 USDC base units ($1B = 10^15).
 // Anything above this is corrupted on-chain data — historically caused by the
@@ -196,15 +166,8 @@ export function useMarkets(): UseMarketsResult {
       .then(([native, jupiter]) => {
         if (cancelled) return;
 
-        const FOOTBALL_BLOCK = /eurovision|election|politic|grammy|oscar|award|music award|super bowl|nba|nfl|nhl|mlb|cricket|rugby|tennis|golf|boxing|ufc|mma|f1|formula/i;
-
         const merged = [...native, ...jupiter]
-          .filter((m) => {
-            if (m.source !== "jupiter") return true;
-            const title = (m.jupiterEventTitle ?? m.question).toLowerCase();
-            if (FOOTBALL_BLOCK.test(title)) return false;
-            return true;
-          })
+          .filter(isFootballMarket)
           .sort((a, b) => {
             if (a.status === "Open" && b.status === "Open") {
               if (a.expiry && b.expiry) return a.expiry.getTime() - b.expiry.getTime();

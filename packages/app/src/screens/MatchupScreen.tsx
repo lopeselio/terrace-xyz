@@ -11,6 +11,7 @@ import {
   Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { font as TF } from "../theme/tokens";
 import type { UnifiedMarket } from "@terrace/sdk";
 import type { Address } from "@solana/kit";
 import type { Matchup } from "@terrace/sdk";
@@ -51,6 +52,8 @@ import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
 import { useFollowedSources } from "../hooks/useFollowedSources";
 import type { UserSource } from "../hooks/useFollowedSources";
+import { handleOf } from "../utils/identity";
+import { truncatePubkey } from "../hooks/useLeaderboard";
 
 type ScreenTab = "Create" | "Active" | "Challenges";
 
@@ -90,8 +93,9 @@ const sp = StyleSheet.create({
   polyT:    { color: "#60a5fa" },
 });
 
+// People get a handle; market/vault addresses keep `truncatePubkey`.
 function shortAddr(addr: string): string {
-  return `${addr.slice(0, 5)}…${addr.slice(-4)}`;
+  return handleOf(addr);
 }
 
 function fmtUsdc(lamports: bigint): string {
@@ -557,7 +561,7 @@ function MatchupCard({
       </View>
 
       <Text style={mcard.market} numberOfLines={2}>
-        📍 {marketQuestion ?? shortAddr(matchup.market)}
+        📍 {marketQuestion ?? truncatePubkey(String(matchup.market))}
       </Text>
 
       <View style={mcard.row}>
@@ -679,7 +683,7 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
       const currentUserWon = winnerPubkey === walletPubkey;
       const winnerDisplay  = fanDisplayMap.get(winnerPubkey) ?? shortAddr(winnerPubkey);
       const potUsdc        = `$${(Number(matchup.stakeUsdc * 2n) / 1_000_000).toFixed(2)}`;
-      const marketQuestion = marketQuestionMap.get(matchup.market as string) ?? shortAddr(matchup.market as string);
+      const marketQuestion = marketQuestionMap.get(matchup.market as string) ?? truncatePubkey(matchup.market as string);
       setSettleResult({ currentUserWon, winnerDisplay, potUsdc, marketQuestion });
       if (currentUserWon) cueWin();
     }
@@ -889,7 +893,7 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: "#0a0a0a" },
   header:        { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16 },
-  headerTitle:   { fontSize: 20, fontWeight: "700", color: "#fff" },
+  headerTitle:   { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.3, textTransform: "uppercase" },
   closeBtn:      { width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   closeBtnText:  { fontSize: 12, color: "#6b7280" },
 

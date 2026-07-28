@@ -21,7 +21,9 @@ import {
 import * as Haptics from "expo-haptics";
 import type { UnifiedMarket } from "@terrace/sdk";
 import { TeamBadge } from "./MatchGroupCard";
-import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
+import { color as C, font } from "../theme/tokens";
+import { probToFractional, moneyWhole } from "../utils/format";
+import { Badge, OddsButton } from "../components/ui";
 
 // ---------------------------------------------------------------------------
 // The swipe deck — a Tinder-style stack for triaging open markets.
@@ -99,8 +101,9 @@ export function CardFace({ market }: { market: UnifiedMarket }) {
   const [homeTeam, awayTeam] = splitEventTitle(eventTitle || market.question);
   const isHeadToHead = !!awayTeam;
   const countdown = useCountdown(market.expiry);
-  const yesPct = market.yesPrice > 0 ? Math.round(market.yesPrice * 100) : null;
-  const noPct = market.noPrice > 0 ? Math.round(market.noPrice * 100) : yesPct != null ? 100 - yesPct : null;
+  const yesFrac = probToFractional(market.yesPrice);
+  const noProb = market.noPrice > 0 ? market.noPrice : market.yesPrice > 0 ? 1 - market.yesPrice : null;
+  const noFrac = probToFractional(noProb);
   const [imgError, setImgError] = useState(false);
   const showImage = !!market.imageUrl && !imgError && !isHeadToHead;
 
@@ -108,23 +111,10 @@ export function CardFace({ market }: { market: UnifiedMarket }) {
     <View style={styles.cardInner}>
       {/* Meta row */}
       <View style={styles.metaRow}>
-        <View style={market.source === "native" ? styles.srcNative : styles.srcPoly}>
-          {market.source === "native" ? <TerraceMark size={10} /> : <PolyJupLogos size={10} />}
-          <Text style={market.source === "native" ? styles.srcNativeText : styles.srcPolyText}>
-            {market.source === "native" ? "Terrace" : "Polymarket"}
-          </Text>
-        </View>
-        {market.isPrivate && (
-          <View style={styles.privateTag}>
-            <Text style={styles.privateTagText}>🔒 Private</Text>
-          </View>
-        )}
+        <Badge tone={market.source === "native" ? "terrace" : "poly"} label={market.source === "native" ? "Terrace" : "Polymarket"} />
+        {market.isPrivate && <Badge tone="private" label="Arcium · Private" icon="lock" />}
         <View style={{ flex: 1 }} />
-        {!!countdown && (
-          <View style={styles.clockTag}>
-            <Text style={styles.clockText}>⏱ {countdown}</Text>
-          </View>
-        )}
+        {!!countdown && <Badge tone="amber" label={countdown} icon="clock" />}
       </View>
 
       {/* Crest hero */}
@@ -161,17 +151,14 @@ export function CardFace({ market }: { market: UnifiedMarket }) {
       )}
       <Text style={styles.statement} numberOfLines={2}>{market.question}</Text>
 
-      {/* Odds + pool */}
-      <View style={styles.footRow}>
-        <View style={styles.oddsChip}>
-          <Text style={styles.oddsYes}>YES {yesPct != null ? `${yesPct}¢` : "—"}</Text>
-          <Text style={styles.oddsDivider}>·</Text>
-          <Text style={styles.oddsNo}>NO {noPct != null ? `${noPct}¢` : "—"}</Text>
-        </View>
-        {market.totalVolumeUsdc > 0 && (
-          <Text style={styles.pool}>🏆 {formatVol(market.totalVolumeUsdc)} pool</Text>
-        )}
+      {/* Back / Fade odds */}
+      <View style={styles.oddsPair}>
+        <OddsButton label="Back" tone="yes" value={yesFrac} />
+        <OddsButton label="Fade" tone="no" value={noFrac} />
       </View>
+      {market.totalVolumeUsdc > 0 && (
+        <Text style={styles.matched}>MATCHED {moneyWhole(market.totalVolumeUsdc)}</Text>
+      )}
     </View>
   );
 }
@@ -536,20 +523,16 @@ const styles = StyleSheet.create({
   hero: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 130 },
   crestPair: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
   crestCol: { alignItems: "center", gap: 8, width: 104 },
-  crestName: { fontSize: 12, fontWeight: "600", color: "#d1d5db" },
-  vs: { fontSize: 13, fontWeight: "700", color: "#4b5563" },
+  crestName: { fontFamily: font.sansSemi, fontSize: 12, fontWeight: "600", color: "#d1d5db" },
+  vs: { fontFamily: font.condBold, fontSize: 13, fontWeight: "700", color: C.ink4, textTransform: "uppercase" },
   crestSolo: { alignItems: "center" },
   heroImage: { width: 140, height: 140, borderRadius: 18, backgroundColor: "#1a1a1a" },
 
-  context: { fontSize: 12, color: "#6b7280", fontWeight: "600", marginTop: 4 },
-  statement: { fontSize: 20, fontWeight: "800", color: "#f9fafb", lineHeight: 26, marginTop: 3, letterSpacing: -0.3 },
+  context: { fontFamily: font.sans, fontSize: 12, color: C.ink3, fontWeight: "600", marginTop: 4 },
+  statement: { fontFamily: font.condBold, fontSize: 24, fontWeight: "700", color: C.ink, lineHeight: 27, marginTop: 4, letterSpacing: 0.3, textTransform: "uppercase" },
 
-  footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
-  oddsChip: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#0d0d0d", borderRadius: 10, paddingHorizontal: 11, paddingVertical: 6, borderWidth: 0.5, borderColor: "#1f1f1f" },
-  oddsYes: { fontSize: 13, fontWeight: "800", color: "#22c55e" },
-  oddsDivider: { fontSize: 13, color: "#374151" },
-  oddsNo: { fontSize: 13, fontWeight: "800", color: "#ef4444" },
-  pool: { fontSize: 12, fontWeight: "600", color: "#9ca3af" },
+  oddsPair: { flexDirection: "row", gap: 6, marginTop: 12 },
+  matched: { fontFamily: font.sansSemi, fontSize: 11, fontWeight: "600", color: C.ink3, letterSpacing: 0.4, marginTop: 10 },
 
   // Stamps
   stamp: { position: "absolute", zIndex: 10, borderWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },

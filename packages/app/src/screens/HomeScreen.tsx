@@ -17,10 +17,9 @@ import { useLeague } from "../hooks/useLeague";
 import { useLeagueAdvanceNotifications, type AdvanceNotification } from "../hooks/useLeagueAdvanceNotifications";
 import { useLeagueWinnerNotifications, type WinnerNotification } from "../hooks/useLeagueWinnerNotifications";
 import { useLeagueActivityFeed, type LeagueActivityEntry } from "../hooks/useLeagueActivityFeed";
-import { avatarColorFromPubkey } from "../hooks/useLeaderboard";
+import { truncatePubkey } from "../hooks/useLeaderboard";
 import { JerseyAvatar } from "../components/JerseyAvatar";
 import { TerraceMark, PolyJupLogos, POLYMARKET_LOGO, JUPITER_LOGO_URI } from "../components/BrandIcons";
-import { LinearGradient } from "expo-linear-gradient";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { useCreatorWinRates } from "../hooks/useCreatorWinRates";
 import { useTerraceUsers } from "../hooks/useTerraceUsers";
@@ -29,20 +28,44 @@ import { MatchGroupCard } from "./MatchGroupCard";
 import { BetSheet } from "./BetSheet";
 import { SwipeDeck } from "./SwipeDeck";
 import type { UnifiedMarket } from "@terrace/sdk";
+import { color as TC, font as TF, radius as TR } from "../theme/tokens";
+import { Icon, type IconName } from "../components/Icon";
+import { InPlayCarousel } from "../components/InPlayCarousel";
+import { MarketCard } from "../components/MarketCard";
+import { SectionHead } from "../components/ui";
+import { COMPETITIONS, HOT_COMPETITION, matchesCompetition, marketTitle } from "../utils/football";
+import { handleOf } from "../utils/identity";
+import { moneyWhole, probToFractional } from "../utils/format";
 
 // ---------------------------------------------------------------------------
-// Feature cards (horizontal scroll)
+// Quick-action tiles (redesign) — replace the gradient category carousel.
 // ---------------------------------------------------------------------------
-const FEATURE_CARDS = [
-  { emoji: "⚽", title: "Matchups",      sub: "Settle group chat bets",   colors: ["#064e3b", "#16a34a"] as const, key: "Matchups" as const },
-  { emoji: "🏆", title: "Parlays",       sub: "Chain your convictions",   colors: ["#1e3a5f", "#3b82f6"] as const, key: "Parlays"  as const },
-  { emoji: "⚡", title: "Flash markets", sub: "In-match, high urgency",   colors: ["#2d1b69", "#7c3aed"] as const, key: "Flash"    as const },
-  { emoji: "📊", title: "Leagues",       sub: "FPL meets prediction",     colors: ["#7c2d12", "#ea580c"] as const, key: "Leagues"  as const },
-];
-
-// Thumbnail colour palette — cycles by market index
-const THUMB_COLORS = ["#064e3b", "#1e3a5f", "#7f1d1d", "#2d1b69"];
-const THUMB_EMOJIS = ["🏴󠁧󠁢󠁥󠁮󠁧󠁿", "⚽", "🔴", "🟣"];
+// Flash is a tile here, not only a link on the flash-markets row, because that
+// row hides itself when nothing is live — which is precisely when the Flash
+// screen's "no flash markets, create one" state is worth reaching.
+function QuickActions({ onMatchup, onParlay, onLeague, onFlash }: { onMatchup?: () => void; onParlay?: () => void; onLeague?: () => void; onFlash?: () => void }) {
+  const tiles: { icon: IconName; label: string; tint?: string; onPress?: () => void }[] = [
+    { icon: "swords", label: "1v1\nmatchups", onPress: onMatchup },
+    { icon: "list", label: "Build a\nparlay", onPress: onParlay },
+    { icon: "trophy", label: "Private\nleagues", onPress: onLeague },
+    { icon: "bolt", label: "Flash\nmarkets", tint: TC.amber, onPress: onFlash },
+  ];
+  return (
+    <View style={qa.row}>
+      {tiles.map((t) => (
+        <TouchableOpacity key={t.label} style={qa.tile} onPress={t.onPress} activeOpacity={0.8}>
+          <Icon name={t.icon} size={20} color={t.tint ?? TC.green} />
+          <Text style={qa.label}>{t.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+const qa = StyleSheet.create({
+  row: { flexDirection: "row", gap: 7, paddingHorizontal: 16, paddingBottom: 6 },
+  tile: { flex: 1, backgroundColor: TC.surface, borderWidth: 1, borderColor: TC.lineSoft, borderRadius: 14, padding: 10, minHeight: 80, justifyContent: "space-between" },
+  label: { fontFamily: TF.sansBold, fontSize: 11.5, fontWeight: "700", color: TC.ink, marginTop: 8, lineHeight: 14 },
+});
 
 const TRENDING_TABS = ["Markets", "Leagues"] as const;
 type TrendingTab = (typeof TRENDING_TABS)[number];
@@ -75,45 +98,11 @@ function SourceChipContent({ filterKey, active }: { filterKey: SourceFilter; act
   return <Text style={textStyle}>All markets</Text>;
 }
 
-// "World Cup" is rendered as a HOT chip (fire emoji + orange accent) because
-// it's a global event that surfaces above the regular club leagues.
-const HOT_CHIP = "World Cup";
-const LEAGUE_CHIPS = ["All", "Premier League", "Champions League", "La Liga", "Bundesliga", "Serie A", "Ligue 1", "Europa League"];
-
-function matchesLeague(eventTitle: string, league: string): boolean {
-  if (league === "All") return true;
-  const t = eventTitle.toLowerCase();
-  if (league === "Premier League") return /man |arsenal|chelsea|liverpool|tottenham|newcastle|west ham|everton|crystal|wolves|fulham|brentford|brighton|nottingham|bournemouth|aston villa|ipswich|leicester|southampton/i.test(eventTitle);
-  if (league === "Champions League") return /champions league|ucl/i.test(t);
-  if (league === "La Liga") return /la liga|real madrid|barcelona|atletico|sevilla|villarreal|real sociedad|athletic bilbao/i.test(t);
-  if (league === "Bundesliga") return /bundesliga|bayern|dortmund|leverkusen|leipzig|frankfurt/i.test(t);
-  if (league === "Serie A") return /serie a|juventus|inter|milan|napoli|roma|lazio|atalanta|fiorentina/i.test(t);
-  if (league === "Ligue 1") return /ligue 1|psg|paris|lyon|marseille|monaco|lille/i.test(t);
-  if (league === "Europa League") return /europa league|uel/i.test(t);
-  if (league === "World Cup") {
-    // Match on tournament keywords OR country-vs-country titles. The country
-    // safety net covers Polymarket events that don't say "World Cup" in the
-    // title (e.g. "France vs Spain — Match result").
-    return /world cup|fifa|wcup|wc 2026|qualifier/i.test(t)
-      || /\b(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\s+(vs\.?|v\.?)\s+(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\b/i.test(t);
-  }
-  return true;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function categoryLabel(m: UnifiedMarket): string {
-  if (m.source === "native") return "Permissionless · Fan created";
-  // Try to read something meaningful from the question — e.g. "Will Arsenal…" → "Sports · Prediction market"
-  const q = m.question.toLowerCase();
-  if (q.includes("premier league") || q.includes("epl"))  return "Premier League · Match result";
-  if (q.includes("champions league") || q.includes("ucl")) return "Champions League · Match result";
-  if (q.includes("la liga"))  return "La Liga · Match result";
-  if (q.includes("world cup")) return "FIFA World Cup · Match result";
-  return "Sports · Prediction market";
-}
+// Competition chips + matching now come from utils/football.ts — the same
+// classifier the data layer uses, so a chip's result set matches its count.
+// "World Cup" gets the HOT treatment (fire emoji + orange accent) as a global
+// event that surfaces above the club leagues.
+const LEAGUE_CHIPS = COMPETITIONS;
 
 // ---------------------------------------------------------------------------
 // Flash market countdown
@@ -140,14 +129,24 @@ function useCountdown(expiry: Date | null): string {
   return label;
 }
 
-function FlashMarketCard({ market, onPress }: { market: UnifiedMarket; onPress: (id: string) => void }) {
+// Flash teaser on Home. The full board — with in-play scores alongside it —
+// lives on the Flash screen; this row is the doorway, capped at four so it
+// stays a teaser rather than a second feed.
+const FLASH_TEASER_LIMIT = 4;
+
+export function FlashTeaserCard({ market, onPress }: { market: UnifiedMarket; onPress: (id: string) => void }) {
   const countdown = useCountdown(market.expiry);
   const expired = countdown === "Expired";
   return (
-    <TouchableOpacity style={flashStyles.card} onPress={() => onPress(market.id)} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[flashStyles.card, expired && flashStyles.cardExpired]}
+      onPress={() => onPress(market.id)}
+      activeOpacity={0.8}
+    >
       <View style={flashStyles.cardHeader}>
         <View style={flashStyles.flashBadge}>
-          <Text style={flashStyles.flashBadgeText}>⚡ FLASH</Text>
+          <Icon name="bolt" size={11} color={TC.amberInk} />
+          <Text style={flashStyles.flashBadgeText}>FLASH</Text>
         </View>
         <Text style={[flashStyles.countdown, expired && flashStyles.countdownExpired]}>
           {countdown}
@@ -155,42 +154,43 @@ function FlashMarketCard({ market, onPress }: { market: UnifiedMarket; onPress: 
       </View>
       <Text style={flashStyles.cardQuestion} numberOfLines={3}>{market.question}</Text>
       <View style={flashStyles.cardFooter}>
-        <View style={flashStyles.priceChip}>
-          <Text style={flashStyles.priceChipText}>YES {Math.round(market.yesPrice * 100)}¢</Text>
-        </View>
+        <Text style={flashStyles.priceChipText}>
+          {expired ? "CLOSED" : `BACK ${probToFractional(market.yesPrice)}`}
+        </Text>
         {market.totalVolumeUsdc > 0 && (
-          <Text style={flashStyles.cardVol}>Vol {formatUsdc(market.totalVolumeUsdc)}</Text>
+          <Text style={flashStyles.cardVol}>{moneyWhole(market.totalVolumeUsdc)}</Text>
         )}
       </View>
     </TouchableOpacity>
   );
 }
 
-function FlashMarketsRow({ markets, onSelectMarket }: { markets: UnifiedMarket[]; onSelectMarket: (id: string) => void }) {
-  const flashOpen = useMemo(
-    () =>
-      markets
-        .filter((m) => m.isFlash && m.status === "Open")
-        .sort((a, b) => (a.expiry?.getTime() ?? 0) - (b.expiry?.getTime() ?? 0)),
-    [markets]
-  );
+/** Open flash markets, soonest expiry first. Shared with the Flash screen. */
+export function openFlashMarkets(markets: UnifiedMarket[]): UnifiedMarket[] {
+  return markets
+    .filter((m) => m.isFlash && m.status === "Open")
+    .sort((a, b) => (a.expiry?.getTime() ?? 0) - (b.expiry?.getTime() ?? 0));
+}
+
+function FlashMarketsRow({ markets, onSelectMarket, onSeeAll }: { markets: UnifiedMarket[]; onSelectMarket: (id: string) => void; onSeeAll?: () => void }) {
+  const flashOpen = useMemo(() => openFlashMarkets(markets), [markets]);
   if (flashOpen.length === 0) return null;
   return (
     <View style={flashStyles.section}>
       <View style={flashStyles.sectionHeader}>
-        <Text style={flashStyles.sectionTitle}>⚡ Flash Markets</Text>
-        <View style={flashStyles.liveBadge}>
-          <View style={flashStyles.liveDot} />
-          <Text style={flashStyles.liveText}>{flashOpen.length} live</Text>
-        </View>
+        <SectionHead
+          title="Flash markets"
+          moreLabel={onSeeAll ? `All ${flashOpen.length}` : undefined}
+          onMore={onSeeAll}
+        />
       </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={flashStyles.scrollContent}
       >
-        {flashOpen.map((m) => (
-          <FlashMarketCard key={m.id} market={m} onPress={onSelectMarket} />
+        {flashOpen.slice(0, FLASH_TEASER_LIMIT).map((m) => (
+          <FlashTeaserCard key={m.id} market={m} onPress={onSelectMarket} />
         ))}
       </ScrollView>
     </View>
@@ -199,108 +199,25 @@ function FlashMarketsRow({ markets, onSelectMarket }: { markets: UnifiedMarket[]
 
 const flashStyles = StyleSheet.create({
   section:       { marginBottom: 4 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 6, paddingBottom: 10 },
-  sectionTitle:  { fontSize: 15, fontWeight: "700", color: "#fff" },
-  liveBadge:     { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#2d1b69", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  liveDot:       { width: 5, height: 5, borderRadius: 3, backgroundColor: "#a78bfa" },
-  liveText:      { fontSize: 10, fontWeight: "600", color: "#a78bfa" },
-  scrollContent: { paddingHorizontal: 18, gap: 10, paddingBottom: 6 },
+  sectionHeader: { paddingHorizontal: 16, paddingTop: 6 },
+  scrollContent: { paddingHorizontal: 16, gap: 10, paddingBottom: 6 },
 
-  card:          { width: 185, backgroundColor: "#1a0a3a", borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: "#4c1d95" },
+  card:          { width: 190, backgroundColor: TC.surface, borderRadius: TR.md, padding: 12, gap: 8, borderWidth: 1, borderColor: TC.amberDeep },
+  cardExpired:   { opacity: 0.55, borderColor: TC.lineSoft },
   cardHeader:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  flashBadge:    { backgroundColor: "#4c1d95", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  flashBadgeText:{ fontSize: 9, fontWeight: "700", color: "#c4b5fd", letterSpacing: 0.5 },
-  countdown:     { fontSize: 13, fontWeight: "700", color: "#f59e0b" },
-  countdownExpired: { color: "#6b7280" },
-  cardQuestion:  { fontSize: 13, fontWeight: "500", color: "#e5e7eb", lineHeight: 18, flex: 1 },
-  cardFooter:    { flexDirection: "row", alignItems: "center", gap: 8 },
-  priceChip:     { backgroundColor: "#2d1b69", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  priceChipText: { fontSize: 10, fontWeight: "600", color: "#a78bfa" },
-  cardVol:       { fontSize: 10, color: "#6b7280" },
+  flashBadge:    { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: TC.amberDeep, borderRadius: TR.xs, paddingHorizontal: 7, paddingVertical: 3 },
+  flashBadgeText:{ fontFamily: TF.sansBold, fontSize: 10, fontWeight: "700", color: TC.amberInk, letterSpacing: 0.4 },
+  countdown:     { fontFamily: TF.condBold, fontSize: 16, fontWeight: "700", color: TC.amber, letterSpacing: 0.4 },
+  countdownExpired: { color: TC.ink4 },
+  cardQuestion:  { fontFamily: TF.condBold, fontSize: 14, fontWeight: "700", color: TC.ink, lineHeight: 18, letterSpacing: 0.2, textTransform: "uppercase", flex: 1 },
+  cardFooter:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  priceChipText: { fontFamily: TF.sansBold, fontSize: 11, fontWeight: "700", color: TC.greenInk, letterSpacing: 0.3 },
+  cardVol:       { fontFamily: TF.sansSemi, fontSize: 10.5, fontWeight: "600", color: TC.ink3 },
 });
-
-function formatUsdc(val: number): string {
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000)     return `$${(val / 1_000).toFixed(1)}K`;
-  if (val >= 10)        return `$${val.toFixed(1)}`;
-  return `$${val.toFixed(2)}`;
-}
-
-function shortAddr(addr: string): string {
-  return `${addr.slice(0, 5)}…${addr.slice(-4)}`;
-}
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-const FEATURE_CARD_WIDTH = 148;
-const FEATURE_CARD_GAP   = 10;
-const FEATURE_CARD_STEP  = FEATURE_CARD_WIDTH + FEATURE_CARD_GAP;
-const CAROUSEL_INTERVAL  = 3_000;
-
-function FeatureCardRow({ onParlayPress, onMatchupPress, onLeaguePress }: { onParlayPress?: () => void; onMatchupPress?: () => void; onLeaguePress?: () => void }) {
-  const scrollRef      = useRef<ScrollView>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const userScrolling  = useRef(false);
-  const activeRef      = useRef(0); // avoid stale closure in interval
-
-  // Keep ref in sync
-  useEffect(() => { activeRef.current = activeIndex; }, [activeIndex]);
-
-  // Auto-advance every CAROUSEL_INTERVAL ms; pause while user is dragging
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (userScrolling.current) return;
-      const next = (activeRef.current + 1) % FEATURE_CARDS.length;
-      scrollRef.current?.scrollTo({ x: next * FEATURE_CARD_STEP, animated: true });
-      setActiveIndex(next);
-    }, CAROUSEL_INTERVAL);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <View>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.featureRow}
-        scrollEventThrottle={16}
-        onScrollBeginDrag={() => { userScrolling.current = true; }}
-        onMomentumScrollEnd={(e) => {
-          const x = e.nativeEvent.contentOffset.x;
-          const i = Math.round(x / FEATURE_CARD_STEP);
-          setActiveIndex(Math.min(Math.max(i, 0), FEATURE_CARDS.length - 1));
-          userScrolling.current = false;
-        }}
-      >
-        {FEATURE_CARDS.map((card) => (
-          <TouchableOpacity
-            key={card.title}
-            activeOpacity={0.8}
-            onPress={card.key === "Parlays" ? onParlayPress : card.key === "Matchups" ? onMatchupPress : card.key === "Leagues" ? onLeaguePress : undefined}
-          >
-            <LinearGradient colors={card.colors} style={styles.featureCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.featureEmoji}>{card.emoji}</Text>
-              <View>
-                <Text style={styles.featureTitle}>{card.title}</Text>
-                <Text style={styles.featureSub}>{card.sub}</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Dynamic pagination dots */}
-      <View style={styles.dotsRow}>
-        {FEATURE_CARDS.map((_, i) => (
-          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Terrace status filter header
@@ -358,102 +275,11 @@ const tsStyles = StyleSheet.create({
   countText:   { fontSize: 10, fontWeight: "700", color: "#666" },
 });
 
-// ---------------------------------------------------------------------------
-// Market row
-// ---------------------------------------------------------------------------
-
-interface MarketRowProps {
-  market: UnifiedMarket;
-  index: number;
-  onPress: (id: string) => void;
-  creatorWinRate?: number; // winRateBps (0–10000), undefined = not yet loaded
-}
-
-function MarketRow({ market, index, onPress, creatorWinRate }: MarketRowProps) {
-  const thumbColor = THUMB_COLORS[index % THUMB_COLORS.length];
-  const thumbEmoji = THUMB_EMOJIS[index % THUMB_EMOJIS.length];
-  const label = categoryLabel(market);
-  const creatorShort = market.creator ? shortAddr(market.creator) : null;
-  const winRateLabel = creatorWinRate != null
-    ? `${Math.round(creatorWinRate / 100)}% W`
-    : "-- W";
-  const isOpen = market.status === "Open";
-  const isSettled = market.status === "Settled" || market.status === "Closed";
-
-  return (
-    <View style={isSettled ? styles.settledMarketWrap : undefined}>
-      <TouchableOpacity style={styles.marketRow} onPress={() => onPress(market.id)} activeOpacity={0.7}>
-        {/* Thumbnail */}
-        <View style={[styles.marketThumb, { backgroundColor: thumbColor }]}>
-          <Text style={styles.marketThumbEmoji}>{thumbEmoji}</Text>
-        </View>
-
-        {/* Info */}
-        <View style={styles.marketInfo}>
-          <Text style={styles.marketName} numberOfLines={1}>{market.question}</Text>
-          <Text style={styles.marketLeague}>{label}</Text>
-
-          {/* Tags */}
-          <View style={styles.tagsRow}>
-            {/* YES price */}
-            <View style={styles.tagCoin}>
-              <Text style={styles.tagText}>YES {Math.round(market.yesPrice * 100)}¢</Text>
-            </View>
-            {/* Total volume */}
-            {market.totalVolumeUsdc > 0 && (
-              <View style={styles.tagPrize}>
-                <Text style={styles.tagTextGreen}>Vol {formatUsdc(market.totalVolumeUsdc)}</Text>
-              </View>
-            )}
-            {/* Status */}
-            {isOpen && (
-              <View style={styles.tagLive}>
-                <Text style={styles.tagTextRed}>● Open</Text>
-              </View>
-            )}
-            {isSettled && (
-              <View style={styles.tagSettled}>
-                <Text style={styles.tagTextGrey}>✓ Settled</Text>
-              </View>
-            )}
-            {/* Source */}
-            {market.source === "native" ? (
-              <View style={styles.tagFlash}>
-                <TerraceMark size={9} />
-                <Text style={styles.tagTextOrange}>Terrace</Text>
-              </View>
-            ) : (
-              <View style={styles.tagPoly}>
-                <PolyJupLogos size={9} />
-                <Text style={styles.tagTextBlue}>Polymarket</Text>
-              </View>
-            )}
-            {market.isFlash && (
-              <View style={styles.tagFlashPurple}>
-                <Text style={styles.tagTextPurple}>⚡ Flash</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <Text style={styles.marketArrow}>›</Text>
-      </TouchableOpacity>
-
-      {/* Creator pill — native markets only */}
-      {market.source === "native" && creatorShort && (
-        <View style={styles.creatorRow}>
-          <View style={styles.creatorPill}>
-            <View style={[styles.creatorAvatar, styles.avatarGreen]}>
-              <Text style={styles.creatorInitial}>{market.creator![0].toUpperCase()}</Text>
-            </View>
-            <Text style={styles.creatorName}>{creatorShort}</Text>
-            <Text style={styles.creatorWinRate}>{winRateLabel}</Text>
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
+// Trending rows render through the shared `MarketCard` (compact variant) — the
+// same card the Markets tab and the Flash board use. The old bespoke row here
+// showed cents, emoji thumbnails and a base58 creator pill; all three
+// contradicted the redesign, and having two market rows meant fixing anything
+// twice.
 
 function LeaguesTab({ onOpenLeagues }: { onOpenLeagues?: () => void }) {
   return (
@@ -570,7 +396,7 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                   {leagueFeed.map((item) => {
                     if (item.kind === "winner") {
                       const w = item.data;
-                      const winnerLabel = shortAddr(w.winnerPubkey);
+                      const winnerLabel = handleOf(w.winnerPubkey);
                       return (
                         <TouchableOpacity
                           key={`win:${w.leagueAddress}:${w.gameweek}`}
@@ -619,7 +445,7 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                     }
                     const e = item.data;
                     const meta = activityCopy(e);
-                    const short = `${e.actorPubkey.slice(0, 5)}…${e.actorPubkey.slice(-4)}`;
+                    const short = handleOf(e.actorPubkey);
                     return (
                       <TouchableOpacity
                         key={e.id}
@@ -656,7 +482,7 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                     <View style={{ flex: 1 }}>
                       <Text style={notif.challengeFrom}>Challenge from</Text>
                       <Text style={notif.challengerAddr}>
-                        {challengerNameMap.get(m.challenger) ?? shortAddr(m.challenger)}
+                        {challengerNameMap.get(m.challenger) ?? handleOf(m.challenger)}
                       </Text>
                       <Text style={notif.stakeText}>
                         {fmtUsdc(m.stakeUsdc)} each · pot {fmtUsdc(m.stakeUsdc * 2n)}
@@ -669,7 +495,7 @@ function ChallengeNotificationPanel({ visible, challenges, advances, winners, ac
                     </View>
                   </View>
                   <Text style={notif.marketAddr} numberOfLines={2}>
-                    📍 {marketQuestionMap.get(m.market as string) ?? shortAddr(m.market)}
+                    📍 {marketQuestionMap.get(m.market as string) ?? truncatePubkey(m.market as string)}
                   </Text>
                   <View style={notif.actions}>
                     <TouchableOpacity
@@ -750,6 +576,7 @@ interface Props {
   onNavigateParlay?: () => void;
   onNavigateMatchup?: () => void;
   onNavigateLeague?: () => void;
+  onNavigateFlash?: () => void;
   onRefreshMarkets?: () => void;
 }
 
@@ -765,7 +592,7 @@ interface SelectedBet {
 const MARKET_VIEWS = ["List", "Swipe"] as const;
 type MarketView = (typeof MARKET_VIEWS)[number];
 
-export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onNavigateLeague, onRefreshMarkets }: Props) {
+export function HomeScreen({ walletPubkey, winRate, repLoading, markets, marketsLoading: loading, onSelectMarket, onNavigateProfile, onNavigateParlay, onNavigateMatchup, onNavigateLeague, onNavigateFlash, onRefreshMarkets }: Props) {
   const [activeTab, setActiveTab] = useState<TrendingTab>("Markets");
   const [marketView, setMarketView] = useState<MarketView>("List");
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
@@ -918,7 +745,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             onPress={() => { setShowNotifPanel(true); refreshLeagueActivity(); }}
             activeOpacity={0.7}
           >
-            <Text>🔔</Text>
+            <Icon name="bell" size={18} color={TC.ink2} />
             {totalNotifCount > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>{totalNotifCount}</Text>
@@ -944,11 +771,14 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
       {/* ── Hero ────────────────────────────────────────────── */}
       <Text style={styles.heroLabel}>Back your take.</Text>
 
-      {/* ── Feature cards ───────────────────────────────────── */}
-      <FeatureCardRow onParlayPress={onNavigateParlay} onMatchupPress={onNavigateMatchup} onLeaguePress={onNavigateLeague} />
+      {/* ── Quick actions (redesign — replaces gradient carousel) ── */}
+      <QuickActions onMatchup={onNavigateMatchup} onParlay={onNavigateParlay} onLeague={onNavigateLeague} onFlash={onNavigateFlash} />
 
-      {/* ── Flash markets row ───────────────────────────────── */}
-      <FlashMarketsRow markets={markets} onSelectMarket={onSelectMarket} />
+      {/* ── In-play now — live scores + a price on what's on ── */}
+      <InPlayCarousel markets={markets} onSelectMarket={onSelectMarket} limit={6} />
+
+      {/* ── Flash markets teaser → full board on the Flash screen ── */}
+      <FlashMarketsRow markets={markets} onSelectMarket={onSelectMarket} onSeeAll={onNavigateFlash} />
 
       {/* ── Trending section ────────────────────────────────── */}
       <View style={styles.section}>
@@ -996,12 +826,12 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
             const showLeagueChips = sourceFilter !== "Terrace";
             const filteredGroups = showLeagueChips
               ? grouped.filter((g) =>
-                  matchesLeague(g.type === "grouped" ? g.eventTitle : g.market.jupiterEventTitle ?? g.market.question, leagueFilter)
+                  matchesCompetition(g.type === "grouped" ? g.eventTitle : marketTitle(g.market), leagueFilter)
                 )
               : grouped;
             // Flat market list for the swipe deck — same source/league filters
             const deckMarkets = showLeagueChips
-              ? sourceFiltered.filter((m) => matchesLeague(m.jupiterEventTitle ?? m.question, leagueFilter))
+              ? sourceFiltered.filter((m) => matchesCompetition(marketTitle(m), leagueFilter))
               : sourceFiltered;
             return (
               <>
@@ -1044,7 +874,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                     contentContainerStyle={styles.leagueChipsRow}
                   >
                     {LEAGUE_CHIPS.map((chip) => {
-                      const isHot = chip === HOT_CHIP;
+                      const isHot = chip === HOT_COMPETITION;
                       const isActive = leagueFilter === chip;
                       return (
                         <TouchableOpacity
@@ -1116,23 +946,29 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                     </Text>
                   </View>
                 ) : (
-                  filteredGroups.map((item, i) =>
-                    item.type === "grouped" ? (
-                      <MatchGroupCard
-                        key={item.eventId}
-                        match={item}
-                        onSelectOutcome={handleSelectOutcome}
-                      />
-                    ) : (
-                      <MarketRow
-                        key={item.market.id}
-                        market={item.market}
-                        index={i}
-                        onPress={onSelectMarket}
-                        creatorWinRate={item.market.creator ? creatorWinRates[item.market.creator] : undefined}
-                      />
-                    )
-                  )
+                  <View style={styles.trendingList}>
+                    {filteredGroups.map((item) =>
+                      item.type === "grouped" ? (
+                        <MatchGroupCard
+                          key={item.eventId}
+                          match={item}
+                          onSelectOutcome={handleSelectOutcome}
+                        />
+                      ) : (
+                        <MarketCard
+                          key={item.market.id}
+                          market={item.market}
+                          compact
+                          onPress={() => onSelectMarket(item.market.id)}
+                          onBack={() => handleSwipeBet(item.market, true)}
+                          onFade={() => handleSwipeBet(item.market, false)}
+                          creatorWinRate={
+                            item.market.creator ? creatorWinRates[item.market.creator] : undefined
+                          }
+                        />
+                      )
+                    )}
+                  </View>
                 )}
               </>
             );
@@ -1219,7 +1055,7 @@ const styles = StyleSheet.create({
   logoMark:  { width: 32, height: 32, backgroundColor: "#111", borderWidth: 1, borderColor: "#333", borderRadius: 8, alignItems: "center", justifyContent: "center" },
   logoLetter:{ fontSize: 14, fontWeight: "700", color: "#fff" },
   logoDot:   { width: 7, height: 7, backgroundColor: "#22c55e", borderRadius: 4, position: "absolute", bottom: 4, right: 4 },
-  logoName:  { fontSize: 17, fontWeight: "600", color: "#fff", letterSpacing: -0.3 },
+  logoName:  { fontFamily: TF.condBold, fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.4, textTransform: "uppercase" },
   navRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
   navIconBtn:{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   notifBadge:{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
@@ -1228,24 +1064,12 @@ const styles = StyleSheet.create({
   repBadgeText: { fontSize: 10, fontWeight: "700", color: "#000", letterSpacing: 0.3 },
 
   // Hero
-  heroLabel: { fontSize: 22, fontWeight: "600", color: "#fff", paddingHorizontal: 18, paddingBottom: 12, letterSpacing: -0.3 },
-
-  // Feature cards
-  featureRow: { paddingHorizontal: 18, gap: 10, paddingBottom: 4 },
-  featureCard: { width: 148, height: 120, borderRadius: 16, padding: 12, justifyContent: "flex-end", overflow: "hidden" },
-  featureEmoji: { position: "absolute", top: 10, right: 10, fontSize: 26 },
-  featureTitle: { fontSize: 14, fontWeight: "600", color: "#fff" },
-  featureSub:   { fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 1 },
-
-  // Dots
-  dotsRow: { flexDirection: "row", justifyContent: "center", gap: 5, paddingVertical: 14 },
-  dot:       { width: 5, height: 5, borderRadius: 3, backgroundColor: "#333" },
-  dotActive: { width: 14, backgroundColor: "#22c55e" },
+  heroLabel: { fontFamily: TF.condXBold, fontSize: 30, fontWeight: "800", color: "#fff", paddingHorizontal: 16, paddingBottom: 12, letterSpacing: -0.5 },
 
   // Section
   section:       { backgroundColor: "#111", borderTopLeftRadius: 20, borderTopRightRadius: 20, flex: 1 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 },
-  sectionTitle:  { fontSize: 18, fontWeight: "600", color: "#fff" },
+  sectionTitle:  { fontFamily: TF.condBold, fontSize: 18, fontWeight: "700", color: "#fff", letterSpacing: 0.6, textTransform: "uppercase" },
   tabRow: { flexDirection: "row", gap: 6 },
   tab:    { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   tabActive:   { backgroundColor: "#22c55e" },
@@ -1282,48 +1106,7 @@ const styles = StyleSheet.create({
   viewToggleText: { fontSize: 12, fontWeight: "700", color: "#888" },
   viewToggleTextActive: { color: "#000" },
 
-  // Market row
   loadingRow: { alignItems: "center", paddingVertical: 40 },
-  marketRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1e1e1e",
-  },
-  marketThumb:     { width: 52, height: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  marketThumbEmoji:{ fontSize: 22 },
-  marketInfo:      { flex: 1, minWidth: 0 },
-  marketName:      { fontSize: 13, fontWeight: "600", color: "#fff" },
-  marketLeague:    { fontSize: 10, color: "#888", marginTop: 1 },
-  tagsRow:         { flexDirection: "row", gap: 5, marginTop: 5, flexWrap: "wrap" },
-  tagCoin:    { backgroundColor: "#1e1e1e", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagPrize:   { backgroundColor: "#1a2e1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagLive:    { backgroundColor: "#7f1d1d", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagSettled:         { backgroundColor: "#1a1a1a", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 0.5, borderColor: "#333" },
-  settledMarketWrap:  { opacity: 0.6, borderLeftWidth: 2, borderLeftColor: "#374151" },
-  tagFlash: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#3b1f00", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagPoly:  { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#1e3a5f", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagText:        { fontSize: 9, fontWeight: "500", color: "#aaa" },
-  tagTextGreen:   { fontSize: 9, fontWeight: "500", color: "#4ade80" },
-  tagTextRed:     { fontSize: 9, fontWeight: "500", color: "#f87171" },
-  tagTextOrange:  { fontSize: 9, fontWeight: "500", color: "#fb923c" },
-  tagTextGrey:    { fontSize: 9, fontWeight: "500", color: "#6b7280" },
-  tagTextBlue:    { fontSize: 9, fontWeight: "500", color: "#60a5fa" },
-  tagFlashPurple: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#2d1b69", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  tagTextPurple:  { fontSize: 9, fontWeight: "600", color: "#a78bfa" },
-  marketArrow: { color: "#444", fontSize: 14 },
-
-  // Creator pills
-  creatorRow: { flexDirection: "row", gap: 6, paddingHorizontal: 18, paddingBottom: 8, paddingTop: 2 },
-  creatorPill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#1a1a1a", borderRadius: 20, paddingLeft: 5, paddingRight: 8, paddingVertical: 3 },
-  creatorAvatar:  { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  avatarGreen:    { backgroundColor: "#16a34a" },
-  creatorInitial: { fontSize: 8, fontWeight: "600", color: "#000" },
-  creatorName:    { fontSize: 9, color: "#888" },
-  creatorWinRate: { fontSize: 9, fontWeight: "600", color: "#22c55e" },
 
   // Coming soon stubs
   emptyLogoRow: { flexDirection: "row", gap: 10, marginBottom: 4 },
@@ -1332,6 +1115,8 @@ const styles = StyleSheet.create({
   comingSoonEmoji: { fontSize: 36 },
   comingSoonTitle: { fontSize: 16, fontWeight: "600", color: "#fff" },
   comingSoonSub:   { fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+
+  trendingList: { paddingHorizontal: 16, paddingBottom: 8, gap: 10 },
 
   // Bet sheet overlay
   betOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, top: 0, justifyContent: "flex-end" },

@@ -277,6 +277,7 @@ export class JupiterMarketsClient {
           imageUrl: event.metadata?.imageUrl,
           jupiterCategory: event.category,
           jupiterSubcategory: event.subcategory,
+          jupiterTags: event.tags,
         });
       }
     }

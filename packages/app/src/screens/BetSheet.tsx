@@ -1,15 +1,12 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from "react-native";
 import type { BetStatus } from "../hooks/usePlaceBet";
+import { color as C, font, radius } from "../theme/tokens";
+import { probToFractional, money, COPY } from "../utils/format";
+import { Icon } from "../components/Icon";
+import { Badge } from "../components/ui";
 
-const QUICK_STAKES_NATIVE  = [1, 2, 5, 10];
+const QUICK_STAKES_NATIVE = [1, 2, 5, 10];
 const QUICK_STAKES_JUPITER = [5, 10, 25, 50];
 
 interface Props {
@@ -17,9 +14,9 @@ interface Props {
   outcomeLabel: string;
   marketQuestion?: string;
   source?: "native" | "jupiter";
-  /** Which side the user is backing — true = YES, false = NO. Defaults to YES. */
+  /** true = backing YES, false = fading NO. */
   isYes?: boolean;
-  /** YES price in cents (0–100) */
+  /** Implied probability (0–1) of the chosen side, used for odds + returns. */
   yesPrice: number | null;
   onConfirm: (amountUsdc: number, isYes: boolean) => void;
   onDismiss: () => void;
@@ -44,231 +41,151 @@ export function BetSheet({
   const quickStakes = source === "jupiter" ? QUICK_STAKES_JUPITER : QUICK_STAKES_NATIVE;
   const [amount, setAmount] = useState(String(minStake));
 
-  const priceLabel = yesPrice !== null ? `${Math.round(yesPrice * 100)}¢` : "—";
+  const odds = probToFractional(yesPrice);
   const amountNum = parseFloat(amount) || 0;
-  const potentialReturn = yesPrice !== null && yesPrice >= 0.01
-    ? (amountNum / yesPrice).toFixed(2)
-    : "—";
-
+  const returns = yesPrice !== null && yesPrice >= 0.01 ? amountNum / yesPrice : null;
   const busy = status === "building" || status === "signing" || status === "executing";
+  const sideColor = isYes ? C.green : C.red;
 
-  const statusLabel = () => {
-    if (status === "building")  return "Building transaction…";
-    if (status === "signing")   return "Waiting for wallet…";
-    if (status === "executing") return "Submitting…";
-    return null;
-  };
+  const statusLabel = () =>
+    status === "building" ? "Building transaction…" : status === "signing" ? "Waiting for wallet…" : status === "executing" ? "Submitting…" : null;
 
+  // ── Success ──────────────────────────────────────────────────────────────
   if (status === "success") {
-    const titles = isYes
-      ? ["You're backing it! 🔥", "Call locked in! 🎯", "Conviction placed! ⚡"]
-      : ["Bold call! 🧊", "Fading it! 🎯", "Contrarian play! 💡"];
-    const title = titles[Math.floor(Date.now() / 1000) % titles.length];
-
     return (
-      <View style={styles.root}>
-        <View style={styles.handle} />
-
-        <View style={styles.successHeader}>
-          <Text style={styles.successTitle}>{title}</Text>
-          {marketQuestion && (
-            <Text style={styles.successMarket} numberOfLines={3}>{marketQuestion}</Text>
-          )}
-          <View style={[styles.successBadge, isYes ? styles.yesBadge : styles.noBadge]}>
-            <Text style={styles.successBadgeText}>
-              {outcomeLabel}  ·  {amountNum > 0 ? `$${amount} USDC` : ""}
-            </Text>
-          </View>
+      <View style={s.sheet}>
+        <View style={s.grabber} />
+        <View style={s.okCircle}>
+          <Icon name="check" size={26} color={C.green} />
         </View>
-
-        <View style={styles.nextCard}>
-          <Text style={styles.nextCardLabel}>WHAT HAPPENS NEXT</Text>
-          <View style={styles.nextRow}>
-            <Text style={styles.nextIcon}>📊</Text>
-            <Text style={styles.nextText}>
-              Track it in <Text style={styles.nextHighlight}>Profile → Active</Text> tab
-            </Text>
-          </View>
-          <View style={styles.nextRow}>
-            <Text style={styles.nextIcon}>⚖️</Text>
-            <Text style={styles.nextText}>
-              When the market settles, a <Text style={styles.nextHighlight}>Claim</Text> button appears if you called it right
-            </Text>
-          </View>
-          <View style={styles.nextRow}>
-            <Text style={styles.nextIcon}>💰</Text>
-            <Text style={styles.nextText}>
-              Winnings land directly in your wallet — no middleman, on-chain
-            </Text>
-          </View>
+        <Text style={s.okTitle}>Bet placed</Text>
+        <Text style={s.okSub}>
+          {money(amountNum)} on {marketQuestion ?? "this market"} · {isYes ? "Back" : "Fade"} at {odds}
+        </Text>
+        <View style={s.okCard}>
+          <Text style={s.kvK}>Returns if it lands</Text>
+          <Text style={[s.kvV, { color: C.green }]}>{returns != null ? money(returns) : "—"}</Text>
         </View>
-
-        {txSignature && (
-          <Text style={styles.successSig} numberOfLines={1}>
-            tx {txSignature.slice(0, 10)}…{txSignature.slice(-6)}
-          </Text>
-        )}
-
-        <TouchableOpacity style={styles.doneBtn} onPress={onDismiss}>
-          <Text style={styles.doneBtnText}>Back to Markets</Text>
+        {txSignature ? (
+          <Text style={s.sig} numberOfLines={1}>tx {txSignature.slice(0, 10)}…{txSignature.slice(-6)}</Text>
+        ) : null}
+        <TouchableOpacity style={s.cta} onPress={onDismiss}>
+          <Text style={s.ctaTxt}>Done</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // ── Slip ─────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
-      <View style={styles.handle} />
+    <View style={s.sheet}>
+      <View style={s.grabber} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.outcomeLabel}>{outcomeLabel}</Text>
-          <Text style={styles.priceRow}>at {priceLabel} per contract</Text>
+      <View style={s.headRow}>
+        <View style={{ flex: 1 }}>
+          {marketQuestion ? <Text style={s.eyebrow} numberOfLines={1}>{marketQuestion}</Text> : null}
+          <Text style={s.selection}>
+            {(isYes ? "Back" : "Fade").toUpperCase()} <Text style={{ color: sideColor }}>{odds}</Text>
+          </Text>
         </View>
-        <TouchableOpacity onPress={onDismiss} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>✕</Text>
+        <TouchableOpacity style={s.closeBtn} onPress={onDismiss}>
+          <Icon name="close" size={18} color={C.ink2} />
         </TouchableOpacity>
       </View>
 
-      {/* Stake input */}
-      <View style={styles.inputRow}>
-        <Text style={styles.inputPrefix}>$</Text>
+      <Text style={s.flabel}>{COPY.stake}</Text>
+      <View style={s.field}>
+        <Text style={s.dollar}>$</Text>
         <TextInput
-          style={styles.input}
+          style={s.input}
           value={amount}
           onChangeText={setAmount}
           keyboardType="decimal-pad"
-          placeholderTextColor="#555"
+          placeholderTextColor={C.ink4}
           editable={!busy}
         />
-        <Text style={styles.inputSuffix}>USDC</Text>
+        <Badge tone="settled" label={`Min $${minStake}`} />
       </View>
 
-      {/* Quick-pick buttons */}
-      <View style={styles.quickRow}>
-        {quickStakes.map((s) => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.quickBtn, amount === String(s) && styles.quickBtnActive]}
-            onPress={() => setAmount(String(s))}
-            disabled={busy}
-          >
-            <Text style={[styles.quickBtnText, amount === String(s) && styles.quickBtnTextActive]}>
-              ${s}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {source === "jupiter" && amountNum > 0 && amountNum < minStake && (
-        <Text style={styles.minStakeHint}>Minimum order is ${minStake} USDC on Jupiter markets</Text>
-      )}
-
-      {/* Payout estimate */}
-      <View style={styles.estimateRow}>
-        <Text style={styles.estimateLabel}>Max return</Text>
-        <Text style={styles.estimateValue}>
-          {potentialReturn === "—" ? "—" : `$${potentialReturn} USDC`}
-        </Text>
+      <View style={s.quickRow}>
+        {quickStakes.map((v) => {
+          const on = amount === String(v);
+          return (
+            <TouchableOpacity key={v} style={[s.quick, on && s.quickOn]} onPress={() => setAmount(String(v))} disabled={busy}>
+              <Text style={[s.quickTxt, on && s.quickTxtOn]}>${v}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* Error */}
-      {error && (
-        <Text style={styles.errorText} numberOfLines={2}>{error}</Text>
-      )}
+      <View style={s.kvRow}>
+        <Text style={s.kvK}>{COPY.potentialReturns}</Text>
+        <Text style={[s.kvV, { color: C.green }]}>{returns != null ? money(returns) : "—"}</Text>
+      </View>
 
-      {/* Status / CTA */}
+      {error ? <Text style={s.err} numberOfLines={2}>{error}</Text> : null}
+
       {busy ? (
-        <View style={styles.busyRow}>
-          <ActivityIndicator color="#22c55e" size="small" />
-          <Text style={styles.busyText}>{statusLabel()}</Text>
+        <View style={s.busy}>
+          <ActivityIndicator color={C.green} size="small" />
+          <Text style={s.busyTxt}>{statusLabel()}</Text>
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.confirmBtn, amountNum < minStake && styles.confirmBtnDisabled]}
+          style={[s.cta, amountNum < minStake && s.ctaDisabled]}
           onPress={() => onConfirm(amountNum, isYes)}
           disabled={amountNum < minStake}
         >
-          <Text style={styles.confirmBtnText}>{isYes ? "Back" : "Fade"} {outcomeLabel} · ${amount} USDC</Text>
+          <Text style={s.ctaTxt}>{COPY.placeBet} · {money(amountNum)}</Text>
         </TouchableOpacity>
       )}
 
-      <Text style={styles.footnote}>$1 per winning contract · Jupiter · Polymarket</Text>
+      <View style={s.trust}>
+        {source === "jupiter" && <Badge tone="poly" label="Polymarket liquidity" />}
+        <Badge tone="terrace" label="Settled on Solana" />
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    backgroundColor: "#111",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 40,
-    gap: 12,
-  },
-  handle: { width: 36, height: 4, backgroundColor: "#333", borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+const s = StyleSheet.create({
+  sheet: { backgroundColor: "#131313", borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, borderWidth: 1, borderColor: C.line, borderBottomWidth: 0, paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
+  grabber: { width: 38, height: 4, borderRadius: 2, backgroundColor: "#333", alignSelf: "center", marginBottom: 14 },
 
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  outcomeLabel: { fontSize: 20, fontWeight: "700", color: "#fff" },
-  priceRow: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  closeBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
-  closeBtnText: { fontSize: 11, color: "#6b7280" },
+  headRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  eyebrow: { fontFamily: font.sansBold, fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", color: C.ink3, marginBottom: 4 },
+  selection: { fontFamily: font.condBold, fontSize: 27, fontWeight: "700", letterSpacing: 0.4, textTransform: "uppercase", color: C.ink },
+  closeBtn: { width: 34, height: 34, borderRadius: radius.pill, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
 
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1a1a1a",
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: "#333",
-    paddingHorizontal: 16,
-    height: 56,
-    gap: 8,
-  },
-  inputPrefix: { fontSize: 20, fontWeight: "700", color: "#6b7280" },
-  input: { flex: 1, fontSize: 28, fontWeight: "700", color: "#fff", padding: 0 },
-  inputSuffix: { fontSize: 12, fontWeight: "600", color: "#4b5563" },
+  flabel: { fontFamily: font.sansBold, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", color: C.ink3, marginTop: 18, marginBottom: 7 },
+  field: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.deep, borderWidth: 1, borderColor: C.line, borderRadius: radius.md, paddingHorizontal: 14, height: 52 },
+  dollar: { fontFamily: font.sansSemi, fontSize: 19, fontWeight: "600", color: C.ink3 },
+  input: { flex: 1, fontFamily: font.sansSemi, fontSize: 19, fontWeight: "600", color: C.ink, padding: 0 },
 
-  quickRow: { flexDirection: "row", gap: 8 },
-  quickBtn: { flex: 1, backgroundColor: "#1a1a1a", borderRadius: 10, paddingVertical: 8, alignItems: "center", borderWidth: 0.5, borderColor: "#2a2a2a" },
-  quickBtnActive: { backgroundColor: "#052e16", borderColor: "#22c55e" },
-  quickBtnText: { fontSize: 13, fontWeight: "600", color: "#6b7280" },
-  quickBtnTextActive: { color: "#22c55e" },
+  quickRow: { flexDirection: "row", gap: 6, marginTop: 8 },
+  quick: { flex: 1, minHeight: 42, borderRadius: radius.sm, backgroundColor: C.deep, borderWidth: 1, borderColor: C.lineSoft, alignItems: "center", justifyContent: "center" },
+  quickOn: { backgroundColor: C.greenDeep, borderColor: C.green },
+  quickTxt: { fontFamily: font.condBold, fontSize: 16, fontWeight: "700", color: C.ink },
+  quickTxtOn: { color: C.green },
 
-  estimateRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4 },
-  estimateLabel: { fontSize: 12, color: "#6b7280" },
-  estimateValue: { fontSize: 12, fontWeight: "600", color: "#22c55e" },
+  kvRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: C.lineHair, marginTop: 14, paddingTop: 14 },
+  kvK: { fontFamily: font.sans, fontSize: 13.5, color: C.ink2 },
+  kvV: { fontFamily: font.condBold, fontSize: 22, fontWeight: "700" },
 
-  errorText: { fontSize: 12, color: "#f87171", textAlign: "center" },
+  err: { fontFamily: font.sans, fontSize: 12, color: C.redInk, textAlign: "center", marginTop: 8 },
+  busy: { flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", paddingVertical: 12, marginTop: 6 },
+  busyTxt: { fontFamily: font.sans, fontSize: 13, color: C.ink2 },
 
-  busyRow: { flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
-  busyText: { fontSize: 13, color: "#9ca3af" },
+  cta: { height: 52, borderRadius: radius.md, backgroundColor: C.green, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  ctaDisabled: { backgroundColor: "#1c2a20" },
+  ctaTxt: { fontFamily: font.sansBold, fontSize: 15, fontWeight: "700", color: C.onGreen, letterSpacing: 0.2 },
 
-  confirmBtn: { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
-  confirmBtnDisabled: { opacity: 0.4 },
-  confirmBtnText: { fontSize: 15, fontWeight: "700", color: "#000" },
+  trust: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 12 },
+  sig: { fontFamily: font.sans, fontSize: 10, color: C.ink5, textAlign: "center", marginTop: 8 },
 
-  footnote: { fontSize: 10, color: "#374151", textAlign: "center" },
-  minStakeHint: { fontSize: 11, color: "#f59e0b", textAlign: "center" },
-
-  // Success state
-  successHeader:  { gap: 8, alignItems: "center" },
-  successTitle:   { fontSize: 22, fontWeight: "800", color: "#fff", textAlign: "center" },
-  successMarket:  { fontSize: 13, color: "#9ca3af", textAlign: "center", lineHeight: 18, paddingHorizontal: 8 },
-  successBadge:   { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginTop: 2 },
-  yesBadge:       { backgroundColor: "#052e16", borderWidth: 1, borderColor: "#22c55e" },
-  noBadge:        { backgroundColor: "#3b0a0a", borderWidth: 1, borderColor: "#ef4444" },
-  successBadgeText: { fontSize: 13, fontWeight: "700", color: "#f9fafb" },
-
-  nextCard:       { backgroundColor: "#0d0d0d", borderRadius: 14, padding: 14, gap: 12, borderWidth: 0.5, borderColor: "#1e1e1e" },
-  nextCardLabel:  { fontSize: 9, fontWeight: "700", color: "#4b5563", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
-  nextRow:        { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  nextIcon:       { fontSize: 16, width: 22, textAlign: "center", marginTop: 1 },
-  nextText:       { flex: 1, fontSize: 12, color: "#9ca3af", lineHeight: 18 },
-  nextHighlight:  { color: "#22c55e", fontWeight: "600" },
-
-  successSig:     { fontSize: 10, color: "#374151", textAlign: "center", fontFamily: "monospace" },
-  doneBtn:        { backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
-  doneBtnText:    { fontSize: 15, fontWeight: "700", color: "#000" },
+  // success
+  okCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: C.greenDeep, borderWidth: 1.5, borderColor: C.green, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 },
+  okTitle: { fontFamily: font.condBold, fontSize: 26, fontWeight: "700", letterSpacing: 0.4, textTransform: "uppercase", color: C.ink, textAlign: "center" },
+  okSub: { fontFamily: font.sans, fontSize: 13, color: C.ink2, textAlign: "center", marginTop: 4, lineHeight: 18 },
+  okCard: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.lineSoft, borderRadius: radius.lg, padding: 14, marginTop: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });

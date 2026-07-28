@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Pressable } from "react-native";
 import type { UnifiedMarket } from "@terrace/sdk";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SwipeDeck, type SwipeDeckHandle } from "./SwipeDeck";
 import { BetSheet } from "./BetSheet";
+import { MatchdayList } from "../components/MatchdayList";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
+import { Icon } from "../components/Icon";
+import { color as C, font } from "../theme/tokens";
+
+const VIEW_MODE_KEY = "terrace_markets_viewmode";
+type ViewMode = "swipe" | "list";
 
 // ---------------------------------------------------------------------------
 // Markets tab — a Tinder-style swipe deck. Swipe right = back YES, left = fade
@@ -38,7 +45,14 @@ interface SelectedBet {
 export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [sectionTab, setSectionTab] = useState<SectionTab>("Markets");
+  const [viewMode, setViewMode] = useState<ViewMode>("swipe"); // swipe default (per product call)
   const [selectedBet, setSelectedBet] = useState<SelectedBet | null>(null);
+
+  // Persist the view choice; default swipe for first-time users.
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_KEY).then((v) => { if (v === "list" || v === "swipe") setViewMode(v); }).catch(() => {});
+  }, []);
+  const changeView = (v: ViewMode) => { setViewMode(v); AsyncStorage.setItem(VIEW_MODE_KEY, v).catch(() => {}); };
 
   const deckRef = useRef<SwipeDeckHandle>(null);
   const consumed = useRef(false);
@@ -93,7 +107,7 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
       <View style={styles.header}>
         <Text style={styles.title}>Markets</Text>
         <TouchableOpacity style={styles.searchBtn} activeOpacity={0.7} accessibilityLabel="Search markets">
-          <Text style={styles.searchGlyph}>🔍</Text>
+          <Icon name="search" size={18} color={C.ink2} />
         </TouchableOpacity>
       </View>
 
@@ -137,16 +151,39 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
             })}
           </View>
 
-          {/* Swipe deck */}
-          <SwipeDeck
-            ref={deckRef}
-            markets={filtered}
-            loading={loading}
-            onBet={handleSwipeBet}
-            onDetail={onSelectMarket}
-            cardHeight={380}
-            deferAdvance
-          />
+          {/* List · Swipe toggle */}
+          <View style={styles.toggleWrap}>
+            <View style={styles.toggle}>
+              {(["list", "swipe"] as ViewMode[]).map((v) => (
+                <TouchableOpacity
+                  key={v}
+                  style={[styles.toggleSeg, viewMode === v && styles.toggleSegActive]}
+                  onPress={() => changeView(v)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                >
+                  <Icon name={v === "swipe" ? "cards" : "list"} size={16} color={viewMode === v ? C.onGreen : C.ink2} />
+                  <Text style={[styles.toggleText, viewMode === v && styles.toggleTextActive]}>
+                    {v === "swipe" ? "Swipe" : "List"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {viewMode === "swipe" ? (
+            <SwipeDeck
+              ref={deckRef}
+              markets={filtered}
+              loading={loading}
+              onBet={handleSwipeBet}
+              onDetail={onSelectMarket}
+              cardHeight={380}
+              deferAdvance
+            />
+          ) : (
+            <MatchdayList markets={filtered} loading={loading} onSelectMarket={onSelectMarket} />
+          )}
         </>
       )}
 
@@ -197,6 +234,13 @@ const styles = StyleSheet.create({
   leaguesEmoji: { fontSize: 40 },
   leaguesTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
   leaguesSub: { fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+
+  toggleWrap: { paddingHorizontal: 16, marginBottom: 14, alignItems: "flex-start" },
+  toggle: { flexDirection: "row", backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, borderRadius: 14, padding: 3 },
+  toggleSeg: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 11 },
+  toggleSegActive: { backgroundColor: C.green },
+  toggleText: { fontFamily: font.sansSemi, fontSize: 13, fontWeight: "600", color: C.ink2 },
+  toggleTextActive: { color: C.onGreen, fontFamily: font.sansBold, fontWeight: "700" },
 
   betOverlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "flex-end" },
   betBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
