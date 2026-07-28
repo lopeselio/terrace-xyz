@@ -41,13 +41,22 @@ const ODDS_LADDER: [number, number][] = [
   [11, 1], [12, 1], [14, 1], [16, 1], [20, 1], [25, 1], [33, 1], [40, 1], [50, 1], [66, 1], [100, 1],
 ];
 
+// The ladder's extreme rungs, as implied probabilities: 100/1 (longest) and
+// 1/100 (shortest). Prices outside this band are clamped to them.
+const LADDER_MIN_PROB = 1 / (100 + 1);   // 100/1  ≈ 0.0099
+const LADDER_MAX_PROB = 100 / (100 + 1); // 1/100  ≈ 0.9901
+
 /**
- * Implied probability (0–1) → fractional odds string, snapped to the standard
- * bookmaker ladder, e.g. 0.31 → "9/4". Returns "—" for an invalid probability.
+ * Implied probability (0–1] → fractional odds string, snapped to the standard
+ * bookmaker ladder, e.g. 0.31 → "9/4". Returns "—" only when there is no price.
  */
 export function probToFractional(prob: number | null | undefined): string {
-  if (prob == null || !isFinite(prob) || prob <= 0 || prob >= 1) return "—";
-  const value = (1 - prob) / prob; // fractional value = profit per unit staked
+  if (prob == null || !isFinite(prob) || prob <= 0) return "—";
+  // Clamp into the ladder's range instead of dashing out. A 100/1 outsider
+  // implies the other side is ~certain, and a real book prices that 1/100 — it
+  // does not leave the field blank. Only a genuinely absent price gets "—".
+  const p = Math.min(Math.max(prob, LADDER_MIN_PROB), LADDER_MAX_PROB);
+  const value = (1 - p) / p; // fractional value = profit per unit staked
   let best: [number, number] = ODDS_LADDER[0];
   let bestErr = Infinity;
   for (const [num, den] of ODDS_LADDER) {
