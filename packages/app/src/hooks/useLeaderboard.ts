@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { JupiterMarketsClient } from "@terrace/sdk";
+import { handleOf, avatarColorOf } from "../utils/identity";
 
 const JUPITER_API_KEY = process.env.EXPO_PUBLIC_JUPITER_API_KEY ?? "";
 
@@ -17,15 +18,17 @@ export interface SharpEntry {
   isFollowing: boolean;
 }
 
+/**
+ * Truncated base58 — for *things* only: markets, vaults, tx signatures. People
+ * get a handle from `utils/identity`; see the note there on why.
+ */
 export function truncatePubkey(pk: string): string {
   if (pk.length < 8) return pk;
   return `${pk.slice(0, 4)}…${pk.slice(-4)}`;
 }
 
 export function avatarColorFromPubkey(pubkey: string): string {
-  const COLORS = ["#1e3a5f", "#064e3b", "#2d1b69", "#7c2d12", "#1e1b4b", "#14532d", "#1c1917"];
-  const hash = pubkey.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return COLORS[hash % COLORS.length];
+  return avatarColorOf(pubkey);
 }
 
 // winRate from Jupiter API is a 0–1 fraction; badge thresholds match on-chain logic
@@ -66,7 +69,7 @@ export function useLeaderboard(period: LeaderboardPeriod = "weekly") {
           return {
             rank: entry.rank ?? i + 1,
             pubkey: entry.ownerPubkey,
-            displayName: truncatePubkey(entry.ownerPubkey),
+            displayName: handleOf(entry.ownerPubkey),
             winRate,
             pnlUsdc: pnl,
             volumeUsdc: vol,

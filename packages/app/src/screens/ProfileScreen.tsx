@@ -33,6 +33,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { font as TF, color as TC } from "../theme/tokens";
 import { Icon as TIcon } from "../components/Icon";
 import { WalletSheet } from "../components/WalletSheet";
+import { handleOf } from "../utils/identity";
 
 // Market summary needed to determine if a bet won
 interface MarketSummary {
@@ -268,7 +269,7 @@ function MatchupRow({
     <View style={pos.parlayRow}>
       <View style={pos.parlayHeader}>
         <Text style={pos.parlayTitle}>
-          {isChallenger ? "You challenged" : "Challenge from"} {shortAddr(otherAddr)}
+          {isChallenger ? "You challenged" : "Challenge from"} {handleOf(otherAddr)}
         </Text>
         <Text style={[pos.parlayStatus, { color: MATCHUP_STATUS_COLOR[matchup.status] ?? "#9ca3af" }]}>
           {MATCHUP_STATUS_LABEL[matchup.status] ?? matchup.status}
@@ -1309,7 +1310,7 @@ export function ProfileScreen({ walletPubkey, isLoggedIn, walletError, privyUser
           <JerseyAvatar pubkey={walletPubkey} size={56} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.heroName} numberOfLines={1}>
-              {snsName ?? `@${walletPubkey.slice(0, 5)}…${walletPubkey.slice(-5)}`}
+              {handleOf(walletPubkey, snsName)}
             </Text>
             <View style={[styles.tierPill, { backgroundColor: heroTint.pillBg, borderColor: heroTint.accent + "55" }]}>
               <Text style={styles.tierPillIcon}>{tierMeta.icon}</Text>

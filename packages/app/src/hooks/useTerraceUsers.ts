@@ -3,7 +3,7 @@ import { deserializeReputationAccount } from "@terrace/sdk";
 import { TERRACE_PROGRAM_ID } from "@terrace/sdk";
 import type { Address } from "@solana/kit";
 import type { BadgeTier } from "./useLeaderboard";
-import { truncatePubkey } from "./useLeaderboard";
+import { handleOf } from "../utils/identity";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 
@@ -74,7 +74,7 @@ export function useTerraceUsers(): Result {
             const winRate = rep.totalBets > 0 ? rep.winRateBps / 10_000 : null;
             result.push({
               pubkey: ownerPubkey,
-              displayName: truncatePubkey(ownerPubkey),
+              displayName: handleOf(ownerPubkey),
               winRate,
               totalBets: rep.totalBets,
               winningBets: rep.winningBets,

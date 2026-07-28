@@ -52,6 +52,8 @@ import { Confetti } from "../components/Confetti";
 import { cueWin } from "../utils/cues";
 import { useFollowedSources } from "../hooks/useFollowedSources";
 import type { UserSource } from "../hooks/useFollowedSources";
+import { handleOf } from "../utils/identity";
+import { truncatePubkey } from "../hooks/useLeaderboard";
 
 type ScreenTab = "Create" | "Active" | "Challenges";
 
@@ -91,8 +93,9 @@ const sp = StyleSheet.create({
   polyT:    { color: "#60a5fa" },
 });
 
+// People get a handle; market/vault addresses keep `truncatePubkey`.
 function shortAddr(addr: string): string {
-  return `${addr.slice(0, 5)}…${addr.slice(-4)}`;
+  return handleOf(addr);
 }
 
 function fmtUsdc(lamports: bigint): string {
@@ -558,7 +561,7 @@ function MatchupCard({
       </View>
 
       <Text style={mcard.market} numberOfLines={2}>
-        📍 {marketQuestion ?? shortAddr(matchup.market)}
+        📍 {marketQuestion ?? truncatePubkey(String(matchup.market))}
       </Text>
 
       <View style={mcard.row}>
@@ -680,7 +683,7 @@ export function MatchupScreen({ markets, walletPubkey, onConnectWallet, onClose,
       const currentUserWon = winnerPubkey === walletPubkey;
       const winnerDisplay  = fanDisplayMap.get(winnerPubkey) ?? shortAddr(winnerPubkey);
       const potUsdc        = `$${(Number(matchup.stakeUsdc * 2n) / 1_000_000).toFixed(2)}`;
-      const marketQuestion = marketQuestionMap.get(matchup.market as string) ?? shortAddr(matchup.market as string);
+      const marketQuestion = marketQuestionMap.get(matchup.market as string) ?? truncatePubkey(matchup.market as string);
       setSettleResult({ currentUserWon, winnerDisplay, potUsdc, marketQuestion });
       if (currentUserWon) cueWin();
     }

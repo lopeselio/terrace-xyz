@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { truncatePubkey, type BadgeTier } from "./useLeaderboard";
+import { type BadgeTier } from "./useLeaderboard";
+import { handleOf } from "../utils/identity";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 const TERRACE_PROGRAM_ID = process.env.EXPO_PUBLIC_TERRACE_PROGRAM_ID ?? "";
@@ -69,7 +70,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const amount = parseU64LE(bytes, 73) / 1_000_000;
     return {
       id, type: "BET_PLACED", actorPubkey: bettor,
-      actorDisplay: truncatePubkey(bettor), badge: "Casual",
+      actorDisplay: handleOf(bettor), badge: "Casual",
       market, outcome, amountUsdc: amount, signature: sig, timestamp: now,
     };
   }
@@ -79,7 +80,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const creator = parsePubkey(bytes, 40);
     return {
       id, type: "MARKET_CREATED", actorPubkey: creator,
-      actorDisplay: truncatePubkey(creator), badge: "Casual",
+      actorDisplay: handleOf(creator), badge: "Casual",
       market, signature: sig, timestamp: now,
     };
   }
@@ -89,7 +90,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const outcome = bytes[40] === 1 ? "Yes" : "No";
     return {
       id, type: "MARKET_SETTLED", actorPubkey: market,
-      actorDisplay: truncatePubkey(market), badge: "Casual",
+      actorDisplay: "Terrace", badge: "Casual",
       market, outcome, signature: sig, timestamp: now,
     };
   }
@@ -99,7 +100,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const won = bytes[40] === 1;
     return {
       id, type: won ? "PARLAY_WON" : "PARLAY_LOST", actorPubkey: parlay,
-      actorDisplay: truncatePubkey(parlay), badge: "Casual",
+      actorDisplay: "Terrace", badge: "Casual",
       signature: sig, timestamp: now,
     };
   }
@@ -110,7 +111,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const stake = parseU64LE(bytes, 137) / 1_000_000;
     return {
       id, type: "MATCHUP_CREATED", actorPubkey: challenger,
-      actorDisplay: truncatePubkey(challenger), badge: "Casual",
+      actorDisplay: handleOf(challenger), badge: "Casual",
       market, amountUsdc: stake, signature: sig, timestamp: now,
     };
   }
@@ -120,7 +121,7 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const payout = parseU64LE(bytes, 72) / 1_000_000;
     return {
       id, type: "MATCHUP_SETTLED", actorPubkey: winner,
-      actorDisplay: truncatePubkey(winner), badge: "Casual",
+      actorDisplay: handleOf(winner), badge: "Casual",
       amountUsdc: payout, signature: sig, timestamp: now,
     };
   }

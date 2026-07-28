@@ -36,6 +36,7 @@ import { RevealCelebrationModal } from "../components/RevealCelebrationModal";
 import { friendlyError } from "../utils/friendlyError";
 import { registerLeagues, publishLeagueEvent } from "../utils/leagueNotify";
 import { useLeagueActivityFeed } from "../hooks/useLeagueActivityFeed";
+import { handleOf } from "../utils/identity";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,8 @@ function inviteUrl(leagueAddress: string) {
     : `terrace://league/${leagueAddress}`;
 }
 
-function shortAddr(addr: string) { return `${addr.slice(0, 5)}…${addr.slice(-4)}`; }
+// League members are people — never show them a base58 address.
+function shortAddr(addr: string) { return handleOf(addr); }
 function fmtUsdc(n: bigint) { return `$${(Number(n) / 1_000_000).toFixed(2)}`; }
 
 function MemberAvatar({ pubkey, size = 36 }: { pubkey: string; size?: number }) {

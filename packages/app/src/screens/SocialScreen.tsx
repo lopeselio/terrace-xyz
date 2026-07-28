@@ -22,6 +22,7 @@ import { BetSheet } from "./BetSheet";
 import { color as TC, font as TF } from "../theme/tokens";
 import { probToFractional, money } from "../utils/format";
 import { Avatar, OddsButton, Badge as UIBadge } from "../components/ui";
+import { handleOf } from "../utils/identity";
 
 // ---------------------------------------------------------------------------
 // Feed types
@@ -735,7 +736,7 @@ function FanProfileSheet({
             <View style={sheetStyles.headerMeta}>
               <View style={sheetStyles.nameRow}>
                 <Text style={sheetStyles.badgeEmoji}>{BADGE_EMOJI[badge]}</Text>
-                <Text style={sheetStyles.name}>{truncatePubkey(pubkey)}</Text>
+                <Text style={sheetStyles.name}>{handleOf(pubkey)}</Text>
               </View>
               <SourceChip source={source} />
             </View>
