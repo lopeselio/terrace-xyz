@@ -26,27 +26,52 @@ Legend: 🔴 decision needed · 🟠 new wiring · 🟢 reuses existing wiring (
 
 ## 🟠 New data / API wiring
 
-4. **In-play live scores** (Home "In-play now" carousel, live badges, Flash header).
-   Needs a live-score subscription: score + minute + status, polled/streamed. Partial
-   groundwork exists in `useLiveFixture` (API-Football style). Needs: a list endpoint of
-   *currently live* football fixtures (not per-match lookup) to power the carousel.
+4. ✅ **RESOLVED — in-play live scores.** `hooks/useLiveFixtures.ts` polls API-Football's
+   `live=all` board through one module-level store, so Home's carousel and the Flash screen
+   share a single request. Foreground-gated via `AppState`, ranked by competition
+   (`LEAGUE_RANK`), and matched to markets by team name (`findLiveFixture`).
+   ⚠️ Free tier is 100 requests/day, so the hook self-caps at 80 and then freezes the last
+   snapshot with a "live scores paused" line rather than erroring. A paid tier or a proxy
+   through `packages/notifications-worker` removes the cap — raise `DAILY_BUDGET`, nothing
+   else changes.
+   🔴 **`EXPO_PUBLIC_API_FOOTBALL_KEY` is missing from `.env`.** Without it the hook stays
+   inert and the In-play carousel renders nothing (it hides rather than showing an empty
+   shell), so this is the one piece of the 2026-07-28 work not yet verified against real
+   data. Add the key and the carousel lights up on Home and Flash with no code change.
 
-5. **Football-only catalog filter** (design change #6). Filter the Polymarket/Jupiter feed
-   down to football competitions **at the data layer** (so counts/empty states stay honest).
-   Needs a competition classifier on the markets query (`useMarkets`). Non-football markets
-   (politics, crypto, culture) are dropped.
+5. ✅ **RESOLVED — football-only catalog filter.** `utils/football.ts` is the only
+   classifier, applied once in `useMarkets` so counts and empty states describe the same
+   catalog. It replaced three copies that had drifted (two in `useMarkets`, one in
+   `HomeScreen.matchesLeague`). Native Terrace markets are never filtered — they're
+   user-authored, and keyword-dropping a fan's own market from their own feed is wrong.
+   Classification is on the provider's own metadata (tags → subcategory → category), not
+   title keywords: a first attempt using a keyword blocklist let "Netanyahu out by July
+   31?" onto Home, because a blocklist only excludes what you thought of in advance. Every
+   football event is tagged `soccer`. Verified against the live catalog: 25/39 events
+   dropped, all genuinely non-football; 14 kept, all genuinely football.
+   ⚠️ Note `&category=sports` is **not** respected by Jupiter's search endpoint — the
+   politics and esports rows came back from a "premier league" query. Filtering must stay
+   client-side.
 
-6. **Username + monogram identity** (design change #4 — no base58 on any surface).
-   Everywhere a creator/bettor/opponent appears we must show `@username` + a colour
-   monogram. `useTerraceUsers` gives display names for *some* wallets; unknown wallets need
-   a deterministic monogram fallback (initials from pubkey) — never the raw address.
-   Open question: is there a canonical username registry, or is it Privy-linked handle +
-   fallback? Affects Feed, Profile, Matchups, Leagues, market creator pills.
+6. ✅ **RESOLVED (with an open product question) — username + monogram identity.**
+   `utils/identity.ts` derives a stable terrace pseudonym from the pubkey
+   (`@offside_owl` + a two-hex-char tag) plus a deterministic monogram and colour, and takes
+   an override for a real name the user owns. Wired through `useLeaderboard`,
+   `useTerraceUsers`, `useHeliusEvents` (Feed), Home creator pills + notifications, Matchups,
+   Leagues, Profile and the Social profile sheet. `truncatePubkey` survives for *things* —
+   markets, vaults, signatures — which are legitimately addresses.
+   🔴 Still your call: is there a canonical username registry, or is `.skr`/`.sol` +
+   Privy handle + this pseudonym the permanent answer? The override slot is ready either way.
+   🔴 Also: `MARKET_SETTLED` / `PARLAY_SETTLED` events carry the market/parlay pubkey, not
+   the person's, so those feed cards are attributed to "Terrace". Attributing them to the
+   bettor needs the pubkey added to the on-chain event.
 
-7. **Flash markets — server-time countdowns + auto-lock.** Countdowns must tick from
-   **server time**, not device time, and the card must lock (odds disabled, "Closed" badge)
-   at T-0. Needs a server time source (or trusted offset) and the flash-market close time on
-   the market record.
+7. ✅ **RESOLVED — flash server-time countdowns + auto-lock.** `hooks/useServerTime.ts`
+   takes the cluster as the clock (`getBlockTime(getSlot())`), holds the offset from device
+   time, and re-syncs every 5 minutes; `msUntil()` drives every flash countdown. At T-0 the
+   card locks in place — odds disabled, `CLOSED`, no tap-through — rather than vanishing
+   mid-tap. If the RPC is unreachable the offset stays 0 and countdowns fall back to device
+   time: slightly wrong beats stopped.
 
 8. **Parlay live re-pricing.** Combined odds = product of legs' decimal odds, re-rendered on
    every toggle and on any live price move; if a selected leg's price moves, flag that leg
