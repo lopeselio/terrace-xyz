@@ -121,8 +121,16 @@ async function fetchLive(): Promise<void> {
       publish({ fixtures: live, loading: false, error: null });
     })
     .catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      // DAILY_BUDGET only counts requests *this app* made, but the quota is
+      // per-account: a second device, or a script sharing the key, can exhaust
+      // it first and we'd never know. Treat the provider saying so as
+      // authoritative, or the board silently freezes on stale scores with
+      // nothing on screen to explain why.
+      const quotaHit = /request limit|rate limit|quota|too many requests/i.test(msg);
+      if (quotaHit) requestsSpent = DAILY_BUDGET;
       // Keep the previous snapshot on screen — a stale score beats a blank row.
-      publish({ loading: false, error: e instanceof Error ? e.message : String(e) });
+      publish({ loading: false, error: msg, budgetSpent: quotaHit || snapshot.budgetSpent });
     })
     .finally(() => {
       inFlight = null;
