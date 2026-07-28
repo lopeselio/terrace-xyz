@@ -129,7 +129,9 @@ export interface UnifiedMarket {
   creator?: string;
   isPrivate?: boolean;
   isFlash?: boolean;
-  /** Jupiter/Polymarket event category e.g. "sports", subcategory e.g. "soccer" */
+  /** Jupiter/Polymarket event category e.g. "sports", subcategory e.g. "epl" */
   jupiterCategory?: string;
   jupiterSubcategory?: string;
+  /** Event tags, e.g. ["sports","games","soccer","ucl"]. The sport lives here. */
+  jupiterTags?: string[];
 }
