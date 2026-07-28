@@ -2,7 +2,8 @@ import React, { useMemo } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import type { UnifiedMarket } from "@terrace/sdk";
 import type { LiveFixture } from "@terrace/sdk";
-import { useLiveFixtures, findLiveFixture } from "../hooks/useLiveFixtures";
+import { useLiveFixtures } from "../hooks/useLiveFixtures";
+import { matchMarketsToFixtures } from "../utils/fixtureMatch";
 import { splitEventTitle, marketTitle } from "../utils/football";
 import { probToFractional, moneyWhole } from "../utils/format";
 import { color as C, font, radius } from "../theme/tokens";
@@ -23,15 +24,33 @@ import { Icon } from "./Icon";
 // slot is a prompt to create the market from the + tab.
 // ---------------------------------------------------------------------------
 
-/** The market covering a live fixture, if we have one. */
-function marketForFixture(markets: UnifiedMarket[], fixture: LiveFixture): UnifiedMarket | null {
-  const candidates = markets.filter((m) => m.status === "Open");
-  for (const m of candidates) {
-    const [home, away] = splitEventTitle(marketTitle(m));
-    if (!away) continue;
-    if (findLiveFixture([fixture], home, away)) return m;
-  }
-  return null;
+/**
+ * Fixture -> market, resolved across the whole board at once. Matching can't be
+ * done per-card: deciding whether a one-sided name match is unambiguous needs
+ * to see every live fixture together (see matchMarketsToFixtures).
+ */
+function useFixtureMarkets(
+  fixtures: LiveFixture[],
+  markets: UnifiedMarket[],
+): Map<number, UnifiedMarket> {
+  return useMemo(() => {
+    const h2h = markets
+      .map((m) => ({ market: m, sides: splitEventTitle(marketTitle(m)) as [string, string] }))
+      .filter((x) => !!x.sides[1]); // head-to-heads only
+
+    const index = matchMarketsToFixtures(
+      fixtures,
+      h2h.map((x) => ({
+        status: x.market.status,
+        totalVolumeUsdc: x.market.totalVolumeUsdc,
+        sides: x.sides,
+      })),
+    );
+
+    const out = new Map<number, UnifiedMarket>();
+    for (const [fixtureId, marketIdx] of index) out.set(fixtureId, h2h[marketIdx].market);
+    return out;
+  }, [fixtures, markets]);
 }
 
 function minuteLabel(f: LiveFixture): string {
@@ -136,11 +155,14 @@ interface Props {
 
 export function InPlayCarousel({ markets, onSelectMarket, limit = 8, bare }: Props) {
   const { fixtures, loading, budgetSpent } = useLiveFixtures();
+  const fixtureMarkets = useFixtureMarkets(fixtures, markets);
 
   const cards = useMemo(
     () =>
-      fixtures.slice(0, limit).map((f) => ({ fixture: f, market: marketForFixture(markets, f) })),
-    [fixtures, markets, limit],
+      fixtures
+        .slice(0, limit)
+        .map((f) => ({ fixture: f, market: fixtureMarkets.get(f.fixtureId) ?? null })),
+    [fixtures, fixtureMarkets, limit],
   );
 
   // Nothing in play is the normal state most of the week — render nothing

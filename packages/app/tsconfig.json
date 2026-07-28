@@ -2,6 +2,12 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Tests run on Node's built-in runner via native type stripping, which
+    // requires relative imports to carry the .ts extension. Safe here because
+    // the base config is noEmit — Metro/Babel does the compiling, tsc only
+    // typechecks — and it keeps test files inside the typecheck rather than
+    // excluding them.
+    "allowImportingTsExtensions": true,
     "paths": {
       "@terrace/sdk": [
         "../sdk/src/index.ts"

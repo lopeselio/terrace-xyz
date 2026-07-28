@@ -121,8 +121,16 @@ async function fetchLive(): Promise<void> {
       publish({ fixtures: live, loading: false, error: null });
     })
     .catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      // DAILY_BUDGET only counts requests *this app* made, but the quota is
+      // per-account: a second device, or a script sharing the key, can exhaust
+      // it first and we'd never know. Treat the provider saying so as
+      // authoritative, or the board silently freezes on stale scores with
+      // nothing on screen to explain why.
+      const quotaHit = /request limit|rate limit|quota|too many requests/i.test(msg);
+      if (quotaHit) requestsSpent = DAILY_BUDGET;
       // Keep the previous snapshot on screen — a stale score beats a blank row.
-      publish({ loading: false, error: e instanceof Error ? e.message : String(e) });
+      publish({ loading: false, error: msg, budgetSpent: quotaHit || snapshot.budgetSpent });
     })
     .finally(() => {
       inFlight = null;
@@ -175,43 +183,4 @@ export function useLiveFixtures(): LiveFixturesSnapshot & { refresh: () => void 
   useEffect(() => subscribe(setState), []);
 
   return { ...state, refresh: () => void fetchLive() };
-}
-
-/**
- * Resolve a market's event title to a live fixture from the shared board, using
- * the same loose team-name matching as the SDK's fixture search. Returns null
- * when the match isn't in play (which is most of the time).
- */
-export function findLiveFixture(
-  fixtures: LiveFixture[],
-  home: string,
-  away: string,
-): LiveFixture | null {
-  if (!home || !away) return null;
-  const h = norm(home);
-  const a = norm(away);
-  if (!h || !a) return null;
-
-  const hit = fixtures.find(
-    (f) =>
-      (contains(norm(f.home.name), h) && contains(norm(f.away.name), a)) ||
-      (contains(norm(f.home.name), a) && contains(norm(f.away.name), h)),
-  );
-  return hit ?? null;
-}
-
-function norm(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\b(fc|afc|sc|cf|ac|sa|sk)\b/g, "")
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** True when the two normalised names share a token of 3+ characters. */
-function contains(candidate: string, query: string): boolean {
-  const tokens = query.split(" ").filter((t) => t.length >= 3);
-  if (tokens.length === 0) return false;
-  return tokens.some((t) => candidate.includes(t));
 }
