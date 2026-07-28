@@ -41,6 +41,7 @@ import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
 import { CreateMarketScreen } from "./screens/CreateMarketScreen";
 import { MatchupScreen } from "./screens/MatchupScreen";
 import { LeagueScreen } from "./screens/LeagueScreen";
+import { FlashScreen } from "./screens/FlashScreen";
 import { MarketDetailSheet } from "./components/MarketDetailSheet";
 import type { UnifiedMarket } from "@terrace/sdk";
 import {
@@ -413,6 +414,7 @@ export default function App() {
   const [showParlay, setShowParlay] = useState(false);
   const [showMatchups, setShowMatchups] = useState(false);
   const [showLeagues, setShowLeagues] = useState(false);
+  const [showFlash, setShowFlash] = useState(false);
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
@@ -430,6 +432,7 @@ export default function App() {
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<UnifiedMarket | null>(null);
+  const [selectedOutcome, setSelectedOutcome] = useState<0 | 1 | null>(null);
 
   // publicKey from embedded Solana wallet.
   // "connected" → use SDK publicKey directly.
@@ -564,8 +567,11 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markets]);
 
-  const handleSelectMarket = (id: string) => {
+  // `side` is set when the user tapped a price (Back/Fade) rather than the card
+  // body — the detail sheet then opens with that outcome already chosen.
+  const handleSelectMarket = (id: string, side?: boolean) => {
     const market = markets.find((m) => m.id === id) ?? null;
+    setSelectedOutcome(side === undefined ? null : side ? 0 : 1);
     setSelectedMarket(market);
   };
 
@@ -662,6 +668,7 @@ export default function App() {
             onNavigateParlay={() => { refreshMarkets(); setShowParlay(true); }}
             onNavigateMatchup={() => setShowMatchups(true)}
             onNavigateLeague={() => setShowLeagues(true)}
+            onNavigateFlash={() => setShowFlash(true)}
             onRefreshMarkets={refreshMarkets}
           />
         );
@@ -723,6 +730,7 @@ export default function App() {
       <MarketDetailSheet
         market={selectedMarket}
         visible={selectedMarket !== null}
+        initialOutcome={selectedOutcome}
         onClose={() => setSelectedMarket(null)}
       />
 
@@ -747,6 +755,19 @@ export default function App() {
             onClose={() => { setShowMatchups(false); setDeepLinkMatchupAddress(null); }}
             onRefreshMarkets={refreshMarkets}
             initialMatchupAddress={deepLinkMatchupAddress}
+          />
+        </View>
+      )}
+
+      {showFlash && (
+        <View style={styles.parlayOverlay}>
+          <FlashScreen
+            markets={markets}
+            onSelectMarket={handleSelectMarket}
+            onBet={(m, isYes) => handleSelectMarket(m.id, isYes)}
+            onCreateFlash={() => { setShowFlash(false); setActiveTab("Create"); }}
+            onRefreshMarkets={refreshMarkets}
+            onClose={() => setShowFlash(false)}
           />
         </View>
       )}

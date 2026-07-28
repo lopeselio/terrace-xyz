@@ -30,6 +30,11 @@ interface Props {
   market: UnifiedMarket | null;
   visible: boolean;
   onClose: () => void;
+  /**
+   * Side to open pre-selected, when the user got here by tapping Back or Fade
+   * rather than the card body. Keeps a one-tap price tap from becoming three.
+   */
+  initialOutcome?: 0 | 1 | null;
 }
 
 function fmt(n: number) {
@@ -77,8 +82,8 @@ const banner = StyleSheet.create({
 
 // ── Public bet panel ─────────────────────────────────────────────────────────
 
-function PublicBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: () => void }) {
-  const [outcome, setOutcome] = useState<0 | 1 | null>(null);
+function PublicBetPanel({ market, onClose, initialOutcome }: { market: UnifiedMarket; onClose: () => void; initialOutcome?: 0 | 1 | null }) {
+  const [outcome, setOutcome] = useState<0 | 1 | null>(initialOutcome ?? null);
   const [amountStr, setAmountStr] = useState("");
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const { placeBet, status, error, txSignature } = usePlaceBet();
@@ -370,7 +375,7 @@ function PrivateBetPanel({ market, onClose }: { market: UnifiedMarket; onClose: 
 
 // ── Sheet root ───────────────────────────────────────────────────────────────
 
-export function MarketDetailSheet({ market, visible, onClose }: Props) {
+export function MarketDetailSheet({ market, visible, onClose, initialOutcome }: Props) {
   // Hook must run before any early return.
   // For private markets the on-chain total_volume is intentionally never
   // updated, so we read the market vault's USDC ATA balance instead. This
@@ -422,7 +427,7 @@ export function MarketDetailSheet({ market, visible, onClose }: Props) {
           {market.isPrivate ? (
             <PrivateBetPanel market={market} onClose={onClose} />
           ) : market.status === "Open" ? (
-            <PublicBetPanel market={market} onClose={onClose} />
+            <PublicBetPanel market={market} onClose={onClose} initialOutcome={initialOutcome} />
           ) : (
             <View style={s.settledNotice}>
               <Text style={s.settledText}>
