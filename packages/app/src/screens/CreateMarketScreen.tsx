@@ -18,22 +18,58 @@ import { broadcastLeagueEvent } from "../utils/leagueNotify";
 import { color as C, font, radius } from "../theme/tokens";
 import { Icon } from "../components/Icon";
 import { Badge } from "../components/ui";
+import { formatDeadline } from "../utils/marketState";
+import { serverNow } from "../hooks/useServerTime";
 
+// Expiry presets (TODO Sprint 12 #5). A four-option dropdown couldn't express
+// most of what fans actually create — "the next 20 minutes", "until Sunday
+// evening" — so these are quick chips over the common windows, with Custom
+// for anything else.
 const HEAD_TO_HEAD_PRESETS = [
-  { label: "1 hour", seconds: 3_600 },
-  { label: "4 hours", seconds: 14_400 },
-  { label: "24 hours", seconds: 86_400 },
-  { label: "7 days", seconds: 604_800 },
+  { label: "15m", seconds: 900 },
+  { label: "30m", seconds: 1_800 },
+  { label: "1h", seconds: 3_600 },
+  { label: "2h", seconds: 7_200 },
+  { label: "4h", seconds: 14_400 },
+  { label: "8h", seconds: 28_800 },
+  { label: "24h", seconds: 86_400 },
+  { label: "3d", seconds: 259_200 },
+  { label: "7d", seconds: 604_800 },
 ] as const;
 
+// Flash markets are in-match by definition; the program enforces the window
+// and these chips stay inside it.
 const FLASH_PRESETS = [
-  { label: "15 min", seconds: 900 },
-  { label: "30 min", seconds: 1_800 },
-  { label: "60 min", seconds: 3_600 },
-  { label: "90 min", seconds: 5_400 },
+  { label: "15m", seconds: 900 },
+  { label: "30m", seconds: 1_800 },
+  { label: "45m", seconds: 2_700 },
+  { label: "60m", seconds: 3_600 },
+  { label: "90m", seconds: 5_400 },
 ] as const;
+
+/** Bounds for the custom picker, per market kind. */
+const FLASH_MIN_S = 900;
+const FLASH_MAX_S = 5_400;
+const NORMAL_MIN_S = 300;        // 5 minutes — below this nobody can react
+const NORMAL_MAX_S = 30 * 86_400; // 30 days
 
 const FEE_PRESETS = ["0", "0.5", "1", "2", "5"] as const;
+
+function clampOffset(seconds: number, isFlash: boolean): number {
+  const min = isFlash ? FLASH_MIN_S : NORMAL_MIN_S;
+  const max = isFlash ? FLASH_MAX_S : NORMAL_MAX_S;
+  return Math.min(max, Math.max(min, seconds));
+}
+
+/** "3d 19h" / "1h 30m" / "45m" — how long the market will run. */
+function formatOffset(seconds: number): string {
+  const d = Math.floor(seconds / 86_400);
+  const h = Math.floor((seconds % 86_400) / 3_600);
+  const m = Math.floor((seconds % 3_600) / 60);
+  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+}
 
 interface Props {
   walletPubkey: string | null;
@@ -41,9 +77,33 @@ interface Props {
   onMarketCreated: (market: UnifiedMarket) => void;
 }
 
+/** One +/- row of the custom picker. */
+function StepRow({ label, value, onStep, disabled }: {
+  label: string;
+  value: string;
+  onStep: (direction: 1 | -1) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={s.stepRow}>
+      <Text style={s.stepLabel}>{label}</Text>
+      <View style={s.stepper}>
+        <TouchableOpacity style={s.stepBtn} onPress={() => onStep(-1)} disabled={disabled}>
+          <Icon name="minus" size={15} color={C.ink} />
+        </TouchableOpacity>
+        <Text style={s.stepVal}>{value}</Text>
+        <TouchableOpacity style={s.stepBtn} onPress={() => onStep(1)} disabled={disabled}>
+          <Icon name="plus" size={15} color={C.ink} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCreated }: Props) {
   const [question, setQuestion] = useState("");
   const [expiryOffset, setExpiryOffset] = useState(86_400);
+  const [customOpen, setCustomOpen] = useState(false);
   const [creatorFeePct, setCreatorFeePct] = useState("1");
   const [isFlash, setIsFlash] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -51,16 +111,24 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
   const { status, txSignature, marketAddress, error, createMarket, reset } = useCreateMarket();
   const busy = status === "building" || status === "signing" || status === "executing";
   const presets = isFlash ? FLASH_PRESETS : HEAD_TO_HEAD_PRESETS;
+  const onAPreset = presets.some((p) => p.seconds === expiryOffset);
 
   const handleFlashToggle = useCallback((val: boolean) => {
     setIsFlash(val);
-    if (val && expiryOffset > 5_400) setExpiryOffset(5_400);
-  }, [expiryOffset]);
+    setExpiryOffset((prev) => clampOffset(prev, val));
+  }, []);
+
+  const stepBy = useCallback((unitSeconds: number, direction: 1 | -1) => {
+    setExpiryOffset((prev) => clampOffset(prev + direction * unitSeconds, isFlash));
+  }, [isFlash]);
 
   const handleSubmit = useCallback(async () => {
     if (!walletPubkey) { onConnectWallet(); return; }
     const feeBps = Math.min(500, Math.max(0, Math.round(parseFloat(creatorFeePct || "0") * 100)));
-    const expiryTimestamp = Math.floor(Date.now() / 1000) + expiryOffset;
+    // Cluster time, not the device's: the program checks the expiry against the
+    // chain's clock, so a phone running two minutes fast would otherwise write
+    // a deadline two minutes off what the creator picked.
+    const expiryTimestamp = Math.floor(serverNow() / 1000) + expiryOffset;
     await createMarket({ question: question.trim(), expiryTimestamp, creatorFeeBps: feeBps, isPrivate, isFlash });
   }, [walletPubkey, question, expiryOffset, creatorFeePct, isPrivate, isFlash, createMarket, onConnectWallet]);
 
@@ -76,7 +144,7 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
       yesPrice: 0.5,
       noPrice: 0.5,
       totalVolumeUsdc: 0,
-      expiry: new Date((Math.floor(Date.now() / 1000) + expiryOffset) * 1000),
+      expiry: new Date((Math.floor(serverNow() / 1000) + expiryOffset) * 1000),
       status: "Open",
       isFlash,
       isPrivate,
@@ -87,6 +155,7 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
     }
     setQuestion("");
     setExpiryOffset(86_400);
+    setCustomOpen(false);
     setCreatorFeePct("1");
     setIsFlash(false);
     setIsPrivate(false);
@@ -145,15 +214,66 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
 
         {/* Closes */}
         <Text style={s.flabel}>Closes</Text>
-        <View style={s.seg}>
+        <View style={s.chipWrap}>
           {presets.map((p) => {
-            const on = expiryOffset === p.seconds;
+            const on = expiryOffset === p.seconds && !customOpen;
             return (
-              <TouchableOpacity key={p.label} style={[s.segBtn, on && s.segBtnOn]} onPress={() => setExpiryOffset(p.seconds)} disabled={busy}>
-                <Text style={[s.segTxt, on && s.segTxtOn]}>{p.label}</Text>
+              <TouchableOpacity
+                key={p.label}
+                style={[s.timeChip, on && s.timeChipOn]}
+                onPress={() => { setExpiryOffset(p.seconds); setCustomOpen(false); }}
+                disabled={busy}
+              >
+                <Text style={[s.timeChipTxt, on && s.timeChipTxtOn]}>{p.label}</Text>
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity
+            style={[s.timeChip, (customOpen || !onAPreset) && s.timeChipOn]}
+            onPress={() => setCustomOpen((v) => !v)}
+            disabled={busy}
+          >
+            <Icon name="sliders" size={13} color={customOpen || !onAPreset ? C.green : C.ink2} />
+            <Text style={[s.timeChipTxt, (customOpen || !onAPreset) && s.timeChipTxtOn]}>Custom</Text>
+          </TouchableOpacity>
+        </View>
+
+        {customOpen && (
+          <View style={[s.card, { marginTop: 8 }]}>
+            {!isFlash && (
+              <StepRow
+                label="Days"
+                value={String(Math.floor(expiryOffset / 86_400))}
+                onStep={(d) => stepBy(86_400, d)}
+                disabled={busy}
+              />
+            )}
+            <StepRow
+              label="Hours"
+              value={String(Math.floor((expiryOffset % 86_400) / 3_600))}
+              onStep={(d) => stepBy(3_600, d)}
+              disabled={busy}
+            />
+            <StepRow
+              label="Minutes"
+              value={String(Math.floor((expiryOffset % 3_600) / 60)).padStart(2, "0")}
+              onStep={(d) => stepBy(300, d)}
+              disabled={busy}
+            />
+            <Text style={s.stepHint}>
+              {isFlash ? "Flash markets run 15–90 minutes." : "Anything from 5 minutes to 30 days."}
+            </Text>
+          </View>
+        )}
+
+        {/* What the creator actually gets — relative and absolute, because
+            "3d 19h" is the feel and the date is the commitment. */}
+        <View style={s.previewRow}>
+          <Icon name="clock" size={13} color={C.green} />
+          <Text style={s.previewStrong}>Expires in {formatOffset(expiryOffset)}</Text>
+          <Text style={s.previewMuted}>
+            {formatDeadline(new Date(serverNow() + expiryOffset * 1_000))}
+          </Text>
         </View>
 
         {/* Your cut */}
@@ -233,11 +353,34 @@ const s = StyleSheet.create({
   hintRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
   hint: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3 },
 
-  seg: { flexDirection: "row", backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, borderRadius: radius.md, padding: 3, gap: 2 },
-  segBtn: { flex: 1, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  segBtnOn: { backgroundColor: "#242424" },
-  segTxt: { fontFamily: font.sansSemi, fontSize: 12.5, fontWeight: "600", color: C.ink2 },
-  segTxtOn: { color: C.ink, fontFamily: font.sansBold, fontWeight: "700" },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  timeChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 13, height: 34, borderRadius: radius.pill,
+    backgroundColor: C.raised, borderWidth: 1, borderColor: C.line,
+  },
+  timeChipOn: { backgroundColor: C.greenDeep, borderColor: C.green },
+  timeChipTxt: { fontFamily: font.sansSemi, fontSize: 12.5, fontWeight: "600", color: C.ink2 },
+  timeChipTxtOn: { color: C.green },
+
+  stepRow: { flexDirection: "row", alignItems: "center", paddingVertical: 7 },
+  stepLabel: { flex: 1, fontFamily: font.sans, fontSize: 13.5, color: C.ink2 },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 4 },
+  stepBtn: {
+    width: 34, height: 34, borderRadius: radius.sm,
+    backgroundColor: C.deep, borderWidth: 1, borderColor: C.line,
+    alignItems: "center", justifyContent: "center",
+  },
+  stepVal: {
+    minWidth: 42, textAlign: "center",
+    fontFamily: font.condBold, fontSize: 20, fontWeight: "700", color: C.ink,
+    fontVariant: ["tabular-nums"],
+  },
+  stepHint: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3, marginTop: 6 },
+
+  previewRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 10, flexWrap: "wrap" },
+  previewStrong: { fontFamily: font.sansBold, fontSize: 12.5, fontWeight: "700", color: C.green },
+  previewMuted: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3 },
 
   card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.lineSoft, borderRadius: radius.lg, padding: 14 },
   feeTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
