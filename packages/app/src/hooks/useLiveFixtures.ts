@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
-import { ApiFootballClient, isFixtureLive, type LiveFixture } from "@terrace/sdk";
+import { isFixtureLive, type LiveFixture } from "@terrace/sdk";
+import { footballClient, FOOTBALL_PROXIED } from "../utils/apiFootball";
 
 // ---------------------------------------------------------------------------
 // Live-score subscription — the list of football matches in play right now.
@@ -16,16 +17,17 @@ import { ApiFootballClient, isFixtureLive, type LiveFixture } from "@terrace/sdk
 // Budget: the free API-Football tier allows 100 requests/day. At LIVE_POLL_MS
 // we would exhaust that in under two hours of continuous foreground use, so:
 //   - we only poll while the app is foregrounded AND something is subscribed
-//   - we stop entirely once DAILY_BUDGET requests have been spent, keeping the
-//     last snapshot on screen rather than showing an error
-// Moving to a paid tier or proxying through the notifications worker removes
-// the cap; raise DAILY_BUDGET there and nothing else changes.
+//   - going direct, we stop once DAILY_BUDGET requests have been spent, keeping
+//     the last snapshot on screen rather than showing an error
+//
+// Behind the worker proxy the device-side cap is meaningless and actively
+// wrong: requests are answered from a cache shared by every install, so the
+// hundredth poll of an afternoon may not have cost anything upstream. The
+// provider's own quota error remains the authority either way.
 // ---------------------------------------------------------------------------
 
-const API_KEY = process.env.EXPO_PUBLIC_API_FOOTBALL_KEY ?? "";
-
 const LIVE_POLL_MS = 60_000;
-const DAILY_BUDGET = 80;
+const DAILY_BUDGET = FOOTBALL_PROXIED ? Number.POSITIVE_INFINITY : 80;
 
 // Competition weighting for the carousel. API-Football league ids — a live
 // Champions League tie should outrank a live Danish second-division game.
@@ -73,7 +75,6 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let inFlight: Promise<void> | null = null;
 let requestsSpent = 0;
 let budgetDay = todayKey();
-let client: ApiFootballClient | null = null;
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -84,14 +85,8 @@ function publish(next: Partial<LiveFixturesSnapshot>): void {
   for (const fn of subscribers) fn(snapshot);
 }
 
-function getClient(): ApiFootballClient | null {
-  if (!API_KEY) return null;
-  client ??= new ApiFootballClient(API_KEY);
-  return client;
-}
-
 async function fetchLive(): Promise<void> {
-  const c = getClient();
+  const c = footballClient();
   if (!c) return;
 
   // Roll the budget at UTC midnight so a long-running session recovers.
@@ -140,7 +135,7 @@ async function fetchLive(): Promise<void> {
 }
 
 function startPolling(): void {
-  if (timer || !getClient()) return;
+  if (timer || !footballClient()) return;
   void fetchLive();
   timer = setInterval(() => void fetchLive(), LIVE_POLL_MS);
 }

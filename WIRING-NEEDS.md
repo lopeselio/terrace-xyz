@@ -30,14 +30,14 @@ Legend: 🔴 decision needed · 🟠 new wiring · 🟢 reuses existing wiring (
    `live=all` board through one module-level store, so Home's carousel and the Flash screen
    share a single request. Foreground-gated via `AppState`, ranked by competition
    (`LEAGUE_RANK`), and matched to markets by team name (`findLiveFixture`).
-   ⚠️ Free tier is 100 requests/day, so the hook self-caps at 80 and then freezes the last
-   snapshot with a "live scores paused" line rather than erroring. A paid tier or a proxy
-   through `packages/notifications-worker` removes the cap — raise `DAILY_BUDGET`, nothing
-   else changes.
-   🔴 **`EXPO_PUBLIC_API_FOOTBALL_KEY` is missing from `.env`.** Without it the hook stays
-   inert and the In-play carousel renders nothing (it hides rather than showing an empty
-   shell), so this is the one piece of the 2026-07-28 work not yet verified against real
-   data. Add the key and the carousel lights up on Home and Flash with no code change.
+   ✅ **RESOLVED — proxied.** `GET /football/*` on `packages/notifications-worker` holds the
+   key server-side and caches responses for every device (live boards 20s, fixture lists
+   30 min). The per-device cap only applies on the direct path now; behind the proxy it was
+   actively wrong, since a poll may be answered from a cache another install already paid
+   for. Set `EXPO_PUBLIC_FOOTBALL_PROXY_URL` and `wrangler secret put API_FOOTBALL_KEY`.
+   ⚠️ The key is now set in `.env`, but none of this has been verified against live data on
+   a device — the in-play carousel and the new fixture board are both typechecked and
+   unit-tested only.
 
 5. ✅ **RESOLVED — football-only catalog filter.** `utils/football.ts` is the only
    classifier, applied once in `useMarkets` so counts and empty states describe the same
@@ -62,9 +62,10 @@ Legend: 🔴 decision needed · 🟠 new wiring · 🟢 reuses existing wiring (
    markets, vaults, signatures — which are legitimately addresses.
    🔴 Still your call: is there a canonical username registry, or is `.skr`/`.sol` +
    Privy handle + this pseudonym the permanent answer? The override slot is ready either way.
-   🔴 Also: `MARKET_SETTLED` / `PARLAY_SETTLED` events carry the market/parlay pubkey, not
-   the person's, so those feed cards are attributed to "Terrace". Attributing them to the
-   bettor needs the pubkey added to the on-chain event.
+   ✅ **RESOLVED — settle events attributed.** `hooks/settleActors.ts` reads the creator back
+   from the market/parlay account instead of waiting on a program change. Adding `settler` /
+   `creator` to the events is still worth doing on the next deploy, but the client path is
+   needed either way for events already on chain.
 
 7. ✅ **RESOLVED — flash server-time countdowns + auto-lock.** `hooks/useServerTime.ts`
    takes the cluster as the clock (`getBlockTime(getSlot())`), holds the offset from device

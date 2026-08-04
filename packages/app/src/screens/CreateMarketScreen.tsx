@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import {
   Linking,
 } from "react-native";
 import { useCreateMarket } from "../hooks/useCreateMarket";
-import type { UnifiedMarket } from "@terrace/sdk";
+import type { LiveFixture, UnifiedMarket } from "@terrace/sdk";
+import { TeamBadge } from "./MatchGroupCard";
 import { broadcastLeagueEvent } from "../utils/leagueNotify";
 import { color as C, font, radius } from "../theme/tokens";
 import { Icon } from "../components/Icon";
@@ -75,6 +76,16 @@ interface Props {
   walletPubkey: string | null;
   onConnectWallet: () => void;
   onMarketCreated: (market: UnifiedMarket) => void;
+  /** Set when the user came from a fixture on the matchday board. */
+  fixture?: LiveFixture | null;
+  onClearFixture?: () => void;
+}
+
+/** Seconds from now until kick-off, or null once it has started. */
+function secondsToKickoff(fixture: LiveFixture | null | undefined): number | null {
+  if (!fixture?.kickoff) return null;
+  const ms = Date.parse(fixture.kickoff) - serverNow();
+  return ms > 0 ? Math.floor(ms / 1_000) : null;
 }
 
 /** One +/- row of the custom picker. */
@@ -100,13 +111,32 @@ function StepRow({ label, value, onStep, disabled }: {
   );
 }
 
-export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCreated }: Props) {
+export function CreateMarketScreen({
+  walletPubkey,
+  onConnectWallet,
+  onMarketCreated,
+  fixture,
+  onClearFixture,
+}: Props) {
   const [question, setQuestion] = useState("");
   const [expiryOffset, setExpiryOffset] = useState(86_400);
   const [customOpen, setCustomOpen] = useState(false);
   const [creatorFeePct, setCreatorFeePct] = useState("1");
   const [isFlash, setIsFlash] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+
+  const kickoffOffset = secondsToKickoff(fixture);
+
+  // Arriving from a fixture pre-fills the market: the call, and a deadline of
+  // kick-off. Both stay editable — the fixture is a starting point, not a form.
+  useEffect(() => {
+    if (!fixture) return;
+    setQuestion((prev) => prev || `${fixture.home.name} to beat ${fixture.away.name}?`);
+    const secs = secondsToKickoff(fixture);
+    if (secs != null) setExpiryOffset(clampOffset(secs, false));
+    setIsFlash(false);
+    setCustomOpen(false);
+  }, [fixture?.fixtureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { status, txSignature, marketAddress, error, createMarket, reset } = useCreateMarket();
   const busy = status === "building" || status === "signing" || status === "executing";
@@ -193,6 +223,27 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
       </View>
 
       <ScrollView style={s.root} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        {/* Came from the matchday board — show what's being priced */}
+        {fixture && (
+          <View style={s.fixtureCard}>
+            <TeamBadge name={fixture.home.name} size={26} />
+            <TeamBadge name={fixture.away.name} size={26} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.fixtureTeams} numberOfLines={1}>
+                {fixture.home.name} v {fixture.away.name}
+              </Text>
+              <Text style={s.fixtureMeta} numberOfLines={1}>
+                {fixture.league.name} · {formatDeadline(new Date(fixture.kickoff))}
+              </Text>
+            </View>
+            {onClearFixture && (
+              <TouchableOpacity onPress={onClearFixture} hitSlop={10} disabled={busy}>
+                <Icon name="close" size={16} color={C.ink3} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* The question */}
         <Text style={s.flabel}>The question</Text>
         <View style={s.field}>
@@ -215,6 +266,27 @@ export function CreateMarketScreen({ walletPubkey, onConnectWallet, onMarketCrea
         {/* Closes */}
         <Text style={s.flabel}>Closes</Text>
         <View style={s.chipWrap}>
+          {kickoffOffset != null && !isFlash && (
+            <TouchableOpacity
+              style={[s.timeChip, expiryOffset === clampOffset(kickoffOffset, false) && !customOpen && s.timeChipOn]}
+              onPress={() => { setExpiryOffset(clampOffset(kickoffOffset, false)); setCustomOpen(false); }}
+              disabled={busy}
+            >
+              <Icon
+                name="whistle"
+                size={13}
+                color={expiryOffset === clampOffset(kickoffOffset, false) && !customOpen ? C.green : C.ink2}
+              />
+              <Text
+                style={[
+                  s.timeChipTxt,
+                  expiryOffset === clampOffset(kickoffOffset, false) && !customOpen && s.timeChipTxtOn,
+                ]}
+              >
+                Until kick-off
+              </Text>
+            </TouchableOpacity>
+          )}
           {presets.map((p) => {
             const on = expiryOffset === p.seconds && !customOpen;
             return (
@@ -352,6 +424,14 @@ const s = StyleSheet.create({
   textarea: { fontFamily: font.sansMed, fontSize: 15, fontWeight: "500", color: C.ink, minHeight: 64, textAlignVertical: "top" },
   hintRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
   hint: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3 },
+
+  fixtureCard: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.line,
+    borderRadius: radius.md, padding: 12, marginTop: 4,
+  },
+  fixtureTeams: { fontFamily: font.condBold, fontSize: 15, fontWeight: "700", color: C.ink, textTransform: "uppercase", letterSpacing: 0.2 },
+  fixtureMeta: { fontFamily: font.sans, fontSize: 11, color: C.ink3, marginTop: 1 },
 
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   timeChip: {

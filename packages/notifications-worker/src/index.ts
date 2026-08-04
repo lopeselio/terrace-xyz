@@ -15,6 +15,8 @@
 
 export interface Env {
   DEVICES: KVNamespace;
+  /** api-football key. Held here so devices don't each burn their own quota. */
+  API_FOOTBALL_KEY?: string;
   /** Public HTTPS base URL of this worker, e.g. https://terrace-notifications.xyz.workers.dev */
   WORKER_BASE_URL?: string;
   /** Telegram bot token — used to DM users when their wallet is successfully linked */
@@ -73,6 +75,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/league-event-broadcast")
       return cors(await handleLeagueEventBroadcast(request, env));
+
+    // GET /football/*  — cached api-football proxy (see handleFootballProxy)
+    if (request.method === "GET" && url.pathname.startsWith("/football/"))
+      return cors(await handleFootballProxy(request, url, env));
 
     const ua = request.headers.get("User-Agent") ?? "";
 
@@ -194,6 +200,92 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   }
 
   return new Response("OK");
+}
+
+// ---------------------------------------------------------------------------
+// GET /football/*  — api-football proxy with a shared cache
+//
+// The free tier allows 100 requests/day. Called from the device that budget is
+// per-install, so ten testers on a matchday exhaust ten separate allowances and
+// the live board freezes for all of them. Behind the worker there is one key
+// and one cache: the tenth device asking for the live board in a given 20
+// seconds is served the first device's response and costs nothing upstream.
+//
+// The key never reaches the client. Paths are allowlisted rather than open
+// proxied, so this can't be turned into a general-purpose relay for someone
+// else's api-football usage.
+// ---------------------------------------------------------------------------
+
+const FOOTBALL_BASE = "https://v3.football.api-sports.io";
+
+const FOOTBALL_PATHS = new Set(["fixtures", "standings", "predictions", "teams", "leagues"]);
+
+/**
+ * How long a response stays fresh. Live scores go stale in seconds; a fixture
+ * list for next weekend does not move at all, and re-fetching it is the waste
+ * that starves the live board.
+ */
+function footballTtl(params: URLSearchParams): number {
+  if (params.has("live")) return 20;
+  if (params.has("from") || params.has("to") || params.has("next") || params.has("season")) return 1_800;
+  if (params.has("date")) return 300;
+  return 300;
+}
+
+async function handleFootballProxy(request: Request, url: URL, env: Env): Promise<Response> {
+  if (!env.API_FOOTBALL_KEY) {
+    return json({ error: "Football proxy not configured" }, 503);
+  }
+
+  const path = url.pathname.slice("/football/".length).replace(/^\/+|\/+$/g, "");
+  if (!FOOTBALL_PATHS.has(path.split("/")[0])) {
+    return json({ error: `Unsupported path: ${path}` }, 400);
+  }
+
+  const upstream = `${FOOTBALL_BASE}/${path}${url.search}`;
+  const ttl = footballTtl(url.searchParams);
+
+  // Cache on the upstream URL, not the incoming one, so two clients spelling
+  // the same query differently still share an entry.
+  const cacheKey = new Request(upstream, { method: "GET" });
+  const cache = (caches as any).default as Cache;
+
+  const hit = await cache.match(cacheKey);
+  if (hit) {
+    const r = new Response(hit.body, hit);
+    r.headers.set("X-Terrace-Cache", "HIT");
+    return r;
+  }
+
+  const res = await fetch(upstream, { headers: { "x-apisports-key": env.API_FOOTBALL_KEY } });
+  const body = await res.text();
+
+  const out = new Response(body, {
+    status: res.status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": `public, max-age=${ttl}`,
+      "X-Terrace-Cache": "MISS",
+      // Passed through so the app can show how much of the day's allowance is
+      // left instead of guessing from a local counter.
+      "X-RateLimit-Requests-Remaining":
+        res.headers.get("x-ratelimit-requests-remaining") ?? "",
+    },
+  });
+
+  // Only cache what succeeded — a 429 or a 500 cached for half an hour would
+  // outlast the condition that caused it.
+  if (res.ok) {
+    await cache.put(cacheKey, out.clone());
+  }
+  return out;
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 // ---------------------------------------------------------------------------

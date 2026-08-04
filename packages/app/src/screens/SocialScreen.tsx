@@ -308,7 +308,10 @@ function MarketSettledCard({ event, ...s }: { event: FeedEvent } & CardShared) {
   return (
     <View style={[styles.feedCard, styles.cardSettled]}>
       <ActorHeader actor={event.actor} timeStr={formatTime(event.timestamp)} {...s} />
-      <Text style={styles.cardAction}>⚖️ Market settled</Text>
+      {/* Person-voiced once the creator is resolved, system-voiced until then */}
+      <Text style={styles.cardAction}>
+        {event.actor.pubkey ? "⚖️ Settled their market" : "⚖️ Market settled"}
+      </Text>
       <View style={styles.questionBox}>
         <Text style={styles.questionText} numberOfLines={2}>{question}</Text>
         <View style={styles.settledOutcomeRow}>

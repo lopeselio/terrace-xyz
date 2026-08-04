@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
-import { ApiFootballClient, isFixtureLive, type LiveFixture } from "@terrace/sdk";
-
-// Free-tier API-Football key — Expo bundles EXPO_PUBLIC_* into the client
-// build. Without a key the hook stays inert; the rest of the card renders fine.
-const API_KEY = process.env.EXPO_PUBLIC_API_FOOTBALL_KEY ?? "";
+import { isFixtureLive, type LiveFixture } from "@terrace/sdk";
+import { footballClient } from "../utils/apiFootball";
 
 // In-flight + result caches keyed by "home|away|YYYY-MM-DD". We never cache
 // nulls (so the next mount can retry once a fixture appears in the API feed).
@@ -14,13 +11,6 @@ const inFlight = new Map<string, Promise<LiveFixture | null>>();
 // last value. 30s × ~3 visible cards = ~7 calls/min — well inside the free
 // tier's 100/day budget assuming a typical session length.
 const LIVE_POLL_MS = 30_000;
-
-let sharedClient: ApiFootballClient | null = null;
-function getClient(): ApiFootballClient | null {
-  if (!API_KEY) return null;
-  sharedClient ??= new ApiFootballClient(API_KEY);
-  return sharedClient;
-}
 
 function cacheKey(home: string, away: string, date: Date): string {
   return `${home.toLowerCase()}|${away.toLowerCase()}|${date.toISOString().slice(0, 10)}`;
@@ -44,7 +34,7 @@ export function useLiveFixture(
   const [fixture, setFixture] = useState<LiveFixture | null>(cache.get(key) ?? null);
 
   useEffect(() => {
-    const client = getClient();
+    const client = footballClient();
     if (!client) return;
     if (!home || !away) return;
 

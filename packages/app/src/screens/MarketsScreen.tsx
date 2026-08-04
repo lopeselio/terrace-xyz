@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Pressable } from "react-native";
-import type { UnifiedMarket } from "@terrace/sdk";
+import type { LiveFixture, UnifiedMarket } from "@terrace/sdk";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SwipeDeck, type SwipeDeckHandle } from "./SwipeDeck";
 import { BetSheet } from "./BetSheet";
 import { MatchdayList } from "../components/MatchdayList";
+import { FixtureBoard } from "../components/FixtureBoard";
 import { usePlaceBet } from "../hooks/usePlaceBet";
 import { TerraceMark, PolyJupLogos } from "../components/BrandIcons";
 import { Icon } from "../components/Icon";
 import { color as C, font } from "../theme/tokens";
 
 const VIEW_MODE_KEY = "terrace_markets_viewmode";
-type ViewMode = "swipe" | "list";
+type ViewMode = "swipe" | "list" | "fixtures";
 
 // ---------------------------------------------------------------------------
 // Markets tab — a Tinder-style swipe deck. Swipe right = back YES, left = fade
@@ -31,6 +32,8 @@ interface Props {
   markets: UnifiedMarket[];
   loading: boolean;
   onSelectMarket: (id: string) => void;
+  /** A fixture nobody has priced yet — hands off to Create, pre-filled. */
+  onCreateForFixture: (fixture: LiveFixture) => void;
 }
 
 interface SelectedBet {
@@ -42,7 +45,7 @@ interface SelectedBet {
   source: "native" | "jupiter";
 }
 
-export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
+export function MarketsScreen({ markets, loading, onSelectMarket, onCreateForFixture }: Props) {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [sectionTab, setSectionTab] = useState<SectionTab>("Markets");
   const [viewMode, setViewMode] = useState<ViewMode>("swipe"); // swipe default (per product call)
@@ -50,7 +53,9 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
 
   // Persist the view choice; default swipe for first-time users.
   useEffect(() => {
-    AsyncStorage.getItem(VIEW_MODE_KEY).then((v) => { if (v === "list" || v === "swipe") setViewMode(v); }).catch(() => {});
+    AsyncStorage.getItem(VIEW_MODE_KEY).then((v) => {
+      if (v === "list" || v === "swipe" || v === "fixtures") setViewMode(v);
+    }).catch(() => {});
   }, []);
   const changeView = (v: ViewMode) => { setViewMode(v); AsyncStorage.setItem(VIEW_MODE_KEY, v).catch(() => {}); };
 
@@ -154,7 +159,7 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
           {/* List · Swipe toggle */}
           <View style={styles.toggleWrap}>
             <View style={styles.toggle}>
-              {(["list", "swipe"] as ViewMode[]).map((v) => (
+              {(["list", "swipe", "fixtures"] as ViewMode[]).map((v) => (
                 <TouchableOpacity
                   key={v}
                   style={[styles.toggleSeg, viewMode === v && styles.toggleSegActive]}
@@ -162,16 +167,26 @@ export function MarketsScreen({ markets, loading, onSelectMarket }: Props) {
                   activeOpacity={0.7}
                   hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 >
-                  <Icon name={v === "swipe" ? "cards" : "list"} size={16} color={viewMode === v ? C.onGreen : C.ink2} />
+                  <Icon
+                    name={v === "swipe" ? "cards" : v === "fixtures" ? "calendar" : "list"}
+                    size={16}
+                    color={viewMode === v ? C.onGreen : C.ink2}
+                  />
                   <Text style={[styles.toggleText, viewMode === v && styles.toggleTextActive]}>
-                    {v === "swipe" ? "Swipe" : "List"}
+                    {v === "swipe" ? "Swipe" : v === "fixtures" ? "Fixtures" : "List"}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {viewMode === "swipe" ? (
+          {viewMode === "fixtures" ? (
+            <FixtureBoard
+              markets={filtered}
+              onOpenMarket={onSelectMarket}
+              onCreateForFixture={onCreateForFixture}
+            />
+          ) : viewMode === "swipe" ? (
             <SwipeDeck
               ref={deckRef}
               markets={filtered}

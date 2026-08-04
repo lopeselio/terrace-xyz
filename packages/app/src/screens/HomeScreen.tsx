@@ -33,7 +33,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { InPlayCarousel } from "../components/InPlayCarousel";
 import { MarketCard } from "../components/MarketCard";
 import { SectionHead } from "../components/ui";
-import { COMPETITIONS, HOT_COMPETITION, matchesCompetition, marketTitle } from "../utils/football";
+import { COMPETITIONS, FEATURED_COMPETITIONS, matchesCompetition, marketTitle } from "../utils/football";
 import { handleOf } from "../utils/identity";
 import { moneyWhole, probToFractional } from "../utils/format";
 import { isTakeable } from "../hooks/useMarketState";
@@ -879,7 +879,7 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
                     contentContainerStyle={styles.leagueChipsRow}
                   >
                     {LEAGUE_CHIPS.map((chip) => {
-                      const isHot = chip === HOT_COMPETITION;
+                      const isHot = FEATURED_COMPETITIONS.includes(chip);
                       const isActive = leagueFilter === chip;
                       return (
                         <TouchableOpacity
