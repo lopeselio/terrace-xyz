@@ -43,7 +43,7 @@ import { MatchupScreen } from "./screens/MatchupScreen";
 import { LeagueScreen } from "./screens/LeagueScreen";
 import { FlashScreen } from "./screens/FlashScreen";
 import { MarketDetailSheet } from "./components/MarketDetailSheet";
-import type { UnifiedMarket } from "@terrace/sdk";
+import type { LiveFixture, UnifiedMarket } from "@terrace/sdk";
 import {
   usePrivy,
   useLoginWithOAuth,
@@ -159,12 +159,21 @@ function MarketsTab({
   markets,
   loading,
   onSelectMarket,
+  onCreateForFixture,
 }: {
   markets: UnifiedMarket[];
   loading: boolean;
   onSelectMarket: (id: string) => void;
+  onCreateForFixture: (fixture: LiveFixture) => void;
 }) {
-  return <MarketsScreen markets={markets} loading={loading} onSelectMarket={onSelectMarket} />;
+  return (
+    <MarketsScreen
+      markets={markets}
+      loading={loading}
+      onSelectMarket={onSelectMarket}
+      onCreateForFixture={onCreateForFixture}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -415,6 +424,9 @@ export default function App() {
   const [showMatchups, setShowMatchups] = useState(false);
   const [showLeagues, setShowLeagues] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
+  // A fixture the user chose to price from the matchday board. Handed to
+  // Create and cleared once the market is published or the tab is left.
+  const [createFixture, setCreateFixture] = useState<LiveFixture | null>(null);
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
@@ -673,14 +685,27 @@ export default function App() {
           />
         );
       case "Markets":
-        return <MarketsTab markets={markets} loading={marketsLoading} onSelectMarket={handleSelectMarket} />;
+        return (
+          <MarketsTab
+            markets={markets}
+            loading={marketsLoading}
+            onSelectMarket={handleSelectMarket}
+            onCreateForFixture={(fixture) => {
+              setCreateFixture(fixture);
+              setActiveTab("Create");
+            }}
+          />
+        );
       case "Create":
         return (
           <CreateMarketScreen
             walletPubkey={effectivePublicKey}
             onConnectWallet={handleConnectWallet}
+            fixture={createFixture}
+            onClearFixture={() => setCreateFixture(null)}
             onMarketCreated={(market) => {
               prependMarket(market);
+              setCreateFixture(null);
               setActiveTab("Markets");
             }}
           />
