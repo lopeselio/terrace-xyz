@@ -140,21 +140,56 @@ export function marketTitle(m: UnifiedMarket): string {
 
 // --- Competitions ----------------------------------------------------------
 
-export const HOT_COMPETITION = "World Cup";
-
+// The beta leads with the Premier League and the Champions League and keeps the
+// rest of the majors available (TODO Sprint 12 #8). "World Cup" is gone as a
+// standing chip — that tournament finished in July 2026, and a chip pointing at
+// a dead competition is worse than no chip. Internationals covers qualifiers
+// and friendlies, which recur all season.
 export const COMPETITIONS = [
   "All",
-  HOT_COMPETITION,
   "Premier League",
   "Champions League",
   "La Liga",
-  "Bundesliga",
   "Serie A",
+  "Bundesliga",
   "Ligue 1",
   "Europa League",
+  "Internationals",
 ] as const;
 
 export type Competition = (typeof COMPETITIONS)[number];
+
+/** Led with on Home — highlighted, and seeded first on the fixture board. */
+export const FEATURED_COMPETITIONS: readonly Competition[] = [
+  "Premier League",
+  "Champions League",
+];
+
+/**
+ * api-football league ids, for seeding the fixture board. Internationals has no
+ * single id — qualifiers are split across confederation competitions — so it
+ * stays market-only until there's a reason to enumerate them.
+ */
+export const COMPETITION_API_ID: Partial<Record<Competition, number>> = {
+  "Premier League": 39,
+  "Champions League": 2,
+  "La Liga": 140,
+  "Serie A": 135,
+  Bundesliga: 78,
+  "Ligue 1": 61,
+  "Europa League": 3,
+};
+
+/** Season a fixture query means: the starting year, so 2026/27 is 2026. */
+export const CURRENT_SEASON = 2026;
+
+/** Competitions we can pull a fixture list for, in board order. */
+export const SEEDABLE_COMPETITIONS: readonly Competition[] = [
+  ...FEATURED_COMPETITIONS,
+  ...COMPETITIONS.filter(
+    (c) => c !== "All" && !FEATURED_COMPETITIONS.includes(c) && COMPETITION_API_ID[c] != null,
+  ),
+].filter((c) => COMPETITION_API_ID[c] != null);
 
 // Club-name fallbacks: Polymarket titles are often bare club names with no
 // competition word, so each domestic league carries its own club roster.
@@ -166,10 +201,10 @@ const COMPETITION_PATTERNS: Record<Exclude<Competition, "All">, RegExp> = {
   "Serie A": /serie a|juventus|inter\b|ac milan|\bmilan\b|napoli|roma|lazio|atalanta|fiorentina/i,
   "Ligue 1": /ligue 1|\bpsg\b|paris saint|lyon|marseille|monaco|lille|nice\b/i,
   "Europa League": /europa league|\buel\b/i,
-  // World Cup titles frequently omit the tournament name entirely, so the
+  // International titles frequently omit the competition name entirely, so the
   // country-vs-country pattern is the safety net.
-  [HOT_COMPETITION]:
-    /world cup|fifa|\bwcup\b|wc 20\d\d|qualifier|\b(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\s+(?:vs\.?|v\.?)\s+(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\b/i,
+  Internationals:
+    /world cup|fifa|\bwcup\b|wc 20\d\d|qualifier|nations league|friendly|\b(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\s+(?:vs\.?|v\.?)\s+(fra|esp|ger|eng|bra|arg|por|ned|ita|usa|mex|mar|cro|bel|uru|jpn|kor|can|sui|den|pol|sen|gha|cmr|nga|wal|sco|aus|qat|ksa|irn|tun|crc)\b/i,
 };
 
 /** Does this event title belong to the given competition? "All" always matches. */
