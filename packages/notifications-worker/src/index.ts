@@ -388,6 +388,22 @@ const VALIDATOR_DAILY_BUDGET = 500;
 /** Identical drafts are common — people retype and resubmit. */
 const VALIDATOR_CACHE_TTL = 3_600;
 
+/**
+ * How long to stop calling upstream after a failure.
+ *
+ * Some failures are conditions, not blips: no credits, a revoked key, a
+ * suspended account. Those don't cost tokens, but every draft in every open
+ * Create screen keeps asking, and the answer is the same every time. A short
+ * cooldown turns a request storm into one request per window — the same lesson
+ * as the football proxy, where not caching a refusal meant retrying into a rate
+ * limit to be told about the rate limit.
+ *
+ * Persistent causes (billing, auth) get the longer window because they need a
+ * human to fix; transient ones recover on their own.
+ */
+const VALIDATOR_COOLDOWN_PERSISTENT = 300;
+const VALIDATOR_COOLDOWN_TRANSIENT = 60;
+
 const VALIDATOR_SYSTEM = `You judge whether a prediction-market question can be settled objectively.
 
 A question is settleable when a neutral person, looking only at the final score, official match record, or a named public source, would reach the same verdict as everyone else. Judge only the wording — not whether the outcome is likely, and not whether the market is interesting.
@@ -431,6 +447,10 @@ async function handleValidateMarket(request: Request, env: Env): Promise<Respons
       headers: { "Content-Type": "application/json", "X-Terrace-Cache": "HIT" },
     });
   }
+
+  // A known-bad upstream is answered from here rather than re-discovered.
+  const cooling = await env.DEVICES.get("validator_cooldown");
+  if (cooling) return json({ error: cooling }, 503);
 
   const budgetKey = `validator_budget:${new Date().toISOString().slice(0, 10)}`;
   const spent = Number(await env.DEVICES.get(budgetKey)) || 0;
@@ -482,7 +502,17 @@ async function handleValidateMarket(request: Request, env: Env): Promise<Respons
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return json({ error: `Validator failed: ${msg}` }, 502);
+    // Billing and auth failures need a person; everything else may pass.
+    const persistent = /credit balance|billing|authentication|invalid x-api-key|permission/i.test(msg);
+    await env.DEVICES.put(
+      "validator_cooldown",
+      persistent ? "Validator unavailable — check Anthropic billing" : "Validator temporarily unavailable",
+      { expirationTtl: persistent ? VALIDATOR_COOLDOWN_PERSISTENT : VALIDATOR_COOLDOWN_TRANSIENT },
+    );
+    // The upstream body is logged, not returned — it carries request ids and
+    // account detail a client has no use for.
+    console.warn("validator upstream failure:", msg);
+    return json({ error: "Validator unavailable" }, 502);
   }
 }
 
