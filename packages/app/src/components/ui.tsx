@@ -62,11 +62,14 @@ const o = StyleSheet.create({
 
 // --- Badge -----------------------------------------------------------------
 
-export type BadgeTone = "live" | "min" | "open" | "flash" | "private" | "settled" | "terrace" | "poly" | "won" | "lost" | "amber";
+export type BadgeTone = "live" | "min" | "open" | "flash" | "private" | "settled" | "terrace" | "poly" | "won" | "lost" | "amber" | "resolving" | "expired";
 const BADGE: Record<BadgeTone, { bg: string; fg: string; border?: string }> = {
   live: { bg: C.red, fg: "#fff" },
   min: { bg: C.redMid, fg: C.redInk },
   open: { bg: C.greenDeep, fg: C.greenInk },
+  // Market lifecycle (utils/marketState): waiting on settlement, vs nobody came.
+  resolving: { bg: C.amberDeep, fg: C.amberInk, border: "#4a2c08" },
+  expired: { bg: C.redMid, fg: C.redInk, border: "#5c1616" },
   flash: { bg: C.amberDeep, fg: C.amberInk },
   private: { bg: C.violetDeep, fg: C.violetInk },
   settled: { bg: C.raised, fg: C.ink3, border: C.line },
