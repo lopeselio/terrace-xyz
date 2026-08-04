@@ -17,6 +17,8 @@ export interface Env {
   DEVICES: KVNamespace;
   /** api-football key. Held here so devices don't each burn their own quota. */
   API_FOOTBALL_KEY?: string;
+  /** Anthropic key for the market-statement validator. Never reaches a device. */
+  ANTHROPIC_API_KEY?: string;
   /** Public HTTPS base URL of this worker, e.g. https://terrace-notifications.xyz.workers.dev */
   WORKER_BASE_URL?: string;
   /** Telegram bot token — used to DM users when their wallet is successfully linked */
@@ -79,6 +81,10 @@ export default {
     // GET /football/*  — cached api-football proxy (see handleFootballProxy)
     if (request.method === "GET" && url.pathname.startsWith("/football/"))
       return cors(await handleFootballProxy(request, url, env));
+
+    // POST /validate-market  { question } — Claude statement validator
+    if (request.method === "POST" && url.pathname === "/validate-market")
+      return cors(await handleValidateMarket(request, env));
 
     const ua = request.headers.get("User-Agent") ?? "";
 
@@ -353,6 +359,136 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+// ---------------------------------------------------------------------------
+// POST /validate-market  { question } — is this statement settleable?
+//
+// A market whose wording can't be checked against the final score is a dispute
+// waiting to happen: "Will Arsenal play well?" has no answer anyone can point
+// at, and the creator finds out only when it's time to settle. Catching that at
+// creation is cheaper than arbitrating it afterwards.
+//
+// Runs here rather than on the device for the same reason as the football key:
+// an EXPO_PUBLIC_ Anthropic key is a key every install carries and anyone can
+// extract. Identical drafts are cached, and the whole thing is bounded by a
+// daily ceiling — a validator that quietly runs up a bill is worse than one
+// that stops.
+// ---------------------------------------------------------------------------
+
+/** Bounded classification with a couple of rewrites — 1024 is ample. */
+const VALIDATOR_MAX_TOKENS = 1024;
+
+/** Cheapest model that does this well; one constant so switching is one line. */
+const VALIDATOR_MODEL = "claude-haiku-4-5";
+
+/** Ceiling on validator calls per day. Well past a beta cohort's creation rate. */
+const VALIDATOR_DAILY_BUDGET = 500;
+
+/** Identical drafts are common — people retype and resubmit. */
+const VALIDATOR_CACHE_TTL = 3_600;
+
+const VALIDATOR_SYSTEM = `You judge whether a prediction-market question can be settled objectively.
+
+A question is settleable when a neutral person, looking only at the final score, official match record, or a named public source, would reach the same verdict as everyone else. Judge only the wording — not whether the outcome is likely, and not whether the market is interesting.
+
+verifiable — one unambiguous answer once the event is over. "Arsenal to beat Chelsea", "Over 2.5 goals in Arsenal v Chelsea", "Haaland to score first".
+ambiguous — the subject is real but the wording leaves room to argue: no deadline, a vague threshold, or a term with more than one reading. "Arsenal to win soon", "Salah to have a big game".
+unverifiable — nothing public would ever settle it: private information, unfalsifiable claims, or pure opinion. "Arteta to regret his team talk", "Arsenal to play the better football".
+
+Write suggestions as complete replacement questions in the user's own voice, keeping their intent and their teams — not instructions about how to fix it. Give two or three for ambiguous or unverifiable, and none for verifiable. Keep the reason to one short sentence addressed to the creator.`;
+
+const VALIDATOR_SCHEMA = {
+  type: "object",
+  properties: {
+    verdict: { type: "string", enum: ["verifiable", "ambiguous", "unverifiable"] },
+    reason: { type: "string" },
+    suggestions: { type: "array", items: { type: "string" } },
+  },
+  required: ["verdict", "reason", "suggestions"],
+  additionalProperties: false,
+} as const;
+
+async function handleValidateMarket(request: Request, env: Env): Promise<Response> {
+  if (!env.ANTHROPIC_API_KEY) {
+    // Not an error: the app treats a missing validator as "no opinion" and
+    // market creation carries on unchanged.
+    return json({ error: "Validator not configured" }, 503);
+  }
+
+  let body: { question?: string };
+  try { body = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400); }
+
+  const question = (body.question ?? "").trim();
+  if (question.length < 8) return json({ error: "Question too short to judge" }, 400);
+  if (question.length > 500) return json({ error: "Question too long" }, 400);
+
+  const cacheKey = `validator_cache:${await sha256(question.toLowerCase())}`;
+  const hit = await env.DEVICES.get(cacheKey);
+  if (hit) {
+    return new Response(hit, {
+      headers: { "Content-Type": "application/json", "X-Terrace-Cache": "HIT" },
+    });
+  }
+
+  const budgetKey = `validator_budget:${new Date().toISOString().slice(0, 10)}`;
+  const spent = Number(await env.DEVICES.get(budgetKey)) || 0;
+  if (spent >= VALIDATOR_DAILY_BUDGET) {
+    return json({ error: "Daily validator budget reached" }, 429);
+  }
+
+  try {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: VALIDATOR_MODEL,
+      max_tokens: VALIDATOR_MAX_TOKENS,
+      system: VALIDATOR_SYSTEM,
+      // The schema is enforced by the API rather than coaxed by the prompt, so
+      // a malformed verdict can't reach the client.
+      output_config: { format: { type: "json_schema", schema: VALIDATOR_SCHEMA } },
+      messages: [{ role: "user", content: question }],
+    });
+
+    await env.DEVICES.put(budgetKey, String(spent + 1), { expirationTtl: 60 * 60 * 48 });
+
+    if (message.stop_reason === "refusal") {
+      return json({ error: "Validator declined this statement" }, 422);
+    }
+
+    const text = message.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text") return json({ error: "Empty validator response" }, 502);
+
+    // Re-parsed rather than passed through so a bad payload fails here, on the
+    // server, instead of rendering as a broken badge on the card.
+    const parsed = JSON.parse(text.text) as {
+      verdict: string; reason: string; suggestions: string[];
+    };
+    const payload = JSON.stringify({
+      verdict: parsed.verdict,
+      reason: parsed.reason,
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
+    });
+
+    await env.DEVICES.put(cacheKey, payload, { expirationTtl: VALIDATOR_CACHE_TTL });
+    return new Response(payload, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Terrace-Cache": "MISS",
+        "X-Terrace-Budget": `${spent + 1}/${VALIDATOR_DAILY_BUDGET}`,
+      },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return json({ error: `Validator failed: ${msg}` }, 502);
+  }
+}
+
+async function sha256(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // ---------------------------------------------------------------------------
