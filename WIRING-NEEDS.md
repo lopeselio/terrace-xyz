@@ -30,11 +30,14 @@ Legend: 🔴 decision needed · 🟠 new wiring · 🟢 reuses existing wiring (
    `live=all` board through one module-level store, so Home's carousel and the Flash screen
    share a single request. Foreground-gated via `AppState`, ranked by competition
    (`LEAGUE_RANK`), and matched to markets by team name (`findLiveFixture`).
-   ✅ **RESOLVED — proxied.** `GET /football/*` on `packages/notifications-worker` holds the
-   key server-side and caches responses for every device (live boards 20s, fixture lists
-   30 min). The per-device cap only applies on the direct path now; behind the proxy it was
-   actively wrong, since a poll may be answered from a cache another install already paid
-   for. Set `EXPO_PUBLIC_FOOTBALL_PROXY_URL` and `wrangler secret put API_FOOTBALL_KEY`.
+   🟠 **Proxy built, not yet deployed.** `GET /football/*` on `packages/notifications-worker`
+   holds the key server-side, caches per-request (live 20s, today 10 min, future dates 6h),
+   and enforces a 90/day account ceiling in KV — the per-device cap can't protect the
+   account because it only sees one install. Needs `wrangler secret put API_FOOTBALL_KEY`,
+   a `wrangler deploy`, and `EXPO_PUBLIC_FOOTBALL_PROXY_URL` in `.env`.
+   🔴 **Free plan ceiling (verified 2026-08-04).** Only `live=all` and `date=` within
+   today ±1 are available. Season queries cap at 2024; `next=` is refused. The proxy cannot
+   lift this — it's data access, not quota. A real matchday board wants the paid tier.
    ⚠️ The key is now set in `.env`, but none of this has been verified against live data on
    a device — the in-play carousel and the new fixture board are both typechecked and
    unit-tested only.

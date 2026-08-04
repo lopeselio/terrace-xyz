@@ -2,12 +2,7 @@ import { useEffect, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { isFixtureFinished, type LiveFixture } from "@terrace/sdk";
 import { footballClient } from "../utils/apiFootball";
-import {
-  COMPETITION_API_ID,
-  CURRENT_SEASON,
-  SEEDABLE_COMPETITIONS,
-  type Competition,
-} from "../utils/football";
+import { competitionForApiId, type Competition } from "../utils/football";
 
 // ---------------------------------------------------------------------------
 // The matchday schedule (TODO Sprint 12 #8).
@@ -19,16 +14,27 @@ import {
 // where they exist; where they don't, the fixture is an invitation to create
 // one.
 //
-// Cost: one request per league per window, and a fixture list for next weekend
-// does not change, so the worker proxy caches it for half an hour and nobody
-// pays for it twice. That is the whole reason the proxy landed first.
+// Queried by date, not by league. `league + season + from/to` is the obvious
+// shape and the free plan rejects it outright — seasons cap at 2024 there, and
+// so do the `next` and multi-day range parameters. A bare `date=` works for the
+// current season and returns every competition that day, so one request covers
+// all seven leagues instead of one request each, and we filter by league id
+// here.
 //
 // Like useLiveFixtures this is a module-level store: mounting the board and the
 // create sheet at once costs one fetch, not two.
 // ---------------------------------------------------------------------------
 
-/** How far ahead the board looks. A week covers the next two matchdays. */
-const WINDOW_DAYS = 7;
+/**
+ * How far ahead the board looks, in days beyond today.
+ *
+ * 1 (today + tomorrow) is not a design choice — it is the free plan's ceiling.
+ * Asking for a date beyond tomorrow returns "Free plans do not have access to
+ * this date", so a wider window would quietly render nothing for the days it
+ * can't see. On a paid plan raise this and the board fills out; the request
+ * shape doesn't change.
+ */
+const WINDOW_DAYS = 1;
 
 /** Refetch cadence while foregrounded — matches the proxy's fixture TTL. */
 const REFRESH_MS = 30 * 60_000;
@@ -74,28 +80,22 @@ async function fetchUpcoming(force = false): Promise<void> {
   if (inFlight) return inFlight;
   if (!force && Date.now() - lastFetchedAt < STALE_MS) return;
 
-  const from = isoDay(0);
-  const to = isoDay(WINDOW_DAYS);
+  const dates = Array.from({ length: WINDOW_DAYS + 1 }, (_, i) => isoDay(i));
 
   publish({ loading: snapshot.fixtures.length === 0 });
 
   inFlight = (async () => {
-    // Leagues are fetched in parallel and merged. One failing league shouldn't
-    // empty the board — a partial schedule is still a schedule.
-    const results = await Promise.allSettled(
-      SEEDABLE_COMPETITIONS.map(async (competition) => {
-        const leagueId = COMPETITION_API_ID[competition];
-        if (leagueId == null) return [] as UpcomingFixture[];
-        const fixtures = await client.getLeagueFixtures(leagueId, CURRENT_SEASON, from, to);
-        return fixtures.map((fixture) => ({ fixture, competition }));
-      }),
-    );
+    // A day the plan refuses is skipped rather than fatal, so the board shows
+    // what it can see instead of failing whole.
+    const all = await client.getFixturesForDates(dates);
 
     const merged: UpcomingFixture[] = [];
-    let firstError: string | null = null;
-    for (const result of results) {
-      if (result.status === "fulfilled") merged.push(...result.value);
-      else if (!firstError) firstError = String(result.reason?.message ?? result.reason);
+    for (const fixture of all) {
+      const competition = competitionForApiId(fixture.league.id);
+      // The date query returns every competition on earth for that day —
+      // 224 fixtures for a single Wednesday. Only the leagues we cover belong
+      // on the board.
+      if (competition) merged.push({ fixture, competition });
     }
 
     // A finished match is history, not schedule. In-play stays: it's the most
@@ -104,14 +104,14 @@ async function fetchUpcoming(force = false): Promise<void> {
       .filter((u) => !isFixtureFinished(u.fixture))
       .sort((a, b) => Date.parse(a.fixture.kickoff) - Date.parse(b.fixture.kickoff));
 
-    if (merged.length > 0) lastFetchedAt = Date.now();
+    if (all.length > 0) lastFetchedAt = Date.now();
 
     publish({
-      // Keep the previous schedule when every league failed — a stale board
+      // Keep the previous schedule when the whole window failed — a stale board
       // beats an empty one.
-      fixtures: merged.length > 0 ? upcoming : snapshot.fixtures,
+      fixtures: all.length > 0 ? upcoming : snapshot.fixtures,
       loading: false,
-      error: merged.length > 0 ? null : firstError,
+      error: null,
     });
   })()
     .catch((e: unknown) => {

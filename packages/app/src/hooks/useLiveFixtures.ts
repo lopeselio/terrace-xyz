@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { isFixtureLive, type LiveFixture } from "@terrace/sdk";
-import { footballClient, FOOTBALL_PROXIED } from "../utils/apiFootball";
+import { footballClient } from "../utils/apiFootball";
 
 // ---------------------------------------------------------------------------
 // Live-score subscription — the list of football matches in play right now.
@@ -20,14 +20,16 @@ import { footballClient, FOOTBALL_PROXIED } from "../utils/apiFootball";
 //   - going direct, we stop once DAILY_BUDGET requests have been spent, keeping
 //     the last snapshot on screen rather than showing an error
 //
-// Behind the worker proxy the device-side cap is meaningless and actively
-// wrong: requests are answered from a cache shared by every install, so the
-// hundredth poll of an afternoon may not have cost anything upstream. The
-// provider's own quota error remains the authority either way.
+// The proxy does not lift this. Its live-board cache holds for 20 seconds while
+// a device polls every 60, so with one or two testers every poll is a miss and
+// costs a request upstream regardless — sharing only pays off once several
+// people are watching at once. The account-level ceiling lives in the worker,
+// where the key is and where it can see every device; this cap is the polite
+// per-install limit in front of it.
 // ---------------------------------------------------------------------------
 
 const LIVE_POLL_MS = 60_000;
-const DAILY_BUDGET = FOOTBALL_PROXIED ? Number.POSITIVE_INFINITY : 80;
+const DAILY_BUDGET = 80;
 
 // Competition weighting for the carousel. API-Football league ids — a live
 // Champions League tie should outrank a live Danish second-division game.

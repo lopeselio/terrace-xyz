@@ -221,15 +221,36 @@ const FOOTBALL_BASE = "https://v3.football.api-sports.io";
 const FOOTBALL_PATHS = new Set(["fixtures", "standings", "predictions", "teams", "leagues"]);
 
 /**
+ * A ceiling on what this key spends upstream in a day, counted in KV.
+ *
+ * The free plan allows 100. The per-device cap in the app can't protect the
+ * account — it only knows what that install spent — so the limit belongs here,
+ * where the key is. 90 leaves headroom for checking the account by hand.
+ */
+const FOOTBALL_DAILY_BUDGET = 90;
+
+/**
  * How long a response stays fresh. Live scores go stale in seconds; a fixture
- * list for next weekend does not move at all, and re-fetching it is the waste
- * that starves the live board.
+ * list for tomorrow barely moves, and re-fetching it is the waste that starves
+ * the live board.
  */
 function footballTtl(params: URLSearchParams): number {
   if (params.has("live")) return 20;
-  if (params.has("from") || params.has("to") || params.has("next") || params.has("season")) return 1_800;
-  if (params.has("date")) return 300;
+  const date = params.get("date");
+  if (date) {
+    const today = new Date().toISOString().slice(0, 10);
+    // Today's card changes as matches kick off and finish; a future date is
+    // just a schedule and holds for hours.
+    return date > today ? 21_600 : 600;
+  }
   return 300;
+}
+
+/** Upstream spend so far today, and the key it's counted under. */
+async function footballSpend(env: Env): Promise<{ key: string; spent: number }> {
+  const key = `football_budget:${new Date().toISOString().slice(0, 10)}`;
+  const raw = await env.DEVICES.get(key);
+  return { key, spent: raw ? Number(raw) || 0 : 0 };
 }
 
 async function handleFootballProxy(request: Request, url: URL, env: Env): Promise<Response> {
@@ -257,8 +278,19 @@ async function handleFootballProxy(request: Request, url: URL, env: Env): Promis
     return r;
   }
 
+  // Every cache miss is real money on a 100/day plan, so the budget is checked
+  // here rather than after the fact.
+  const { key: budgetKey, spent } = await footballSpend(env);
+  if (spent >= FOOTBALL_DAILY_BUDGET) {
+    // Shaped like the provider's own quota error: the app already treats that
+    // as authoritative and freezes the last snapshot rather than blanking.
+    return json({ errors: { requests: "Daily request limit reached (proxy budget)" } }, 429);
+  }
+
   const res = await fetch(upstream, { headers: { "x-apisports-key": env.API_FOOTBALL_KEY } });
   const body = await res.text();
+
+  await env.DEVICES.put(budgetKey, String(spent + 1), { expirationTtl: 60 * 60 * 48 });
 
   const out = new Response(body, {
     status: res.status,
@@ -266,6 +298,7 @@ async function handleFootballProxy(request: Request, url: URL, env: Env): Promis
       "Content-Type": "application/json",
       "Cache-Control": `public, max-age=${ttl}`,
       "X-Terrace-Cache": "MISS",
+      "X-Terrace-Budget": `${spent + 1}/${FOOTBALL_DAILY_BUDGET}`,
       // Passed through so the app can show how much of the day's allowance is
       // left instead of guessing from a local counter.
       "X-RateLimit-Requests-Remaining":
@@ -273,12 +306,27 @@ async function handleFootballProxy(request: Request, url: URL, env: Env): Promis
     },
   });
 
-  // Only cache what succeeded — a 429 or a 500 cached for half an hour would
-  // outlast the condition that caused it.
-  if (res.ok) {
+  // Only cache what actually succeeded. api-football answers a plan violation
+  // with HTTP 200 and an `errors` object, so status alone isn't enough — caching
+  // "Free plans do not have access to this date" for six hours would hide the
+  // real reason the board is empty long after the plan changed.
+  if (res.ok && !hasApiErrors(body)) {
     await cache.put(cacheKey, out.clone());
   }
   return out;
+}
+
+/** True when api-football reported an error inside a 200 response. */
+function hasApiErrors(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body) as { errors?: unknown };
+    const errors = parsed.errors;
+    if (!errors) return false;
+    if (Array.isArray(errors)) return errors.length > 0;
+    return typeof errors === "object" && Object.keys(errors as object).length > 0;
+  } catch {
+    return true; // unparseable is not something to cache either
+  }
 }
 
 function json(body: unknown, status = 200): Response {
