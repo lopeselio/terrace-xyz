@@ -180,8 +180,14 @@ export const COMPETITION_API_ID: Partial<Record<Competition, number>> = {
   "Europa League": 3,
 };
 
-/** Season a fixture query means: the starting year, so 2026/27 is 2026. */
-export const CURRENT_SEASON = 2026;
+/** Competition behind an api-football league id, for classifying a fixture. */
+const API_ID_TO_COMPETITION = new Map<number, Competition>(
+  Object.entries(COMPETITION_API_ID).map(([name, id]) => [id as number, name as Competition]),
+);
+
+export function competitionForApiId(leagueId: number): Competition | null {
+  return API_ID_TO_COMPETITION.get(leagueId) ?? null;
+}
 
 /** Competitions we can pull a fixture list for, in board order. */
 export const SEEDABLE_COMPETITIONS: readonly Competition[] = [

@@ -134,26 +134,22 @@ export class ApiFootballClient {
   }
 
   /**
-   * A league's fixtures across a date range — the board's seed. One request
-   * covers a whole matchday window, which is what makes a five-league schedule
-   * affordable: a fixture list for next weekend doesn't change, so the proxy
-   * caches it and nobody pays for it twice.
+   * Fixtures for several dates at once — the matchday board's seed.
    *
-   * Dates are YYYY-MM-DD. `season` is the starting year (2026/27 → 2026).
+   * Deliberately date-keyed rather than `league + season + from/to`, which
+   * would be the obvious query and is rejected on the free plan: seasons are
+   * capped at 2024 there, as are the `next` and multi-day range parameters.
+   * A bare `date=` works for the current season, returns every competition for
+   * that day, and callers filter to the leagues they care about — one request
+   * per day covers all of them rather than one per league.
+   *
+   * Dates are YYYY-MM-DD. A day the plan refuses is skipped, not fatal: the
+   * free tier only serves today ±1, so a wider window degrades to what it can
+   * actually see instead of failing whole.
    */
-  async getLeagueFixtures(
-    leagueId: number,
-    season: number,
-    from: string,
-    to: string,
-  ): Promise<LiveFixture[]> {
-    const raw = await this.request<RawFixture[]>("/fixtures", {
-      league: leagueId,
-      season,
-      from,
-      to,
-    });
-    return raw.map(toLiveFixture);
+  async getFixturesForDates(dates: string[]): Promise<LiveFixture[]> {
+    const results = await Promise.allSettled(dates.map((d) => this.getFixturesByDate(d)));
+    return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   }
 
   /**
