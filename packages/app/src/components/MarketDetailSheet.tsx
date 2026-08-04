@@ -25,6 +25,9 @@ import { color as C, font, radius } from "../theme/tokens";
 import { probToFractional, money, moneyWhole, COPY } from "../utils/format";
 import { Badge } from "./ui";
 import { Icon } from "./Icon";
+import { MarketStateBadge, MarketOutcomeLine } from "./MarketStateBadge";
+import { useMarketState } from "../hooks/useMarketState";
+import { formatDeadline } from "../utils/marketState";
 
 interface Props {
   market: UnifiedMarket | null;
@@ -41,10 +44,6 @@ function fmt(n: number) {
   return n.toFixed(2);
 }
 
-function fmtExpiry(d: Date | null | undefined) {
-  if (!d) return "—";
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
 
 // ── Status badge ────────────────────────────────────────────────────────────
 
@@ -383,6 +382,9 @@ export function MarketDetailSheet({ market, visible, onClose, initialOutcome }: 
   const vaultBalance = useMarketVaultBalance(
     market?.isPrivate ? (market.nativeMarketAddress ?? market.id) : null,
   );
+  // Hooks must run unconditionally, so the state is derived from a stand-in
+  // when the sheet has no market yet. Nothing renders in that case anyway.
+  const state = useMarketState(market ?? { status: "Open", expiry: null });
   if (!market) return null;
 
   return (
@@ -405,7 +407,7 @@ export function MarketDetailSheet({ market, visible, onClose, initialOutcome }: 
             <Badge tone={market.source === "jupiter" ? "poly" : "terrace"} label={market.source === "jupiter" ? "Polymarket" : "Terrace"} />
             {market.isPrivate && <Badge tone="private" label="Arcium · Private" icon="lock" />}
             {market.isFlash && <Badge tone="flash" label="Flash" icon="bolt" />}
-            {market.status !== "Open" && <Badge tone="settled" label={market.status === "Settled" ? "Settled" : "Closed"} />}
+            <MarketStateBadge market={market} />
           </View>
 
           <Text style={s.question}>{market.question}</Text>
@@ -418,21 +420,33 @@ export function MarketDetailSheet({ market, visible, onClose, initialOutcome }: 
               market.totalVolumeUsdc > 0 ? <Text style={s.matched}>MATCHED {moneyWhole(market.totalVolumeUsdc)}</Text> : <View />
             )}
             <View style={{ flex: 1 }} />
-            <Text style={s.metaMuted}>Expires {fmtExpiry(market.expiry)}</Text>
+            <Text style={s.metaMuted}>
+              {state.takeable ? "Closes" : "Closed"} {formatDeadline(market.expiry)}
+            </Text>
           </View>
 
           <View style={s.divider} />
 
-          {/* Bet panel — private vs public */}
+          {/* Bet panel — private vs public. Gated on the derived state, not on
+              `status`: an Open market whose deadline has passed is no longer
+              takeable, and the program will refuse the transaction. */}
           {market.isPrivate ? (
             <PrivateBetPanel market={market} onClose={onClose} />
-          ) : market.status === "Open" ? (
+          ) : state.takeable ? (
             <PublicBetPanel market={market} onClose={onClose} initialOutcome={initialOutcome} />
           ) : (
             <View style={s.settledNotice}>
-              <Text style={s.settledText}>
-                {market.status === "Settled" ? "✅ Market settled" : "Market closed"}
-              </Text>
+              <MarketOutcomeLine market={market} />
+              {state.state === "resolving" && (
+                <Text style={s.settledSub}>
+                  The creator settles this market; winnings can be claimed once they do.
+                </Text>
+              )}
+              {state.state === "expired" && (
+                <Text style={s.settledSub}>
+                  No result was ever posted. Stakes stay in the market vault until it settles.
+                </Text>
+              )}
             </View>
           )}
 
@@ -533,6 +547,7 @@ const s = StyleSheet.create({
   claimBtnLogo:   { width: 20, height: 20, borderRadius: 10 },
   claimBtnText:   { fontSize: 14, fontWeight: "700", color: "#e9d5ff" },
 
-  settledNotice: { alignItems: "center", paddingVertical: 24 },
+  settledNotice: { alignItems: "center", paddingVertical: 24, gap: 10 },
   settledText:   { fontSize: 15, color: "#9ca3af", fontWeight: "600" },
+  settledSub:    { fontFamily: font.sans, fontSize: 12, color: C.ink3, textAlign: "center", lineHeight: 18, paddingHorizontal: 12 },
 });

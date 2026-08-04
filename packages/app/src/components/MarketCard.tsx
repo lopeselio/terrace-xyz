@@ -8,6 +8,8 @@ import { splitEventTitle, marketTitle, competitionLabel } from "../utils/footbal
 import { identityOf, avatarColorOf } from "../utils/identity";
 import { Badge, OddsButton } from "./ui";
 import { Icon } from "./Icon";
+import { MarketStateBadge, MarketOutcomeLine } from "./MarketStateBadge";
+import { useMarketState } from "../hooks/useMarketState";
 
 // ---------------------------------------------------------------------------
 // The market card — one component, used by the Markets list, Home's trending
@@ -16,20 +18,10 @@ import { Icon } from "./Icon";
 //
 // `compact` tightens it for Home's denser trending list; everything else about
 // the card is identical so a market reads the same wherever a user meets it.
+//
+// What the card is *doing* — counting down, waiting on settlement, dead, or
+// resolved — comes from utils/marketState, not from `status` read locally.
 // ---------------------------------------------------------------------------
-
-function countdown(expiry: Date | null): string {
-  if (!expiry) return "";
-  const diff = expiry.getTime() - Date.now();
-  if (diff <= 0) return "Closed";
-  const s = Math.floor(diff / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m}:${String(s % 60).padStart(2, "0")}`;
-}
 
 /** The creator line — a handle and monogram, never an address. */
 function CreatorLine({ pubkey, winRateBps }: { pubkey: string; winRateBps?: number }) {
@@ -69,15 +61,19 @@ export function MarketCard({ market, onPress, onBack, onFade, compact, creatorWi
   // in the question, not the event title. Crest off the title there and you get
   // an "E" square. Head-to-heads keep using the title's two sides.
   const crestName = isH2H ? home : market.question || home;
-  const cd = countdown(market.expiry);
-  const settled = market.status === "Settled" || market.status === "Closed";
+  const state = useMarketState(market);
   const noProb =
     market.noPrice > 0 ? market.noPrice : market.yesPrice > 0 ? 1 - market.yesPrice : null;
   const crest = compact ? 28 : 34;
 
   return (
     <Pressable
-      style={[s.card, compact && s.cardCompact, settled && s.cardSettled]}
+      style={[
+        s.card,
+        compact && s.cardCompact,
+        state.state === "settled" && s.cardSettled,
+        state.state === "expired" && s.cardExpired,
+      ]}
       onPress={onPress}
     >
       <View style={s.top}>
@@ -88,11 +84,7 @@ export function MarketCard({ market, onPress, onBack, onFade, compact, creatorWi
         {market.isPrivate && <Badge tone="private" label="Private" icon="lock" />}
         {market.isFlash && <Badge tone="flash" label="Flash" icon="bolt" />}
         <View style={{ flex: 1 }} />
-        {settled ? (
-          <Badge tone="settled" label="Settled" />
-        ) : (
-          !!cd && <Badge tone="amber" label={cd} icon="clock" />
-        )}
+        <MarketStateBadge market={market} />
       </View>
 
       <View style={s.mid}>
@@ -116,7 +108,7 @@ export function MarketCard({ market, onPress, onBack, onFade, compact, creatorWi
         <Icon name="chevronRight" size={18} color={C.ink4} />
       </View>
 
-      {!settled && (
+      {state.takeable ? (
         <View style={s.odds}>
           <OddsButton
             label="Back"
@@ -131,6 +123,15 @@ export function MarketCard({ market, onPress, onBack, onFade, compact, creatorWi
             onPress={onFade ?? onPress}
           />
         </View>
+      ) : (
+        // No prices once the deadline has passed: a tappable price the program
+        // would reject is worse than no price at all.
+        <MarketOutcomeLine
+          market={market}
+          crest={
+            state.winner === "YES" ? <TeamBadge name={crestName} size={20} /> : undefined
+          }
+        />
       )}
 
       <View style={s.foot}>
@@ -145,8 +146,9 @@ export function MarketCard({ market, onPress, onBack, onFade, compact, creatorWi
   );
 }
 
-// Re-exported so callers can keep the countdown format consistent.
-export { countdown as marketCountdown, marketTitle };
+// Re-exported so callers can keep market titles consistent. Remaining time is
+// no longer re-exported: it belongs to MarketStateBadge now.
+export { marketTitle };
 
 const s = StyleSheet.create({
   card: {
@@ -159,6 +161,9 @@ const s = StyleSheet.create({
   },
   cardCompact: { padding: 12, gap: 10, borderRadius: radius.md },
   cardSettled: { opacity: 0.6 },
+  // Expired isn't dimmed — an unsettled market someone has money in should
+  // catch the eye, not fade into the list.
+  cardExpired: { borderColor: "#3a1414" },
 
   top: { flexDirection: "row", alignItems: "center", gap: 6 },
   mid: { flexDirection: "row", alignItems: "center", gap: 11 },

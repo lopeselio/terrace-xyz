@@ -23,6 +23,8 @@ import type { UnifiedMarket } from "@terrace/sdk";
 import { TeamBadge } from "./MatchGroupCard";
 import { color as C, font } from "../theme/tokens";
 import { probToFractional, moneyWhole } from "../utils/format";
+import { formatCountdown } from "../utils/marketState";
+import { msUntil } from "../hooks/useServerTime";
 import { Badge, OddsButton } from "../components/ui";
 
 // ---------------------------------------------------------------------------
@@ -55,18 +57,15 @@ function formatVol(usdc: number): string {
   return `$${usdc.toFixed(0)}`;
 }
 
+// Cluster time, not the device's, and the same countdown wording as every
+// other card (utils/marketState). A deck card past its deadline reads
+// RESOLVING rather than "Closed" — the deck only holds Open markets, so it
+// getting there means settlement is pending, not that trading shut.
 function countdownLabel(expiry: Date | null): string {
   if (!expiry) return "";
-  const diff = expiry.getTime() - Date.now();
-  if (diff <= 0) return "Closed";
-  const totalSecs = Math.floor(diff / 1_000);
-  const d = Math.floor(totalSecs / 86_400);
-  const h = Math.floor((totalSecs % 86_400) / 3600);
-  const m = Math.floor((totalSecs % 3600) / 60);
-  const s = totalSecs % 60;
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  const diff = msUntil(expiry);
+  if (diff <= 0) return "RESOLVING";
+  return formatCountdown(diff);
 }
 
 function useCountdown(expiry: Date | null): string {
