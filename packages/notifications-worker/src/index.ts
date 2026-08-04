@@ -214,6 +214,12 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
 // The key never reaches the client. Paths are allowlisted rather than open
 // proxied, so this can't be turned into a general-purpose relay for someone
 // else's api-football usage.
+//
+// Cached in KV rather than the Cache API. The Cache API is the obvious tool and
+// it silently does nothing on a *.workers.dev hostname — it only stores for
+// custom domains inside a zone — so every request was a MISS and the proxy was
+// a pass-through that happened to hide the key. KV works on workers.dev, at the
+// cost of a 60s floor on every TTL.
 // ---------------------------------------------------------------------------
 
 const FOOTBALL_BASE = "https://v3.football.api-sports.io";
@@ -226,6 +232,11 @@ const FOOTBALL_PATHS = new Set(["fixtures", "standings", "predictions", "teams",
  * The free plan allows 100. The per-device cap in the app can't protect the
  * account — it only knows what that install spent — so the limit belongs here,
  * where the key is. 90 leaves headroom for checking the account by hand.
+ *
+ * KV reads are eventually consistent, so two requests landing together can both
+ * read the same count and each write count+1 — the tally undercounts slightly
+ * under burst. That's acceptable for a guardrail with ten spare requests of
+ * headroom; an exact counter would need a Durable Object.
  */
 const FOOTBALL_DAILY_BUDGET = 90;
 
@@ -235,7 +246,9 @@ const FOOTBALL_DAILY_BUDGET = 90;
  * the live board.
  */
 function footballTtl(params: URLSearchParams): number {
-  if (params.has("live")) return 20;
+  // 60 is KV's minimum expirationTtl, and also the app's live poll interval —
+  // scores are at most one poll stale, which is what they'd be anyway.
+  if (params.has("live")) return 60;
   const date = params.get("date");
   if (date) {
     const today = new Date().toISOString().slice(0, 10);
@@ -266,16 +279,15 @@ async function handleFootballProxy(request: Request, url: URL, env: Env): Promis
   const upstream = `${FOOTBALL_BASE}/${path}${url.search}`;
   const ttl = footballTtl(url.searchParams);
 
-  // Cache on the upstream URL, not the incoming one, so two clients spelling
+  // Keyed on the upstream URL, not the incoming one, so two clients spelling
   // the same query differently still share an entry.
-  const cacheKey = new Request(upstream, { method: "GET" });
-  const cache = (caches as any).default as Cache;
+  const cacheKey = `football_cache:${upstream}`;
 
-  const hit = await cache.match(cacheKey);
+  const hit = await env.DEVICES.get(cacheKey);
   if (hit) {
-    const r = new Response(hit.body, hit);
-    r.headers.set("X-Terrace-Cache", "HIT");
-    return r;
+    return new Response(hit, {
+      headers: { "Content-Type": "application/json", "X-Terrace-Cache": "HIT" },
+    });
   }
 
   // Every cache miss is real money on a 100/day plan, so the budget is checked
@@ -306,15 +318,22 @@ async function handleFootballProxy(request: Request, url: URL, env: Env): Promis
     },
   });
 
-  // Only cache what actually succeeded. api-football answers a plan violation
-  // with HTTP 200 and an `errors` object, so status alone isn't enough — caching
-  // "Free plans do not have access to this date" for six hours would hide the
-  // real reason the board is empty long after the plan changed.
-  if (res.ok && !hasApiErrors(body)) {
-    await cache.put(cacheKey, out.clone());
+  // api-football answers a plan violation with HTTP 200 and an `errors` object,
+  // so status alone isn't enough. A clean response is held for its full TTL;
+  // a refusal is held only briefly — long enough to stop retries hammering the
+  // quota inside the per-minute limit, short enough that a passing rate limit
+  // or a plan upgrade isn't remembered.
+  if (res.ok) {
+    const clean = !hasApiErrors(body);
+    await env.DEVICES.put(cacheKey, body, {
+      expirationTtl: clean ? ttl : ERROR_TTL,
+    });
   }
   return out;
 }
+
+/** KV's floor, and long enough to stop a retry loop spending the day's budget. */
+const ERROR_TTL = 60;
 
 /** True when api-football reported an error inside a 200 response. */
 function hasApiErrors(body: string): boolean {
