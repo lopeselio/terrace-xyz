@@ -1,7 +1,8 @@
 // Must run before anything imports Privy. Filters the recurring 15s ping
 // heartbeat timeout noise that otherwise floods logcat / Expo LogBox.
 import "./utils/silencePrivyPing";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { VersionedTransaction } from "@solana/web3.js";
 import {
   View,
@@ -39,6 +40,7 @@ import { ProfileScreen } from "./screens/ProfileScreen";
 import { SocialScreen } from "./screens/SocialScreen";
 import { ParlayBuilderScreen } from "./screens/ParlayBuilderScreen";
 import { CreateMarketScreen } from "./screens/CreateMarketScreen";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { MatchupScreen } from "./screens/MatchupScreen";
 import { LeagueScreen } from "./screens/LeagueScreen";
 import { FlashScreen } from "./screens/FlashScreen";
@@ -53,6 +55,9 @@ import {
 } from "@privy-io/expo";
 
 const WORKER_BASE_URL = "https://terrace-notifications.terrace-xyz.workers.dev";
+
+/** First-run flag, per wallet (see OnboardingScreen). */
+const ONBOARDED_KEY = (pubkey: string) => `terrace_onboarded_${pubkey}`;
 
 // ---------------------------------------------------------------------------
 // LinkWalletModal — confirm wallet→Telegram linking after tapping /link URL
@@ -427,6 +432,9 @@ export default function App() {
   // A fixture the user chose to price from the matchday board. Handed to
   // Create and cleared once the market is published or the tab is left.
   const [createFixture, setCreateFixture] = useState<LiveFixture | null>(null);
+  // First run for this wallet — null while we're still reading the flag, so we
+  // never flash onboarding at someone who has already done it.
+  const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
   const [deepLinkMatchupAddress, setDeepLinkMatchupAddress] = useState<string | null>(null);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [mwaError, setMwaError] = useState<string | null>(null);
@@ -476,6 +484,25 @@ export default function App() {
       setActiveTab(pendingTab);
     }
   }, [privyUser]);
+
+  // Onboarding is per wallet, not per install: connecting a second wallet is a
+  // new person as far as identity and funding go.
+  useEffect(() => {
+    if (!effectivePublicKey) { setNeedsOnboarding(null); return; }
+    let cancelled = false;
+    AsyncStorage.getItem(ONBOARDED_KEY(effectivePublicKey))
+      .then((seen) => { if (!cancelled) setNeedsOnboarding(seen !== "1"); })
+      // If the flag can't be read, don't trap the user in onboarding.
+      .catch(() => { if (!cancelled) setNeedsOnboarding(false); });
+    return () => { cancelled = true; };
+  }, [effectivePublicKey]);
+
+  const finishOnboarding = useCallback(() => {
+    setNeedsOnboarding(false);
+    if (effectivePublicKey) {
+      AsyncStorage.setItem(ONBOARDED_KEY(effectivePublicKey), "1").catch(() => {});
+    }
+  }, [effectivePublicKey]);
 
   // Keep refs so timeout callbacks read current state at fire-time, not captured closure values.
   const solanaWalletRef = useRef(solanaWallet);
@@ -768,6 +795,14 @@ export default function App() {
             onClose={() => setShowParlay(false)}
             onNavigateProfile={() => { setShowParlay(false); setActiveTab("Profile"); }}
           />
+        </View>
+      )}
+
+      {/* First run for this wallet — covers the app until dismissed, so nobody
+          starts betting before they know their handle or that they need SOL. */}
+      {needsOnboarding === true && effectivePublicKey && (
+        <View style={styles.parlayOverlay}>
+          <OnboardingScreen walletPubkey={effectivePublicKey} onDone={finishOnboarding} />
         </View>
       )}
 
