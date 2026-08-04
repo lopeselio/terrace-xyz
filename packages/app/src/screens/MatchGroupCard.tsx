@@ -6,6 +6,8 @@ import { isFixtureLive, isFixtureFinished } from "@terrace/sdk";
 import { lookupTeam, fallbackColor } from "../utils/teamDatabase";
 import { useTeamCrest } from "../hooks/useTeamCrest";
 import { useLiveFixture } from "../hooks/useLiveFixture";
+import { useMarketState } from "../hooks/useMarketState";
+import { MarketStateBadge, MarketOutcomeLine } from "../components/MarketStateBadge";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -23,15 +25,6 @@ function abbr(name: string | undefined, teamEntry?: ReturnType<typeof lookupTeam
 function splitEventTitle(title: string): [string, string] {
   const parts = title.split(/\s+vs\.?\s+/i);
   return parts.length >= 2 ? [parts[0].trim(), parts[1].trim()] : [title, ""];
-}
-
-function formatExpiry(d: Date | null): string {
-  if (!d) return "";
-  const diff = d.getTime() - Date.now();
-  if (diff <= 0) return "Expired";
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
 }
 
 function formatVol(usdc: number): string {
@@ -300,10 +293,16 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
   const homeAbbr = abbr(outcomes.home?.question ?? homeTeam, homeEntry);
   const awayAbbr = abbr(outcomes.away?.question ?? awayTeam, awayEntry);
 
-  const isSettled = status === "Settled" || status === "Closed";
+  // One derived state for the whole group — the outcomes share an event, so
+  // they share a deadline (see utils/marketState).
+  const state = useMarketState({ status, expiry });
+  const isSettled = state.state === "settled";
 
   // Live fixture lookup — only meaningful for head-to-head matches with two
   // identified teams. Futures/league markets don't have a single fixture.
+  // Kept alive through RESOLVING, not just while takeable: for a market whose
+  // deadline is kick-off, the scoreline matters most in the ninety minutes
+  // after betting closes.
   const liveFixture = useLiveFixture(
     !isFutures && !isSettled ? homeTeam : "",
     !isFutures && !isSettled ? awayTeam : "",
@@ -311,7 +310,7 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
   );
 
   const handleSelect = (market: UnifiedMarket | null, label: string) => {
-    if (!market || status !== "Open") return;
+    if (!market || !state.takeable) return;
     setSelected(market.id);
     onSelectOutcome(market.id, label, market.yesPrice);
   };
@@ -332,9 +331,11 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
           <Text style={styles.matchTitle} numberOfLines={1}>{eventTitle}</Text>
           <View style={styles.matchMetaRow}>
             <Text style={styles.matchSub}>Sports · Match result</Text>
-            {expiry && <Text style={styles.matchExpiry}> · {formatExpiry(expiry)}</Text>}
           </View>
         </View>
+
+        {/* State — countdown while takeable, then resolving / expired / settled */}
+        <MarketStateBadge market={{ status, expiry }} />
 
         {/* Event image thumbnail (Polymarket) */}
         {match.imageUrl && (
@@ -357,7 +358,7 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
           sublabel={homeTeam.length > 6 ? homeTeam.slice(0, 8) + "…" : homeTeam}
           price={outcomes.home?.yesPrice ?? null}
           selected={selected === outcomes.home?.id}
-          disabled={!outcomes.home || isSettled}
+          disabled={!outcomes.home || !state.takeable}
           onPress={() => handleSelect(outcomes.home, homeAbbr)}
         />
         <OutcomeBtn
@@ -365,7 +366,7 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
           sublabel="Draw"
           price={outcomes.draw?.yesPrice ?? null}
           selected={selected === outcomes.draw?.id}
-          disabled={!outcomes.draw || isSettled}
+          disabled={!outcomes.draw || !state.takeable}
           onPress={() => handleSelect(outcomes.draw, "DRW")}
         />
         <OutcomeBtn
@@ -373,13 +374,13 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
           sublabel={awayTeam.length > 6 ? awayTeam.slice(0, 8) + "…" : awayTeam}
           price={outcomes.away?.yesPrice ?? null}
           selected={selected === outcomes.away?.id}
-          disabled={!outcomes.away || isSettled}
+          disabled={!outcomes.away || !state.takeable}
           onPress={() => handleSelect(outcomes.away, awayAbbr)}
         />
       </View>
 
       {/* AI Insights toggle */}
-      {!isSettled && (
+      {state.takeable && (
         <TouchableOpacity
           style={styles.insightsToggle}
           onPress={async () => {
@@ -424,11 +425,11 @@ export function MatchGroupCard({ match, onSelectOutcome }: Props) {
         </View>
       )}
 
-      {/* Settled result */}
-      {isSettled && (
-        <Text style={styles.settledLabel}>
-          {status === "Settled" ? "Market settled" : "Market closed"}
-        </Text>
+      {/* How it ended — the winning side, or that nothing ever landed */}
+      {!state.takeable && (
+        <View style={styles.resultRow}>
+          <MarketOutcomeLine market={{ status, expiry }} />
+        </View>
       )}
     </View>
   );
@@ -467,7 +468,6 @@ const styles = StyleSheet.create({
   matchTitle: { fontSize: 13, fontWeight: "600", color: "#fff" },
   matchMetaRow: { flexDirection: "row" },
   matchSub:    { fontSize: 10, color: "#888" },
-  matchExpiry: { fontSize: 10, color: "#555" },
 
   eventThumb: { width: 36, height: 36, borderRadius: 6, marginLeft: 6 },
 
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   outcomeBtnPrice:    { fontSize: 14, fontWeight: "800", color: "#f9fafb" },
   outcomePriceSelected: { color: "#22c55e" },
 
-  settledLabel: { textAlign: "center", fontSize: 11, color: "#6b7280", paddingBottom: 10 },
+  resultRow: { alignItems: "center", paddingBottom: 12, paddingHorizontal: 14 },
 
   insightsToggle: { borderTopWidth: 0.5, borderTopColor: "#1a1a1a", paddingVertical: 8, paddingHorizontal: 14, alignItems: "center" },
   insightsToggleText: { fontSize: 11, color: "#4ade80", fontWeight: "600" },

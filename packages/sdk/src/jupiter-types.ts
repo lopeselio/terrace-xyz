@@ -116,6 +116,9 @@ export interface UnifiedMarket {
   totalVolumeUsdc: number;
   expiry: Date | null;
   status: "Open" | "Settled" | "Closed";
+  /** Winning side once settled — 0 = YES, 1 = NO. Native markets only; Jupiter
+   *  doesn't hand back a resolved outcome, so it stays null there. */
+  outcome?: 0 | 1 | null;
   /** Set for Jupiter markets — needed to build orders */
   jupiterMarketId?: string;
   jupiterEventId?: string;

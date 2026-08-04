@@ -93,6 +93,9 @@ async function fetchNativeMarkets(): Promise<UnifiedMarket[]> {
         totalVolumeUsdc: totalVol / 1_000_000,
         expiry: new Date(Number(market.expiry) * 1000),
         status: statusMapped,
+        // Carried through so a settled card can say which side won rather than
+        // just that it's over (see utils/marketState).
+        outcome: market.outcome === 0 || market.outcome === 1 ? (market.outcome as 0 | 1) : null,
         nativeMarketAddress: pubkey,
         creator: market.creator as string,
         isPrivate: market.isPrivate,

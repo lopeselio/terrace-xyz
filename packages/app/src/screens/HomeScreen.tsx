@@ -36,6 +36,7 @@ import { SectionHead } from "../components/ui";
 import { COMPETITIONS, HOT_COMPETITION, matchesCompetition, marketTitle } from "../utils/football";
 import { handleOf } from "../utils/identity";
 import { moneyWhole, probToFractional } from "../utils/format";
+import { isTakeable } from "../hooks/useMarketState";
 
 // ---------------------------------------------------------------------------
 // Quick-action tiles (redesign) — replace the gradient category carousel.
@@ -223,10 +224,12 @@ const flashStyles = StyleSheet.create({
 // Terrace status filter header
 // ---------------------------------------------------------------------------
 
+// The middle chip filters on "no longer takeable", which is settled markets
+// plus the ones resolving or expired — so it's labelled Finished, not Settled.
 const TERRACE_STATUS_OPTIONS = [
-  { key: "Open"    as const, activeColor: "#22c55e" },
-  { key: "Settled" as const, activeColor: "#6b7280" },
-  { key: "All"     as const, activeColor: "#818cf8" },
+  { key: "Open"    as const, label: "Open",     activeColor: "#22c55e" },
+  { key: "Settled" as const, label: "Finished", activeColor: "#6b7280" },
+  { key: "All"     as const, label: "All",      activeColor: "#818cf8" },
 ];
 
 interface TerraceSectionHeaderProps {
@@ -243,7 +246,7 @@ function TerraceSectionHeader({ openCount, settledCount, active, onChange }: Ter
   return (
     <View style={tsStyles.wrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tsStyles.row}>
-        {TERRACE_STATUS_OPTIONS.map(({ key, activeColor }) => {
+        {TERRACE_STATUS_OPTIONS.map(({ key, label, activeColor }) => {
           const isActive = active === key;
           return (
             <TouchableOpacity
@@ -252,7 +255,7 @@ function TerraceSectionHeader({ openCount, settledCount, active, onChange }: Ter
               onPress={() => onChange(key)}
               activeOpacity={0.7}
             >
-              <Text style={[tsStyles.chipLabel, isActive && { color: activeColor }]}>{key}</Text>
+              <Text style={[tsStyles.chipLabel, isActive && { color: activeColor }]}>{label}</Text>
               <View style={[tsStyles.countBubble, isActive && { backgroundColor: activeColor }]}>
                 <Text style={[tsStyles.countText, isActive && { color: "#000" }]}>
                   {countOf(key)}
@@ -654,12 +657,14 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
     if (sourceFilter !== "Terrace") setTerraceStatusFilter("Open");
   }, [sourceFilter]);
 
+  // Takeability, not `status`: an Open market whose deadline passed belongs
+  // with the finished ones — nobody can bet it (see utils/marketState).
   const terraceOpenCount = useMemo(
-    () => markets.filter((m) => !m.isFlash && m.source === "native" && m.status === "Open").length,
+    () => markets.filter((m) => !m.isFlash && m.source === "native" && isTakeable(m)).length,
     [markets],
   );
   const terraceSettledCount = useMemo(
-    () => markets.filter((m) => !m.isFlash && m.source === "native" && (m.status === "Settled" || m.status === "Closed")).length,
+    () => markets.filter((m) => !m.isFlash && m.source === "native" && !isTakeable(m)).length,
     [markets],
   );
 
@@ -815,8 +820,8 @@ export function HomeScreen({ walletPubkey, winRate, repLoading, markets, markets
               if (m.isFlash) return false; // flash markets shown in dedicated row above
               if (sourceFilter === "Terrace") {
                 if (m.source !== "native") return false;
-                if (terraceStatusFilter === "Open")    return m.status === "Open";
-                if (terraceStatusFilter === "Settled") return m.status === "Settled" || m.status === "Closed";
+                if (terraceStatusFilter === "Open")    return isTakeable(m);
+                if (terraceStatusFilter === "Settled") return !isTakeable(m);
                 return true; // "All"
               }
               if (sourceFilter === "Polymarket") return m.source === "jupiter";
