@@ -12,5 +12,11 @@ preview_id = "2da6c626db9645a69181a674ea60b1c3"
 # Shared secret between bot and worker — override with `wrangler secret put WORKER_SECRET` for prod
 WORKER_SECRET = "terrace-link-dev-2026"
 
+# API_FOOTBALL_KEY is deliberately NOT a var — set it as a secret so it never
+# lands in the repo or reaches a device:
+#   wrangler secret put API_FOOTBALL_KEY
+# It backs GET /football/* , which proxies api-football with a shared cache so
+# every install draws on one 100/day allowance instead of its own.
+
 [observability]
 enabled = true

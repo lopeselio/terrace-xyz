@@ -68,20 +68,49 @@ function fuzzyTeamMatch(query: string, candidate: string): boolean {
   return queryTokens.some((t) => candNorm.includes(t));
 }
 
+export interface ApiFootballOptions {
+  /**
+   * Direct api-football key. Omit when `baseUrl` points at a proxy that holds
+   * the key server-side — shipping it to devices means each install burns its
+   * own share of a 100/day allowance.
+   */
+  apiKey?: string;
+  /**
+   * Override the upstream. Point this at the notifications worker's /football
+   * route to share one key and one cache across every device.
+   */
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+}
+
 export class ApiFootballClient {
-  constructor(
-    private readonly apiKey: string,
-    private readonly fetchImpl: typeof fetch = fetch,
-  ) {}
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(options: ApiFootballOptions | string = {}, legacyFetch?: typeof fetch) {
+    // A bare key is still accepted so the direct-to-provider path reads the
+    // same as it always did.
+    const opts: ApiFootballOptions =
+      typeof options === "string" ? { apiKey: options, fetchImpl: legacyFetch } : options;
+    this.apiKey = opts.apiKey ?? "";
+    this.baseUrl = (opts.baseUrl ?? API_BASE).replace(/\/$/, "");
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+  }
+
+  /** True when requests go through a proxy that supplies the key. */
+  private get proxied(): boolean {
+    return this.baseUrl !== API_BASE;
+  }
 
   private async request<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
-    if (!this.apiKey) throw new Error("ApiFootballClient: missing API key");
+    if (!this.apiKey && !this.proxied) throw new Error("ApiFootballClient: missing API key");
     const qs = new URLSearchParams(
       Object.entries(params).map(([k, v]): [string, string] => [k, String(v)]),
     ).toString();
-    const url = `${API_BASE}${path}${qs ? `?${qs}` : ""}`;
+    const url = `${this.baseUrl}${path}${qs ? `?${qs}` : ""}`;
     const res = await this.fetchImpl(url, {
-      headers: { "x-apisports-key": this.apiKey },
+      headers: this.proxied ? {} : { "x-apisports-key": this.apiKey },
     });
     if (!res.ok) {
       throw new Error(`ApiFootball ${res.status}: ${await res.text().catch(() => res.statusText)}`);
@@ -101,6 +130,29 @@ export class ApiFootballClient {
 
   async getFixturesByDate(date: string): Promise<LiveFixture[]> {
     const raw = await this.request<RawFixture[]>("/fixtures", { date });
+    return raw.map(toLiveFixture);
+  }
+
+  /**
+   * A league's fixtures across a date range — the board's seed. One request
+   * covers a whole matchday window, which is what makes a five-league schedule
+   * affordable: a fixture list for next weekend doesn't change, so the proxy
+   * caches it and nobody pays for it twice.
+   *
+   * Dates are YYYY-MM-DD. `season` is the starting year (2026/27 → 2026).
+   */
+  async getLeagueFixtures(
+    leagueId: number,
+    season: number,
+    from: string,
+    to: string,
+  ): Promise<LiveFixture[]> {
+    const raw = await this.request<RawFixture[]>("/fixtures", {
+      league: leagueId,
+      season,
+      from,
+      to,
+    });
     return raw.map(toLiveFixture);
   }
 
