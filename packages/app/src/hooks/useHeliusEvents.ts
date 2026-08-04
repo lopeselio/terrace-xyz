@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { type BadgeTier } from "./useLeaderboard";
 import { handleOf } from "../utils/identity";
+import { resolveSettleActors, type SettleSubject } from "./settleActors";
 
 const HELIUS_RPC_URL = process.env.EXPO_PUBLIC_HELIUS_RPC_URL ?? "";
 const TERRACE_PROGRAM_ID = process.env.EXPO_PUBLIC_TERRACE_PROGRAM_ID ?? "";
@@ -27,6 +28,11 @@ export interface LiveEvent {
   legs?: string[];
   signature: string;
   timestamp: Date;
+  /**
+   * Set on events whose actor isn't in the event itself — the account we can
+   * read a creator back from. Cleared once resolved (see settleActors).
+   */
+  subject?: SettleSubject;
 }
 
 // Anchor event discriminators: sha256("event:<EventName>")[0..8]
@@ -88,10 +94,13 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
   if (discMatch(bytes, DISC_MARKET_SETTLED) && bytes.length >= 8 + 32 + 1) {
     const market = parsePubkey(bytes, 8);
     const outcome = bytes[40] === 1 ? "Yes" : "No";
+    // The market pubkey is not a person. Attribution is filled in from the
+    // account's creator; "Terrace" is what shows until it lands.
     return {
-      id, type: "MARKET_SETTLED", actorPubkey: market,
+      id, type: "MARKET_SETTLED", actorPubkey: "",
       actorDisplay: "Terrace", badge: "Casual",
       market, outcome, signature: sig, timestamp: now,
+      subject: { kind: "market", address: market },
     };
   }
 
@@ -99,9 +108,10 @@ function tryParseEvent(bytes: Uint8Array, sig: string): LiveEvent | null {
     const parlay = parsePubkey(bytes, 8);
     const won = bytes[40] === 1;
     return {
-      id, type: won ? "PARLAY_WON" : "PARLAY_LOST", actorPubkey: parlay,
+      id, type: won ? "PARLAY_WON" : "PARLAY_LOST", actorPubkey: "",
       actorDisplay: "Terrace", badge: "Casual",
       signature: sig, timestamp: now,
+      subject: { kind: "parlay", address: parlay },
     };
   }
 
@@ -212,6 +222,29 @@ export function useHeliusEvents(maxEvents = 200) {
       return [ev, ...prev].slice(0, maxEvents);
     });
   }, [maxEvents]);
+
+  // Attribution pass — settle events arrive naming an account, and the person
+  // behind it is one account read away. Runs whenever unattributed events land;
+  // resolved events drop their `subject`, so this settles rather than loops.
+  useEffect(() => {
+    const pending = events.filter((e) => e.subject && !e.actorPubkey);
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      const actors = await resolveSettleActors(pending.map((e) => e.subject as SettleSubject));
+      if (cancelled || actors.size === 0) return;
+      setEvents((prev) =>
+        prev.map((e) => {
+          const creator = e.subject ? actors.get(e.subject.address) : undefined;
+          if (!creator) return e;
+          return { ...e, actorPubkey: creator, actorDisplay: handleOf(creator), subject: undefined };
+        }),
+      );
+    })();
+
+    return () => { cancelled = true; };
+  }, [events]);
 
   // Historical hydration — runs once per mount
   useEffect(() => {
