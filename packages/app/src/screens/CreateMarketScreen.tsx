@@ -21,6 +21,7 @@ import { Icon } from "../components/Icon";
 import { Badge } from "../components/ui";
 import { formatDeadline } from "../utils/marketState";
 import { serverNow } from "../hooks/useServerTime";
+import { useStatementValidator, type Verdict } from "../hooks/useStatementValidator";
 
 // Expiry presets (TODO Sprint 12 #5). A four-option dropdown couldn't express
 // most of what fans actually create — "the next 20 minutes", "until Sunday
@@ -107,6 +108,75 @@ function StepRow({ label, value, onStep, disabled }: {
           <Icon name="plus" size={15} color={C.ink} />
         </TouchableOpacity>
       </View>
+    </View>
+  );
+}
+
+const VERDICT_STYLE: Record<Verdict, { tone: string; bg: string; label: string }> = {
+  verifiable:   { tone: C.greenInk, bg: C.greenDeep, label: "SETTLEABLE" },
+  ambiguous:    { tone: C.amberInk, bg: C.amberDeep, label: "AMBIGUOUS" },
+  unverifiable: { tone: C.redInk,   bg: C.redMid,    label: "CAN'T SETTLE" },
+};
+
+/**
+ * The verdict on the draft question, plus one-tap rewrites.
+ *
+ * Advisory only — nothing here disables Publish. A creator who wants an
+ * unsettleable market can still have one; they just can't say nobody told them.
+ */
+function StatementCheck({
+  question,
+  onUseSuggestion,
+  disabled,
+}: {
+  question: string;
+  onUseSuggestion: (q: string) => void;
+  disabled?: boolean;
+}) {
+  const { validation, loading, unavailable } = useStatementValidator(question);
+
+  // A validator that can't be reached says nothing at all — an error here would
+  // be noise about a feature the creator didn't ask for.
+  if (unavailable) return null;
+
+  if (loading && !validation) {
+    return (
+      <View style={s.checkRow}>
+        <ActivityIndicator size="small" color={C.ink3} />
+        <Text style={s.checkPending}>Checking this settles cleanly…</Text>
+      </View>
+    );
+  }
+
+  if (!validation) return null;
+
+  const style = VERDICT_STYLE[validation.verdict];
+
+  return (
+    <View style={s.checkWrap}>
+      <View style={s.checkRow}>
+        <View style={[s.verdictPill, { backgroundColor: style.bg }]}>
+          <Text style={[s.verdictTxt, { color: style.tone }]}>{style.label}</Text>
+        </View>
+        <Text style={s.checkReason} numberOfLines={2}>{validation.reason}</Text>
+      </View>
+
+      {validation.suggestions.length > 0 && (
+        <View style={s.suggestions}>
+          <Text style={s.suggestHead}>TRY INSTEAD</Text>
+          {validation.suggestions.map((suggestion) => (
+            <TouchableOpacity
+              key={suggestion}
+              style={s.suggestion}
+              onPress={() => onUseSuggestion(suggestion.slice(0, 140))}
+              disabled={disabled}
+            >
+              <Text style={s.suggestionTxt}>{suggestion}</Text>
+              <Icon name="arrowUpRight" size={14} color={C.green} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -262,6 +332,8 @@ export function CreateMarketScreen({
           <Text style={s.hint}>Keep it settleable from the final score.</Text>
           <Text style={s.hint}>{question.length} / 140</Text>
         </View>
+
+        <StatementCheck question={question} onUseSuggestion={setQuestion} disabled={busy} />
 
         {/* Closes */}
         <Text style={s.flabel}>Closes</Text>
@@ -424,6 +496,22 @@ const s = StyleSheet.create({
   textarea: { fontFamily: font.sansMed, fontSize: 15, fontWeight: "500", color: C.ink, minHeight: 64, textAlignVertical: "top" },
   hintRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
   hint: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3 },
+
+  checkWrap: { marginTop: 10, gap: 8 },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
+  checkPending: { fontFamily: font.sans, fontSize: 11.5, color: C.ink3 },
+  verdictPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.xs },
+  verdictTxt: { fontFamily: font.sansBold, fontSize: 9.5, fontWeight: "700", letterSpacing: 0.4 },
+  checkReason: { flex: 1, fontFamily: font.sans, fontSize: 11.5, color: C.ink2, lineHeight: 16 },
+
+  suggestions: { gap: 6 },
+  suggestHead: { fontFamily: font.sansBold, fontSize: 9.5, fontWeight: "700", letterSpacing: 0.8, color: C.ink4 },
+  suggestion: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: C.deep, borderWidth: 1, borderColor: C.lineSoft,
+    borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  suggestionTxt: { flex: 1, fontFamily: font.sansMed, fontSize: 13, color: C.ink, lineHeight: 18 },
 
   fixtureCard: {
     flexDirection: "row", alignItems: "center", gap: 8,
