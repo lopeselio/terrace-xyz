@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 //
 // A market whose wording can't be checked against the final score is a dispute
 // waiting to happen, and the creator finds out at settlement time — after other
-// people have money on it. Asking Claude at creation time is far cheaper than
+// people have money on it. Asking a model at creation time is far cheaper than
 // arbitrating afterwards.
 //
 // Advisory, never blocking. A creator who wants to publish "Arteta to regret
@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from "react";
 // validator people route around. The badge tells them what they're signing up
 // for, and the rewrites make the better version one tap away.
 //
-// The call goes through the notifications worker, which holds the Anthropic key
+// The call goes through the notifications worker, which holds the Gemini key
 // — an EXPO_PUBLIC_ key is a key every install carries. With no worker
 // configured the hook stays idle and Create behaves exactly as it did before.
 // ---------------------------------------------------------------------------

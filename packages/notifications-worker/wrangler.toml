@@ -17,6 +17,10 @@ WORKER_SECRET = "terrace-link-dev-2026"
 #   wrangler secret put API_FOOTBALL_KEY
 # It backs GET /football/* , which proxies api-football with a shared cache so
 # every install draws on one 100/day allowance instead of its own.
+#
+# Same for the Google AI Studio key behind POST /validate-market:
+#   wrangler secret put GEMINI_API_KEY
+# Without it the endpoint returns 503 and the app renders no badge.
 
 [observability]
 enabled = true
