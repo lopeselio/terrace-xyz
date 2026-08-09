@@ -26,10 +26,18 @@ packages/programs/Anchor.toml.bak
 !tsconfig*.json
 !turbo.json
 
-# Environment
+# Environment — every variant, so a new .env.mainnet can't slip through on the
+# day someone creates it. .env.example is the one that ships.
 .env
-.env.local
-.env.devnet
+.env.*
+!.env.example
+
+# Agent session transcripts. Full conversation logs: they quote whatever was on
+# screen, which has included .env contents and pasted keys. Kept locally for
+# grant proof-of-work, never committed. The *.json rule above misses .jsonl.
+*.jsonl
+claude-session*
+codex-session*
 
 # React Native
 .expo/
