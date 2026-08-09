@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Terrace pre-commit hook — refuses to commit secrets or session transcripts.
+#
+# .gitignore only stops files nobody stages on purpose. This catches the other
+# half: a key pasted into a .ts file, a transcript brought in with `git add -f`,
+# an .env.staging created next Tuesday. It reads staged content, not the working
+# tree, so it sees exactly what the commit would carry.
+#
+# Enable once with:  git config core.hooksPath .githooks
+# Bypass a false positive with:  git commit --no-verify
+#
+# A hit means more than deleting the line — assume any key that reached a
+# staged file is burned, and rotate it.
+# ---------------------------------------------------------------------------
+fail=0
+
+# --- filenames that never belong in the repo -------------------------------
+names=$(git diff --cached --name-only --diff-filter=ACM \
+        | grep -iE '(^|/)\.env($|\.)|\.jsonl$|(claude|codex)-session|\.pem$|(^|/)id_rsa|keypair.*\.json$' \
+        | grep -v '\.env\.example$')
+
+if [ -n "$names" ]; then
+  echo "pre-commit: refusing — these files don't belong in the repo:"
+  echo "$names" | sed 's/^/  /'
+  fail=1
+fi
+
+# --- key-shaped strings in staged content ----------------------------------
+# One pattern per provider we actually use, plus the generic assignment shape.
+patterns=(
+  'AIzaSy[0-9A-Za-z_-]{30,}'
+  'sk-ant-[A-Za-z0-9_-]{20,}'
+  'sk-[A-Za-z0-9]{32,}'
+  'gh[pousr]_[A-Za-z0-9]{20,}'
+  'github_pat_[A-Za-z0-9_]{20,}'
+  'xox[baprs]-[A-Za-z0-9-]{10,}'
+  '\-\-\-\-\-BEGIN [A-Z ]*PRIVATE KEY'
+  'api-key=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+  '(SECRET|PRIVATE_KEY|PASSWORD|API_KEY|ACCESS_TOKEN)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_/+-]{20,}'
+)
+joined=$(IFS='|'; echo "${patterns[*]}")
+
+# Placeholders, env lookups and template holes are what correct code looks like.
+allow='your_|_here|placeholder|example|\bxxx|process\.env|env\.[A-Z_]+|\$\{|\{\{|<[a-z_]+>|redacted'
+
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  case "$f" in
+    # This file is a list of key patterns; scanning it always hits.
+    .githooks/*) continue ;;
+    *.png|*.jpg|*.jpeg|*.gif|*.pdf|*.lock|pnpm-lock.yaml) continue ;;
+  esac
+
+  staged=$(git show ":$f" 2>/dev/null) || continue
+  hits=$(printf '%s\n' "$staged" | grep -nEi "$joined" | grep -viE "$allow")
+
+  if [ -n "$hits" ]; then
+    echo "pre-commit: refusing — key-shaped string staged in $f:"
+    printf '%s\n' "$hits" | cut -c1-140 | sed 's/^/  /'
+    fail=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [ "$fail" -ne 0 ]; then
+  echo
+  echo "Nothing was committed. Rotate anything real before re-staging."
+  echo "Deliberate false positive: git commit --no-verify"
+  exit 1
+fi
+exit 0
