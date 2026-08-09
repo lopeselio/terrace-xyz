@@ -17,8 +17,8 @@ export interface Env {
   DEVICES: KVNamespace;
   /** api-football key. Held here so devices don't each burn their own quota. */
   API_FOOTBALL_KEY?: string;
-  /** Anthropic key for the market-statement validator. Never reaches a device. */
-  ANTHROPIC_API_KEY?: string;
+  /** Google AI Studio key for the market-statement validator. Never reaches a device. */
+  GEMINI_API_KEY?: string;
   /** Public HTTPS base URL of this worker, e.g. https://terrace-notifications.xyz.workers.dev */
   WORKER_BASE_URL?: string;
   /** Telegram bot token — used to DM users when their wallet is successfully linked */
@@ -370,17 +370,21 @@ function json(body: unknown, status = 200): Response {
 // creation is cheaper than arbitrating it afterwards.
 //
 // Runs here rather than on the device for the same reason as the football key:
-// an EXPO_PUBLIC_ Anthropic key is a key every install carries and anyone can
+// an EXPO_PUBLIC_ Gemini key is a key every install carries and anyone can
 // extract. Identical drafts are cached, and the whole thing is bounded by a
 // daily ceiling — a validator that quietly runs up a bill is worse than one
-// that stops.
+// that stops. That ceiling matters more on Google AI Studio's free tier, where
+// the daily request allowance is the billing limit.
 // ---------------------------------------------------------------------------
 
 /** Bounded classification with a couple of rewrites — 1024 is ample. */
 const VALIDATOR_MAX_TOKENS = 1024;
 
 /** Cheapest model that does this well; one constant so switching is one line. */
-const VALIDATOR_MODEL = "claude-haiku-4-5";
+const VALIDATOR_MODEL = "gemini-2.5-flash";
+
+const VALIDATOR_ENDPOINT =
+  `https://generativelanguage.googleapis.com/v1beta/models/${VALIDATOR_MODEL}:generateContent`;
 
 /** Ceiling on validator calls per day. Well past a beta cohort's creation rate. */
 const VALIDATOR_DAILY_BUDGET = 500;
@@ -414,6 +418,11 @@ unverifiable — nothing public would ever settle it: private information, unfal
 
 Write suggestions as complete replacement questions in the user's own voice, keeping their intent and their teams — not instructions about how to fix it. Give two or three for ambiguous or unverifiable, and none for verifiable. Keep the reason to one short sentence addressed to the creator.`;
 
+/**
+ * Gemini takes an OpenAPI subset, not full JSON Schema: `additionalProperties`
+ * is rejected, and key order comes from `propertyOrdering` rather than the
+ * order properties are declared in.
+ */
 const VALIDATOR_SCHEMA = {
   type: "object",
   properties: {
@@ -422,11 +431,11 @@ const VALIDATOR_SCHEMA = {
     suggestions: { type: "array", items: { type: "string" } },
   },
   required: ["verdict", "reason", "suggestions"],
-  additionalProperties: false,
+  propertyOrdering: ["verdict", "reason", "suggestions"],
 } as const;
 
 async function handleValidateMarket(request: Request, env: Env): Promise<Response> {
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!env.GEMINI_API_KEY) {
     // Not an error: the app treats a missing validator as "no opinion" and
     // market creation carries on unchanged.
     return json({ error: "Validator not configured" }, 503);
@@ -459,31 +468,51 @@ async function handleValidateMarket(request: Request, env: Env): Promise<Respons
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
-    const message = await client.messages.create({
-      model: VALIDATOR_MODEL,
-      max_tokens: VALIDATOR_MAX_TOKENS,
-      system: VALIDATOR_SYSTEM,
-      // The schema is enforced by the API rather than coaxed by the prompt, so
-      // a malformed verdict can't reach the client.
-      output_config: { format: { type: "json_schema", schema: VALIDATOR_SCHEMA } },
-      messages: [{ role: "user", content: question }],
+    // Plain fetch rather than @google/genai: the REST call is a dozen lines and
+    // a Worker that pulls in no SDK is a Worker with no SDK to keep pinned.
+    const res = await fetch(VALIDATOR_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: VALIDATOR_SYSTEM }] },
+        contents: [{ role: "user", parts: [{ text: question }] }],
+        generationConfig: {
+          maxOutputTokens: VALIDATOR_MAX_TOKENS,
+          // The schema is enforced by the API rather than coaxed by the prompt,
+          // so a malformed verdict can't reach the client.
+          responseMimeType: "application/json",
+          responseSchema: VALIDATOR_SCHEMA,
+          // 2.5 Flash thinks by default and thinking is billed against the same
+          // output budget — on a three-field classification it would eat the
+          // 1024 tokens and return an empty candidate.
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
     });
+
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+
+    const data = await res.json() as {
+      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+      promptFeedback?: { blockReason?: string };
+    };
 
     await env.DEVICES.put(budgetKey, String(spent + 1), { expirationTtl: 60 * 60 * 48 });
 
-    if (message.stop_reason === "refusal") {
+    const candidate = data.candidates?.[0];
+    if (data.promptFeedback?.blockReason || candidate?.finishReason === "SAFETY") {
       return json({ error: "Validator declined this statement" }, 422);
     }
 
-    const text = message.content.find((b) => b.type === "text");
-    if (!text || text.type !== "text") return json({ error: "Empty validator response" }, 502);
+    const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!text) return json({ error: "Empty validator response" }, 502);
 
     // Re-parsed rather than passed through so a bad payload fails here, on the
     // server, instead of rendering as a broken badge on the card.
-    const parsed = JSON.parse(text.text) as {
+    const parsed = JSON.parse(text) as {
       verdict: string; reason: string; suggestions: string[];
     };
     const payload = JSON.stringify({
@@ -502,11 +531,13 @@ async function handleValidateMarket(request: Request, env: Env): Promise<Respons
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Billing and auth failures need a person; everything else may pass.
-    const persistent = /credit balance|billing|authentication|invalid x-api-key|permission/i.test(msg);
+    // Billing and auth failures need a person; everything else may pass. A 429
+    // is read off the quota id rather than the status: Google's per-day
+    // allowance won't come back inside a minute, its per-minute one will.
+    const persistent = /API_KEY_INVALID|PERMISSION_DENIED|UNAUTHENTICATED|billing|PerDay/i.test(msg);
     await env.DEVICES.put(
       "validator_cooldown",
-      persistent ? "Validator unavailable — check Anthropic billing" : "Validator temporarily unavailable",
+      persistent ? "Validator unavailable — check the Google AI Studio key or quota" : "Validator temporarily unavailable",
       { expirationTtl: persistent ? VALIDATOR_COOLDOWN_PERSISTENT : VALIDATOR_COOLDOWN_TRANSIENT },
     );
     // The upstream body is logged, not returned — it carries request ids and

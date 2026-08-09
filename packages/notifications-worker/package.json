@@ -9,8 +9,5 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250430.0",
     "wrangler": "^3.100.0"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0"
   }
 }
