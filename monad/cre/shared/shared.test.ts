@@ -50,3 +50,20 @@ describe("attestation", () => {
     expect(signer).toBe(privateKeyToAccount(key).address);
   });
 });
+
+import { parseVerdict, prompt } from "./ai";
+
+describe("AI verdicts", () => {
+  test("takes the last verdict word, defaults to PENDING", () => {
+    expect(parseVerdict("YES")).toBe("YES");
+    expect(parseVerdict("Based on reports... no.\n\nNO")).toBe("NO");
+    expect(parseVerdict(" void ")).toBe("VOID");
+    expect(parseVerdict("I'm not sure")).toBe("PENDING");
+  });
+
+  test("prompt carries the question and match", () => {
+    const p = prompt({ question: "Will Saka score?", closedAt: "2026-10-11T14:00:00Z", match: "Arsenal 2-1 Chelsea" });
+    expect(p).toContain("Will Saka score?");
+    expect(p).toContain("Arsenal 2-1 Chelsea");
+  });
+});
