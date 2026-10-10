@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "keys": "bun scripts/keys.ts",
-    "test": "bun test shared"
+    "test": "bun test shared",
+    "matchday": "caffeinate -i bun scripts/matchday.ts"
   },
   "license": "UNLICENSED",
   "dependencies": {
