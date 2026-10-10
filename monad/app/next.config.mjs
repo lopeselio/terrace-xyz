@@ -14,7 +14,5 @@ const nextConfig = {
     config.resolve.modules = [...(config.resolve.modules ?? ["node_modules"]), path.join(here, "node_modules")];
     return config;
   },
-  // Vercel traces files from the repo's monad/ folder, which holds the shared code and deployments.
-  outputFileTracingRoot: path.join(here, ".."),
 };
 export default nextConfig;
