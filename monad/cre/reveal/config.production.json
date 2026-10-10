@@ -1,0 +1,13 @@
+{
+  "schedule": "0 */5 * * * *",
+  "useTee": true,
+  "marketsAddress": "0x0000000000000000000000000000000000000000",
+  "leaguesAddress": "0x0000000000000000000000000000000000000000",
+  "scanWindow": 50,
+  "maxReportsPerRun": 4,
+  "chainSelectorName": "monad-testnet",
+  "chainId": 10143,
+  "oracleAddress": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "1500000",
+  "simulation": false
+}
