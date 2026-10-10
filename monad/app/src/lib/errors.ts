@@ -18,6 +18,9 @@ const MESSAGES: Record<string, string> = {
   BadInput: "Something about that didn't look right.",
   "insufficient funds": "Your account is still being topped up. Try again in a few seconds.",
   "transfer amount exceeds balance": "Not enough dollars for that stake.",
+  ERC20InsufficientBalance: "Not enough dollars for that stake.",
+  "0xe450d38c": "Not enough dollars for that stake.", // ERC20InsufficientBalance selector
+  ERC20InsufficientAllowance: "One moment: setting up your account for bets.",
   "exceeds allowance": "One moment: setting up your account for bets.",
 };
 
