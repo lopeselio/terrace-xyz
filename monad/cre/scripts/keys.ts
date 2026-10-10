@@ -3,8 +3,8 @@
  *
  *   bun run keys
  *
- * - CRE_SIM_ATTESTOR_PRIVATE_KEY  signs simulated reports; its address goes to the deploy script
- * - REVEAL_PRIVATE_KEY            opens sealed picks and bets; its public key goes to the app
+ * - CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY  signs simulated reports; its address goes to the deploy script
+ * - CRE_SECRET_REVEAL_PRIVATE_KEY     opens sealed picks and bets; its public key goes to the app
  *
  * Private keys are written straight into cre/.env (gitignored) and never printed.
  */
@@ -35,8 +35,8 @@ const ensure = (name: string): Hex => {
   return key;
 };
 
-const attestor = ensure("CRE_SIM_ATTESTOR_PRIVATE_KEY");
-const reveal = ensure("REVEAL_PRIVATE_KEY");
+const attestor = ensure("CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY");
+const reveal = ensure("CRE_SECRET_REVEAL_PRIVATE_KEY");
 writeFileSync(envPath, env, { mode: 0o600 });
 
 console.log(`CRE_SIM_ATTESTOR (deploy script)        ${privateKeyToAccount(attestor).address}`);
