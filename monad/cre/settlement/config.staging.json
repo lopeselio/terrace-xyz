@@ -1,0 +1,8 @@
+{
+  "schedule": "0 */5 * * * *",
+  "resultsApiBaseUrl": "https://api.football-data.org/v4",
+  "chainSelectorName": "monad-testnet",
+  "leaguesAddress": "0xYOUR_TERRACE_LEAGUES_ADDRESS",
+  "gasLimit": "500000",
+  "maxFixturesPerRun": 8
+}

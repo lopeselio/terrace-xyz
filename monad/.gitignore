@@ -9,3 +9,6 @@ contracts/broadcast/*/31337/
 cre/**/.env
 *.log
 .DS_Store
+
+# Root .gitignore blocks *.json (Solana keypairs); CRE workflow configs are source.
+!cre/**/config.*.json
