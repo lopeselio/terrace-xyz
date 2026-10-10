@@ -414,6 +414,10 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         return _picks[contestId][player][fixtureId];
     }
 
+    function memberCount(uint256 leagueId) external view returns (uint256) {
+        return _league(leagueId).members.length;
+    }
+
     function leagueCount() external view returns (uint256) {
         return _leagues.length;
     }
