@@ -14,3 +14,5 @@ remappings = [
 
 [rpc_endpoints]
 monad_testnet = "https://testnet-rpc.monad.xyz"
+# Same chain through Alchemy (export ALCHEMY_API_KEY first); steadier for deploys than the public RPC.
+monad_alchemy = "https://monad-testnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
