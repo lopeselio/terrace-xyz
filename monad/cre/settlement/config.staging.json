@@ -1,8 +1,13 @@
 {
-  "schedule": "0 */5 * * * *",
+  "resultsSchedule": "0 */5 * * * *",
+  "fixturesSchedule": "0 0 */6 * * *",
   "resultsApiBaseUrl": "https://api.football-data.org/v4",
+  "competitions": ["PL"],
+  "daysAhead": 7,
+  "maxFixturesPerRun": 8,
   "chainSelectorName": "monad-testnet",
-  "leaguesAddress": "0xYOUR_TERRACE_LEAGUES_ADDRESS",
-  "gasLimit": "500000",
-  "maxFixturesPerRun": 8
+  "chainId": 10143,
+  "oracleAddress": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "800000",
+  "simulation": true
 }
