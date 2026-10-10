@@ -18,5 +18,9 @@
     "questions/*.ts",
     "reveal/*.ts",
     "shared/*.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "node_modules"
   ]
 }
