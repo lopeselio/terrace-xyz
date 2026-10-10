@@ -168,7 +168,7 @@ contract TerraceOracleInMatchTest is OracleHarness {
 
     function test_inMatchQuestionsHaveTheirOwnWindow() public {
         vm.warp(T0 + 2 hours); // 60 minutes in
-        bytes memory spec = abi.encode(oracle.RULE_PLAYER_GOAL(), uint32(1100), uint32(0), uint8(60), uint8(80));
+        bytes memory spec = bytes('{"v":1,"from":"events","where":{"type":"Goal","player":1100},"minute":[60,80],"check":"exists"}');
         uint256 q = oracle.customQuestion(LIV_MCI, T0 + 2 hours + 2 minutes, "Haaland scores in the next 20 minutes?", spec);
         assertEq(oracle.closeTimeOf(q), T0 + 2 hours + 2 minutes);
         assertEq(oracle.getQuestion(q).spec, spec);
@@ -188,7 +188,7 @@ contract TerraceOracleInMatchTest is OracleHarness {
     }
 
     function test_rulesNeedAMatchAndMatchFreeQuestionsNeedACloseTime() public {
-        bytes memory spec = abi.encode(uint8(2), uint32(0), uint32(0), uint8(0), uint8(45));
+        bytes memory spec = bytes('{"v":1,"from":"events","where":{"type":"Goal"},"minute":[0,45],"check":"exists"}');
         vm.expectRevert(TerraceOracle.BadInput.selector);
         oracle.customQuestion(0, T0 + 1 days, "Any goal before half time?", spec);
         vm.expectRevert(TerraceOracle.BadInput.selector);

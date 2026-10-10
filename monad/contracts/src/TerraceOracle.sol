@@ -19,8 +19,9 @@ interface IReceiver is IERC165 {
 ///             moves kickoffs when matches are rescheduled, and writes final scores.
 ///  Questions  What markets, parlays and 1v1s are about. Standard questions (home win,
 ///             draw, over 2.5 goals, both teams score...) answer themselves from the final
-///             score. Custom questions ("Will Saka score?") are answered by the CRE
-///             questions workflow, which asks an AI model and needs every node to agree.
+///             score. Custom questions ("Will Saka score?") are answered by the CRE questions
+///             workflow: from match data when the question carries a settlement rule, otherwise
+///             by an AI judge, and every node must agree either way.
 ///  Handlers   Other report kinds (sealed-pick reveals, hidden tables) are routed to the
 ///             contract registered for that kind.
 ///
@@ -64,17 +65,14 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
         uint8 answer; // custom questions only
         address creator;
         string text; // custom questions only
-        bytes spec; // custom questions only: structured rule CRE settles from match events (empty = AI)
+        bytes spec; // custom questions only: settlement rule CRE evaluates from match data (empty = AI judge)
     }
 
-    // Structured in-match questions. spec = abi.encode(uint8 rule, uint32 playerId, uint32 teamId, uint8 fromMinute, uint8 toMinute)
-    // CRE answers YES as soon as a matching event happens in the window and NO once the window has passed.
-    uint8 public constant RULE_PLAYER_GOAL = 1; // playerId scores
-    uint8 public constant RULE_ANY_GOAL = 2; // anyone scores
-    uint8 public constant RULE_TEAM_GOAL = 3; // teamId scores
-    uint8 public constant RULE_RED_CARD = 4; // any red card (teamId optional, 0 = either side)
-    uint8 public constant RULE_PLAYER_CARD = 5; // playerId is booked (yellow or red)
-    uint256 public constant MAX_SPEC_BYTES = 160;
+    /// @notice Max size of a question's settlement rule. Rules are opaque to the contract: the
+    ///         app's take compiler writes them (UTF-8 JSON in Terrace's rule language, which
+    ///         names the data to fetch and the condition to check) and the CRE questions
+    ///         workflow evaluates them. The contract only ever stores a rule and an answer.
+    uint256 public constant MAX_SPEC_BYTES = 1024;
 
     /// @notice Tokens Terrace games settle in (test dollars and testnet USDC).
     mapping(address => bool) public isSettlementToken;
@@ -182,8 +180,8 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
     /// @param fixtureId optional match this question is about (0 = none)
     /// @param closeTime when betting stops; 0 = at the match's kickoff. A later time lets fans
     ///        open questions mid-match ("Will Haaland score in the next 20 minutes?").
-    /// @param spec optional structured rule (see RULE_*) that CRE settles from match events;
-    ///        empty means the AI layer answers from the text.
+    /// @param spec optional settlement rule CRE evaluates from match data (see MAX_SPEC_BYTES);
+    ///        empty means the AI judge answers from the text.
     function customQuestion(uint256 fixtureId, uint64 closeTime, string calldata text, bytes calldata spec)
         external
         returns (uint256 questionId)
