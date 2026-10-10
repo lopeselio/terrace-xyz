@@ -7,7 +7,7 @@
   "maxFixturesPerRun": 8,
   "chainSelectorName": "monad-testnet",
   "chainId": 10143,
-  "oracleAddress": "0x0000000000000000000000000000000000000000",
+  "oracleAddress": "0xCe1Fdc3c17a620F19998A12Da7cF717827ad2b93",
   "gasLimit": "800000",
   "simulation": true
 }
