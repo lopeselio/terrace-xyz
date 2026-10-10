@@ -44,7 +44,7 @@ contract TerraceOracleTest is OracleHarness {
     }
 
     function test_customQuestionAnsweredAfterClose() public {
-        uint256 q = oracle.customQuestion(ARS_CHE, 0, "Will Saka score?");
+        uint256 q = oracle.customQuestion(ARS_CHE, 0, "Will Saka score?", "");
         assertEq(oracle.closeTimeOf(q), T0 + 1 hours);
 
         // Answers before close are ignored.
@@ -66,7 +66,7 @@ contract TerraceOracleTest is OracleHarness {
     }
 
     function test_unansweredQuestionsVoidAfterGrace() public {
-        uint256 q = oracle.customQuestion(0, T0 + 1 days, "Will the transfer go through?");
+        uint256 q = oracle.customQuestion(0, T0 + 1 days, "Will the transfer go through?", "");
         uint256 home = oracle.standardQuestion(ARS_CHE, TerraceOracle.Kind.HomeWin, 0);
 
         vm.warp(T0 + 1 days + oracle.RESOLVE_GRACE() + 1);
@@ -82,7 +82,7 @@ contract TerraceOracleTest is OracleHarness {
 
     function test_calledOffMatchVoidsItsQuestions() public {
         uint256 home = oracle.standardQuestion(ARS_CHE, TerraceOracle.Kind.HomeWin, 0);
-        uint256 q = oracle.customQuestion(ARS_CHE, 0, "Red card in the first half?");
+        uint256 q = oracle.customQuestion(ARS_CHE, 0, "Red card in the first half?", "");
         vm.warp(T0 + 2 hours);
         _resultWithState(ARS_CHE, Answer.FIXTURE_VOID, 0, 0);
         assertEq(oracle.outcomeOf(home), Answer.VOID);
@@ -155,5 +155,52 @@ contract TerraceOracleTest is OracleHarness {
         vm.prank(prodForwarder);
         vm.expectRevert(abi.encodeWithSelector(TerraceOracle.NoHandler.selector, uint8(21)));
         oracle.onReport("", abi.encode(uint8(21), bytes("")));
+    }
+}
+
+contract TerraceOracleInMatchTest is OracleHarness {
+    uint256 constant LIV_MCI = 1557424;
+
+    function setUp() public {
+        _deployOracle();
+        _schedule(LIV_MCI, T0 + 1 hours);
+    }
+
+    function test_inMatchQuestionsHaveTheirOwnWindow() public {
+        vm.warp(T0 + 2 hours); // 60 minutes in
+        bytes memory spec = abi.encode(oracle.RULE_PLAYER_GOAL(), uint32(1100), uint32(0), uint8(60), uint8(80));
+        uint256 q = oracle.customQuestion(LIV_MCI, T0 + 2 hours + 2 minutes, "Haaland scores in the next 20 minutes?", spec);
+        assertEq(oracle.closeTimeOf(q), T0 + 2 hours + 2 minutes);
+        assertEq(oracle.getQuestion(q).spec, spec);
+
+        vm.warp(T0 + 2 hours + 30 minutes);
+        assertEq(oracle.pendingQuestions().length, 1);
+        _answer(q, Answer.YES);
+        assertEq(oracle.outcomeOf(q), Answer.YES);
+    }
+
+    function test_kickoffCloseFollowsReschedules() public {
+        uint256 q = oracle.customQuestion(LIV_MCI, 0, "Salah scores?", "");
+        _schedule(LIV_MCI, T0 + 1 days);
+        assertEq(oracle.closeTimeOf(q), T0 + 1 days);
+        vm.warp(T0 + 3 hours); // old kickoff + grace not relevant any more
+        assertEq(oracle.outcomeOf(q), Answer.OPEN);
+    }
+
+    function test_rulesNeedAMatchAndMatchFreeQuestionsNeedACloseTime() public {
+        bytes memory spec = abi.encode(uint8(2), uint32(0), uint32(0), uint8(0), uint8(45));
+        vm.expectRevert(TerraceOracle.BadInput.selector);
+        oracle.customQuestion(0, T0 + 1 days, "Any goal before half time?", spec);
+        vm.expectRevert(TerraceOracle.BadInput.selector);
+        oracle.customQuestion(0, 0, "Will the transfer go through?", "");
+    }
+
+    function test_onlyOwnerSetsSettlementTokens() public {
+        address usdc = makeAddr("usdc");
+        oracle.setSettlementToken(usdc, true);
+        assertTrue(oracle.isSettlementToken(usdc));
+        vm.prank(makeAddr("stranger"));
+        vm.expectRevert();
+        oracle.setSettlementToken(usdc, false);
     }
 }

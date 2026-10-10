@@ -58,13 +58,27 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
 
     struct Question {
         uint256 fixtureId; // 0 for custom questions not tied to a match
-        uint64 closeTime; // custom questions only; standard ones close at kickoff
+        uint64 closeTime; // custom questions: 0 = closes at kickoff (follows reschedules)
         Kind kind;
         uint8 line;
         uint8 answer; // custom questions only
         address creator;
         string text; // custom questions only
+        bytes spec; // custom questions only: structured rule CRE settles from match events (empty = AI)
     }
+
+    // Structured in-match questions. spec = abi.encode(uint8 rule, uint32 playerId, uint32 teamId, uint8 fromMinute, uint8 toMinute)
+    // CRE answers YES as soon as a matching event happens in the window and NO once the window has passed.
+    uint8 public constant RULE_PLAYER_GOAL = 1; // playerId scores
+    uint8 public constant RULE_ANY_GOAL = 2; // anyone scores
+    uint8 public constant RULE_TEAM_GOAL = 3; // teamId scores
+    uint8 public constant RULE_RED_CARD = 4; // any red card (teamId optional, 0 = either side)
+    uint8 public constant RULE_PLAYER_CARD = 5; // playerId is booked (yellow or red)
+    uint256 public constant MAX_SPEC_BYTES = 160;
+
+    /// @notice Tokens Terrace games settle in (test dollars and testnet USDC).
+    mapping(address => bool) public isSettlementToken;
+    event SettlementTokenSet(address indexed token, bool allowed);
 
     // --- forwarders -------------------------------------------------------
     address public productionForwarder;
@@ -89,6 +103,7 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
     event FixtureScheduled(uint256 indexed fixtureId, uint64 kickoff);
     event FixtureSettled(uint256 indexed fixtureId, uint8 state, uint8 homeGoals, uint8 awayGoals);
     event QuestionCreated(uint256 indexed questionId, uint256 indexed fixtureId, Kind kind, uint8 line, uint64 closeTime, address creator, string text);
+    event QuestionSpec(uint256 indexed questionId, bytes spec);
     event QuestionAnswered(uint256 indexed questionId, uint8 answer);
 
     error NotForwarder();
@@ -133,6 +148,11 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
         emit ReportHandlerSet(kind, handler);
     }
 
+    function setSettlementToken(address token, bool allowed) external onlyOwner {
+        isSettlementToken[token] = allowed;
+        emit SettlementTokenSet(token, allowed);
+    }
+
     /// @notice Manual scheduling for demos; CRE normally schedules fixtures itself.
     function scheduleFixtures(uint256[] calldata ids, uint64[] calldata kickoffs) external onlyOwner {
         _schedule(ids, kickoffs);
@@ -152,27 +172,39 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
         questionId = standardQuestionId[key];
         if (questionId != 0) return questionId;
 
-        _questions.push(Question({fixtureId: fixtureId, closeTime: 0, kind: kind, line: line, answer: 0, creator: msg.sender, text: ""}));
+        _questions.push(Question({fixtureId: fixtureId, closeTime: 0, kind: kind, line: line, answer: 0, creator: msg.sender, text: "", spec: ""}));
         questionId = _questions.length;
         standardQuestionId[key] = questionId;
         emit QuestionCreated(questionId, fixtureId, kind, line, _fixtures[fixtureId].kickoff, msg.sender, "");
     }
 
-    /// @notice Ask anything with a yes/no answer. The CRE questions workflow answers it after it closes.
-    /// @param fixtureId optional match this question is about (0 = none); it then closes at kickoff
-    function customQuestion(uint256 fixtureId, uint64 closeTime, string calldata text) external returns (uint256 questionId) {
+    /// @notice Ask anything with a yes/no answer. CRE answers it after it closes.
+    /// @param fixtureId optional match this question is about (0 = none)
+    /// @param closeTime when betting stops; 0 = at the match's kickoff. A later time lets fans
+    ///        open questions mid-match ("Will Haaland score in the next 20 minutes?").
+    /// @param spec optional structured rule (see RULE_*) that CRE settles from match events;
+    ///        empty means the AI layer answers from the text.
+    function customQuestion(uint256 fixtureId, uint64 closeTime, string calldata text, bytes calldata spec)
+        external
+        returns (uint256 questionId)
+    {
         uint256 len = bytes(text).length;
-        if (len == 0 || len > MAX_QUESTION_BYTES) revert BadInput();
+        if (len == 0 || len > MAX_QUESTION_BYTES || spec.length > MAX_SPEC_BYTES) revert BadInput();
         if (fixtureId != 0) {
             if (!_fixtures[fixtureId].exists) revert UnknownFixture(fixtureId);
-            closeTime = _fixtures[fixtureId].kickoff;
+        } else if (closeTime == 0 || spec.length != 0) {
+            revert BadInput(); // a match-free question needs its own close time, and rules need a match
         }
-        if (closeTime <= block.timestamp) revert QuestionClosed();
+        uint64 effectiveClose = closeTime == 0 ? _fixtures[fixtureId].kickoff : closeTime;
+        if (effectiveClose <= block.timestamp) revert QuestionClosed();
 
-        _questions.push(Question({fixtureId: fixtureId, closeTime: closeTime, kind: Kind.Custom, line: 0, answer: 0, creator: msg.sender, text: text}));
+        _questions.push(
+            Question({fixtureId: fixtureId, closeTime: closeTime, kind: Kind.Custom, line: 0, answer: 0, creator: msg.sender, text: text, spec: spec})
+        );
         questionId = _questions.length;
         _customQuestionIds.push(questionId);
-        emit QuestionCreated(questionId, fixtureId, Kind.Custom, 0, closeTime, msg.sender, text);
+        emit QuestionCreated(questionId, fixtureId, Kind.Custom, 0, effectiveClose, msg.sender, text);
+        if (spec.length != 0) emit QuestionSpec(questionId, spec);
     }
 
     // ---------------------------------------------------------------------
@@ -228,7 +260,7 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
             if (q.answer != Answer.OPEN) return q.answer;
             // Tied to a match that was called off: nothing to answer.
             if (q.fixtureId != 0 && _fixtureState(q.fixtureId) == Answer.FIXTURE_VOID) return Answer.VOID;
-            if (block.timestamp > uint256(q.closeTime) + RESOLVE_GRACE) return Answer.VOID;
+            if (block.timestamp > uint256(closeTimeOf(questionId)) + RESOLVE_GRACE) return Answer.VOID;
             return Answer.OPEN;
         }
 
@@ -248,8 +280,8 @@ contract TerraceOracle is ITerraceOracle, IReceiver, Ownable {
 
     function closeTimeOf(uint256 questionId) public view returns (uint64) {
         Question storage q = _question(questionId);
-        if (q.fixtureId != 0) return _fixtures[q.fixtureId].kickoff; // follows reschedules
-        return q.closeTime;
+        if (q.closeTime != 0) return q.closeTime;
+        return _fixtures[q.fixtureId].kickoff; // standard questions and kickoff-close ones follow reschedules
     }
 
     function fixtureOfQuestion(uint256 questionId) external view returns (uint256) {
