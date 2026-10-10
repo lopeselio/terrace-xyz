@@ -16,3 +16,4 @@ cre/**/.env
 !cre/shared/fixtures-data/*.json
 !indexer/abis/*.json
 !indexer/package.json
+*.tsbuildinfo
