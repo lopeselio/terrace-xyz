@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {TerraceMarkets} from "../src/TerraceMarkets.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TerraceReputation} from "../src/TerraceReputation.sol";
 import {Answer} from "../src/interfaces/ITerraceOracle.sol";
 import {TerraceHarness} from "./utils/TerraceHarness.sol";
@@ -16,7 +17,7 @@ contract TerraceMarketsTest is TerraceHarness {
 
     function setUp() public {
         _deployCore();
-        markets = new TerraceMarkets(usd, oracle, rep);
+        markets = new TerraceMarkets(oracle, rep);
         rep.setWriter(address(markets), true);
         oracle.setReportHandler(markets.REPORT_REVEAL_BETS(), address(markets));
         _fund(address(markets));
@@ -25,7 +26,7 @@ contract TerraceMarketsTest is TerraceHarness {
 
     function _market(bool sealed_) internal returns (uint256 id) {
         vm.prank(creator);
-        id = markets.createMarket(q, 500, sealed_, false);
+        id = markets.createMarket(q, usd, 500, sealed_, false);
     }
 
     function _bet(address who, uint256 id, uint8 side, uint256 amount) internal {
@@ -107,8 +108,8 @@ contract TerraceMarketsTest is TerraceHarness {
     function test_flashMarketsMustCloseWithin90Minutes() public {
         uint256 later = _homeWin(LIV_MCI); // kicks off in 2 hours
         vm.expectRevert(TerraceMarkets.BadInput.selector);
-        markets.createMarket(later, 0, false, true);
-        markets.createMarket(q, 0, false, true); // 1 hour: fine
+        markets.createMarket(later, usd, 0, false, true);
+        markets.createMarket(q, usd, 0, false, true); // 1 hour: fine
     }
 
     // --- sealed markets ---------------------------------------------------
@@ -189,5 +190,36 @@ contract TerraceMarketsTest is TerraceHarness {
     function test_onlyOracleDeliversReveals() public {
         vm.expectRevert(TerraceMarkets.NotOracle.selector);
         markets.handleReport(16, "");
+    }
+
+    // --- take markets ----------------------------------------------------
+
+    function test_aTakeBecomesAMarketWithTheAuthorsBet() public {
+        vm.prank(alice);
+        uint256 id = markets.createTakeMarket(42, LIV_MCI, 0, "Salah bags a brace", "", usd, 300, YES, 10e6);
+        TerraceMarkets.Market memory m = markets.getMarket(id);
+        assertEq(m.creator, alice);
+        assertEq(m.yesPool, 10e6);
+        assertEq(oracle.getQuestion(m.questionId).text, "Salah bags a brace");
+        assertFalse(m.flash); // closes at kickoff, two hours away
+
+        _bet(bob, id, NO, 30e6);
+        vm.warp(T0 + 4 hours);
+        _answer(m.questionId, Answer.YES);
+        // Alice: gross 40, profit 30, fee to herself as author
+        assertEq(markets.settleBet(id, alice), 40e6 - 0.9e6);
+        assertEq(usd.balanceOf(alice), 1_000e6 - 10e6 + 39.1e6 + 0.9e6);
+    }
+
+    function test_inMatchTakeIsAFlashMarket() public {
+        vm.warp(T0 + 90 minutes);
+        vm.prank(bob);
+        uint256 id = markets.createTakeMarket(7, ARS_CHE, T0 + 95 minutes, "Another goal before 70'", "", usd, 0, NO, 1e6);
+        assertTrue(markets.getMarket(id).flash);
+    }
+
+    function test_marketsOnlySettleInAllowedTokens() public {
+        vm.expectRevert(TerraceMarkets.BadInput.selector);
+        markets.createMarket(q, IERC20(makeAddr("random")), 0, false, false);
     }
 }

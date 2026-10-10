@@ -23,6 +23,7 @@ abstract contract TerraceHarness is OracleHarness {
         _deployOracle();
         usd = new TerraceUSD();
         rep = new TerraceReputation();
+        oracle.setSettlementToken(address(usd), true);
         _schedule(ARS_CHE, T0 + 1 hours);
         _schedule(LIV_MCI, T0 + 2 hours);
     }

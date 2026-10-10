@@ -41,6 +41,7 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
 
     struct Market {
         uint256 questionId;
+        IERC20 token;
         address creator;
         uint16 feeBps;
         bool sealed_;
@@ -59,7 +60,6 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
         bytes32 commitment;
     }
 
-    IERC20 public immutable token;
     ITerraceOracle public immutable oracle;
     TerraceReputation public immutable reputation;
 
@@ -68,7 +68,9 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
     mapping(uint256 => address[]) private _bettors;
     mapping(uint256 => mapping(address => bytes)) public sealedCiphertext;
 
-    event MarketCreated(uint256 indexed marketId, uint256 indexed questionId, address indexed creator, uint16 feeBps, bool sealed_, bool flash);
+    event MarketCreated(uint256 indexed marketId, uint256 indexed questionId, address indexed creator, address token, uint16 feeBps, bool sealed_, bool flash);
+    /// @notice A chat message ("take") turned into a market. chatRef = TerraceChat message id.
+    event TakeListed(uint256 indexed marketId, uint256 indexed chatRef, address indexed author, uint256 questionId);
     event BetPlaced(uint256 indexed marketId, address indexed bettor, uint8 side, uint256 stake);
     event SealedBetPlaced(uint256 indexed marketId, address indexed bettor, uint256 stake, bytes32 commitment, bytes ciphertext);
     event BetRevealed(uint256 indexed marketId, address indexed bettor, uint8 side, bool valid);
@@ -88,8 +90,7 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
     error NothingToSettle();
     error NotOracle();
 
-    constructor(IERC20 token_, ITerraceOracle oracle_, TerraceReputation reputation_) {
-        token = token_;
+    constructor(ITerraceOracle oracle_, TerraceReputation reputation_) {
         oracle = oracle_;
         reputation = reputation_;
     }
@@ -98,8 +99,12 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
     // Create
     // ---------------------------------------------------------------------
 
-    function createMarket(uint256 questionId, uint16 feeBps, bool sealed_, bool flash) external returns (uint256 marketId) {
+    function createMarket(uint256 questionId, IERC20 token, uint16 feeBps, bool sealed_, bool flash)
+        public
+        returns (uint256 marketId)
+    {
         if (!oracle.questionExists(questionId)) revert BadInput();
+        if (!oracle.isSettlementToken(address(token))) revert BadInput();
         if (feeBps > MAX_CREATOR_FEE_BPS) revert BadInput();
         uint64 close = oracle.closeTimeOf(questionId);
         if (close <= block.timestamp) revert MarketClosed();
@@ -107,9 +112,42 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
 
         marketId = _markets.length;
         _markets.push(
-            Market({questionId: questionId, creator: msg.sender, feeBps: feeBps, sealed_: sealed_, flash: flash, yesPool: 0, noPool: 0, sealedPool: 0, unrevealed: 0})
+            Market({
+                questionId: questionId,
+                token: token,
+                creator: msg.sender,
+                feeBps: feeBps,
+                sealed_: sealed_,
+                flash: flash,
+                yesPool: 0,
+                noPool: 0,
+                sealedPool: 0,
+                unrevealed: 0
+            })
         );
-        emit MarketCreated(marketId, questionId, msg.sender, feeBps, sealed_, flash);
+        emit MarketCreated(marketId, questionId, msg.sender, address(token), feeBps, sealed_, flash);
+    }
+
+    /// @notice Turn a chat take into a market in one go: ask the question, open the market and,
+    ///         optionally, back your own take. The author earns the creator fee.
+    /// @param chatRef the TerraceChat message id of the take
+    /// @param side your side (Answer.YES / Answer.NO) for the opening bet; ignored when stake is 0
+    function createTakeMarket(
+        uint256 chatRef,
+        uint256 fixtureId,
+        uint64 closeTime,
+        string calldata text,
+        bytes calldata spec,
+        IERC20 token,
+        uint16 feeBps,
+        uint8 side,
+        uint256 stake
+    ) external nonReentrant returns (uint256 marketId) {
+        uint256 questionId = oracle.customQuestion(fixtureId, closeTime, text, spec);
+        bool flash = oracle.closeTimeOf(questionId) <= block.timestamp + FLASH_WINDOW;
+        marketId = createMarket(questionId, token, feeBps, false, flash);
+        emit TakeListed(marketId, chatRef, msg.sender, questionId);
+        if (stake > 0) _bet(marketId, side, stake);
     }
 
     // ---------------------------------------------------------------------
@@ -118,24 +156,7 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice Back yes or no. You can add to your stake, on the same side, until close.
     function placeBet(uint256 marketId, uint8 side, uint256 stake) external nonReentrant {
-        Market storage m = _open(marketId);
-        if (m.sealed_) revert SealedMarket();
-        if (side != SIDE_YES && side != SIDE_NO) revert BadInput();
-        if (stake < MIN_STAKE) revert StakeTooSmall();
-
-        Position storage p = _positions[marketId][msg.sender];
-        if (p.stake == 0) {
-            p.side = side;
-            _bettors[marketId].push(msg.sender);
-        } else if (p.side != side) {
-            revert WrongSide();
-        }
-        p.stake += uint128(stake);
-        if (side == SIDE_YES) m.yesPool += uint128(stake);
-        else m.noPool += uint128(stake);
-
-        token.safeTransferFrom(msg.sender, address(this), stake);
-        emit BetPlaced(marketId, msg.sender, side, stake);
+        _bet(marketId, side, stake);
     }
 
     /// @notice One sealed bet per market. The stake is public; the side is not.
@@ -157,7 +178,7 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
         m.sealedPool += uint128(stake);
         m.unrevealed += 1;
 
-        token.safeTransferFrom(msg.sender, address(this), stake);
+        m.token.safeTransferFrom(msg.sender, address(this), stake);
         emit SealedBetPlaced(marketId, msg.sender, stake, commitment, ciphertext);
     }
 
@@ -229,8 +250,8 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
         if (result != 0) {
             reputation.recordResult(bettor, TerraceReputation.Source.Market, result == 1, 0);
         }
-        if (payout > 0) token.safeTransfer(bettor, payout);
-        if (fee > 0) token.safeTransfer(m.creator, fee);
+        if (payout > 0) m.token.safeTransfer(bettor, payout);
+        if (fee > 0) m.token.safeTransfer(m.creator, fee);
         emit BetSettled(marketId, bettor, result, payout, fee);
     }
 
@@ -294,6 +315,27 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
     // ---------------------------------------------------------------------
     // Internal
     // ---------------------------------------------------------------------
+
+    function _bet(uint256 marketId, uint8 side, uint256 stake) internal {
+        Market storage m = _open(marketId);
+        if (m.sealed_) revert SealedMarket();
+        if (side != SIDE_YES && side != SIDE_NO) revert BadInput();
+        if (stake < MIN_STAKE) revert StakeTooSmall();
+
+        Position storage p = _positions[marketId][msg.sender];
+        if (p.stake == 0) {
+            p.side = side;
+            _bettors[marketId].push(msg.sender);
+        } else if (p.side != side) {
+            revert WrongSide();
+        }
+        p.stake += uint128(stake);
+        if (side == SIDE_YES) m.yesPool += uint128(stake);
+        else m.noPool += uint128(stake);
+
+        m.token.safeTransferFrom(msg.sender, address(this), stake);
+        emit BetPlaced(marketId, msg.sender, side, stake);
+    }
 
     function _open(uint256 marketId) internal view returns (Market storage m) {
         if (marketId >= _markets.length) revert UnknownMarket();

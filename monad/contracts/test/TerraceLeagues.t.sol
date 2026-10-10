@@ -14,7 +14,7 @@ contract TerraceLeaguesTest is TerraceHarness {
 
     function setUp() public {
         _deployCore();
-        markets = new TerraceMarkets(usd, oracle, rep);
+        markets = new TerraceMarkets(oracle, rep);
         leagues = new TerraceLeagues(usd, oracle, rep, ITerraceMarketsView(address(markets)));
         rep.setWriter(address(markets), true);
         rep.setWriter(address(leagues), true);
@@ -250,7 +250,7 @@ contract TerraceLeaguesTest is TerraceHarness {
         uint256 leagueId = _league(false);
         vm.prank(alice);
         uint256 gw = leagues.addGameweek(leagueId, both);
-        uint256 m = markets.createMarket(_homeWin(ARS_CHE), 0, false, false);
+        uint256 m = markets.createMarket(_homeWin(ARS_CHE), usd, 0, false, false);
         vm.prank(bob);
         markets.placeBet(m, Answer.YES, 5e6);
 

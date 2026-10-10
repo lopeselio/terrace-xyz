@@ -21,6 +21,10 @@ interface ITerraceOracle {
     function questionExists(uint256 questionId) external view returns (bool);
 
     function fixtureExists(uint256 fixtureId) external view returns (bool);
+    function isSettlementToken(address token) external view returns (bool);
+    function customQuestion(uint256 fixtureId, uint64 closeTime, string calldata text, bytes calldata spec)
+        external
+        returns (uint256 questionId);
     function fixtureKickoff(uint256 fixtureId) external view returns (uint64);
     /// @return state Answer.FIXTURE_PENDING / FIXTURE_FINAL / FIXTURE_VOID
     function fixtureResult(uint256 fixtureId) external view returns (uint8 state, uint8 homeGoals, uint8 awayGoals);
