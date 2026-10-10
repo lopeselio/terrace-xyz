@@ -330,3 +330,13 @@ a.match { text-decoration: none; color: inherit; }
   margin: 4px 0 12px;
 }
 .scoreboard-head .score { font-size: 40px; }
+.field { display: grid; gap: 6px; font-weight: 500; margin-bottom: 12px; }
+.field input {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px;
+  font: 16px var(--font-body);
+  background: var(--surface);
+  color: var(--ink);
+}
+.board li a { font-weight: 700; text-decoration: none; }
