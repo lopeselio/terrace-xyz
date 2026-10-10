@@ -14,7 +14,7 @@ contract TerraceParlaysTest is TerraceHarness {
 
     function setUp() public {
         _deployCore();
-        parlays = new TerraceParlays(usd, oracle, rep);
+        parlays = new TerraceParlays(oracle, rep);
         rep.setWriter(address(parlays), true);
         _fund(address(parlays));
         arsWin = _homeWin(ARS_CHE);
@@ -30,7 +30,7 @@ contract TerraceParlaysTest is TerraceHarness {
 
     function _place(address who, TerraceParlays.Leg[] memory legs, uint256 stake) internal returns (uint256 id) {
         vm.prank(who);
-        id = parlays.placeParlay(legs, stake);
+        id = parlays.placeParlay(legs, usd, stake);
     }
 
     function _toPotEnd(uint256 id) internal {
@@ -103,18 +103,18 @@ contract TerraceParlaysTest is TerraceHarness {
     function test_legsMustBeOpenAndDistinct() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(TerraceParlays.DuplicateLeg.selector, arsWin));
-        parlays.placeParlay(_legs2(arsWin, Answer.YES, arsWin, Answer.NO), 1e6);
+        parlays.placeParlay(_legs2(arsWin, Answer.YES, arsWin, Answer.NO), usd, 1e6);
 
         vm.warp(T0 + 1 hours);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(TerraceParlays.LegClosed.selector, arsWin));
-        parlays.placeParlay(_legs2(arsWin, Answer.YES, livWin, Answer.YES), 1e6);
+        parlays.placeParlay(_legs2(arsWin, Answer.YES, livWin, Answer.YES), usd, 1e6);
 
         TerraceParlays.Leg[] memory one = new TerraceParlays.Leg[](1);
         one[0] = TerraceParlays.Leg(livWin, Answer.YES);
         vm.prank(alice);
         vm.expectRevert(TerraceParlays.BadInput.selector);
-        parlays.placeParlay(one, 1e6);
+        parlays.placeParlay(one, usd, 1e6);
     }
 
     function test_cannotGradeBeforeAllLegsAnswer() public {

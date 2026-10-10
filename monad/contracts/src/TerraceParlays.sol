@@ -10,7 +10,7 @@ import {TerraceReputation} from "./TerraceReputation.sol";
 /// @title TerraceParlays
 /// @notice Accumulators: 2 to 8 picks that all have to come in.
 ///
-///  Every accumulator joins the weekly pot for the week its last leg closes in. When the
+///  Every accumulator joins the weekly pot, for its token, for the week its last leg closes in. When the
 ///  week is over and every accumulator in it is settled, the winners split the whole pot
 ///  in proportion to stake x legs, so longer accumulators pay more and the pot can never
 ///  pay out more than it holds. If nobody wins, everyone gets their stake back.
@@ -38,6 +38,7 @@ contract TerraceParlays is ReentrancyGuard {
 
     struct Parlay {
         address player;
+        IERC20 token;
         uint128 stake;
         uint64 potId;
         uint8 liveLegs; // legs that weren't void, set at settlement
@@ -50,15 +51,15 @@ contract TerraceParlays is ReentrancyGuard {
         uint256 winningWeight;
     }
 
-    IERC20 public immutable token;
     ITerraceOracle public immutable oracle;
     TerraceReputation public immutable reputation;
 
     Parlay[] private _parlays;
     mapping(uint256 => Leg[]) private _legs;
-    mapping(uint64 => Pot) public pots;
+    /// @notice pots[token][week]: each token has its own weekly pot
+    mapping(IERC20 => mapping(uint64 => Pot)) public pots;
 
-    event ParlayPlaced(uint256 indexed parlayId, address indexed player, uint64 indexed potId, uint256 stake, uint8 legs);
+    event ParlayPlaced(uint256 indexed parlayId, address indexed player, uint64 indexed potId, address token, uint256 stake, uint8 legs);
     event ParlaySettled(uint256 indexed parlayId, Status status, uint8 liveLegs);
     event ParlayPaid(uint256 indexed parlayId, address indexed player, uint256 payout);
 
@@ -71,14 +72,14 @@ contract TerraceParlays is ReentrancyGuard {
     error PotStillOpen();
     error NothingToPay();
 
-    constructor(IERC20 token_, ITerraceOracle oracle_, TerraceReputation reputation_) {
-        token = token_;
+    constructor(ITerraceOracle oracle_, TerraceReputation reputation_) {
         oracle = oracle_;
         reputation = reputation_;
     }
 
-    function placeParlay(Leg[] calldata legs, uint256 stake) external nonReentrant returns (uint256 parlayId) {
+    function placeParlay(Leg[] calldata legs, IERC20 token, uint256 stake) external nonReentrant returns (uint256 parlayId) {
         uint256 n = legs.length;
+        if (!oracle.isSettlementToken(address(token))) revert BadInput();
         if (n < MIN_LEGS || n > MAX_LEGS) revert BadInput();
         if (stake < MIN_STAKE) revert StakeTooSmall();
 
@@ -98,13 +99,13 @@ contract TerraceParlays is ReentrancyGuard {
         }
 
         uint64 potId = lastClose / POT_PERIOD;
-        _parlays.push(Parlay({player: msg.sender, stake: uint128(stake), potId: potId, liveLegs: 0, status: Status.Open}));
-        Pot storage pot = pots[potId];
+        _parlays.push(Parlay({player: msg.sender, token: token, stake: uint128(stake), potId: potId, liveLegs: 0, status: Status.Open}));
+        Pot storage pot = pots[token][potId];
         pot.total += uint128(stake);
         pot.unsettled += 1;
 
         token.safeTransferFrom(msg.sender, address(this), stake);
-        emit ParlayPlaced(parlayId, msg.sender, potId, stake, uint8(n));
+        emit ParlayPlaced(parlayId, msg.sender, potId, address(token), stake, uint8(n));
     }
 
     /// @notice Grade an accumulator once all its legs have answers. Anyone can call it.
@@ -123,7 +124,7 @@ contract TerraceParlays is ReentrancyGuard {
             if (answer != legs[i].side) lost = true;
         }
 
-        Pot storage pot = pots[p.potId];
+        Pot storage pot = pots[p.token][p.potId];
         pot.unsettled -= 1;
         p.liveLegs = live;
 
@@ -133,7 +134,7 @@ contract TerraceParlays is ReentrancyGuard {
         } else if (live == 0) {
             p.status = Status.Refunded;
             pot.total -= p.stake;
-            token.safeTransfer(p.player, p.stake);
+            p.token.safeTransfer(p.player, p.stake);
         } else {
             p.status = Status.Won;
             pot.winningWeight += uint256(p.stake) * live;
@@ -151,7 +152,7 @@ contract TerraceParlays is ReentrancyGuard {
     /// @notice Collect from the pot once its week is over and every accumulator in it is graded.
     function claim(uint256 parlayId) external nonReentrant returns (uint256 payout) {
         Parlay storage p = _parlays[parlayId];
-        Pot storage pot = pots[p.potId];
+        Pot storage pot = pots[p.token][p.potId];
         if (block.timestamp < (uint256(p.potId) + 1) * POT_PERIOD || pot.unsettled != 0) revert PotStillOpen();
 
         if (p.status == Status.Won) {
@@ -162,7 +163,7 @@ contract TerraceParlays is ReentrancyGuard {
             revert NothingToPay();
         }
         p.status = Status.Paid;
-        token.safeTransfer(p.player, payout);
+        p.token.safeTransfer(p.player, payout);
         emit ParlayPaid(parlayId, p.player, payout);
     }
 
@@ -181,7 +182,7 @@ contract TerraceParlays is ReentrancyGuard {
     /// @notice What a winning accumulator would collect if the pot closed now.
     function projectedPayout(uint256 parlayId) external view returns (uint256) {
         Parlay storage p = _parlays[parlayId];
-        Pot storage pot = pots[p.potId];
+        Pot storage pot = pots[p.token][p.potId];
         if (p.status != Status.Won || pot.winningWeight == 0) return 0;
         return (uint256(pot.total) * p.stake * p.liveLegs) / pot.winningWeight;
     }
