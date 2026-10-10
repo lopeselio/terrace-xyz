@@ -12,7 +12,7 @@ Scoring: exact score = 3 pts, correct result (W/D/L) = 1 pt. Ties split the priz
 ```
 contracts/
   src/TerraceLeagues.sol     contests, predictions, CRE receiver, reputation
-  src/TestUSD.sol            testnet prize token with a faucet (no value)
+  src/TerraceUSD.sol         testnet dollars with a faucet and onboarding minter (no value)
   test/TerraceLeagues.t.sol  Foundry tests (full flow, lock, forwarder guard)
   script/Deploy.s.sol        deploys both contracts
 app/                         mobile PWA (Next.js + Privy smart wallets)

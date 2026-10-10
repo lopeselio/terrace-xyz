@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {TerraceLeagues} from "../src/TerraceLeagues.sol";
-import {TestUSD} from "../src/TestUSD.sol";
+import {TerraceUSD} from "../src/TerraceUSD.sol";
 
 contract TerraceLeaguesTest is Test {
     TerraceLeagues leagues;
-    TestUSD usd;
+    TerraceUSD usd;
     address forwarder = makeAddr("forwarder");
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
@@ -15,7 +15,7 @@ contract TerraceLeaguesTest is Test {
 
     function setUp() public {
         leagues = new TerraceLeagues(forwarder);
-        usd = new TestUSD();
+        usd = new TerraceUSD();
 
         uint256[] memory ids = new uint256[](2);
         ids[0] = 501;
@@ -25,7 +25,7 @@ contract TerraceLeaguesTest is Test {
         kickoffs[1] = uint64(block.timestamp + 2 hours);
         leagues.addFixtures(ids, kickoffs);
 
-        usd.faucet(address(this), 300e6);
+        usd.mint(address(this), 300e6);
         usd.approve(address(leagues), 300e6);
         leagues.createContest(ids, usd, 300e6);
     }
