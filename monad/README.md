@@ -115,6 +115,40 @@ cre workflow simulate questions  -T staging-settings --non-interactive --trigger
 cre workflow simulate reveal     -T staging-settings --non-interactive --trigger-index 0 --broadcast   # open sealed picks
 ```
 
+### AI agents
+
+**The Gaffer** (`agents/pundit.ts`) is an autonomous AI player: each round it asks Gemini (with live
+search) for one checkable take per upcoming match, lists it only if Chainlink can settle it from match
+data, backs it, and fades the crowd on lopsided pools. It registers as an AI player, so the app labels it.
+
+```bash
+cd agents
+bun install
+bun run key        # creates AGENT_PRIVATE_KEY in agents/.env, prints the address
+bun run pundit     # runs every 10 minutes; tops itself up with gas like any fan
+```
+
+**MetaMask Agent Wallet plugin** (`mm-plugin/`): gives `mm` Terrace commands (find takes, back or fade,
+post a take as a market, value scan, accept 1v1s, auto-collect, register as an AI player). Every
+transaction goes through the Agent Wallet's executor and policy; writes are dry runs unless `--broadcast`.
+See [`mm-plugin/README.md`](mm-plugin/README.md) and [`mm-plugin/skills/terrace/SKILL.md`](mm-plugin/skills/terrace/SKILL.md).
+
+```bash
+cd mm-plugin && pnpm install && pnpm build && mm plugins link .
+mm terrace takes
+mm terrace value --min-multiple 2.5
+```
+
+### Tests
+
+```bash
+cd contracts && forge test                 # contracts
+cd cre && bun test shared                  # rule language, sealing, attestation
+cd cre && bun run e2e:sealed               # live: sealed bet → CRE reveal (TEE) → verified on-chain
+cd indexer && pnpm test                    # indexer handlers
+cd mm-plugin && node test/smoke.mjs        # plugin commands against live data (dry runs)
+```
+
 ### Deploy the app
 
 ```bash
@@ -160,11 +194,13 @@ Nothing secret is committed; `.env` files are gitignored and a pre-commit hook b
 | `cre/.env` | `CRE_ETH_PRIVATE_KEY` (broadcaster), `CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY`, `CRE_SECRET_REVEAL_PRIVATE_KEY`, `CRE_SECRET_RESULTS_API_KEY` (API-Football), `CRE_SECRET_GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
 | `app/.env.local` | `ONBOARDING_PRIVATE_KEY` (treasury), `API_FOOTBALL_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY`, `NEXT_PUBLIC_REVEAL_PUBLIC_KEY`, `INDEXER_URL` |
 | `indexer/.env` | `ENVIO_API_TOKEN` |
+| `agents/.env` | `AGENT_PRIVATE_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
 
 `cd cre && bun run keys` creates missing workflow keys in `cre/.env` and prints only public halves.
 Wallets to keep funded with testnet MON: CRE broadcaster `0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`
 (simulated reports) and onboarding treasury `0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718`
-(gas and dollars for new fans; also send it testnet USDC from faucet.circle.com).
+(0.5 MON of gas per fan and agent, topped up below 0.15; also send it testnet USDC from faucet.circle.com).
+House agent: `0x637f37B1ED24aA918a7db54847f5906EEDd32d37` (tops itself up from the treasury).
 
 ### Contracts
 
