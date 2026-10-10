@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, Figtree } from "next/font/google";
 import Link from "next/link";
+import { AccountChip } from "@/components/AccountChip";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -9,7 +10,7 @@ const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "700"], variab
 
 export const metadata: Metadata = {
   title: "Terrace",
-  description: "Predict the scores. Beat your mates. Keep your record.",
+  description: "Your takes, your mates, your record. Back them on every match.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   appleWebApp: { capable: true, title: "Terrace", statusBarStyle: "black-translucent" },
   icons: { apple: "/icons/icon-192.png" },
@@ -30,8 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="topbar">
             <Link href="/" className="wordmark">Terrace</Link>
             <nav>
-              <Link href="/new">New challenge</Link>
-              <Link href="/me">My record</Link>
+              <Link href="/">Matches</Link>
+              <Link href="/leagues">Leagues</Link>
+              <AccountChip />
             </nav>
           </header>
           <main className="page">{children}</main>
