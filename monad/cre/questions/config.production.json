@@ -1,0 +1,12 @@
+{
+  "schedule": "0 */10 * * * *",
+  "aiProvider": "gemini",
+  "aiModel": "gemini-2.5-flash",
+  "resultsApiBaseUrl": "https://api.football-data.org/v4",
+  "maxQuestionsPerRun": 4,
+  "chainSelectorName": "monad-testnet",
+  "chainId": 10143,
+  "oracleAddress": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "500000",
+  "simulation": false
+}
