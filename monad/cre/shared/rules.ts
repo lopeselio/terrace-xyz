@@ -177,3 +177,61 @@ export function evidence(f: FixtureDetail & { teams: { home: { id: number; name?
     ...lines,
   ].join("\n");
 }
+
+export type Names = { teams: Record<number, string>; players: Record<number, string> };
+
+const OP_WORDS: Record<Op, string> = { ">=": "at least", ">": "more than", "==": "exactly", "<=": "at most", "<": "fewer than" };
+
+/**
+ * The plain-English reading a fan confirms before a take becomes a market. Generated from the
+ * rule itself, never by the AI, so what the fan agrees to is exactly what CRE will check.
+ */
+export function describeRule(rule: Rule, names: Names): string {
+  const left = describeMetric(rule.left, names);
+  if (rule.right) {
+    const cmp = rule.op === ">" ? "is higher than" : rule.op === "<" ? "is lower than" : rule.op === "==" ? "equals" : rule.op === ">=" ? "is at least" : "is at most";
+    return `Settles YES if ${left.what} ${cmp} ${describeMetric(rule.right, names).what}${left.when}.`;
+  }
+  const n = rule.value!;
+  if ("lineup" in rule.left) return `Settles YES if ${left.what} ${n >= 1 ? "is in" : "is not in"} the starting XI.`;
+  if ("events" in rule.left && rule.op === ">=" && n === 1) return `Settles YES if there is ${left.single}${left.when}.`;
+  return `Settles YES if ${left.what} is ${OP_WORDS[rule.op]} ${n}${left.unit}${left.when}.`;
+}
+
+const PLAYER_FIELDS: Record<string, string> = {
+  "goals.total": "goals",
+  "goals.assists": "assists",
+  "goals.saves": "saves",
+  "goals.conceded": "goals conceded",
+  "shots.total": "shots",
+  "shots.on": "shots on target",
+  "passes.total": "passes",
+  "passes.key": "key passes",
+  "tackles.total": "tackles",
+  "cards.yellow": "yellow cards",
+  "cards.red": "red cards",
+  "fouls.committed": "fouls",
+  "dribbles.success": "successful dribbles",
+  "games.minutes": "minutes played",
+};
+
+function describeMetric(m: Metric, names: Names): { what: string; single: string; unit: string; when: string } {
+  const team = (id?: number) => (id === undefined ? "" : names.teams[id] ?? `team ${id}`);
+  const player = (id?: number) => (id === undefined ? "" : names.players[id] ?? `player ${id}`);
+  if ("events" in m) {
+    const e = m.events;
+    const kind = e.detail ? e.detail.toLowerCase() : e.type === "Card" ? "card" : e.type === "subst" ? "substitution" : (e.type ?? "event").toLowerCase();
+    const by = e.player !== undefined ? ` by ${player(e.player)}` : e.team !== undefined ? ` for ${team(e.team)}` : "";
+    const assisted = e.assist !== undefined ? `, assisted by ${player(e.assist)}` : "";
+    const when = e.minute ? ` between minute ${e.minute[0]} and ${e.minute[1]}` : "";
+    return { what: `the number of ${kind}s${by}${assisted}`, single: `a ${kind}${by}${assisted}`, unit: "", when };
+  }
+  if ("lineup" in m) return { what: player(m.lineup.player), single: "", unit: "", when: "" };
+  if ("stat" in m) return { what: `${team(m.stat.team)}'s ${m.stat.type.toLowerCase()} total`, single: "", unit: m.stat.type === "Ball Possession" ? "%" : "", when: " at full time" };
+  if ("player" in m) {
+    const field = PLAYER_FIELDS[m.player.field] ?? m.player.field.replace(".", " ");
+    return { what: `${player(m.player.player)}'s ${field}`, single: "", unit: "", when: " at full time" };
+  }
+  const side = m.score.side === "total" ? "total goals" : `${m.score.side} goals`;
+  return { what: side, single: "", unit: "", when: m.score.period === "halftime" ? " at half time" : " at full time" };
+}

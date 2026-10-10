@@ -79,3 +79,24 @@ describe("rules settle from match data", () => {
     expect(text).toContain("87' Goal (Normal Goal)");
   });
 });
+
+import { describeRule } from "./rules";
+
+describe("plain-English readings", () => {
+  const names = { teams: { 33: "Man United", 36: "Fulham" }, players: { 70100: "Zirkzee", 2935: "Maguire", 526: "Onana" } };
+  test("reads like the take", () => {
+    expect(describeRule(rule({ left: { events: { type: "Goal", player: 70100, minute: [60, 90] } }, op: ">=", value: 1 }), names)).toBe(
+      "Settles YES if there is a goal by Zirkzee between minute 60 and 90.",
+    );
+    expect(describeRule(rule({ left: { events: { type: "Card", detail: "Red Card" } }, op: ">=", value: 2 }), names)).toBe(
+      "Settles YES if the number of red cards is at least 2.",
+    );
+    expect(describeRule(rule({ left: { lineup: { player: 2935 } }, op: "==", value: 1 }), names)).toBe("Settles YES if Maguire is in the starting XI.");
+    expect(
+      describeRule(rule({ left: { stat: { team: 36, type: "Corner Kicks" } }, op: ">", right: { stat: { team: 33, type: "Corner Kicks" } } }), names),
+    ).toBe("Settles YES if Fulham's corner kicks total is higher than Man United's corner kicks total at full time.");
+    expect(describeRule(rule({ left: { player: { player: 526, field: "goals.saves" } }, op: ">=", value: 5 }), names)).toBe(
+      "Settles YES if Onana's saves is at least 5 at full time.",
+    );
+  });
+});
