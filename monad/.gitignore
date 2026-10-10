@@ -13,3 +13,4 @@ cre/**/.env
 # Root .gitignore blocks *.json (Solana keypairs); CRE workflow configs are source.
 !cre/**/config.*.json
 !deployments/*.json
+!cre/shared/fixtures-data/*.json
