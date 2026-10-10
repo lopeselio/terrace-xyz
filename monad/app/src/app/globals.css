@@ -340,3 +340,4 @@ a.match { text-decoration: none; color: inherit; }
   color: var(--ink);
 }
 .board li a { font-weight: 700; text-decoration: none; }
+.stat-value { font-family: var(--font-display); font-weight: 900; font-size: 32px; line-height: 1; }
