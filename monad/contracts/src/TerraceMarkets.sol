@@ -263,6 +263,10 @@ contract TerraceMarkets is ITerraceReportHandler, ReentrancyGuard {
         return _bettors[marketId];
     }
 
+    function questionOf(uint256 marketId) external view returns (uint256) {
+        return _markets[marketId].questionId;
+    }
+
     function closeTimeOf(uint256 marketId) external view returns (uint64) {
         return _closeTime(marketId);
     }
