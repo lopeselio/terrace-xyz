@@ -1,0 +1,22 @@
+{
+  "chainId": 10143,
+  "network": "monad-testnet",
+  "deployedAt": "2026-10-10",
+  "startBlock": 69901845,
+  "deployer": "0xe03caA2C1661eF712D544A2a92736a6286C37e41",
+  "contracts": {
+    "TerraceUSD": "0x0699ac904A1B482f056afe652bee5A1192F924Ad",
+    "TerraceOracle": "0xCe1Fdc3c17a620F19998A12Da7cF717827ad2b93",
+    "TerraceReputation": "0xBfB901DdF2D1B2E01bd1dff05b9F05c1Ab7C29AD",
+    "TerraceMarkets": "0xB59Eea6Fc53c4fd3460FB5Ec2C0B1394b2339dF8",
+    "TerraceParlays": "0x284792FfB4Cb6fe3018ceF5C035E79bf29C5913b",
+    "TerraceMatchups": "0x6969C48d096a1Ad4A0C5c7A30f04a29A8A957a75",
+    "TerraceLeagues": "0xc88E7E123DC04a73d7c1e4d1Ec04153320681a24"
+  },
+  "cre": {
+    "productionForwarder": "0xF8344CFd5c43616a4366C34E3EEE75af79a74482",
+    "simulationForwarder": "0xB9F79d863261869B234c481D1f9A7af84AeAd192",
+    "simAttestor": "0x34c40bEd79F6d537d9e8C6012D7216766b91c633",
+    "revealPublicKey": "0x00fe67774c060a45fce6ef084136f3208f01bae9b36ecfe4c453d0539f5fed5f"
+  }
+}
