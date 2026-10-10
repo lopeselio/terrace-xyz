@@ -1,97 +1,180 @@
-# Terrace on Monad — contracts + Chainlink CRE settlement
+# Terrace on Monad
 
-Free-to-play football prediction contests on Monad testnet (chain 10143).
-Players predict exact scores for free; a Chainlink CRE workflow writes final
-results onchain; anyone finalizes a contest to pay prizes and update each
-player's onchain reputation.
+**The social predictions layer for football fans.** Say your take in the match chat, put money
+on it, and let the room back you or fade you. Leagues with your mates, a ranked feed of the
+hottest takes, and a record you own. Fans sign in with a passkey and never see a seed phrase,
+a gas fee or a signing pop-up.
 
-Scoring: exact score = 3 pts, correct result (W/D/L) = 1 pt. Ties split the prize.
+Live: **https://terrace-monad.vercel.app** · Monad testnet (chain 10143)
 
-## Layout
+---
+
+## How it fits together
 
 ```
-contracts/
-  src/TerraceLeagues.sol     contests, predictions, CRE receiver, reputation
-  src/TerraceUSD.sol         testnet dollars with a faucet and onboarding minter (no value)
-  test/TerraceLeagues.t.sol  Foundry tests (full flow, lock, forwarder guard)
-  script/Deploy.s.sol        deploys both contracts
-app/                         mobile PWA (Next.js + Privy smart wallets)
-cre/settlement/
-  main.ts                    CRE workflow: read pending -> fetch results -> write report
-  config.staging.json        workflow config
+ Fan's phone (PWA)                                    Chainlink CRE (Monad testnet)
+ ├─ Mera passkey: one ceremony → account,             ├─ settlement: schedules fixtures, writes final scores
+ │  agent wallet, sealing key, memory key              ├─ questions: settles takes by rule from live match
+ ├─ Match rooms: chat → "Make it a market"             │  data, or by the AI judge for rule-less takes
+ │  (AI take compiler → rule → plain-English reading)  └─ reveal: opens sealed bets and picks in a TEE
+ ├─ Leagues: table, sealed picks, member votes                    │ signed reports
+ └─ Ranked feed of takes                                          ▼
+          │ transactions (Alchemy / public RPC)        TerraceOracle ──► Markets · Parlays · Matchups
+          ▼                                                          Leagues · Governance · Chat
+ Monad testnet contracts ──── events ───► Envio HyperIndex (HyperSync) ──► GraphQL ──► app
 ```
 
-## 1. Contracts
+- **Contracts** (`contracts/`, Foundry): `TerraceOracle` (the only source of results; CRE receiver),
+  `TerraceMarkets` (yes/no pools, public or sealed; chat takes become markets), `TerraceParlays`
+  (weekly accumulator pot), `TerraceMatchups` (1v1), `TerraceLeagues` (exact-score contests,
+  seasons, sealed picks), `TerraceGovernance` (members vote on gameweeks and featured takes),
+  `TerraceChat` (match and league rooms), `TerraceReputation` (records, badges, points, agents),
+  `TerraceUSD` (test dollars). Stakes settle in test dollars or Circle's testnet USDC.
+- **Chainlink CRE** (`cre/`): three workflows plus shared code (rule language, sealing, signing).
+- **Envio indexer** (`indexer/`): chat, takes, markets, leagues and records, with a heat score per
+  take for the ranked feed. See `indexer/README.md`.
+- **App** (`app/`): Next.js PWA on Vercel. Mera is the whole account layer.
+
+### How takes settle
+
+1. When a fan lists a take, the **take compiler** (Gemini or Claude) turns the text into a rule in
+   Terrace's rule language: events in a minute window, starting XI, team stats, player stats or score.
+2. The fan confirms a **plain-English reading generated from the rule by code**, never by the AI,
+   so what they agree to is exactly what gets checked.
+3. The **CRE questions workflow** evaluates the rule against API-Football's live data every minute;
+   every node computes the same answer. "At least" takes settle the moment they happen.
+4. Takes with no possible rule ("Pep wears the grey jumper") go to the **AI judge** after full time,
+   with the match events as evidence; nodes must agree. Anything unclear is **void and refunded**.
+
+---
+
+## Deployed (Monad testnet, v2)
+
+Addresses live in [`deployments/10143.json`](deployments/10143.json), which the app, indexer and
+workflows all read.
+
+| Contract | Address |
+|---|---|
+| TerraceOracle | `0xca494cB3460b446357a86d656A93aD8b0f2137A3` |
+| TerraceMarkets | `0xCa6a892e302582eE34a2cfe3a57c7e97A2868773` |
+| TerraceParlays | `0x92Ebb11226E270465EBa9401e839bf4aC627a9C2` |
+| TerraceMatchups | `0xd411fFE50574962e9376c60d72939F6982350E4B` |
+| TerraceLeagues | `0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6` |
+| TerraceGovernance | `0xe59B32B430633203205af9AeA909d8d3F1875c20` |
+| TerraceChat | `0x7C790222f618C068f2Cd549f72CB08E7Ba91108e` |
+| TerraceReputation | `0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3` |
+| TerraceUSD (test dollars) | `0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe` |
+
+Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/ba3334d/v1/graphql`
+
+---
+
+## Runbook
+
+### Match day (settling live matches)
+
+Until CRE deploy access, workflows settle through `cre workflow simulate --broadcast` on a machine
+with the CRE CLI. The match-day runner triggers them on a schedule:
+
+```bash
+cd cre
+bun run matchday
+```
+
+- Start it **before the first kickoff** and leave it running until the last match has settled.
+  It keeps the Mac awake (`caffeinate`); keep the lid open and power connected.
+- It only runs a workflow when the oracle says there's work:
+  questions every minute · live results every 2 minutes · reveals every 5 minutes · new fixtures every 6 hours.
+- Each line shows what happened, e.g. `questions  question 1 "Haaland scores in the first half": YES (rule) | answered 1`.
+- Stop with **Ctrl+C** after full time once the results line shows the match settled.
+
+Run a single workflow by hand:
+
+```bash
+cd cre
+cre workflow simulate settlement -T staging-settings --non-interactive --trigger-index 1 --broadcast   # schedule fixtures
+cre workflow simulate settlement -T staging-settings --non-interactive --trigger-index 0 --broadcast   # write results
+cre workflow simulate questions  -T staging-settings --non-interactive --trigger-index 0 --broadcast   # settle takes
+cre workflow simulate reveal     -T staging-settings --non-interactive --trigger-index 0 --broadcast   # open sealed picks
+```
+
+### Deploy the app
+
+```bash
+cd app
+./scripts/deploy.sh
+```
+
+Builds locally (the app imports `../cre/shared` and `../deployments`) and ships a prebuilt
+deployment to Vercel. The Vercel team stores every variable as sensitive, so the script fills the
+public `NEXT_PUBLIC_*` values from `app/.env.local` before building; server secrets stay on Vercel.
+Upload hiccups are retried automatically.
+
+### Update the hosted indexer
+
+Envio's hosted service deploys from the **`envio`** branch (root `monad/indexer`). After changing
+the indexer:
+
+```bash
+git push origin main:envio
+```
+
+then point `INDEXER_URL` at the new deployment if its endpoint changed, and redeploy the app.
+
+### Run everything locally
+
+```bash
+# indexer (needs Docker Desktop running and indexer/.env with ENVIO_API_TOKEN)
+cd indexer && pnpm install && pnpm dev          # GraphQL at http://localhost:8080/v1/graphql
+
+# app (app/.env.local, see app/.env.example)
+cd app && pnpm install && pnpm dev               # http://localhost:3000
+```
+
+Passkeys need HTTPS on phones, so test on the Vercel deployment (or a tunnel) rather than a LAN IP.
+A passkey belongs to one domain: an account made on `terrace-monad.vercel.app` stays there.
+
+### Keys and secrets
+
+Nothing secret is committed; `.env` files are gitignored and a pre-commit hook blocks key-shaped strings.
+
+| Where | What |
+|---|---|
+| `cre/.env` | `CRE_ETH_PRIVATE_KEY` (broadcaster), `CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY`, `CRE_SECRET_REVEAL_PRIVATE_KEY`, `CRE_SECRET_RESULTS_API_KEY` (API-Football), `CRE_SECRET_GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
+| `app/.env.local` | `ONBOARDING_PRIVATE_KEY` (treasury), `API_FOOTBALL_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY`, `NEXT_PUBLIC_REVEAL_PUBLIC_KEY`, `INDEXER_URL` |
+| `indexer/.env` | `ENVIO_API_TOKEN` |
+
+`cd cre && bun run keys` creates missing workflow keys in `cre/.env` and prints only public halves.
+Wallets to keep funded with testnet MON: CRE broadcaster `0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`
+(simulated reports) and onboarding treasury `0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718`
+(gas and dollars for new fans; also send it testnet USDC from faucet.circle.com).
+
+### Contracts
 
 ```bash
 cd contracts
-forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts
-forge test -vv
-
-export CRE_FORWARDER=<MockKeystoneForwarder for monad-testnet>
-forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast --private-key $PK
+forge test                                    # 60+ tests
+export ALCHEMY_API_KEY=$(grep '^ALCHEMY_API_KEY=' ../cre/.env | cut -d= -f2)
+CRE_PRODUCTION_FORWARDER=0xF8344CFd5c43616a4366C34E3EEE75af79a74482 \
+CRE_SIMULATION_FORWARDER=0xB9F79d863261869B234c481D1f9A7af84AeAd192 \
+CRE_SIM_ATTESTOR=0x34c40bEd79F6d537d9e8C6012D7216766b91c633 \
+ONBOARDING_MINTER=0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718 \
+TESTNET_USDC=0x534b2f3A21130d7a60830c2Df862319e593943A3 \
+forge script script/Deploy.s.sol --rpc-url monad_alchemy --account terrace-deployer --broadcast --slow
 ```
 
-Get the forwarder address from `cre workflow supported-chains` (after `cre login`).
-A community report lists the monad-testnet MockKeystoneForwarder as
-`0xB9F79d863261869B234c481D1f9A7af84AeAd192`; confirm it before deploying.
-`setForwarder()` lets you switch to the production KeystoneForwarder later.
+Run deploys in a normal Terminal tab (the keystore asks for a password). After a redeploy, update
+`deployments/10143.json`, the CRE configs, `indexer/config.yaml` and push `main:envio`.
 
-Seed fixtures (owner only). Use the results provider's match IDs as fixture IDs:
+---
 
-```bash
-cast send $LEAGUES "addFixtures(uint256[],uint64[])" "[537785,537786]" "[1760198400,1760205600]" \
-  --rpc-url monad_testnet --private-key $PK
-```
+## Disclosures
 
-## 2. CRE workflow
-
-```bash
-cre update                      # needs CLI >= 1.30 for Monad testnet simulation
-cre init                        # TypeScript, blank template, name it "settlement"
-# copy cre/settlement/main.ts and config.staging.json into the generated workflow folder
-```
-
-In the generated `project.yaml`, add a Monad testnet RPC to the target you simulate with:
-
-```yaml
-staging-settings:
-  rpcs:
-    - chain-name: monad-testnet
-      url: https://testnet-rpc.monad.xyz
-```
-
-Declare the API key in `secrets.yaml` (follow the scaffold's format) as
-`RESULTS_API_KEY`, and put the value in `.env`.
-
-Set `leaguesAddress` in `config.staging.json`, then:
-
-```bash
-cre workflow simulate settlement --target staging-settings --broadcast
-```
-
-`--broadcast` makes the simulator submit a real transaction to Monad testnet
-through the MockKeystoneForwarder, signed with your funded key (needs testnet MON).
-
-### Results source
-
-`main.ts` expects the football-data.org v4 match shape:
-`{ status: "FINISHED", score: { fullTime: { home, away } } }`.
-For a reliable demo, point `resultsApiBaseUrl` at a small replay server that
-returns the same shape for historical matches.
-
-## 3. Finalize
-
-```bash
-cast send $LEAGUES "finalizeContest(uint256)" 0 --rpc-url monad_testnet --private-key $PK
-```
-
-Or call it from the frontend when the last fixture settles.
-
-## Honest notes for judges
-
-- Monad testnet settlement runs through `cre workflow simulate --broadcast`
-  (CRE CLI supports Monad testnet simulation from v1.30). The contract only
-  accepts reports from the configured forwarder, and switches to the production
-  KeystoneForwarder with `setForwarder()`.
-- Free to play by default; prize pools are funded by contest creators/sponsors.
+- Terrace started on Solana before this hackathon (preserved on the `solana` branch). Everything in
+  this folder (the Monad contracts, CRE workflows, indexer and the Mera-based app) was built during
+  the hackathon window.
+- Monad testnet settlement runs through CRE simulation with `--broadcast` via the
+  MockKeystoneForwarder. Because the mock forwarder checks no signatures, every simulated report is
+  also signed by an attestor key that `TerraceOracle` verifies; `lockProduction()` switches to the
+  production KeystoneForwarder only.
+- Testnet only: test dollars and testnet USDC have no value.
