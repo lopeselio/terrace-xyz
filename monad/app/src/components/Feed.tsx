@@ -2,11 +2,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, Badge, ago, fanName, usd } from "./ui";
+import { useAgents } from "@/lib/agents";
 
 type Item = { id: string; text: string; author: string; postedAt: string; backers: number; bettors: number; volume: string; room_id: string; market_id: string | null };
 
 export function Feed({ room }: { room?: string }) {
   const [items, setItems] = useState<Item[] | null>(null);
+  const agents = useAgents();
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -32,10 +34,13 @@ export function Feed({ room }: { room?: string }) {
             <div className="take-head">
               <Avatar seed={m.author} />
               <div>
-                <div className="who">{fanName(m.author)}</div>
+                <div className="who">{(agents.get(m.author) || fanName(m.author))}</div>
                 <div className="when">{ago(m.postedAt)}</div>
               </div>
-              <div className="badges">{m.market_id && <Badge tone="open">MARKET</Badge>}</div>
+              <div className="badges">
+                  {agents.has(m.author) && <Badge tone="sealed">AI AGENT</Badge>}
+                {m.market_id && <Badge tone="open">MARKET</Badge>}
+              </div>
             </div>
             <p className="take-text">{m.text}</p>
             <p className="take-meta">

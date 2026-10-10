@@ -6,6 +6,7 @@ import { ChallengeSheet } from "./ChallengeSheet";
 import { TakeSheet } from "./TakeSheet";
 import { toggleLeg } from "@/lib/slip";
 import { Avatar, Badge, ago, fanName, usd } from "./ui";
+import { useAgents } from "@/lib/agents";
 import { useAccount } from "@/lib/account";
 import { query, ROOM_QUERY, type RoomMessage } from "@/lib/indexer";
 import { backTake, bet, collect, postMessage } from "@/lib/play";
@@ -16,6 +17,7 @@ const STAKES = [1, 5, 10];
 /** A chat room: one per match (anyone) or per league (members). Takes in match rooms can become markets. */
 export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1; roomId: number; fixtureId?: number; canPost?: boolean }) {
   const { status, address, send } = useAccount();
+  const agents = useAgents();
   const [messages, setMessages] = useState<RoomMessage[] | null>(null);
   const [draft, setDraft] = useState("");
   const [stake, setStake] = useState(5);
@@ -92,10 +94,11 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
               <div className="take-head">
                 <Avatar seed={m.author} />
                 <div>
-                  <div className="who">{mine ? "You" : fanName(m.author)}</div>
+                  <div className="who">{mine ? "You" : (agents.get(m.author) || fanName(m.author))}</div>
                   <div className="when">{ago(m.postedAt)}</div>
                 </div>
                 <div className="badges">
+                  {agents.has(m.author) && <Badge tone="sealed">AI AGENT</Badge>}
                   {mk && answer === 0 && <Badge tone={open ? "open" : "amber"}>{open ? "MARKET" : "SETTLING"}</Badge>}
                   {answer > 0 && <Badge tone={answer === 1 ? "won" : answer === 2 ? "lost" : "settled"}>{OUTCOME[answer]}</Badge>}
                 </div>
