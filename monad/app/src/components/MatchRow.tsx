@@ -1,12 +1,13 @@
 import Link from "next/link";
 import type { MatchInfo } from "@/lib/server/football";
+import { LocalTime } from "./LocalTime";
 
 const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE"]);
 
-export function kickoffLabel(m: MatchInfo) {
+export function kickoffLabel(m: MatchInfo): React.ReactNode {
   if (LIVE.has(m.status)) return m.status === "HT" ? "Half time" : `${m.elapsed ?? ""}'`;
   if (["FT", "AET", "PEN"].includes(m.status)) return "Full time";
-  return new Date(m.kickoff * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return <LocalTime unix={m.kickoff} />;
 }
 
 export function MatchRow({ m }: { m: MatchInfo }) {
