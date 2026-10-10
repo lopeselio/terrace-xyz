@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { kickoffLabel, LIVE } from "@/components/MatchRow";
+import { MatchMarkets } from "@/components/MatchMarkets";
 import { Room } from "@/components/Room";
 import { Badge } from "@/components/ui";
 import { matches } from "@/lib/server/football";
@@ -25,6 +26,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         </span>
         <span className="team"><img src={m.away.logo} alt="" width={44} height={44} /> {m.away.name}</span>
       </div>
+      <MatchMarkets fixtureId={m.id} home={m.home.name} away={m.away.name} open={m.status === "NS" || m.status === "TBD"} />
       <Room kind={0} roomId={m.id} fixtureId={m.id} />
     </>
   );

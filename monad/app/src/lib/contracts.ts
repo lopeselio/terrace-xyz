@@ -59,6 +59,7 @@ export const chatAbi = parseAbi([
 export const matchupsAbi = parseAbi([
   "function challenge(address opponent, uint256 questionId, uint8 side, address token, uint256 stake) returns (uint256)",
   "function accept(uint256 matchupId)",
+  "function expire(uint256 matchupId)",
   "function decline(uint256 matchupId)",
   "function settle(uint256 matchupId)",
   "function getMatchup(uint256 matchupId) view returns ((address challenger, address opponent, uint256 questionId, address token, uint128 stake, uint8 challengerSide, uint8 status, address winner))",
@@ -84,6 +85,16 @@ export const leaguesAbi = parseAbi([
   "function contestScore(uint256 contestId, address player) view returns (uint256)",
   "function currentScore(uint256 contestId, address player) view returns (uint256)",
   "event LeagueCreated(uint256 indexed leagueId, address indexed creator, string name, uint16 season, uint8 gameweeks, uint256 entryFee, bool isPrivate)",
+]);
+
+export const parlaysAbi = parseAbi([
+  "function placeParlay((uint256 questionId, uint8 side)[] legs, address token, uint256 stake) returns (uint256)",
+  "function settleParlay(uint256 parlayId)",
+  "function claim(uint256 parlayId) returns (uint256)",
+  "function projectedPayout(uint256 parlayId) view returns (uint256)",
+  "function potEndsAt(uint64 potId) pure returns (uint256)",
+  "function pots(address token, uint64 potId) view returns (uint128 total, uint32 unsettled, uint256 winningWeight)",
+  "event ParlayPlaced(uint256 indexed parlayId, address indexed player, uint64 indexed potId, address token, uint256 stake, uint8 legs)",
 ]);
 
 export const governanceAbi = parseAbi([

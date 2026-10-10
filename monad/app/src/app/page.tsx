@@ -22,6 +22,10 @@ export default async function Home() {
           <MatchRow key={m.id} m={m} />
         ))}
       </div>
+      <div className="odds-row" style={{ marginTop: 12 }}>
+        <a className="cta ghost" href="/acca">Build an acca</a>
+        <a className="cta ghost" href="/challenges">1v1 challenges</a>
+      </div>
       <SectionHead title="Hottest takes" />
       <Feed />
     </>

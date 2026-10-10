@@ -20,13 +20,13 @@ export type RoomMessage = {
     yesPool: string;
     noPool: string;
     bettors: number;
-    question: { answer: number; closeTime: string; spec: string | null };
+    question: { id: string; answer: number; closeTime: string; spec: string | null };
   };
 };
 
 export const ROOM_QUERY = `query Room($room: String!) {
   Message(where: { room_id: { _eq: $room } }, order_by: { postedAt: asc }, limit: 150) {
     id author text postedAt backers replyTo
-    market { id token yesPool noPool bettors question { answer closeTime spec } }
+    market { id token yesPool noPool bettors question { id answer closeTime spec } }
   }
 }`;

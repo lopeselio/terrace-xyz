@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { SignIn } from "./SignIn";
+import { ChallengeSheet } from "./ChallengeSheet";
 import { TakeSheet } from "./TakeSheet";
+import { toggleLeg } from "@/lib/slip";
 import { Avatar, Badge, ago, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { query, ROOM_QUERY, type RoomMessage } from "@/lib/indexer";
@@ -19,6 +21,7 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
   const [stake, setStake] = useState(5);
   const [busy, setBusy] = useState<string | null>(null);
   const [listing, setListing] = useState<RoomMessage | null>(null);
+  const [challenging, setChallenging] = useState<RoomMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
 
@@ -136,11 +139,25 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
                     {mine && !mk && fixtureId !== undefined && listing?.id !== m.id && (
                       <button className="cta small" onClick={() => setListing(m)}>Make it a market</button>
                     )}
+                    {mk && open && (
+                      <>
+                        <button className="cta small ghost" onClick={() => setChallenging(m)}>Challenge a mate</button>
+                        <button
+                          className="cta small ghost"
+                          onClick={() => toggleLeg({ key: `q${mk.id}`, label: m.text, side: 1, fixtureId: fixtureId ?? 0, questionId: mk.question.id })}
+                        >
+                          Add to acca
+                        </button>
+                      </>
+                    )}
                     {mk && answer > 0 && (
                       <button className="cta small" disabled={!!busy} onClick={() => run(`c${m.id}`, () => collect(send, BigInt(mk.id), address))}>Collect</button>
                     )}
                   </div>
                 </>
+              )}
+              {challenging?.id === m.id && mk && (
+                <ChallengeSheet label={m.text} getQuestionId={async () => BigInt(mk.question.id)} onClose={() => setChallenging(null)} />
               )}
               {listing?.id === m.id && fixtureId !== undefined && (
                 <TakeSheet messageId={m.id} fixtureId={fixtureId} text={m.text} onDone={() => { setListing(null); load(); }} />

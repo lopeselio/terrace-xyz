@@ -66,6 +66,11 @@ export function MyRecord() {
         {stat("Titles", p?.titles ?? 0)}
       </div>
 
+      <div className="odds-row" style={{ marginTop: 14 }}>
+        <a className="cta ghost" href="/challenges">1v1 challenges</a>
+        <a className="cta ghost" href="/acca">Accumulators</a>
+      </div>
+
       <div className="section-head"><h3>Wallet</h3></div>
       <p>{money ? `${dollars(money.usd)} dollars · ${dollars(money.usdc)} USDC` : "…"}</p>
 
