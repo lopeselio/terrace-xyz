@@ -8,8 +8,9 @@ import { serverClient, treasury } from "@/lib/server/rpc";
  * testnet USDC while the treasury has some. Idempotent: anyone already topped up gets nothing.
  * The account's balance is the only state, so it survives restarts and serverless instances.
  */
-const GAS_TARGET = parseEther("0.25");
-const GAS_TOP_UP_BELOW = parseEther("0.08");
+// Monad bills the full gas limit (~0.05-0.1 MON per take or bet at testnet prices), so keep fans comfortably topped up.
+const GAS_TARGET = parseEther("0.5");
+const GAS_TOP_UP_BELOW = parseEther("0.15");
 const USD_TARGET = parseUnits("100", 6);
 const USDC_GIFT = parseUnits("2", 6);
 

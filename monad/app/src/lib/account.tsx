@@ -72,6 +72,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         setKeys(k);
       }
       const wallet = createWalletClient({ account: k.account, chain, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
+      // Running low on gas? Ask for a top-up first (idempotent; the fan never sees "out of gas").
+      if ((await publicClient.getBalance({ address: k.account.address })) < 150_000_000_000_000_000n) {
+        await fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address: k.account.address }) }).catch(() => {});
+      }
       try {
         // Monad charges the gas limit, not gas used: estimate, then add a small margin only.
         const { request } = await publicClient.simulateContract({
