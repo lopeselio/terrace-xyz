@@ -4,7 +4,9 @@
   "main": "dist/main.js",
   "private": true,
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "keys": "bun scripts/keys.ts",
+    "test": "bun test shared"
   },
   "license": "UNLICENSED",
   "dependencies": {
