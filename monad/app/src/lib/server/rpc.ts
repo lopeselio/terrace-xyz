@@ -1,5 +1,5 @@
 import "server-only";
-import { createPublicClient, createWalletClient, fallback, http, nonceManager, type Hex } from "viem";
+import { createPublicClient, createWalletClient, fallback, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { chain } from "../chain";
 
@@ -14,7 +14,6 @@ export const serverClient = createPublicClient({ chain, transport: serverTranspo
 export function treasury() {
   const key = process.env.ONBOARDING_PRIVATE_KEY as Hex | undefined;
   if (!key) throw new Error("ONBOARDING_PRIVATE_KEY is not set");
-  // Several top-ups go out back to back; the nonce manager keeps them from colliding.
-  const account = privateKeyToAccount(key, { nonceManager });
+  const account = privateKeyToAccount(key);
   return { account, wallet: createWalletClient({ account, chain, transport: serverTransport() }) };
 }

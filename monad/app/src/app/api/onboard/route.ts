@@ -39,26 +39,33 @@ export async function POST(req: Request) {
   if (!allow(ip)) return NextResponse.json({ error: "slow down" }, { status: 429 });
 
   const { account, wallet } = treasury();
+  // Number the top-ups ourselves: two back-to-back sends from a fresh serverless instance
+  // can otherwise both pick the same nonce, and the second is rejected.
+  let nonce = await serverClient.getTransactionCount({ address: account.address, blockTag: "pending" });
+  const hashes: `0x${string}`[] = [];
   const sent: string[] = [];
   if (needs.gas) {
-    await wallet.sendTransaction({ to: fan, value: GAS_TARGET - gas });
+    hashes.push(await wallet.sendTransaction({ to: fan, value: GAS_TARGET - gas, nonce: nonce++ }));
     sent.push("gas");
   }
   if (needs.usd) {
-    await wallet.writeContract({ address: ADDR.usd, abi: usdAbi, functionName: "mint", args: [fan, USD_TARGET - usd] });
+    hashes.push(await wallet.writeContract({ address: ADDR.usd, abi: usdAbi, functionName: "mint", args: [fan, USD_TARGET - usd], nonce: nonce++ }));
     sent.push("usd");
   }
   if (needs.usdc) {
     const left = await serverClient.readContract({ address: ADDR.usdc, abi: erc20Abi, functionName: "balanceOf", args: [account.address] });
     if (left >= USDC_GIFT) {
-      await wallet.writeContract({
+      hashes.push(await wallet.writeContract({
+        nonce: nonce++,
         address: ADDR.usdc,
         abi: [{ type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] }],
         functionName: "transfer",
         args: [fan, USDC_GIFT],
-      });
+      }));
       sent.push("usdc");
     }
   }
+  // Wait for them to land (about a second on Monad) so the fan's first bet sees the money.
+  await Promise.all(hashes.map((hash) => serverClient.waitForTransactionReceipt({ hash })));
   return NextResponse.json({ ok: true, topUp: true, sent });
 }
