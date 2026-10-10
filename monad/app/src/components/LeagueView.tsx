@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Room } from "./Room";
 import { ScorePicker } from "./ScorePicker";
+import { Avatar, Badge, fanName } from "./ui";
 import { SignIn } from "./SignIn";
 import { useAccount } from "@/lib/account";
 import { publicClient } from "@/lib/chain";
@@ -25,7 +26,6 @@ type League = Awaited<ReturnType<typeof readLeague>>;
 type Proposal = { id: string; proposer: string; kind: number; yes: number; no: number; status: number; deadline: string; payload: string };
 
 const L = { address: ADDR.leagues, abi: leaguesAbi } as const;
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const FINISHED = new Set(["FT", "AET", "PEN"]);
 
 async function readLeague(id: bigint) {
@@ -99,9 +99,13 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
 
   return (
     <>
+      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+        {league.isPrivate && <Badge tone="sealed">PRIVATE · SEALED PICKS</Badge>}
+        {league.governed && <Badge tone="open">MEMBER-RUN</Badge>}
+      </div>
       <h1>{league.name}</h1>
       <p className="lede">
-        {league.members.length} in · gameweek {gw || "–"} of {league.gameweeks} · {league.governed ? "run by its members" : `run by ${creator ? "you" : short(league.creator)}`}
+        {league.members.length} in · gameweek {gw || "–"} of {league.gameweeks} · {league.governed ? "run by its members" : `run by ${creator ? "you" : fanName(league.creator)}`}
         {league.prizePool > 0n ? ` · $${Number(league.prizePool) / 1e6} season prize` : ""}
         {league.isPrivate ? " · private: picks stay sealed until each gameweek is over" : ""}
       </p>
@@ -113,13 +117,13 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
           {league.inviteCodeHash !== `0x${"0".repeat(64)}` && (
             <label className="field">Invite code<input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="From your mate's link" /></label>
           )}
-          <button className="btn" disabled={!!busy} onClick={() => run("join", () => joinLeague(send, address!, id, code))}>
+          <button className="cta" disabled={!!busy} onClick={() => run("join", () => joinLeague(send, address!, id, code))}>
             {busy === "join" ? "Joining…" : `Join${league.entryFee > 0n ? ` for $${Number(league.entryFee) / 1e6}` : ""}`}
           </button>
         </div>
       ) : (
         invite && (
-          <button className="btn-quiet" onClick={() => (navigator.share ? navigator.share({ title: league.name, url: invite }) : navigator.clipboard.writeText(invite))}>
+          <button className="link-btn" onClick={() => (navigator.share ? navigator.share({ title: league.name, url: invite }) : navigator.clipboard.writeText(invite))}>
             Invite your mates
           </button>
         )
@@ -129,7 +133,9 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
       <ul className="board">
         {rows.map((r, i) => (
           <li key={r.member} className={r.member.toLowerCase() === me ? "me" : undefined}>
-            <span>{i + 1}. {r.member.toLowerCase() === me ? "You" : short(r.member)}</span>
+            <span className="pos">{i + 1}</span>
+            <Avatar seed={r.member} size={30} />
+            <span className="name">{r.member.toLowerCase() === me ? "You" : fanName(r.member)}</span>
             <span className="pts">{r.points}</span>
           </li>
         ))}
@@ -143,7 +149,7 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
             const key = f.toString();
             const [h, a] = picks[key] ?? [1, 1];
             return (
-              <div key={key} className="match">
+              <div key={key} className="fixture" style={{ marginBottom: 8 }}>
                 <span className="team home">{m?.home.name ?? `Match ${key}`}</span>
                 {open && member ? (
                   <ScorePicker home={h} away={a} homeTeam={m?.home.name ?? ""} awayTeam={m?.away.name ?? ""} onChange={(nh, na) => setPicks({ ...picks, [key]: [nh, na] })} />
@@ -156,7 +162,7 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
           })}
           {open && member && keys && (
             <button
-              className="btn"
+              className="cta"
               disabled={!!busy}
               onClick={() =>
                 run("picks", () =>
@@ -171,12 +177,12 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
                 )
               }
             >
-              {busy === "picks" ? "Locking in…" : current.sealed_ ? "Seal my picks" : "Lock in my picks"}
+              {busy === "picks" ? "Locking in…" : current.sealed_ ? "Seal my picks (hidden till the gameweek ends)" : "Lock in my picks"}
             </button>
           )}
           {!open && !current.finalized && <p className="muted">{allPlayed ? "All played." : "Picks are locked. Points land as the matches finish."}</p>}
           {!current.finalized && allPlayed && (
-            <button className="btn" disabled={!!busy} onClick={() => run("final", () => finalizeGameweek(send, league.contestIds[gw - 1]))}>
+            <button className="cta" disabled={!!busy} onClick={() => run("final", () => finalizeGameweek(send, league.contestIds[gw - 1]))}>
               {busy === "final" ? "Adding up…" : "Add up the gameweek"}
             </button>
           )}
@@ -197,7 +203,7 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
               </div>
               <p />
               <button
-                className="btn"
+                className="cta"
                 disabled={!!busy || nextGw.length === 0}
                 onClick={() => run("gw", () => (league.governed ? proposeGameweek(send, id, nextGw.map(BigInt)) : addGameweek(send, id, nextGw.map(BigInt))))}
               >
@@ -218,18 +224,18 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
               const openVote = p.status === 0 && Number(p.deadline) > now;
               return (
                 <li key={p.id} className="take">
-                  <p className="take-text">{p.kind === 0 ? "Next gameweek" : "Feature a take"} · proposed by {p.proposer === me ? "you" : short(p.proposer)}</p>
+                  <p className="take-text">{p.kind === 0 ? "Next gameweek" : "Feature a take"} · proposed by {p.proposer === me ? "you" : fanName(p.proposer)}</p>
                   <p className="take-meta">
                     {p.yes} for · {p.no} against · {["voting", "passed", "rejected", "couldn't run"][p.status]}
                   </p>
                   {member && openVote && (
                     <div className="actions">
-                      <button className="btn small yes" disabled={!!busy} onClick={() => run(`v${p.id}`, () => vote(send, BigInt(p.id), true))}>For</button>
-                      <button className="btn small no" disabled={!!busy} onClick={() => run(`v${p.id}`, () => vote(send, BigInt(p.id), false))}>Against</button>
+                      <button className="cta small" disabled={!!busy} onClick={() => run(`v${p.id}`, () => vote(send, BigInt(p.id), true))}>For</button>
+                      <button className="cta small fade" disabled={!!busy} onClick={() => run(`v${p.id}`, () => vote(send, BigInt(p.id), false))}>Against</button>
                     </div>
                   )}
                   {p.status === 0 && !openVote && (
-                    <button className="btn small" disabled={!!busy} onClick={() => run(`x${p.id}`, () => executeProposal(send, BigInt(p.id)))}>Close the vote</button>
+                    <button className="cta small" disabled={!!busy} onClick={() => run(`x${p.id}`, () => executeProposal(send, BigInt(p.id)))}>Close the vote</button>
                   )}
                 </li>
               );
@@ -239,7 +245,7 @@ export function LeagueView({ leagueId, code: codeFromLink }: { leagueId: number;
       )}
 
       {league.contests.length === league.gameweeks && league.contests.every((c) => c.finalized) && !league.ended && (
-        <button className="btn" disabled={!!busy} onClick={() => run("end", () => endSeason(send, id))}>Crown the champion</button>
+        <button className="cta" disabled={!!busy} onClick={() => run("end", () => endSeason(send, id))}>Crown the champion</button>
       )}
 
       {error && <p className="error">{error}</p>}

@@ -3,19 +3,20 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { SignIn } from "./SignIn";
 import { TakeSheet } from "./TakeSheet";
+import { Avatar, Badge, ago, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { query, ROOM_QUERY, type RoomMessage } from "@/lib/indexer";
 import { backTake, bet, collect, postMessage } from "@/lib/play";
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const usd = (v: string | number) => `$${(Number(v) / 1e6).toFixed(Number(v) % 1e6 ? 2 : 0)}`;
-const ANSWERS = ["", "Came in", "Didn't happen", "Void: stakes back"];
+const OUTCOME = ["", "CAME IN", "DIDN'T HAPPEN", "VOID · REFUNDED"] as const;
+const STAKES = [1, 5, 10];
 
 /** A chat room: one per match (anyone) or per league (members). Takes in match rooms can become markets. */
 export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1; roomId: number; fixtureId?: number; canPost?: boolean }) {
   const { status, address, send } = useAccount();
   const [messages, setMessages] = useState<RoomMessage[] | null>(null);
   const [draft, setDraft] = useState("");
+  const [stake, setStake] = useState(5);
   const [busy, setBusy] = useState<string | null>(null);
   const [listing, setListing] = useState<RoomMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,48 +61,86 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
     });
   }
 
+  const me = address?.toLowerCase();
+  const markets = (messages ?? []).filter((m) => m.market);
+
   return (
     <section>
       {offline && <p className="muted">The live feed is catching up. Your takes still save.</p>}
+      {kind === 0 && markets.length > 1 && (
+        <div className="chips" style={{ marginBottom: 12 }}>
+          {STAKES.map((d) => (
+            <button key={d} className={`chip${stake === d ? " on" : ""}`} onClick={() => setStake(d)}>Stake ${d}</button>
+          ))}
+        </div>
+      )}
       <ul className="chat">
         {(messages ?? []).map((m) => {
-          const mine = address && m.author === address.toLowerCase();
+          const mine = m.author === me;
           const mk = m.market;
-          const total = mk ? Number(mk.yesPool) + Number(mk.noPool) : 0;
-          const yesShare = total ? (Number(mk!.yesPool) / total) * 100 : 50;
-          const open = mk && mk.question.answer === 0 && Number(mk.question.closeTime) * 1000 > Date.now();
+          const yes = mk ? Number(mk.yesPool) : 0;
+          const no = mk ? Number(mk.noPool) : 0;
+          const total = yes + no;
+          const yesPct = total ? Math.round((yes / total) * 100) : 50;
+          const answer = mk?.question.answer ?? 0;
+          const open = mk && answer === 0 && Number(mk.question.closeTime) * 1000 > Date.now();
           return (
             <li key={m.id} id={`take-${m.id}`} className={`take${mk ? " listed" : ""}`}>
+              <div className="take-head">
+                <Avatar seed={m.author} />
+                <div>
+                  <div className="who">{mine ? "You" : fanName(m.author)}</div>
+                  <div className="when">{ago(m.postedAt)}</div>
+                </div>
+                <div className="badges">
+                  {mk && answer === 0 && <Badge tone={open ? "open" : "amber"}>{open ? "MARKET" : "SETTLING"}</Badge>}
+                  {answer > 0 && <Badge tone={answer === 1 ? "won" : answer === 2 ? "lost" : "settled"}>{OUTCOME[answer]}</Badge>}
+                </div>
+              </div>
               <p className="take-text">{m.text}</p>
               <p className="take-meta">
-                {mine ? "You" : short(m.author)} · {m.backers} backing
-                {mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
-                {mk && mk.question.answer > 0 ? ` · ${ANSWERS[mk.question.answer]}` : ""}
+                {m.backers} backing{mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
               </p>
+
               {mk && (
-                <div className="pool" aria-label={`${Math.round(yesShare)}% backing`}>
-                  <span className="yes-part" style={{ width: `${yesShare}%` }} />
-                  <span className="no-part" style={{ width: `${100 - yesShare}%` }} />
-                </div>
+                <>
+                  <div className="pool" aria-label={`${yesPct}% backing`}>
+                    <span className="yes-part" style={{ width: `${yesPct}%` }} />
+                    <span className="no-part" style={{ width: `${100 - yesPct}%` }} />
+                  </div>
+                  <div className="pool-labels">
+                    <span className="y">{yesPct}% BACK · {usd(yes)}</span>
+                    <span className="n">{usd(no)} · {100 - yesPct}% FADE</span>
+                  </div>
+                </>
               )}
+
               {status === "ready" && address && (
-                <div className="actions">
-                  {!mine && !mk && (
-                    <button className="btn small" disabled={!!busy} onClick={() => run(`back-${m.id}`, () => backTake(send, BigInt(m.id)))}>Back it</button>
-                  )}
-                  {mine && !mk && fixtureId !== undefined && (
-                    <button className="btn small" onClick={() => setListing(m)}>Make it a market</button>
-                  )}
+                <>
                   {mk && open && (
-                    <>
-                      <button className="btn small yes" disabled={!!busy} onClick={() => run(`yes-${m.id}`, () => bet(send, address, BigInt(mk.id), mk.token as Address, 1, 5))}>Back it $5</button>
-                      <button className="btn small no" disabled={!!busy} onClick={() => run(`no-${m.id}`, () => bet(send, address, BigInt(mk.id), mk.token as Address, 2, 5))}>Fade it $5</button>
-                    </>
+                    <div className="odds-row">
+                      <button className="odds yes" disabled={!!busy} onClick={() => run(`y${m.id}`, () => bet(send, address, BigInt(mk.id), mk.token as Address, 1, stake))}>
+                        <span className="lbl">Back it</span>
+                        <span className="val">{busy === `y${m.id}` ? "…" : `$${stake}`}</span>
+                      </button>
+                      <button className="odds no" disabled={!!busy} onClick={() => run(`n${m.id}`, () => bet(send, address, BigInt(mk.id), mk.token as Address, 2, stake))}>
+                        <span className="lbl">Fade it</span>
+                        <span className="val">{busy === `n${m.id}` ? "…" : `$${stake}`}</span>
+                      </button>
+                    </div>
                   )}
-                  {mk && mk.question.answer > 0 && (
-                    <button className="btn small" disabled={!!busy} onClick={() => run(`collect-${m.id}`, () => collect(send, BigInt(mk.id), address))}>Collect</button>
-                  )}
-                </div>
+                  <div className="actions">
+                    {!mine && !mk && (
+                      <button className="cta small ghost" disabled={!!busy} onClick={() => run(`b${m.id}`, () => backTake(send, BigInt(m.id)))}>Back this take</button>
+                    )}
+                    {mine && !mk && fixtureId !== undefined && listing?.id !== m.id && (
+                      <button className="cta small" onClick={() => setListing(m)}>Make it a market</button>
+                    )}
+                    {mk && answer > 0 && (
+                      <button className="cta small" disabled={!!busy} onClick={() => run(`c${m.id}`, () => collect(send, BigInt(mk.id), address))}>Collect</button>
+                    )}
+                  </div>
+                </>
               )}
               {listing?.id === m.id && fixtureId !== undefined && (
                 <TakeSheet messageId={m.id} fixtureId={fixtureId} text={m.text} onDone={() => { setListing(null); load(); }} />
@@ -115,9 +154,9 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
       {status === "ready" && !canPost ? (
         <p className="muted">Join the league to talk here.</p>
       ) : status === "ready" ? (
-        <form className="composer" onSubmit={(e) => { e.preventDefault(); postTake(); }}>
+        <form id="compose" className="composer" onSubmit={(e) => { e.preventDefault(); postTake(); }}>
           <input value={draft} maxLength={200} placeholder="Your take… e.g. Haaland scores before the hour" onChange={(e) => setDraft(e.target.value)} />
-          <button className="btn small" disabled={busy === "post" || !draft.trim()}>{busy === "post" ? "…" : "Post"}</button>
+          <button className="cta small" disabled={busy === "post" || !draft.trim()}>{busy === "post" ? "…" : "Post"}</button>
         </form>
       ) : (
         <SignIn reason={kind === 0 ? "Join the match chat and back your takes." : "Sign in to join the league chat."} />

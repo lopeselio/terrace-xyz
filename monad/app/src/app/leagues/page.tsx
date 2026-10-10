@@ -16,12 +16,12 @@ export default async function Leagues() {
       <h1>Leagues</h1>
       <p className="lede">Your mates, a season, one table. Run it yourself, or let the members vote on every gameweek.</p>
       <CreateLeague />
-      <h2>Open leagues</h2>
+      <div className="section-head"><h3>Open leagues</h3></div>
       <ul className="board">
         {leagues.filter((l) => !l.isPrivate).map((l) => (
           <li key={l.id}>
-            <Link href={`/l/${l.id}`}>{l.name}</Link>
-            <span className="muted">{l.memberCount} in · {l.gameweeks} gameweeks{Number(l.entryFee) ? ` · $${Number(l.entryFee) / 1e6} to join` : ""}</span>
+            <Link href={`/l/${l.id}`} className="name">{l.name}</Link>
+            <span className="sub">{l.memberCount} in · {l.gameweeks} GW{Number(l.entryFee) ? ` · $${Number(l.entryFee) / 1e6}` : " · free"}</span>
           </li>
         ))}
         {leagues.filter((l) => !l.isPrivate).length === 0 && <li className="muted">No open leagues yet. Start one.</li>}

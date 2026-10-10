@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "@/lib/account";
 import { listTake, type Money } from "@/lib/play";
+import { Badge } from "./ui";
 
 type Compiled = { spec: string; reading: string; closeTime: number; error?: string };
 
@@ -40,8 +41,12 @@ export function TakeSheet({ messageId, fixtureId, text, onDone }: { messageId: s
   const closes = new Date(compiled.closeTime * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   return (
     <div className="sheet">
+      <div style={{ display: "flex", gap: 6 }}>
+        <Badge tone="chainlink">{compiled.spec ? "CHAINLINK · MATCH DATA" : "CHAINLINK · AI JUDGE"}</Badge>
+        <Badge tone="amber">CLOSES {closes}</Badge>
+      </div>
       <p className="reading">{compiled.reading}</p>
-      <p className="muted">Bets close at {closes}. {compiled.spec ? "Settled by Chainlink from live match data." : "Settled by the AI judge after full time."}</p>
+      <p className="muted" style={{ fontSize: 13 }}>{compiled.spec ? "Checked against live match data every minute; settles the moment it happens." : "No data rule fits this one, so the AI judge rules on it after full time using the match report. Unclear means everyone gets their money back."}</p>
       <div className="chips">
         {[1, 5, 10, 25].map((d) => (
           <button key={d} className={`chip${dollars === d ? " on" : ""}`} onClick={() => setDollars(d)}>${d}</button>
@@ -49,7 +54,7 @@ export function TakeSheet({ messageId, fixtureId, text, onDone }: { messageId: s
         <button className={`chip${money === "usdc" ? " on" : ""}`} onClick={() => setMoney(money === "usd" ? "usdc" : "usd")}>{money === "usdc" ? "USDC" : "Dollars"}</button>
       </div>
       <p />
-      <button className="btn" onClick={list} disabled={busy}>{busy ? "Putting it on the board…" : `Back my take with $${dollars}`}</button>
+      <button className="cta" onClick={list} disabled={busy}>{busy ? "Putting it on the board…" : `Back my take with $${dollars}`}</button>
       {error && <p className="error">{error}</p>}
     </div>
   );

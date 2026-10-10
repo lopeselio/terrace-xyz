@@ -47,9 +47,9 @@ export function MyRecord() {
   if (status !== "ready" || !address) return <SignIn reason="Your record lives on your passkey. Sign in to see it, on any device." />;
 
   const stat = (label: string, value: string | number) => (
-    <div className="plain-card">
+    <div className="stat">
       <div className="stat-value">{value}</div>
-      <div className="muted">{label}</div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 
@@ -66,10 +66,10 @@ export function MyRecord() {
         {stat("Titles", p?.titles ?? 0)}
       </div>
 
-      <h2>Wallet</h2>
+      <div className="section-head"><h3>Wallet</h3></div>
       <p>{money ? `${dollars(money.usd)} dollars · ${dollars(money.usdc)} USDC` : "…"}</p>
 
-      <h2>One passkey, many keys</h2>
+      <div className="section-head"><h3>One passkey, many keys</h3></div>
       <p className="muted">
         Everything here comes from your passkey alone. Nothing is stored on this phone: open Terrace on any device, use the same
         passkey, and it all comes back.
@@ -81,7 +81,7 @@ export function MyRecord() {
         <li className="take"><p className="take-text">Your agent&apos;s memory key</p><p className="take-meta">Encrypts your agent&apos;s notes so only you can read them</p></li>
       </ul>
       <p />
-      <button className="btn-quiet" onClick={logout}>Sign out of this device</button>
+      <button className="link-btn" onClick={logout}>Sign out of this device</button>
     </>
   );
 }

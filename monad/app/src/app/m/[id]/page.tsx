@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import { kickoffLabel, LIVE } from "@/components/MatchRow";
 import { Room } from "@/components/Room";
-import { kickoffLabel } from "@/components/MatchRow";
+import { Badge } from "@/components/ui";
 import { matches } from "@/lib/server/football";
 
 export const revalidate = 15;
@@ -12,15 +13,18 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const started = m.goals.home !== null;
   return (
     <>
-      <div className="scoreboard-head">
-        <span className="team home"><img src={m.home.logo} alt="" width={36} height={36} /> {m.home.name}</span>
-        <span className="score">
+      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+        {LIVE.has(m.status) && <Badge tone="live">LIVE</Badge>}
+        <Badge tone="settled">{m.league.toUpperCase()}</Badge>
+      </div>
+      <div className="match-hero">
+        <span className="team"><img src={m.home.logo} alt="" width={44} height={44} /> {m.home.name}</span>
+        <span className={`score${LIVE.has(m.status) ? " live" : ""}`}>
           {started ? `${m.goals.home}–${m.goals.away}` : "v"}
           <small>{kickoffLabel(m)}</small>
         </span>
-        <span className="team away">{m.away.name} <img src={m.away.logo} alt="" width={36} height={36} /></span>
+        <span className="team"><img src={m.away.logo} alt="" width={44} height={44} /> {m.away.name}</span>
       </div>
-      <p className="lede">{m.league}. Say your take; if you're sure, put money on it and let the room back you or fade you.</p>
       <Room kind={0} roomId={m.id} fixtureId={m.id} />
     </>
   );

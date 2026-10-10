@@ -17,7 +17,7 @@ export function CreateLeague() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) return <button className="btn" onClick={() => setOpen(true)}>Start a league</button>;
+  if (!open) return <button className="cta" onClick={() => setOpen(true)}>Start a league</button>;
   if (status !== "ready") return <SignIn reason="Sign in to start a league." />;
 
   async function create() {
@@ -47,11 +47,14 @@ export function CreateLeague() {
       </div>
       <p className="muted">Table</p>
       <div className="chips">
-        <button className={`chip${isPrivate ? " on" : ""}`} onClick={() => setPrivate(true)}>Private: invite only, picks sealed till the gameweek ends</button>
+        <button className={`chip${isPrivate ? " on-violet" : ""}`} onClick={() => setPrivate(true)}>Private · sealed picks</button>
         <button className={`chip${!isPrivate ? " on" : ""}`} onClick={() => setPrivate(false)}>Open to anyone</button>
       </div>
+      <p className="muted" style={{ fontSize: 12 }}>{isPrivate ? "Invite link only. Everyone's picks stay sealed until the gameweek is over, so nobody can copy." : "Anyone can find and join it."}</p>
+      <div>
+      </div>
       <p />
-      <button className="btn" disabled={busy || !name.trim()} onClick={create}>{busy ? "Setting up the league…" : "Create league"}</button>
+      <button className="cta" disabled={busy || !name.trim()} onClick={create}>{busy ? "Setting up the league…" : "Create league"}</button>
       {error && <p className="error">{error}</p>}
     </div>
   );

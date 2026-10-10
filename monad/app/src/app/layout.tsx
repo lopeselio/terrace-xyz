@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Big_Shoulders, Figtree } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import Link from "next/link";
-import { AccountChip } from "@/components/AccountChip";
+import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const display = Big_Shoulders({ subsets: ["latin"], weight: ["700", "900"], variable: "--font-display" });
-const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-body" });
+const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-barlow" });
+const barlowCond = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-barlow-cond" });
 
 export const metadata: Metadata = {
   title: "Terrace",
-  description: "Your takes, your mates, your record. Back them on every match.",
+  description: "Back your take. Chat the match, put money on your calls, run leagues with your mates.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   appleWebApp: { capable: true, title: "Terrace", statusBarStyle: "black-translucent" },
   icons: { apple: "/icons/icon-192.png" },
@@ -20,23 +20,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#7A1F3D",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`}>
       <body>
         <Providers>
-          <header className="topbar">
-            <Link href="/" className="wordmark">Terrace</Link>
-            <nav>
-              <Link href="/">Matches</Link>
-              <Link href="/leagues">Leagues</Link>
-              <AccountChip />
-            </nav>
+          <header className="header">
+            <Link href="/" className="wordmark">Terr<span>a</span>ce</Link>
+            <span className="spacer" />
+            <span className="chain">ON MONAD</span>
           </header>
           <main className="page">{children}</main>
+          <TabBar />
         </Providers>
       </body>
     </html>

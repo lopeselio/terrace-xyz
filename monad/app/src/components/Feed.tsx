@@ -1,11 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Avatar, Badge, ago, fanName, usd } from "./ui";
 
-type Item = { id: string; text: string; author: string; backers: number; bettors: number; volume: string; room_id: string; market_id: string | null };
-
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const dollars = (v: string) => `$${(Number(v) / 1e6).toFixed(0)}`;
+type Item = { id: string; text: string; author: string; postedAt: string; backers: number; bettors: number; volume: string; room_id: string; market_id: string | null };
 
 export function Feed({ room }: { room?: string }) {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -25,15 +23,23 @@ export function Feed({ room }: { room?: string }) {
   }, [room]);
 
   if (items === null) return <p className="muted">Loading the terrace…</p>;
-  if (items.length === 0) return <p className="muted">No takes yet. Open a match and start one.</p>;
+  if (items.length === 0) return <p className="muted">No takes yet. Tap + and start one.</p>;
   return (
     <ul className="feed">
       {items.map((m) => (
-        <li key={m.id} className="take">
+        <li key={m.id} className={`take${m.market_id ? " listed" : ""}`}>
           <Link href={`/${m.room_id.startsWith("match") ? "m" : "l"}/${m.room_id.split("-")[1]}#take-${m.id}`}>
+            <div className="take-head">
+              <Avatar seed={m.author} />
+              <div>
+                <div className="who">{fanName(m.author)}</div>
+                <div className="when">{ago(m.postedAt)}</div>
+              </div>
+              <div className="badges">{m.market_id && <Badge tone="open">MARKET</Badge>}</div>
+            </div>
             <p className="take-text">{m.text}</p>
             <p className="take-meta">
-              {short(m.author)} · {m.backers} backing{m.market_id ? ` · ${m.bettors} in · ${dollars(m.volume)} on it` : ""}
+              {m.backers} backing{m.market_id ? ` · ${m.bettors} in · ${usd(m.volume)} on it` : ""}
             </p>
           </Link>
         </li>

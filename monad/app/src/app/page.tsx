@@ -1,24 +1,28 @@
-import { MatchRow } from "@/components/MatchRow";
+import { Feed } from "@/components/Feed";
+import { FINISHED, MatchRow } from "@/components/MatchRow";
+import { SectionHead } from "@/components/ui";
 import { ADDR, oracleAbi } from "@/lib/contracts";
 import { matches } from "@/lib/server/football";
 import { serverClient } from "@/lib/server/rpc";
-import { Feed } from "@/components/Feed";
 
 export const revalidate = 20;
 
 export default async function Home() {
   const ids = await serverClient.readContract({ address: ADDR.oracle, abi: oracleAbi, functionName: "fixtureIds" });
-  const list = await matches(ids);
+  const list = (await matches(ids)).filter((m) => !FINISHED.has(m.status)).slice(0, 4);
   return (
     <>
-      <h1>Matchday</h1>
-      <p className="lede">Pick a match, say your piece, and put money on your takes. Your mates can back you or take you on.</p>
-      <section className="plain-card">
+      <section className="hero">
+        <h1>Back your take.</h1>
+        <p>Say it in the match chat, put money on it, and let the room back you or fade you. Settled by Chainlink from live match data.</p>
+      </section>
+      <SectionHead title="Live & next" more="All matches" href="/matches" />
+      <div className="fixtures">
         {list.map((m) => (
           <MatchRow key={m.id} m={m} />
         ))}
-      </section>
-      <h2>Hottest takes</h2>
+      </div>
+      <SectionHead title="Hottest takes" />
       <Feed />
     </>
   );
