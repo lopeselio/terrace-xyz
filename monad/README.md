@@ -35,6 +35,23 @@ Live: **https://terrace-monad.vercel.app** · Monad testnet (chain 10143)
   take for the ranked feed. See `indexer/README.md`.
 - **App** (`app/`): Next.js PWA on Vercel. Mera is the whole account layer.
 
+### What's in the app
+
+Same "Terrace Night" design system as the Solana app (dark canvas, green to back, red to fade,
+violet for sealed, Barlow; see `../design-system/` and `../packages/app/src/theme/tokens.ts`).
+
+| Screen | What fans do |
+|---|---|
+| Home `/` | "Back your take." Live and upcoming matches, the ranked feed of hottest takes |
+| Matches `/matches`, `/m/[id]` | Match room: chat, back takes for free, **Make it a market** (AI reads the take into a rule), back or fade listed takes, collect; match-result picks for accas and 1v1s |
+| Take `+` `/take` | Pick a match and say your take |
+| 1v1 `/challenges`, `/c/[id]` | Challenge a mate on any result or take, share a WhatsApp link, take the other side, settle |
+| Accumulators `/acca` | Build a 2 to 8 leg slip across matches; weekly pot split by stake × legs |
+| Leagues `/leagues`, `/l/[id]` | Create (fee, gameweeks, creator-run or member-voted, private with sealed picks), join by invite link, table, gameweek picks, votes, league chat, crown the champion |
+| Profile `/me` | Record (points, badge, win rate, streak, exact scores, takes that came in), balances, and every key the passkey derives |
+
+Sign-in is one passkey ceremony (Mera); new fans are topped up with gas, test dollars and testnet USDC.
+
 ### How takes settle
 
 1. When a fan lists a take, the **take compiler** (Gemini or Claude) turns the text into a rule in
