@@ -31,7 +31,7 @@ contract Deploy is Script {
         TerraceReputation rep = new TerraceReputation();
         TerraceMarkets markets = new TerraceMarkets(oracle, rep);
         TerraceParlays parlays = new TerraceParlays(oracle, rep);
-        TerraceMatchups matchups = new TerraceMatchups(usd, oracle, rep);
+        TerraceMatchups matchups = new TerraceMatchups(oracle, rep);
         TerraceLeagues leagues = new TerraceLeagues(usd, oracle, rep, ITerraceMarketsView(address(markets)));
 
         rep.setWriter(address(markets), true);

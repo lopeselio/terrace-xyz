@@ -11,7 +11,7 @@ contract TerraceMatchupsTest is TerraceHarness {
 
     function setUp() public {
         _deployCore();
-        matchups = new TerraceMatchups(usd, oracle, rep);
+        matchups = new TerraceMatchups(oracle, rep);
         rep.setWriter(address(matchups), true);
         _fund(address(matchups));
         q = _homeWin(ARS_CHE);
@@ -19,7 +19,7 @@ contract TerraceMatchupsTest is TerraceHarness {
 
     function _challenge(address from, address to, uint8 side) internal returns (uint256 id) {
         vm.prank(from);
-        id = matchups.challenge(to, q, side, 50e6);
+        id = matchups.challenge(to, q, side, usd, 50e6);
     }
 
     function test_winnerTakesBothStakesAndRivalryUpdates() public {
@@ -99,6 +99,6 @@ contract TerraceMatchupsTest is TerraceHarness {
     function test_cannotChallengeYourself() public {
         vm.prank(alice);
         vm.expectRevert(TerraceMatchups.BadInput.selector);
-        matchups.challenge(alice, q, Answer.YES, 1e6);
+        matchups.challenge(alice, q, Answer.YES, usd, 1e6);
     }
 }

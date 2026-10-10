@@ -34,13 +34,13 @@ contract TerraceMatchups is ReentrancyGuard {
         address challenger;
         address opponent; // address(0) until an open challenge is accepted
         uint256 questionId;
+        IERC20 token;
         uint128 stake;
         uint8 challengerSide; // Answer.YES or Answer.NO
         Status status;
         address winner;
     }
 
-    IERC20 public immutable token;
     ITerraceOracle public immutable oracle;
     TerraceReputation public immutable reputation;
 
@@ -48,7 +48,7 @@ contract TerraceMatchups is ReentrancyGuard {
     /// @notice headToHead[a][b] = how many times a has beaten b
     mapping(address => mapping(address => uint32)) public headToHead;
 
-    event MatchupCreated(uint256 indexed matchupId, address indexed challenger, address indexed opponent, uint256 questionId, uint8 challengerSide, uint256 stake);
+    event MatchupCreated(uint256 indexed matchupId, address indexed challenger, address indexed opponent, uint256 questionId, uint8 challengerSide, address token, uint256 stake);
     event MatchupAccepted(uint256 indexed matchupId, address indexed opponent);
     event MatchupCalledOff(uint256 indexed matchupId, Status status, address by);
     event MatchupSettled(uint256 indexed matchupId, address indexed winner, uint256 payout);
@@ -63,18 +63,18 @@ contract TerraceMatchups is ReentrancyGuard {
     error StillOpen();
     error NotResolved();
 
-    constructor(IERC20 token_, ITerraceOracle oracle_, TerraceReputation reputation_) {
-        token = token_;
+    constructor(ITerraceOracle oracle_, TerraceReputation reputation_) {
         oracle = oracle_;
         reputation = reputation_;
     }
 
-    function challenge(address opponent, uint256 questionId, uint8 side, uint256 stake)
+    function challenge(address opponent, uint256 questionId, uint8 side, IERC20 token, uint256 stake)
         external
         nonReentrant
         returns (uint256 matchupId)
     {
         if (opponent == msg.sender) revert BadInput();
+        if (!oracle.isSettlementToken(address(token))) revert BadInput();
         if (side != Answer.YES && side != Answer.NO) revert BadInput();
         if (!oracle.questionExists(questionId)) revert BadInput();
         if (oracle.closeTimeOf(questionId) <= block.timestamp) revert QuestionClosed();
@@ -82,10 +82,10 @@ contract TerraceMatchups is ReentrancyGuard {
 
         matchupId = _matchups.length;
         _matchups.push(
-            Matchup({challenger: msg.sender, opponent: opponent, questionId: questionId, stake: uint128(stake), challengerSide: side, status: Status.Pending, winner: address(0)})
+            Matchup({challenger: msg.sender, opponent: opponent, questionId: questionId, token: token, stake: uint128(stake), challengerSide: side, status: Status.Pending, winner: address(0)})
         );
         token.safeTransferFrom(msg.sender, address(this), stake);
-        emit MatchupCreated(matchupId, msg.sender, opponent, questionId, side, stake);
+        emit MatchupCreated(matchupId, msg.sender, opponent, questionId, side, address(token), stake);
     }
 
     /// @notice Take the other side by matching the stake.
@@ -101,7 +101,7 @@ contract TerraceMatchups is ReentrancyGuard {
         if (oracle.closeTimeOf(m.questionId) <= block.timestamp) revert QuestionClosed();
 
         m.status = Status.Accepted;
-        token.safeTransferFrom(msg.sender, address(this), m.stake);
+        m.token.safeTransferFrom(msg.sender, address(this), m.stake);
         emit MatchupAccepted(matchupId, msg.sender);
     }
 
@@ -130,8 +130,8 @@ contract TerraceMatchups is ReentrancyGuard {
 
         if (answer == Answer.VOID) {
             m.status = Status.Refunded;
-            token.safeTransfer(m.challenger, m.stake);
-            token.safeTransfer(m.opponent, m.stake);
+            m.token.safeTransfer(m.challenger, m.stake);
+            m.token.safeTransfer(m.opponent, m.stake);
             emit MatchupRefunded(matchupId);
             return;
         }
@@ -144,7 +144,7 @@ contract TerraceMatchups is ReentrancyGuard {
         reputation.recordResult(loser, TerraceReputation.Source.Matchup, false, 0);
 
         uint256 payout = uint256(m.stake) * 2;
-        token.safeTransfer(winner, payout);
+        m.token.safeTransfer(winner, payout);
         emit MatchupSettled(matchupId, winner, payout);
     }
 
@@ -169,7 +169,7 @@ contract TerraceMatchups is ReentrancyGuard {
     function _callOff(uint256 matchupId, Status status) internal {
         Matchup storage m = _matchups[matchupId];
         m.status = status;
-        token.safeTransfer(m.challenger, m.stake);
+        m.token.safeTransfer(m.challenger, m.stake);
         emit MatchupCalledOff(matchupId, status, msg.sender);
     }
 }
