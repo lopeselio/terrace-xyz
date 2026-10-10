@@ -1,10 +1,11 @@
-# CRE project settings. RPC URLs may use ${VAR} from .env; never put secrets here.
+# CRE project settings. RPC URLs may use ${VAR} from cre/.env; never put secrets here.
+# Alchemy keeps workflow traffic off the public RPC's rate limit, which fans' browsers rely on.
 staging-settings:
   rpcs:
     - chain-name: monad-testnet
-      url: https://testnet-rpc.monad.xyz
+      url: https://monad-testnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}
 
 production-settings:
   rpcs:
     - chain-name: monad-testnet
-      url: https://testnet-rpc.monad.xyz
+      url: https://monad-testnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}
