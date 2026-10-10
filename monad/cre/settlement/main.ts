@@ -3,7 +3,7 @@
  *
  * Two jobs, both writing to TerraceOracle on Monad:
  *
- *   Fixtures  Pull upcoming matches for the configured competitions and schedule them,
+ *   Fixtures  Pull upcoming matches for the configured leagues and schedule them,
  *             including kickoff changes when a match is moved.
  *   Results   For every match that has kicked off without a result, fetch it. Finished
  *             matches get their final score; postponed or cancelled ones are voided, which
@@ -22,10 +22,10 @@ import { evmClient, read, writeReport } from "../shared/chain";
 const configSchema = z.object({
   resultsSchedule: z.string(), // e.g. "0 */5 * * * *"
   fixturesSchedule: z.string(), // e.g. "0 0 */6 * * *"
-  resultsApiBaseUrl: z.string(), // football-data.org v4, or the replay server for demos
-  competitions: z.array(z.string()), // e.g. ["PL", "CL"]
+  resultsApiBaseUrl: z.string(), // API-Football v3, or the replay server for demos
+  leagues: z.array(z.object({ id: z.number(), season: z.number() })), // e.g. [{ id: 39, season: 2026 }] = Premier League
   daysAhead: z.number(),
-  maxFixturesPerRun: z.number(),
+  maxFixturesPerRun: z.number(), // API-Football accepts up to 20 ids per request
   chainSelectorName: z.string(),
   chainId: z.number(),
   oracleAddress: z.string(),
@@ -34,37 +34,49 @@ const configSchema = z.object({
 });
 type Config = z.infer<typeof configSchema>;
 
-const authHeaders = (apiKey: string) => ({ "X-Auth-Token": { values: [apiKey] } });
+const authHeaders = (apiKey: string) => ({ "x-apisports-key": { values: [apiKey] } });
 
 const attestorKey = (runtime: Runtime<Config>): Hex | undefined =>
   runtime.config.simulation
     ? (runtime.getSecret({ id: "CRE_SIM_ATTESTOR_PRIVATE_KEY" }).result().value as Hex)
     : undefined;
 
+type ApiFixture = {
+  fixture: { id: number; date: string; status: { short: string } };
+  goals: { home: number | null; away: number | null };
+};
+
+const FINISHED = new Set(["FT", "AET", "PEN"]);
+const CALLED_OFF = new Set(["PST", "CANC", "ABD", "AWD", "WO"]);
+
+const getFixtures = (send: HTTPSendRequester, url: string, apiKey: string): ApiFixture[] => {
+  const res = send.sendRequest({ url, method: "GET", multiHeaders: authHeaders(apiKey) }).result();
+  if (!ok(res)) throw new Error(`football API returned ${res.statusCode}`);
+  const body = json(res) as { errors?: unknown; response?: ApiFixture[] };
+  const errors = body.errors && (Array.isArray(body.errors) ? body.errors.length : Object.keys(body.errors).length);
+  if (errors) throw new Error(`football API error: ${JSON.stringify(body.errors)}`);
+  return body.response ?? [];
+};
+
 // ---------------------------------------------------------------------------
 // Results
 // ---------------------------------------------------------------------------
 
 /**
- * Runs on each node. Compact string so identical consensus is trivial:
- *   "FINAL:<home>:<away>" | "VOID" | "PENDING"
- * Expects the football-data.org v4 match shape; the replay server returns the same.
+ * Runs on each node. One request for the whole batch; returns a compact, sorted string so
+ * identical consensus is trivial: "id:FINAL:h:a,id:VOID,id:PENDING,..."
  */
-const fetchResult = (send: HTTPSendRequester, url: string, apiKey: string): string => {
-  const res = send.sendRequest({ url, method: "GET", multiHeaders: authHeaders(apiKey) }).result();
-  if (!ok(res)) throw new Error(`results API returned ${res.statusCode}`);
-  const body = json(res) as {
-    status?: string;
-    score?: { fullTime?: { home?: number | null; away?: number | null } };
-  };
-  const home = body.score?.fullTime?.home;
-  const away = body.score?.fullTime?.away;
-  if (body.status === "FINISHED" && typeof home === "number" && typeof away === "number") {
-    return `FINAL:${home}:${away}`;
-  }
-  if (body.status === "POSTPONED" || body.status === "CANCELLED") return "VOID";
-  return "PENDING";
-};
+const fetchResults = (send: HTTPSendRequester, url: string, apiKey: string): string =>
+  getFixtures(send, url, apiKey)
+    .map((f) => {
+      const status = f.fixture.status.short;
+      if (FINISHED.has(status) && f.goals.home !== null && f.goals.away !== null) {
+        return `${f.fixture.id}:FINAL:${f.goals.home}:${f.goals.away}`;
+      }
+      return `${f.fixture.id}:${CALLED_OFF.has(status) ? "VOID" : "PENDING"}`;
+    })
+    .sort()
+    .join(",");
 
 const onResults = (runtime: Runtime<Config>): string => {
   const cfg = runtime.config;
@@ -74,22 +86,26 @@ const onResults = (runtime: Runtime<Config>): string => {
 
   const apiKey = runtime.getSecret({ id: "RESULTS_API_KEY" }).result().value;
   const http = new cre.capabilities.HTTPClient();
+  const batch = pending.slice(0, Math.min(cfg.maxFixturesPerRun, 20));
+  const agreed = http
+    .sendRequest(runtime, fetchResults, consensusIdenticalAggregation<string>())(
+      `${cfg.resultsApiBaseUrl}/fixtures?ids=${batch.join("-")}`,
+      apiKey,
+    )
+    .result();
 
   const ids: bigint[] = [];
   const states: number[] = [];
   const home: number[] = [];
   const away: number[] = [];
-  for (const id of pending.slice(0, cfg.maxFixturesPerRun)) {
-    const agreed = http
-      .sendRequest(runtime, fetchResult, consensusIdenticalAggregation<string>())(`${cfg.resultsApiBaseUrl}/matches/${id}`, apiKey)
-      .result();
-    runtime.log(`match ${id}: ${agreed}`);
-    if (agreed === "PENDING") continue;
-    const [, h, a] = agreed.split(":");
-    ids.push(id);
-    states.push(agreed === "VOID" ? FIXTURE.VOID : FIXTURE.FINAL);
-    home.push(agreed === "VOID" ? 0 : Number(h));
-    away.push(agreed === "VOID" ? 0 : Number(a));
+  for (const entry of agreed ? agreed.split(",") : []) {
+    const [id, state, h, a] = entry.split(":");
+    runtime.log(`match ${id}: ${state}${state === "FINAL" ? ` ${h}-${a}` : ""}`);
+    if (state === "PENDING") continue;
+    ids.push(BigInt(id));
+    states.push(state === "VOID" ? FIXTURE.VOID : FIXTURE.FINAL);
+    home.push(state === "VOID" ? 0 : Number(h));
+    away.push(state === "VOID" ? 0 : Number(a));
   }
   if (ids.length === 0) return "nothing finished yet";
 
@@ -106,17 +122,13 @@ const onResults = (runtime: Runtime<Config>): string => {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-/** Runs on each node. Returns "id@kickoff,id@kickoff,..." sorted by id. */
-const fetchFixtures = (send: HTTPSendRequester, url: string, apiKey: string): string => {
-  const res = send.sendRequest({ url, method: "GET", multiHeaders: authHeaders(apiKey) }).result();
-  if (!ok(res)) throw new Error(`fixtures API returned ${res.statusCode}`);
-  const body = json(res) as { matches?: { id: number; utcDate: string; status: string }[] };
-  return (body.matches ?? [])
-    .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
-    .map((m) => `${m.id}@${Math.floor(Date.parse(m.utcDate) / 1000)}`)
+/** Runs on each node. Returns "id@kickoff,..." for matches with a confirmed kickoff, sorted. */
+const fetchSchedule = (send: HTTPSendRequester, url: string, apiKey: string): string =>
+  getFixtures(send, url, apiKey)
+    .filter((f) => f.fixture.status.short === "NS") // TBD = no confirmed kickoff yet
+    .map((f) => `${f.fixture.id}@${Math.floor(Date.parse(f.fixture.date) / 1000)}`)
     .sort()
     .join(",");
-};
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -129,9 +141,9 @@ const onFixtures = (runtime: Runtime<Config>): string => {
   const to = new Date(from.getTime() + cfg.daysAhead * 86_400_000);
   const ids: bigint[] = [];
   const kickoffs: bigint[] = [];
-  for (const code of cfg.competitions) {
-    const url = `${cfg.resultsApiBaseUrl}/competitions/${code}/matches?dateFrom=${isoDate(from)}&dateTo=${isoDate(to)}`;
-    const agreed = http.sendRequest(runtime, fetchFixtures, consensusIdenticalAggregation<string>())(url, apiKey).result();
+  for (const league of cfg.leagues) {
+    const url = `${cfg.resultsApiBaseUrl}/fixtures?league=${league.id}&season=${league.season}&from=${isoDate(from)}&to=${isoDate(to)}`;
+    const agreed = http.sendRequest(runtime, fetchSchedule, consensusIdenticalAggregation<string>())(url, apiKey).result();
     for (const entry of agreed ? agreed.split(",") : []) {
       const [id, kickoff] = entry.split("@");
       ids.push(BigInt(id));

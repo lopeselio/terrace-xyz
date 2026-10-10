@@ -1,13 +1,18 @@
 {
   "resultsSchedule": "0 */5 * * * *",
   "fixturesSchedule": "0 0 */6 * * *",
-  "resultsApiBaseUrl": "https://api.football-data.org/v4",
-  "competitions": ["PL"],
+  "resultsApiBaseUrl": "https://v3.football.api-sports.io",
   "daysAhead": 7,
-  "maxFixturesPerRun": 8,
+  "maxFixturesPerRun": 20,
   "chainSelectorName": "monad-testnet",
   "chainId": 10143,
   "oracleAddress": "0xCe1Fdc3c17a620F19998A12Da7cF717827ad2b93",
   "gasLimit": "800000",
-  "simulation": false
+  "simulation": false,
+  "leagues": [
+    {
+      "id": 39,
+      "season": 2026
+    }
+  ]
 }
