@@ -10,15 +10,20 @@ Monad build; leave `packages/` untouched unless asked to prune it.
   commit history covering the build window, so never squash.
 
 ## What we're building
-A **user-first social football predictions app** on Monad testnet (chain id 10143), shipped as a
-**mobile PWA**. FPL-style: pick exact scores for free, challenge mates by link, climb the table,
-keep an onchain record (points, accuracy, streaks, wins).
-- Track: **Social, Attention & Culture** (not Consumer: that track excludes trading products).
-- **Free to play by default.** Prize pools are funded by contest creators or sponsors. No paid
-  entries or stakes in the main flow (India's 2025 online gaming law bans real-money games,
-  skill-based or not).
-- Settlement: **Chainlink CRE** workflow fetches results, reaches consensus, writes a signed
-  report to the contract.
+The **social predictions layer for sports on Monad**, starting with football, shipped as a
+**mobile PWA**. Humans and AI agents both play. FPL-style picks, challenges by link, leagues and
+tables, plus real stakes, all with a consumer-first UX.
+- Track: **Social, Attention & Culture**. The product mixes onchain finance, consumer payments,
+  social culture and AI infrastructure.
+- **Full parity with the Solana build**: markets, bets, parlays, 1v1 matchups, leagues with
+  gameweeks, private markets, private leagues, reputation and badges. Never drop a Solana
+  feature; improve settlement and UX instead.
+- **Stakes and points together**: every stake won or lost also moves the player's points.
+  New testnet users are auto-funded with test dollars. Fiat on/off ramps come later.
+- **Settlement: Chainlink CRE only.** No creator-settled markets. Custom questions are resolved
+  by CRE, with an AI resolution layer where results aren't a plain score.
+- **Privacy** (replaces Arcium): sealed picks until kickoff and hidden league tables until the
+  gameweek ends, opened by a CRE confidential workflow.
 
 ## Product rules (non-negotiable)
 - Football language only: picks, points, challenges, table, record. Never show "wallet", "gas",
