@@ -1,24 +1,26 @@
 /**
  * Terrace questions workflow (Chainlink CRE)
  *
- * Answers custom yes/no questions ("Will Saka score?") once they close:
+ * Settles custom questions and chat takes once they close:
  *   1. Read TerraceOracle.pendingQuestions() on Monad.
- *   2. For questions about a match, wait for the final score and fetch the match details.
- *   3. Every node asks the AI model (Gemini or Claude, with live web search) on its own;
- *      the DON only accepts an answer all nodes agree on.
- *   4. Write the agreed answers in one report. VOID refunds everyone on that question.
+ *   2. Take with a rule: fetch the match from API-Football and evaluate the rule (shared/rules.ts).
+ *      Pure data, so every node agrees; "at least" takes settle the moment they happen.
+ *   3. Take without a rule: once the match is over, the AI judge (Gemini or Claude, with web
+ *      search) rules on it with the match's events as evidence. Nodes must agree or it retries.
+ *   4. Write all agreed answers in one report. VOID refunds everyone on that question.
  *
  *   cre workflow simulate questions --target staging-settings --broadcast
  */
 import { consensusIdenticalAggregation, cre, json, ok, Runner, type HTTPSendRequester, type Runtime } from "@chainlink/cre-sdk";
-import { encodeAbiParameters, type Hex } from "viem";
+import { encodeAbiParameters, hexToString, type Hex } from "viem";
 import { z } from "zod";
-import { askVerdict, type AiProvider, type QuestionContext, type Verdict } from "../shared/ai";
+import { askVerdict, type AiProvider } from "../shared/ai";
 import { ANSWER, FIXTURE, ORACLE_ABI, REPORT } from "../shared/abi";
-import { evmClient, read, writeReport } from "../shared/chain";
+import { evmClient, nowSeconds, read, writeReport } from "../shared/chain";
+import { evaluate, evidence, parseRule, type FixtureDetail, type Verdict } from "../shared/rules";
 
 const configSchema = z.object({
-  schedule: z.string(),
+  schedule: z.string(), // every minute while matches are live: "0 * * * * *"
   aiProvider: z.enum(["gemini", "anthropic"]),
   aiModel: z.string(), // e.g. "gemini-2.5-flash" or "claude-opus-5-5"
   resultsApiBaseUrl: z.string(),
@@ -31,25 +33,40 @@ const configSchema = z.object({
 });
 type Config = z.infer<typeof configSchema>;
 
-const VERDICT_TO_ANSWER: Record<Exclude<Verdict, "PENDING">, number> = {
-  YES: ANSWER.YES,
-  NO: ANSWER.NO,
-  VOID: ANSWER.VOID,
+const VERDICT_TO_ANSWER: Record<Exclude<Verdict, "PENDING">, number> = { YES: ANSWER.YES, NO: ANSWER.NO, VOID: ANSWER.VOID };
+
+const fetchFixture = (send: HTTPSendRequester, url: string, apiKey: string): FixtureDetail | null => {
+  const res = send.sendRequest({ url, method: "GET", multiHeaders: { "x-apisports-key": { values: [apiKey] } } }).result();
+  if (!ok(res)) throw new Error(`football API returned ${res.statusCode}`);
+  const body = json(res) as { response?: FixtureDetail[] };
+  return body.response?.[0] ?? null;
 };
 
-/** Runs on each node: "Arsenal 2-1 Chelsea (Premier League, 2026-10-11)". */
-const fetchMatchLine = (send: HTTPSendRequester, url: string, apiKey: string): string => {
-  const res = send.sendRequest({ url, method: "GET", multiHeaders: { "X-Auth-Token": { values: [apiKey] } } }).result();
-  if (!ok(res)) throw new Error(`results API returned ${res.statusCode}`);
-  const m = json(res) as {
-    utcDate?: string;
-    competition?: { name?: string };
-    homeTeam?: { name?: string };
-    awayTeam?: { name?: string };
-    score?: { fullTime?: { home?: number | null; away?: number | null } };
-  };
-  const ft = m.score?.fullTime;
-  return `${m.homeTeam?.name ?? "Home"} ${ft?.home ?? "?"}-${ft?.away ?? "?"} ${m.awayTeam?.name ?? "Away"} (${m.competition?.name ?? "football"}, ${(m.utcDate ?? "").slice(0, 10)})`;
+/** Node mode: settle a take that carries a rule. */
+const settleByRule = (send: HTTPSendRequester, url: string, apiKey: string, ruleJson: string): Verdict => {
+  const rule = parseRule(ruleJson);
+  if (!rule) return "VOID"; // a broken rule can't be settled fairly: refund
+  const fixture = fetchFixture(send, url, apiKey);
+  return fixture ? evaluate(rule, fixture) : "PENDING";
+};
+
+/** Node mode: ask the AI judge, with the match's events as evidence when there is a match. */
+const settleByJudge = (
+  send: HTTPSendRequester,
+  url: string,
+  apiKey: string,
+  provider: AiProvider,
+  model: string,
+  aiKey: string,
+  question: string,
+  closedAt: string,
+): Verdict => {
+  const fixture = url ? fetchFixture(send, url, apiKey) : null;
+  return askVerdict(send, provider, model, aiKey, {
+    question,
+    closedAt,
+    match: fixture ? evidence(fixture as never) : undefined,
+  });
 };
 
 const onCron = (runtime: Runtime<Config>): string => {
@@ -58,46 +75,52 @@ const onCron = (runtime: Runtime<Config>): string => {
   const pending = read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "pendingQuestions");
   if (pending.length === 0) return "no questions waiting";
 
-  const aiKey = runtime
-    .getSecret({ id: cfg.aiProvider === "anthropic" ? "ANTHROPIC_API_KEY" : "GEMINI_API_KEY" })
-    .result().value;
   const resultsKey = runtime.getSecret({ id: "RESULTS_API_KEY" }).result().value;
+  let aiKey: string | undefined;
   const http = new cre.capabilities.HTTPClient();
+  const now = nowSeconds(runtime as Runtime<unknown>);
 
   const ids: bigint[] = [];
   const answers: number[] = [];
   for (const id of pending.slice(0, cfg.maxQuestionsPerRun)) {
     const q = read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "getQuestion", [id]);
-    const ctx: QuestionContext = { question: q.text, closedAt: new Date(Number(q.closeTime) * 1000).toISOString() };
+    const url = q.fixtureId !== 0n ? `${cfg.resultsApiBaseUrl}/fixtures?id=${q.fixtureId}` : "";
+    let verdict: Verdict;
 
-    if (q.fixtureId !== 0n) {
-      const [state] = read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "fixtureResult", [q.fixtureId]);
-      if (state === FIXTURE.PENDING) {
-        runtime.log(`question ${id}: waiting for the match result`);
-        continue;
+    if (q.spec !== "0x" && url) {
+      verdict = http
+        .sendRequest(runtime, settleByRule, consensusIdenticalAggregation<Verdict>())(url, resultsKey, hexToString(q.spec as Hex))
+        .result();
+    } else {
+      // Rule-less takes wait for full time so the judge sees the whole match.
+      if (url) {
+        const [state] = read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "fixtureResult", [q.fixtureId]);
+        if (state === FIXTURE.PENDING) {
+          runtime.log(`question ${id}: waiting for full time before judging`);
+          continue;
+        }
       }
-      ctx.match = http
-        .sendRequest(runtime, fetchMatchLine, consensusIdenticalAggregation<string>())(
-          `${cfg.resultsApiBaseUrl}/matches/${q.fixtureId}`,
+      aiKey ??= runtime.getSecret({ id: cfg.aiProvider === "anthropic" ? "ANTHROPIC_API_KEY" : "GEMINI_API_KEY" }).result().value;
+      const closedAt = new Date(Number(read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "closeTimeOf", [id])) * 1000).toISOString();
+      verdict = http
+        .sendRequest(runtime, settleByJudge, consensusIdenticalAggregation<Verdict>())(
+          url,
           resultsKey,
+          cfg.aiProvider as AiProvider,
+          cfg.aiModel,
+          aiKey,
+          q.text,
+          closedAt,
         )
         .result();
     }
 
-    const verdict = http
-      .sendRequest(runtime, askVerdict, consensusIdenticalAggregation<Verdict>())(
-        cfg.aiProvider as AiProvider,
-        cfg.aiModel,
-        aiKey,
-        ctx,
-      )
-      .result();
-    runtime.log(`question ${id} "${q.text}": ${verdict}`);
+    runtime.log(`question ${id} "${q.text}": ${verdict}${q.spec !== "0x" ? " (rule)" : " (judge)"}`);
     if (verdict === "PENDING") continue;
     ids.push(id);
     answers.push(VERDICT_TO_ANSWER[verdict]);
   }
-  if (ids.length === 0) return "no answers yet";
+  if (ids.length === 0) return `no answers yet (checked at ${now})`;
 
   const attestorKey = cfg.simulation
     ? (runtime.getSecret({ id: "CRE_SIM_ATTESTOR_PRIVATE_KEY" }).result().value as Hex)

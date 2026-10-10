@@ -8,7 +8,8 @@ export const ORACLE_ABI = parseAbi([
   "function fixtureIds() view returns (uint256[])",
   "function fixtureKickoff(uint256 fixtureId) view returns (uint64)",
   "function fixtureResult(uint256 fixtureId) view returns (uint8 state, uint8 homeGoals, uint8 awayGoals)",
-  "function getQuestion(uint256 questionId) view returns ((uint256 fixtureId, uint64 closeTime, uint8 kind, uint8 line, uint8 answer, address creator, string text))",
+  "function getQuestion(uint256 questionId) view returns ((uint256 fixtureId, uint64 closeTime, uint8 kind, uint8 line, uint8 answer, address creator, string text, bytes spec))",
+  "function closeTimeOf(uint256 questionId) view returns (uint64)",
 ]);
 
 export const MARKETS_ABI = parseAbi([
