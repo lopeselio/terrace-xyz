@@ -1,22 +1,31 @@
 {
   "chainId": 10143,
   "network": "monad-testnet",
-  "deployedAt": "2026-10-10",
-  "startBlock": 69901845,
+  "deployedAt": "2026-10-11",
+  "startBlock": 69936148,
   "deployer": "0xe03caA2C1661eF712D544A2a92736a6286C37e41",
   "contracts": {
-    "TerraceUSD": "0x0699ac904A1B482f056afe652bee5A1192F924Ad",
-    "TerraceOracle": "0xCe1Fdc3c17a620F19998A12Da7cF717827ad2b93",
-    "TerraceReputation": "0xBfB901DdF2D1B2E01bd1dff05b9F05c1Ab7C29AD",
-    "TerraceMarkets": "0xB59Eea6Fc53c4fd3460FB5Ec2C0B1394b2339dF8",
-    "TerraceParlays": "0x284792FfB4Cb6fe3018ceF5C035E79bf29C5913b",
-    "TerraceMatchups": "0x6969C48d096a1Ad4A0C5c7A30f04a29A8A957a75",
-    "TerraceLeagues": "0xc88E7E123DC04a73d7c1e4d1Ec04153320681a24"
+    "TerraceUSD": "0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe",
+    "TerraceOracle": "0xca494cB3460b446357a86d656A93aD8b0f2137A3",
+    "TerraceReputation": "0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3",
+    "TerraceMarkets": "0xCa6a892e302582eE34a2cfe3a57c7e97A2868773",
+    "TerraceParlays": "0x92Ebb11226E270465EBa9401e839bf4aC627a9C2",
+    "TerraceMatchups": "0xd411fFE50574962e9376c60d72939F6982350E4B",
+    "TerraceLeagues": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
+    "TerraceGovernance": "0xe59B32B430633203205af9AeA909d8d3F1875c20",
+    "TerraceChat": "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
   },
   "cre": {
     "productionForwarder": "0xF8344CFd5c43616a4366C34E3EEE75af79a74482",
     "simulationForwarder": "0xB9F79d863261869B234c481D1f9A7af84AeAd192",
     "simAttestor": "0x34c40bEd79F6d537d9e8C6012D7216766b91c633",
     "revealPublicKey": "0x00fe67774c060a45fce6ef084136f3208f01bae9b36ecfe4c453d0539f5fed5f"
-  }
+  },
+  "version": 2,
+  "settlementTokens": {
+    "tUSD": "0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe",
+    "USDC": "0x534b2f3A21130d7a60830c2Df862319e593943A3"
+  },
+  "onboardingTreasury": "0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718",
+  "creBroadcaster": "0x901E8F75cc9F453fD9530b0C5b6763A1343949d7"
 }

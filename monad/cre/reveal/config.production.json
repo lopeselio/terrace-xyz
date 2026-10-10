@@ -1,13 +1,13 @@
 {
   "schedule": "0 */5 * * * *",
   "useTee": true,
-  "marketsAddress": "0xB59Eea6Fc53c4fd3460FB5Ec2C0B1394b2339dF8",
-  "leaguesAddress": "0xc88E7E123DC04a73d7c1e4d1Ec04153320681a24",
+  "marketsAddress": "0xCa6a892e302582eE34a2cfe3a57c7e97A2868773",
+  "leaguesAddress": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
   "scanWindow": 50,
   "maxReportsPerRun": 4,
   "chainSelectorName": "monad-testnet",
   "chainId": 10143,
-  "oracleAddress": "0xCe1Fdc3c17a620F19998A12Da7cF717827ad2b93",
+  "oracleAddress": "0xca494cB3460b446357a86d656A93aD8b0f2137A3",
   "gasLimit": "1500000",
   "simulation": false
 }
