@@ -15,7 +15,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     function setUp() public {
         _deployCore();
         markets = new TerraceMarkets(oracle, rep);
-        leagues = new TerraceLeagues(usd, oracle, rep, ITerraceMarketsView(address(markets)));
+        leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)));
         rep.setWriter(address(markets), true);
         rep.setWriter(address(leagues), true);
         oracle.setReportHandler(leagues.REPORT_REVEAL_PICKS(), address(leagues));
@@ -58,7 +58,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     function test_contestPaysTopScoreFromPoolAndEntries() public {
         usd.mint(address(this), 300e6);
         usd.approve(address(leagues), 300e6);
-        uint256 id = leagues.createContest(both, 300e6, 10e6, false);
+        uint256 id = leagues.createContest(both, usd, 300e6, 10e6, false);
 
         _picks(id, alice, 2, 1, 1, 1); // exact + right draw = 4
         _picks(id, bob, 1, 0, 0, 2); // right result only = 1
@@ -80,7 +80,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     function test_nobodyScoringRefundsPoolAndEntries() public {
         usd.mint(address(this), 50e6);
         usd.approve(address(leagues), 50e6);
-        uint256 id = leagues.createContest(both, 50e6, 5e6, false);
+        uint256 id = leagues.createContest(both, usd, 50e6, 5e6, false);
         _picks(id, alice, 0, 3, 0, 3);
         _playBoth(2, 0, 2, 0);
         leagues.finalizeContest(id);
@@ -89,21 +89,21 @@ contract TerraceLeaguesTest is TerraceHarness {
     }
 
     function test_picksLockAtFirstKickoff() public {
-        uint256 id = leagues.createContest(both, 0, 0, false);
+        uint256 id = leagues.createContest(both, usd, 0, 0, false);
         vm.warp(T0 + 1 hours);
         vm.expectRevert(TerraceLeagues.ContestLocked.selector);
         _picks(id, alice, 1, 0, 1, 0);
     }
 
     function test_cannotFinalizeBeforeResults() public {
-        uint256 id = leagues.createContest(both, 0, 0, false);
+        uint256 id = leagues.createContest(both, usd, 0, 0, false);
         _picks(id, alice, 1, 0, 1, 0);
         vm.expectRevert(TerraceLeagues.NotReady.selector);
         leagues.finalizeContest(id);
     }
 
     function test_calledOffMatchesDontCount() public {
-        uint256 id = leagues.createContest(both, 0, 0, false);
+        uint256 id = leagues.createContest(both, usd, 0, 0, false);
         _picks(id, alice, 1, 0, 1, 0);
         vm.warp(T0 + 4 hours);
         _result(ARS_CHE, 1, 0);
@@ -116,7 +116,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     // --- sealed picks ----------------------------------------------------
 
     function test_sealedPicksOpenAtKickoffViaCre() public {
-        uint256 id = leagues.createContest(both, 0, 0, true);
+        uint256 id = leagues.createContest(both, usd, 0, 0, true);
         _seal(id, alice, 2, 1, 1, 1, "a");
         _seal(id, bob, 0, 0, 0, 0, "b");
 
@@ -145,7 +145,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     }
 
     function test_unrevealedPicksHoldFinalizeUntilDeadline() public {
-        uint256 id = leagues.createContest(both, 0, 0, true);
+        uint256 id = leagues.createContest(both, usd, 0, 0, true);
         _seal(id, alice, 1, 0, 1, 0, "a");
         _playBoth(1, 0, 1, 0);
         vm.expectRevert(TerraceLeagues.RevealsPending.selector);
@@ -160,7 +160,7 @@ contract TerraceLeaguesTest is TerraceHarness {
 
     function _league(bool isPrivate) internal returns (uint256 leagueId) {
         vm.prank(alice);
-        leagueId = leagues.createLeague("Sunday League", 2026, 1, 10, 20e6, isPrivate, keccak256("terrace"));
+        leagueId = leagues.createLeague("Sunday League", 2026, 1, 10, usd, 20e6, isPrivate, false, keccak256("terrace"));
         address[3] memory ps = [alice, bob, carol];
         for (uint256 i; i < 3; ++i) {
             vm.prank(ps[i]);

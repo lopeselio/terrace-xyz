@@ -43,6 +43,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     struct Contest {
         address creator;
+        IERC20 token; // prize and entry-fee token (address(0) for free contests)
         uint256 leagueId; // 0 = standalone
         uint128 prizePool; // creator-funded part
         uint128 entryFee;
@@ -56,6 +57,8 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     struct League {
         address creator;
+        IERC20 token; // entry-fee token (address(0) for free leagues)
+        bool governed; // true = members vote on gameweeks and featured takes; false = the creator runs it
         string name;
         uint16 season;
         uint8 gameweeks; // planned
@@ -75,10 +78,12 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         uint8 away;
     }
 
-    IERC20 public immutable token;
     ITerraceOracle public immutable oracle;
     TerraceReputation public immutable reputation;
     ITerraceMarketsView public immutable markets;
+    /// @notice TerraceGovernance, set once after deployment.
+    address public governance;
+    address private immutable _deployer;
 
     Contest[] private _contests;
     mapping(uint256 => mapping(address => mapping(uint256 => Pick))) private _picks;
@@ -91,6 +96,9 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) public isMember;
     mapping(uint256 => mapping(address => uint256)) public seasonScore;
     mapping(uint256 => mapping(uint256 => mapping(address => bool))) public marketWinCounted;
+    /// @notice Takes a league voted to count towards its table: featuredMarket[leagueId][marketId]
+    mapping(uint256 => mapping(uint256 => bool)) public featuredMarket;
+    uint256 public constant FEATURED_TAKE_POINTS = 2;
 
     event ContestCreated(uint256 indexed contestId, address indexed creator, uint256 indexed leagueId, uint256 prizePool, uint256 entryFee, uint64 lockTime, bool sealed_);
     event PicksSubmitted(uint256 indexed contestId, address indexed player);
@@ -101,6 +109,8 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     event LeagueJoined(uint256 indexed leagueId, address indexed member);
     event GameweekAdded(uint256 indexed leagueId, uint8 gameweek, uint256 contestId);
     event MarketWinCounted(uint256 indexed leagueId, uint256 indexed marketId, address indexed member, uint256 seasonScore);
+    event TakeFeatured(uint256 indexed leagueId, uint256 indexed marketId);
+    event GovernanceSet(address governance);
     event SeasonEnded(uint256 indexed leagueId, address[] champions, uint256 topScore, uint256 prizePerChampion);
 
     error BadInput();
@@ -126,12 +136,20 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     error NotThisGameweek();
     error AlreadyCounted();
     error DidNotWin();
+    error NotGovernance();
 
-    constructor(IERC20 token_, ITerraceOracle oracle_, TerraceReputation reputation_, ITerraceMarketsView markets_) {
-        token = token_;
+    constructor(ITerraceOracle oracle_, TerraceReputation reputation_, ITerraceMarketsView markets_) {
         oracle = oracle_;
         reputation = reputation_;
         markets = markets_;
+        _deployer = msg.sender;
+    }
+
+    /// @notice Wire in TerraceGovernance once (it needs this contract's address first).
+    function setGovernance(address governance_) external {
+        if (msg.sender != _deployer || governance != address(0)) revert NotGovernance();
+        governance = governance_;
+        emit GovernanceSet(governance_);
     }
 
     // =====================================================================
@@ -140,12 +158,13 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @param prizePool tUSD the creator puts up front (0 for bragging rights)
     /// @param entryFee tUSD each player pays to enter (0 = free)
-    function createContest(uint256[] calldata fixtureIds, uint256 prizePool, uint256 entryFee, bool sealed_)
+    function createContest(uint256[] calldata fixtureIds, IERC20 token, uint256 prizePool, uint256 entryFee, bool sealed_)
         external
         nonReentrant
         returns (uint256 contestId)
     {
-        contestId = _newContest(fixtureIds, 0, prizePool, entryFee, sealed_);
+        _checkToken(token, prizePool + entryFee);
+        contestId = _newContest(fixtureIds, 0, token, prizePool, entryFee, sealed_);
         if (prizePool > 0) token.safeTransferFrom(msg.sender, address(this), prizePool);
     }
 
@@ -249,21 +268,27 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     // =====================================================================
 
     /// @param inviteCodeHash keccak256 of the invite code shared in the link (0 = open league)
+    /// @param governed true for a community league where members vote; false for a creator-run one
     function createLeague(
         string calldata name,
         uint16 season,
         uint8 gameweeks,
         uint8 maxMembers,
+        IERC20 token,
         uint256 entryFee,
         bool isPrivate,
+        bool governed,
         bytes32 inviteCodeHash
     ) external returns (uint256 leagueId) {
         uint256 len = bytes(name).length;
         if (len == 0 || len > MAX_NAME_BYTES) revert BadInput();
         if (gameweeks == 0 || maxMembers < 2) revert BadInput();
+        _checkToken(token, entryFee);
 
         League storage l = _leagues.push();
         l.creator = msg.sender;
+        l.token = token;
+        l.governed = governed;
         l.name = name;
         l.season = season;
         l.gameweeks = gameweeks;
@@ -286,25 +311,35 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         l.members.push(msg.sender);
         if (l.entryFee > 0) {
             l.prizePool += l.entryFee;
-            token.safeTransferFrom(msg.sender, address(this), l.entryFee);
+            l.token.safeTransferFrom(msg.sender, address(this), l.entryFee);
         }
         emit LeagueJoined(leagueId, msg.sender);
     }
 
-    /// @notice The league creator sets the matches for the next gameweek.
+    /// @notice Set the matches for the next gameweek: the creator in a creator-run league,
+    ///         a passed member vote (through TerraceGovernance) in a governed one.
     function addGameweek(uint256 leagueId, uint256[] calldata fixtureIds) external returns (uint256 contestId) {
         League storage l = _league(leagueId);
-        if (msg.sender != l.creator) revert NotLeagueCreator();
+        if (msg.sender != governance && (l.governed || msg.sender != l.creator)) revert NotLeagueCreator();
         if (l.ended) revert LeagueEnded();
         if (l.contestIds.length >= l.gameweeks) revert TooManyGameweeks();
 
-        contestId = _newContest(fixtureIds, leagueId, 0, 0, l.isPrivate);
+        contestId = _newContest(fixtureIds, leagueId, IERC20(address(0)), 0, 0, l.isPrivate);
         l.contestIds.push(contestId);
         emit GameweekAdded(leagueId, uint8(l.contestIds.length), contestId);
     }
 
-    /// @notice Count a member's winning market bet on one of a finished gameweek's matches
-    ///         towards the season table (1 point, like the Solana league). Anyone can call it.
+    /// @notice A league vote made this take count towards the table. Only TerraceGovernance.
+    function featureTake(uint256 leagueId, uint256 marketId) external {
+        if (msg.sender != governance) revert NotGovernance();
+        _league(leagueId);
+        featuredMarket[leagueId][marketId] = true;
+        emit TakeFeatured(leagueId, marketId);
+    }
+
+    /// @notice Count a member's winning market bet towards the season table. Anyone can call it.
+    ///         Bets on one of a finished gameweek's matches score 1 point (as in the Solana league);
+    ///         featured takes score FEATURED_TAKE_POINTS once the gameweek they belong to is done.
     function countMarketWin(uint256 leagueId, uint8 gameweek, uint256 marketId, address member) external {
         League storage l = _league(leagueId);
         if (l.ended) revert LeagueEnded();
@@ -315,12 +350,15 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (!c.finalized) revert NotReady();
         if (marketWinCounted[leagueId][marketId][member]) revert AlreadyCounted();
 
-        uint256 fixtureId = oracle.fixtureOfQuestion(markets.questionOf(marketId));
-        if (!_contains(c.fixtureIds, fixtureId)) revert NotThisGameweek();
+        bool featured = featuredMarket[leagueId][marketId];
+        if (!featured) {
+            uint256 fixtureId = oracle.fixtureOfQuestion(markets.questionOf(marketId));
+            if (!_contains(c.fixtureIds, fixtureId)) revert NotThisGameweek();
+        }
         if (!markets.backedWinner(marketId, member)) revert DidNotWin();
 
         marketWinCounted[leagueId][marketId][member] = true;
-        seasonScore[leagueId][member] += 1;
+        seasonScore[leagueId][member] += featured ? FEATURED_TAKE_POINTS : 1;
         emit MarketWinCounted(leagueId, marketId, member, seasonScore[leagueId][member]);
     }
 
@@ -354,7 +392,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
             each = pool / payees.length;
             uint256 dust = pool - each * payees.length;
             for (uint256 i; i < payees.length; ++i) {
-                token.safeTransfer(payees[i], each + (i == 0 ? dust : 0));
+                l.token.safeTransfer(payees[i], each + (i == 0 ? dust : 0));
             }
         }
         emit SeasonEnded(leagueId, champions, top, each);
@@ -434,7 +472,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     // Internal
     // =====================================================================
 
-    function _newContest(uint256[] calldata fixtureIds, uint256 leagueId, uint256 prizePool, uint256 entryFee, bool sealed_)
+    function _newContest(uint256[] calldata fixtureIds, uint256 leagueId, IERC20 token, uint256 prizePool, uint256 entryFee, bool sealed_)
         internal
         returns (uint256 contestId)
     {
@@ -455,6 +493,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         contestId = _contests.length;
         Contest storage c = _contests.push();
         c.creator = msg.sender;
+        c.token = token;
         c.leagueId = leagueId;
         c.prizePool = uint128(prizePool);
         c.entryFee = uint128(entryFee);
@@ -471,7 +510,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (c.entrants.length >= MAX_ENTRANTS) revert ContestFull();
         hasEntered[contestId][msg.sender] = true;
         c.entrants.push(msg.sender);
-        if (c.entryFee > 0) token.safeTransferFrom(msg.sender, address(this), c.entryFee);
+        if (c.entryFee > 0) c.token.safeTransferFrom(msg.sender, address(this), c.entryFee);
     }
 
     function _reveal(uint256 contestId, address player, uint8[] memory home, uint8[] memory away, bytes32 salt) internal {
@@ -544,17 +583,22 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
         if (winners.length == 0) {
             // Nobody scored: the creator's pool and every entry fee go back.
-            if (c.prizePool > 0) token.safeTransfer(c.creator, c.prizePool);
+            if (c.prizePool > 0) c.token.safeTransfer(c.creator, c.prizePool);
             if (c.entryFee > 0) {
-                for (uint256 i; i < c.entrants.length; ++i) token.safeTransfer(c.entrants[i], c.entryFee);
+                for (uint256 i; i < c.entrants.length; ++i) c.token.safeTransfer(c.entrants[i], c.entryFee);
             }
             return 0;
         }
         each = pool / winners.length;
         uint256 dust = pool - each * winners.length;
         for (uint256 i; i < winners.length; ++i) {
-            token.safeTransfer(winners[i], each + (i == 0 ? dust : 0));
+            c.token.safeTransfer(winners[i], each + (i == 0 ? dust : 0));
         }
+    }
+
+    /// @dev Money needs an allowed token; free contests and leagues may pass address(0).
+    function _checkToken(IERC20 token, uint256 amount) internal view {
+        if (amount > 0 && !oracle.isSettlementToken(address(token))) revert BadInput();
     }
 
     function _league(uint256 leagueId) internal view returns (League storage) {
