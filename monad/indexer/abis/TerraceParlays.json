@@ -1,0 +1,496 @@
+[
+ {
+  "type": "constructor",
+  "inputs": [
+   {
+    "name": "oracle_",
+    "type": "address",
+    "internalType": "contract ITerraceOracle"
+   },
+   {
+    "name": "reputation_",
+    "type": "address",
+    "internalType": "contract TerraceReputation"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "MAX_LEGS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MIN_LEGS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MIN_STAKE",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "POT_PERIOD",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint64",
+    "internalType": "uint64"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "claim",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "payout",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "getParlay",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "parlay",
+    "type": "tuple",
+    "internalType": "struct TerraceParlays.Parlay",
+    "components": [
+     {
+      "name": "player",
+      "type": "address",
+      "internalType": "address"
+     },
+     {
+      "name": "token",
+      "type": "address",
+      "internalType": "contract IERC20"
+     },
+     {
+      "name": "stake",
+      "type": "uint128",
+      "internalType": "uint128"
+     },
+     {
+      "name": "potId",
+      "type": "uint64",
+      "internalType": "uint64"
+     },
+     {
+      "name": "liveLegs",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "status",
+      "type": "uint8",
+      "internalType": "enum TerraceParlays.Status"
+     }
+    ]
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct TerraceParlays.Leg[]",
+    "components": [
+     {
+      "name": "questionId",
+      "type": "uint256",
+      "internalType": "uint256"
+     },
+     {
+      "name": "side",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "oracle",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract ITerraceOracle"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "parlayCount",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "placeParlay",
+  "inputs": [
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct TerraceParlays.Leg[]",
+    "components": [
+     {
+      "name": "questionId",
+      "type": "uint256",
+      "internalType": "uint256"
+     },
+     {
+      "name": "side",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   },
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "contract IERC20"
+   },
+   {
+    "name": "stake",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "potEndsAt",
+  "inputs": [
+   {
+    "name": "potId",
+    "type": "uint64",
+    "internalType": "uint64"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "pure"
+ },
+ {
+  "type": "function",
+  "name": "pots",
+  "inputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IERC20"
+   },
+   {
+    "name": "",
+    "type": "uint64",
+    "internalType": "uint64"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "total",
+    "type": "uint128",
+    "internalType": "uint128"
+   },
+   {
+    "name": "unsettled",
+    "type": "uint32",
+    "internalType": "uint32"
+   },
+   {
+    "name": "winningWeight",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "projectedPayout",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "reputation",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract TerraceReputation"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "settleMany",
+  "inputs": [
+   {
+    "name": "parlayIds",
+    "type": "uint256[]",
+    "internalType": "uint256[]"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "settleParlay",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "event",
+  "name": "ParlayPaid",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "payout",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "ParlayPlaced",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "potId",
+    "type": "uint64",
+    "indexed": true,
+    "internalType": "uint64"
+   },
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": false,
+    "internalType": "address"
+   },
+   {
+    "name": "stake",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "legs",
+    "type": "uint8",
+    "indexed": false,
+    "internalType": "uint8"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "ParlaySettled",
+  "inputs": [
+   {
+    "name": "parlayId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "status",
+    "type": "uint8",
+    "indexed": false,
+    "internalType": "enum TerraceParlays.Status"
+   },
+   {
+    "name": "liveLegs",
+    "type": "uint8",
+    "indexed": false,
+    "internalType": "uint8"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "error",
+  "name": "BadInput",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "DuplicateLeg",
+  "inputs": [
+   {
+    "name": "questionId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "LegClosed",
+  "inputs": [
+   {
+    "name": "questionId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "LegsPending",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotOpen",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NothingToPay",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "PotStillOpen",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ReentrancyGuardReentrantCall",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "SafeERC20FailedOperation",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "StakeTooSmall",
+  "inputs": []
+ }
+]

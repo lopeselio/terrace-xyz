@@ -1,0 +1,1529 @@
+[
+ {
+  "type": "constructor",
+  "inputs": [
+   {
+    "name": "oracle_",
+    "type": "address",
+    "internalType": "contract ITerraceOracle"
+   },
+   {
+    "name": "reputation_",
+    "type": "address",
+    "internalType": "contract TerraceReputation"
+   },
+   {
+    "name": "markets_",
+    "type": "address",
+    "internalType": "contract ITerraceMarketsView"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "FEATURED_TAKE_POINTS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MAX_ENTRANTS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MAX_FIXTURES_PER_CONTEST",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MAX_NAME_BYTES",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "REPORT_REVEAL_PICKS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "REVEAL_WINDOW",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint64",
+    "internalType": "uint64"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "addGameweek",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "fixtureIds",
+    "type": "uint256[]",
+    "internalType": "uint256[]"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "contestCount",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "contestScore",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "countMarketWin",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "gameweek",
+    "type": "uint8",
+    "internalType": "uint8"
+   },
+   {
+    "name": "marketId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "member",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "createContest",
+  "inputs": [
+   {
+    "name": "fixtureIds",
+    "type": "uint256[]",
+    "internalType": "uint256[]"
+   },
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "contract IERC20"
+   },
+   {
+    "name": "prizePool",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "entryFee",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "sealed_",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "createLeague",
+  "inputs": [
+   {
+    "name": "name",
+    "type": "string",
+    "internalType": "string"
+   },
+   {
+    "name": "season",
+    "type": "uint16",
+    "internalType": "uint16"
+   },
+   {
+    "name": "gameweeks",
+    "type": "uint8",
+    "internalType": "uint8"
+   },
+   {
+    "name": "maxMembers",
+    "type": "uint8",
+    "internalType": "uint8"
+   },
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "contract IERC20"
+   },
+   {
+    "name": "entryFee",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "isPrivate",
+    "type": "bool",
+    "internalType": "bool"
+   },
+   {
+    "name": "governed",
+    "type": "bool",
+    "internalType": "bool"
+   },
+   {
+    "name": "inviteCodeHash",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "currentScore",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "s",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "endSeason",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "featureTake",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "marketId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "featuredMarket",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "finalizeContest",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "getContest",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct TerraceLeagues.Contest",
+    "components": [
+     {
+      "name": "creator",
+      "type": "address",
+      "internalType": "address"
+     },
+     {
+      "name": "token",
+      "type": "address",
+      "internalType": "contract IERC20"
+     },
+     {
+      "name": "leagueId",
+      "type": "uint256",
+      "internalType": "uint256"
+     },
+     {
+      "name": "prizePool",
+      "type": "uint128",
+      "internalType": "uint128"
+     },
+     {
+      "name": "entryFee",
+      "type": "uint128",
+      "internalType": "uint128"
+     },
+     {
+      "name": "lockTime",
+      "type": "uint64",
+      "internalType": "uint64"
+     },
+     {
+      "name": "sealed_",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "finalized",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "unrevealed",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "fixtureIds",
+      "type": "uint256[]",
+      "internalType": "uint256[]"
+     },
+     {
+      "name": "entrants",
+      "type": "address[]",
+      "internalType": "address[]"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "getLeague",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct TerraceLeagues.League",
+    "components": [
+     {
+      "name": "creator",
+      "type": "address",
+      "internalType": "address"
+     },
+     {
+      "name": "token",
+      "type": "address",
+      "internalType": "contract IERC20"
+     },
+     {
+      "name": "governed",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "season",
+      "type": "uint16",
+      "internalType": "uint16"
+     },
+     {
+      "name": "gameweeks",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "maxMembers",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "isPrivate",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "ended",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "entryFee",
+      "type": "uint128",
+      "internalType": "uint128"
+     },
+     {
+      "name": "prizePool",
+      "type": "uint128",
+      "internalType": "uint128"
+     },
+     {
+      "name": "inviteCodeHash",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     },
+     {
+      "name": "contestIds",
+      "type": "uint256[]",
+      "internalType": "uint256[]"
+     },
+     {
+      "name": "members",
+      "type": "address[]",
+      "internalType": "address[]"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "getPick",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "fixtureId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct TerraceLeagues.Pick",
+    "components": [
+     {
+      "name": "set",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "home",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "away",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "governance",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "handleReport",
+  "inputs": [
+   {
+    "name": "kind",
+    "type": "uint8",
+    "internalType": "uint8"
+   },
+   {
+    "name": "payload",
+    "type": "bytes",
+    "internalType": "bytes"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "hasEntered",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "isMember",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "joinLeague",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "inviteCode",
+    "type": "string",
+    "internalType": "string"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "leagueCount",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "marketWinCounted",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "markets",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract ITerraceMarketsView"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "memberCount",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "oracle",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract ITerraceOracle"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "pickCommitment",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "picksCommitment",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "home",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   },
+   {
+    "name": "away",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   },
+   {
+    "name": "salt",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   }
+  ],
+  "stateMutability": "pure"
+ },
+ {
+  "type": "function",
+  "name": "reputation",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract TerraceReputation"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "revealDeadline",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "revealOpen",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "revealOwn",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "home",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   },
+   {
+    "name": "away",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   },
+   {
+    "name": "salt",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "sealedPicks",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bytes",
+    "internalType": "bytes"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "seasonScore",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "setGovernance",
+  "inputs": [
+   {
+    "name": "governance_",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "submitPicks",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "home",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   },
+   {
+    "name": "away",
+    "type": "uint8[]",
+    "internalType": "uint8[]"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "submitSealedPicks",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "commitment",
+    "type": "bytes32",
+    "internalType": "bytes32"
+   },
+   {
+    "name": "ciphertext",
+    "type": "bytes",
+    "internalType": "bytes"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "unrevealedPlayers",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "out",
+    "type": "address[]",
+    "internalType": "address[]"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "event",
+  "name": "ContestCreated",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "creator",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "prizePool",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "entryFee",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "lockTime",
+    "type": "uint64",
+    "indexed": false,
+    "internalType": "uint64"
+   },
+   {
+    "name": "sealed_",
+    "type": "bool",
+    "indexed": false,
+    "internalType": "bool"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "ContestFinalized",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "winners",
+    "type": "address[]",
+    "indexed": false,
+    "internalType": "address[]"
+   },
+   {
+    "name": "topScore",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "prizePerWinner",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "GameweekAdded",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "gameweek",
+    "type": "uint8",
+    "indexed": false,
+    "internalType": "uint8"
+   },
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "GovernanceSet",
+  "inputs": [
+   {
+    "name": "governance",
+    "type": "address",
+    "indexed": false,
+    "internalType": "address"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "LeagueCreated",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "creator",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "indexed": false,
+    "internalType": "string"
+   },
+   {
+    "name": "season",
+    "type": "uint16",
+    "indexed": false,
+    "internalType": "uint16"
+   },
+   {
+    "name": "gameweeks",
+    "type": "uint8",
+    "indexed": false,
+    "internalType": "uint8"
+   },
+   {
+    "name": "entryFee",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "isPrivate",
+    "type": "bool",
+    "indexed": false,
+    "internalType": "bool"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "LeagueJoined",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "member",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "MarketWinCounted",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "marketId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "member",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "seasonScore",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "PicksRevealed",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "valid",
+    "type": "bool",
+    "indexed": false,
+    "internalType": "bool"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "PicksSubmitted",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "SealedPicksSubmitted",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "player",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "commitment",
+    "type": "bytes32",
+    "indexed": false,
+    "internalType": "bytes32"
+   },
+   {
+    "name": "ciphertext",
+    "type": "bytes",
+    "indexed": false,
+    "internalType": "bytes"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "SeasonEnded",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "champions",
+    "type": "address[]",
+    "indexed": false,
+    "internalType": "address[]"
+   },
+   {
+    "name": "topScore",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "prizePerChampion",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "TakeFeatured",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "marketId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "error",
+  "name": "AlreadyCounted",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "AlreadyEntered",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "AlreadyFinalized",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "AlreadyMember",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "BadInput",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ContestFull",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ContestLocked",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "DidNotWin",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "LeagueEnded",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "LeagueFull",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotGovernance",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotLeagueCreator",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotMember",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotOracle",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotReady",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotSealed",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotThisGameweek",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ReentrancyGuardReentrantCall",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "RevealNotOpen",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "RevealsPending",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "SafeERC20FailedOperation",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "SealedContest",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "TooManyGameweeks",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "UnknownFixture",
+  "inputs": [
+   {
+    "name": "fixtureId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "UnknownLeague",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "WrongInviteCode",
+  "inputs": []
+ }
+]

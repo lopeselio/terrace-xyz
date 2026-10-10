@@ -14,3 +14,5 @@ cre/**/.env
 !cre/**/config.*.json
 !deployments/*.json
 !cre/shared/fixtures-data/*.json
+!indexer/abis/*.json
+!indexer/package.json

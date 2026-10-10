@@ -1,0 +1,194 @@
+# Terrace entities. Amounts are raw token units (6 decimals for tUSD and USDC).
+
+type Player {
+  id: ID! # address, lowercase
+  isAgent: Boolean!
+  operator: String
+  metadataURI: String
+  points: BigInt!
+  results: Int! # markets, accumulators and 1v1s settled
+  wins: Int!
+  winRateBps: Int!
+  streak: Int! # negative = losing run
+  badge: Int! # 0 Casual, 1 Sharp, 2 Legend
+  predictions: Int!
+  correctResults: Int!
+  exactScores: Int!
+  titles: Int!
+  messages: Int!
+  takesListed: Int!
+  takesWon: Int!
+  takesSettled: Int!
+  backersReceived: Int!
+}
+
+type Fixture {
+  id: ID! # API-Football fixture id
+  kickoff: BigInt!
+  state: Int! # 0 awaiting, 1 final, 2 void
+  homeGoals: Int!
+  awayGoals: Int!
+}
+
+type Question {
+  id: ID!
+  fixture: Fixture
+  kind: Int! # 0 custom, 1 home win, 2 draw, 3 away win, 4 over goals, 5 both teams score
+  line: Int!
+  closeTime: BigInt!
+  creator: String!
+  text: String!
+  spec: String # settlement rule (JSON) when the question has one
+  answer: Int! # 0 open, 1 yes, 2 no, 3 void
+}
+
+type Market {
+  id: ID!
+  question: Question!
+  token: String!
+  creator: String!
+  feeBps: Int!
+  isSealed: Boolean!
+  isFlash: Boolean!
+  yesPool: BigInt!
+  noPool: BigInt!
+  sealedPool: BigInt!
+  volume: BigInt!
+  bettors: Int!
+  take: Message # set when the market came from a chat take
+  createdAt: BigInt!
+  bets: [Bet!]! @derivedFrom(field: "market")
+}
+
+type Bet {
+  id: ID! # marketId-bettor
+  market: Market!
+  bettor: String!
+  side: Int! # 0 sealed / unknown, 1 yes, 2 no
+  stake: BigInt!
+  isSealed: Boolean!
+  result: Int # 0 refund, 1 won, 2 lost
+  payout: BigInt
+}
+
+type Room {
+  id: ID! # "match-<fixtureId>" or "league-<leagueId>"
+  kind: Int! # 0 match, 1 league
+  roomId: BigInt!
+  messageCount: Int!
+  lastMessageAt: BigInt!
+  messages: [Message!]! @derivedFrom(field: "room")
+}
+
+type Message {
+  id: ID!
+  room: Room!
+  author: String!
+  text: String!
+  replyTo: String
+  postedAt: BigInt!
+  backers: Int!
+  market: Market # set once the take is listed as a market
+  bettors: Int!
+  volume: BigInt!
+  heat: BigDecimal! # engagement score for the ranked feed (time decay is applied by the app)
+}
+
+type Parlay {
+  id: ID!
+  player: String!
+  token: String!
+  stake: BigInt!
+  legs: Int!
+  potId: BigInt!
+  status: Int! # 0 open, 1 won, 2 lost, 3 refunded, 4 paid
+  liveLegs: Int!
+  payout: BigInt
+}
+
+type Matchup {
+  id: ID!
+  challenger: String!
+  opponent: String # empty until an open challenge is accepted
+  question: Question!
+  challengerSide: Int!
+  token: String!
+  stake: BigInt!
+  status: Int! # 0 pending, 1 accepted, 2 declined, 3 expired, 4 settled, 5 refunded
+  winner: String
+  createdAt: BigInt!
+}
+
+type League {
+  id: ID!
+  creator: String!
+  name: String!
+  season: Int!
+  gameweeks: Int!
+  entryFee: BigInt!
+  isPrivate: Boolean!
+  memberCount: Int!
+  ended: Boolean!
+  members: [LeagueMember!]! @derivedFrom(field: "league")
+  contests: [Contest!]! @derivedFrom(field: "league")
+  proposals: [Proposal!]! @derivedFrom(field: "league")
+}
+
+type LeagueMember {
+  id: ID! # leagueId-member
+  league: League!
+  member: String!
+  seasonScore: Int!
+  joinedAt: BigInt!
+}
+
+type Contest {
+  id: ID!
+  league: League
+  gameweek: Int # set for league gameweeks
+  creator: String!
+  token: String
+  prizePool: BigInt!
+  entryFee: BigInt!
+  lockTime: BigInt!
+  isSealed: Boolean!
+  entrants: Int!
+  finalized: Boolean!
+  topScore: Int
+  winners: [String!]
+  entries: [Entry!]! @derivedFrom(field: "contest")
+}
+
+type Entry {
+  id: ID! # contestId-player
+  contest: Contest!
+  player: String!
+  isSealed: Boolean!
+  revealed: Boolean!
+  enteredAt: BigInt!
+}
+
+type Proposal {
+  id: ID!
+  league: League!
+  proposer: String!
+  kind: Int! # 0 gameweek, 1 feature take
+  payload: String!
+  deadline: BigInt!
+  yes: Int!
+  no: Int!
+  status: Int! # 0 open, 1 executed, 2 rejected, 3 failed
+}
+
+type FeedItem {
+  id: ID! # txHash-logIndex
+  kind: String! # TAKE, TAKE_LISTED, BET, WIN, CHALLENGE, CHALLENGE_WON, TITLE, LEAGUE_JOIN, PROPOSAL, AGENT
+  actor: String!
+  room: Room
+  message: Message
+  market: Market
+  league: League
+  amount: BigInt
+  text: String
+  timestamp: BigInt!
+}

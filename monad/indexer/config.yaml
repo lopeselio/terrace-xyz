@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+# Terrace on Monad testnet. Addresses come from ../deployments/10143.json (v2).
+# ABIs are copied from the Foundry build by scripts/abis.sh.
+name: terrace-indexer
+description: Chat, takes, markets, leagues and records for Terrace on Monad
+contracts:
+  - name: TerraceOracle
+    abi_file_path: ./abis/TerraceOracle.json
+    events:
+      - event: FixtureScheduled
+      - event: FixtureSettled
+      - event: QuestionCreated
+      - event: QuestionSpec
+      - event: QuestionAnswered
+  - name: TerraceMarkets
+    abi_file_path: ./abis/TerraceMarkets.json
+    events:
+      - event: MarketCreated
+      - event: TakeListed
+      - event: BetPlaced
+      - event: SealedBetPlaced
+      - event: BetRevealed
+      - event: BetSettled
+  - name: TerraceParlays
+    abi_file_path: ./abis/TerraceParlays.json
+    events:
+      - event: ParlayPlaced
+      - event: ParlaySettled
+      - event: ParlayPaid
+  - name: TerraceMatchups
+    abi_file_path: ./abis/TerraceMatchups.json
+    events:
+      - event: MatchupCreated
+      - event: MatchupAccepted
+      - event: MatchupCalledOff
+      - event: MatchupSettled
+      - event: MatchupRefunded
+  - name: TerraceLeagues
+    abi_file_path: ./abis/TerraceLeagues.json
+    events:
+      - event: ContestCreated
+      - event: PicksSubmitted
+      - event: SealedPicksSubmitted
+      - event: PicksRevealed
+      - event: ContestFinalized
+      - event: LeagueCreated
+      - event: LeagueJoined
+      - event: GameweekAdded
+      - event: MarketWinCounted
+      - event: TakeFeatured
+      - event: SeasonEnded
+  - name: TerraceGovernance
+    abi_file_path: ./abis/TerraceGovernance.json
+    events:
+      - event: Proposed
+      - event: Voted
+      - event: Resolved
+  - name: TerraceChat
+    abi_file_path: ./abis/TerraceChat.json
+    events:
+      - event: MessagePosted
+      - event: TakeBacked
+  - name: TerraceReputation
+    abi_file_path: ./abis/TerraceReputation.json
+    events:
+      - event: ResultRecorded
+      - event: PredictionsRecorded
+      - event: TitleWon
+      - event: AgentRegistered
+chains:
+  - id: 10143 # Monad testnet
+    start_block: 69936148
+    contracts:
+      - name: TerraceOracle
+        address: "0xca494cB3460b446357a86d656A93aD8b0f2137A3"
+      - name: TerraceMarkets
+        address: "0xCa6a892e302582eE34a2cfe3a57c7e97A2868773"
+      - name: TerraceParlays
+        address: "0x92Ebb11226E270465EBa9401e839bf4aC627a9C2"
+      - name: TerraceMatchups
+        address: "0xd411fFE50574962e9376c60d72939F6982350E4B"
+      - name: TerraceLeagues
+        address: "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6"
+      - name: TerraceGovernance
+        address: "0xe59B32B430633203205af9AeA909d8d3F1875c20"
+      - name: TerraceChat
+        address: "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
+      - name: TerraceReputation
+        address: "0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3"
