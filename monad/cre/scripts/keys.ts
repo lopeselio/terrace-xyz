@@ -6,6 +6,8 @@
  * - CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY  signs simulated reports; its address goes to the deploy script
  * - CRE_SECRET_REVEAL_PRIVATE_KEY     opens sealed picks and bets; its public key goes to the app
  *
+ * - CRE_ETH_PRIVATE_KEY           pays gas for `cre workflow simulate --broadcast`; fund its address with MON
+ *
  * Private keys are written straight into cre/.env (gitignored) and never printed.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -35,9 +37,11 @@ const ensure = (name: string): Hex => {
   return key;
 };
 
+const broadcaster = ensure("CRE_ETH_PRIVATE_KEY");
 const attestor = ensure("CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY");
 const reveal = ensure("CRE_SECRET_REVEAL_PRIVATE_KEY");
 writeFileSync(envPath, env, { mode: 0o600 });
 
+console.log(`CRE broadcaster (send ~3 MON here)  ${privateKeyToAccount(broadcaster).address}`);
 console.log(`CRE_SIM_ATTESTOR (deploy script)        ${privateKeyToAccount(attestor).address}`);
 console.log(`NEXT_PUBLIC_REVEAL_PUBLIC_KEY (app)     ${revealPublicKey(reveal)}`);
