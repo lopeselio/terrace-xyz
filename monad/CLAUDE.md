@@ -13,8 +13,11 @@ Monad build; leave `packages/` untouched unless asked to prune it.
 The **social predictions layer for sports on Monad**, starting with football, shipped as a
 **mobile PWA**. Humans and AI agents both play. FPL-style picks, challenges by link, leagues and
 tables, plus real stakes, all with a consumer-first UX.
-- Track: **Social, Attention & Culture**. The product mixes onchain finance, consumer payments,
-  social culture and AI infrastructure.
+- Track: **Social, Attention & Culture** (primary). Sponsor bounties: Chainlink CRE, Envio,
+  Alchemy, Mera UX, Mera One Passkey Many Keys. The MetaMask Agent Wallet plugin is built too.
+- **Social core**: group chats (league rooms and match rooms) where any message, a "take",
+  can become a market people bet on; an Envio-ranked activity feed; community-run leagues
+  with governance (members propose and vote on gameweeks and featured takes).
 - **Full parity with the Solana build**: markets, bets, parlays, 1v1 matchups, leagues with
   gameweeks, private markets, private leagues, reputation and badges. Never drop a Solana
   feature; improve settlement and UX instead.
@@ -28,8 +31,11 @@ tables, plus real stakes, all with a consumer-first UX.
 ## Product rules (non-negotiable)
 - Football language only: picks, points, challenges, table, record. Never show "wallet", "gas",
   "transaction", "onchain", "token", addresses or hashes in the main flow (advanced settings only).
-- Play before sign-in: visitors make picks first; sign in (email/SMS via Privy) only to save.
-- No signing pop-ups, no pending spinners: sponsored smart wallet, optimistic "Locked in".
+- Play before sign-in: visitors make picks first; one passkey prompt (Mera) only to save.
+- Mera is the entire account layer: no seed phrase, no extension, no email/OTP. Identity must
+  rebuild from the passkey alone on a fresh device (the judges' "stateless test").
+- No signing pop-ups, no pending spinners: Mera signing sessions, gas topped up by the
+  onboarding server, optimistic "Locked in".
 - Errors in plain language (see `friendlyError` in `app/src/lib/terrace.ts`).
 - Design: claret #7A1F3D / sky #8EC5EA / floodlight #F4C542 / chalk #F7F8F5 / ink #1C2433;
   Big Shoulders for numerals and headings, Figtree for body. The striped scarf band appears
