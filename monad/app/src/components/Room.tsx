@@ -11,7 +11,8 @@ const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const usd = (v: string | number) => `$${(Number(v) / 1e6).toFixed(Number(v) % 1e6 ? 2 : 0)}`;
 const ANSWERS = ["", "Came in", "Didn't happen", "Void: stakes back"];
 
-export function MatchRoom({ fixtureId }: { fixtureId: number }) {
+/** A chat room: one per match (anyone) or per league (members). Takes in match rooms can become markets. */
+export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1; roomId: number; fixtureId?: number; canPost?: boolean }) {
   const { status, address, send } = useAccount();
   const [messages, setMessages] = useState<RoomMessage[] | null>(null);
   const [draft, setDraft] = useState("");
@@ -22,14 +23,14 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
 
   const load = useCallback(async () => {
     try {
-      const d = await query<{ Message: RoomMessage[] }>(ROOM_QUERY, { room: `match-${fixtureId}` });
+      const d = await query<{ Message: RoomMessage[] }>(ROOM_QUERY, { room: `${kind === 0 ? "match" : "league"}-${roomId}` });
       setMessages(d.Message);
       setOffline(false);
     } catch {
       setOffline(true);
       setMessages((m) => m ?? []);
     }
-  }, [fixtureId]);
+  }, [kind, roomId]);
 
   useEffect(() => {
     load();
@@ -54,7 +55,7 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
     const text = draft.trim();
     if (!text) return;
     await run("post", async () => {
-      await postMessage(send, 0, BigInt(fixtureId), text);
+      await postMessage(send, kind, BigInt(roomId), text);
       setDraft("");
     });
   }
@@ -88,7 +89,7 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
                   {!mine && !mk && (
                     <button className="btn small" disabled={!!busy} onClick={() => run(`back-${m.id}`, () => backTake(send, BigInt(m.id)))}>Back it</button>
                   )}
-                  {mine && !mk && (
+                  {mine && !mk && fixtureId !== undefined && (
                     <button className="btn small" onClick={() => setListing(m)}>Make it a market</button>
                   )}
                   {mk && open && (
@@ -102,7 +103,7 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
                   )}
                 </div>
               )}
-              {listing?.id === m.id && (
+              {listing?.id === m.id && fixtureId !== undefined && (
                 <TakeSheet messageId={m.id} fixtureId={fixtureId} text={m.text} onDone={() => { setListing(null); load(); }} />
               )}
             </li>
@@ -111,13 +112,15 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
         {messages?.length === 0 && <li className="muted">Quiet so far. Say something worth backing.</li>}
       </ul>
       {error && <p className="error">{error}</p>}
-      {status === "ready" ? (
+      {status === "ready" && !canPost ? (
+        <p className="muted">Join the league to talk here.</p>
+      ) : status === "ready" ? (
         <form className="composer" onSubmit={(e) => { e.preventDefault(); postTake(); }}>
           <input value={draft} maxLength={200} placeholder="Your take… e.g. Haaland scores before the hour" onChange={(e) => setDraft(e.target.value)} />
           <button className="btn small" disabled={busy === "post" || !draft.trim()}>{busy === "post" ? "…" : "Post"}</button>
         </form>
       ) : (
-        <SignIn reason="Join the match chat and back your takes." />
+        <SignIn reason={kind === 0 ? "Join the match chat and back your takes." : "Sign in to join the league chat."} />
       )}
     </section>
   );
