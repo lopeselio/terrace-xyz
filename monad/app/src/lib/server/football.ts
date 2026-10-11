@@ -7,11 +7,19 @@ const cache = new Map<string, { at: number; data: unknown }>();
 export async function football<T>(path: string, ttlMs = 30_000): Promise<T> {
   const hit = cache.get(path);
   if (hit && Date.now() - hit.at < ttlMs) return hit.data as T;
-  const res = await fetch(`${BASE}${path}`, { headers: { "x-apisports-key": process.env.API_FOOTBALL_KEY ?? "" }, cache: "no-store" });
-  if (!res.ok) throw new Error(`football API ${res.status}`);
-  const body = (await res.json()) as { response: T; errors: unknown };
-  cache.set(path, { at: Date.now(), data: body.response });
-  return body.response;
+  try {
+    const res = await fetch(`${BASE}${path}`, { headers: { "x-apisports-key": process.env.API_FOOTBALL_KEY ?? "" }, cache: "no-store" });
+    if (!res.ok) throw new Error(`football API ${res.status}`);
+    const body = (await res.json()) as { response: T; errors: unknown };
+    // Rate limits and outages come back as 200 with `errors` set and an empty response: never cache those.
+    const errors = body.errors && (Array.isArray(body.errors) ? body.errors.length : Object.keys(body.errors).length);
+    if (errors) throw new Error(`football API: ${JSON.stringify(body.errors)}`);
+    cache.set(path, { at: Date.now(), data: body.response });
+    return body.response;
+  } catch (e) {
+    if (hit) return hit.data as T; // serve the last good answer rather than an empty screen
+    throw e;
+  }
 }
 
 export type Team = { id: number; name: string; logo: string };
