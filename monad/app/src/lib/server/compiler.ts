@@ -47,8 +47,8 @@ or you are not sure which player is meant, return null for rule.
 Reply with JSON only: {"rule": Rule | null, "windowStart": number | null}  (windowStart = first minute of the window, if any).`;
 }
 
-async function askGemini(text: string): Promise<string> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL ?? "gemini-2.5-flash"}:generateContent`, {
+async function askGemini(text: string, model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"): Promise<string> {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
     body: JSON.stringify({
@@ -59,6 +59,23 @@ async function askGemini(text: string): Promise<string> {
   if (!res.ok) throw new Error(`gemini ${res.status}`);
   const out = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
   return out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+}
+
+/** Gemini by default, with one retry on a lighter model when rate-limited; Claude when configured. */
+async function ask(text: string): Promise<string> {
+  if (process.env.AI_PROVIDER === "anthropic") return askClaude(text);
+  try {
+    return await askGemini(text);
+  } catch (e) {
+    if (!/gemini (429|5\d\d)/.test((e as Error).message)) throw e;
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      return await askGemini(text, process.env.GEMINI_FALLBACK_MODEL ?? "gemini-2.5-flash-lite");
+    } catch (e2) {
+      if (process.env.ANTHROPIC_API_KEY) return askClaude(text);
+      throw e2;
+    }
+  }
 }
 
 async function askClaude(text: string): Promise<string> {
@@ -97,8 +114,13 @@ export async function compileTake(take: string, fixtureId: number): Promise<Comp
     }
   }
 
-  const ask = process.env.AI_PROVIDER === "anthropic" ? askClaude : askGemini;
-  const raw = await ask(prompt(take, d, players, new Date().toISOString()));
+  // If the model is busy or rate-limited, the take still goes ahead: with no rule, the AI judge settles it.
+  let raw = "{}";
+  try {
+    raw = await ask(prompt(take, d, players, new Date().toISOString()));
+  } catch (e) {
+    console.warn(`take compiler: ${(e as Error).message}; falling back to the AI judge`);
+  }
   let parsed: { rule?: unknown; windowStart?: number | null } = {};
   try {
     parsed = JSON.parse(raw.replace(/^```(json)?|```$/g, "").trim());

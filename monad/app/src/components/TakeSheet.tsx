@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
 import { Badge, Sheet, SheetHead } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -93,10 +94,12 @@ export function TakeSheet({ messageId, fixtureId, text, onDone, onClose }: { mes
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const close = onClose ?? onDone;
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    setCompiled(null);
     compileTake(text, fixtureId).then(setCompiled);
-  }, [text, fixtureId]);
+  }, [text, fixtureId, attempt]);
 
   async function list() {
     if (!compiled || !address) return;
@@ -119,7 +122,12 @@ export function TakeSheet({ messageId, fixtureId, text, onDone, onClose }: { mes
       {!compiled ? (
         <div className="row umeta" style={{ marginTop: 16, gap: 10 }}><span className="spinner" /> Terrace AI is turning your take into a rule…</div>
       ) : compiled.error ? (
-        <p className="error" style={{ marginTop: 16 }}>{compiled.error}</p>
+        <>
+          <p className="error" style={{ marginTop: 16 }}>{compiled.error}</p>
+          <button className="cta cta-ghost cta-sm" style={{ marginTop: 12 }} onClick={() => setAttempt((n) => n + 1)}>
+            <Icon name="refresh" size={16} /> Try again
+          </button>
+        </>
       ) : (
         <>
           <div style={{ marginTop: 14 }}><TakeReading compiled={compiled} /></div>
