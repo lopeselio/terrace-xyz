@@ -78,7 +78,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 8000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 8000);
     return () => clearInterval(t);
   }, [load]);
 

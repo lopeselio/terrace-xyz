@@ -22,7 +22,7 @@ export function useBalance() {
   }, [address]);
   useEffect(() => {
     load();
-    const t = setInterval(load, 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 15_000);
     window.addEventListener("terrace-balance", load);
     return () => {
       clearInterval(t);

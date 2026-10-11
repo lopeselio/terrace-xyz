@@ -44,7 +44,7 @@ export function ChallengeView({ id }: { id: number }) {
   }, [id]);
   useEffect(() => {
     load();
-    const t = setInterval(load, 4000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 4000);
     return () => clearInterval(t);
   }, [load]);
 

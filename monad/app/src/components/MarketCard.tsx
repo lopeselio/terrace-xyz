@@ -56,7 +56,7 @@ export function useOpenMarkets(opts: { flash?: boolean } = {}) {
         .then((l) => alive && (setList(l), setError(false)))
         .catch(() => alive && (setError(true), setList((x) => x ?? [])));
     load();
-    const t = setInterval(load, 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 15_000);
     return () => {
       alive = false;
       clearInterval(t);

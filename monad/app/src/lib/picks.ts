@@ -47,7 +47,7 @@ export function useMatchPrices(fixtureIds: number[]) {
     const ids = key.split(",").map(Number);
     const load = () => standardMarkets(ids).then(setStd).catch(() => {});
     load();
-    const t = setInterval(load, 20_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 20_000);
     return () => clearInterval(t);
   }, [key]);
 

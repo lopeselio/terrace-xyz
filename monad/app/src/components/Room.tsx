@@ -90,7 +90,7 @@ export function Room({
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 2500);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 4000);
     return () => clearInterval(t);
   }, [load]);
 

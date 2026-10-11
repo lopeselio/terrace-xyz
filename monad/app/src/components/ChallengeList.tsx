@@ -64,7 +64,7 @@ export function ChallengeList() {
   }, [me]);
   useEffect(() => {
     load();
-    const t = setInterval(load, 8000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 8000);
     return () => clearInterval(t);
   }, [load]);
 
