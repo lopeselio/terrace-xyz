@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { Icon } from "./Icon";
 import { FINISHED, LIVE } from "./MatchRow";
-import { Badge, Crest, Empty, Odd, SkeletonCards } from "./ui";
+import { Badge, Crest, Empty, Odd, SkeletonCards, LeagueLogo } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useMatchPrices } from "@/lib/picks";
 import { KIND } from "@/lib/social";
@@ -30,7 +30,7 @@ export function FixtureCard({ m, odds, onPick, showDay }: { m: MatchLite; odds: 
     <div className="card">
       <Link href={`/m/${m.id}`} className="match-top card-tap" style={{ color: "var(--ink)" }}>
         <Badge tone="open">{showDay ? `${kickoffDay(m.kickoff)} ${kickoffTime(m.kickoff)}` : kickoffTime(m.kickoff)}</Badge>
-        <span className="match-lg">{m.league ?? "Football"}</span>
+        <LeagueLogo m={m} withName />
         <span style={{ marginLeft: "auto", color: "var(--ink-4)" }}><Icon name="chevronRight" size={16} /></span>
       </Link>
       <Link href={`/m/${m.id}`} className="match-teams" style={{ margin: "10px 0 11px", color: "var(--ink)" }}>

@@ -210,3 +210,16 @@ export function countdown(unix: number, now = Date.now() / 1000) {
   if (h) return `${h}h ${m}m`;
   return `${m}m ${s % 60}s`;
 }
+
+/** A league's logo on a small light tile (league marks are drawn for light backgrounds). */
+export function LeagueLogo({ m, size = 18, withName }: { m?: { league?: string; leagueLogo?: string } | null; size?: number; withName?: boolean }) {
+  if (!m?.leagueLogo) return <span className="match-lg">{m?.league ?? "Football"}</span>;
+  return (
+    <span className="league-logo" title={m.league}>
+      <span className="league-tile" style={{ width: size + 4, height: size + 4 }}>
+        <img src={m.leagueLogo} alt={m.league ?? "League"} width={size} height={size} />
+      </span>
+      {withName && <span className="match-lg">{m.league}</span>}
+    </span>
+  );
+}

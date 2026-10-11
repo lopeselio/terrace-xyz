@@ -29,6 +29,8 @@ export type MatchInfo = {
   status: string; // NS, 1H, HT, 2H, FT...
   elapsed: number | null;
   league: string;
+  leagueId: number;
+  leagueLogo: string;
   home: Team;
   away: Team;
   goals: { home: number | null; away: number | null };
@@ -36,7 +38,7 @@ export type MatchInfo = {
 
 type ApiFixture = {
   fixture: { id: number; date: string; status: { short: string; elapsed: number | null } };
-  league: { id: number; name: string };
+  league: { id: number; name: string; logo: string };
   teams: { home: Team; away: Team };
   goals: { home: number | null; away: number | null };
 };
@@ -79,6 +81,8 @@ export async function matches(ids: readonly (number | bigint)[], ttlMs = 30_000)
             status: f.fixture.status.short,
             elapsed: f.fixture.status.elapsed,
             league: LEAGUE_NAMES[f.league.id] ?? f.league.name,
+            leagueId: f.league.id,
+            leagueLogo: f.league.logo,
             home: { id: f.teams.home.id, name: f.teams.home.name, logo: f.teams.home.logo },
             away: { id: f.teams.away.id, name: f.teams.away.name, logo: f.teams.away.logo },
             goals: f.goals,

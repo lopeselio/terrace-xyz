@@ -9,7 +9,7 @@ import { Icon } from "./Icon";
 import { MarketCard, fixtureOf, marketPick, useOpenMarkets } from "./MarketCard";
 import { FINISHED, LIVE } from "./MatchRow";
 import { SwipeDeck } from "./SwipeDeck";
-import { Empty, Seg, SkeletonCards } from "./ui";
+import { Empty, Seg, SkeletonCards, LeagueLogo } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useMatchPrices } from "@/lib/picks";
 import { useMatches } from "@/lib/useMatches";
@@ -54,6 +54,7 @@ export function Markets() {
   const fixtures = [...matches.values()].sort((a, b) => a.kickoff - b.kickoff);
   const prices = useMatchPrices(fixtures.map((m) => m.id));
   const leagues = [...new Set(fixtures.map((m) => m.league).filter(Boolean))] as string[];
+  const logoOf = (l: string) => fixtures.find((m) => m.league === l);
   const all = list ?? [];
   const shown = all.filter((m) => {
     const match = matches.get(fixtureOf(m));
@@ -66,7 +67,7 @@ export function Markets() {
 
   return (
     <>
-      <Header title="Football" sub={leagues.length ? leagues.join(" · ") : "Every call, every match"} search bell />
+      <Header title="Football" sub={leagues.length ? `${leagues.length} leagues · ${fixtures.length} matches` : "Every call, every match"} search bell />
       <div style={{ padding: "12px var(--gutter) 10px" }}>
         <Seg
           value={view}
@@ -85,10 +86,16 @@ export function Markets() {
         )}
         {leagues.length > 1 &&
           leagues.map((l) => (
-            <button key={l} className={`chip${filter === `league:${l}` ? " on" : ""}`} onClick={() => setFilter(`league:${l}`)}>{l}</button>
+            <button key={l} className={`chip league-chip${filter === `league:${l}` ? " on" : ""}`} aria-label={l} title={l} onClick={() => setFilter(`league:${l}`)}>
+              <LeagueLogo m={logoOf(l)} size={18} />
+            </button>
           ))}
         <Link href="/flash" className="chip"><Icon name="bolt" size={14} /> Flash</Link>
       </div>
+
+      {filter.startsWith("league:") && (
+        <div className="pad" style={{ margin: "8px 0 0" }}><LeagueLogo m={logoOf(filter.slice(7))} withName /></div>
+      )}
 
       {view === "swipe" ? (
         list === null ? (

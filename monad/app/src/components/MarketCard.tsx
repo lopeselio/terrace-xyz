@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Icon } from "./Icon";
 import type { BetPick } from "./BetSheet";
-import { Badge, Crest, Odd, countdown } from "./ui";
+import { Badge, Crest, Odd, countdown, LeagueLogo } from "./ui";
 import type { useAccount } from "@/lib/account";
 import { query } from "@/lib/indexer";
 import { fractional, price } from "@/lib/odds";
@@ -116,7 +116,7 @@ export function MarketCard({ m, match, now, onPick }: { m: OpenMarket; match?: M
     <div className="card">
       <div className="match-top">
         {m.isFlash ? <Badge tone="flash" icon="bolt">Flash</Badge> : <Badge tone="terrace">Terrace</Badge>}
-        <span className="match-lg">{match?.league ?? "Football"}</span>
+        <LeagueLogo m={match} />
         <span className="badge b-settled" style={{ marginLeft: "auto" }}>
           <Icon name="clock" size={12} /> {countdown(close, now)}
         </span>

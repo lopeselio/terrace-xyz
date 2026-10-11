@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { Icon } from "./Icon";
 import { fixtureOf, marketOdds, marketPick, marketTitle, type OpenMarket } from "./MarketCard";
-import { Badge, Crest, Odd, countdown, usd } from "./ui";
+import { Badge, Crest, Odd, countdown, usd, LeagueLogo } from "./ui";
 import { useAccount } from "@/lib/account";
 import type { MatchLite } from "@/lib/useMatches";
 import "@/styles/markets.css";
@@ -246,7 +246,7 @@ function Face({ m, match, now, onSide }: { m: OpenMarket; match?: MatchLite; now
         ) : (
           <Icon name="ball" size={48} />
         )}
-        <div className="match-lg">{match?.league ?? "Football"} · {m.question.kind > 0 ? "Match result" : "Fan take"}</div>
+        <div className="row" style={{ gap: 6 }}><LeagueLogo m={match} withName /><span className="match-lg">· {m.question.kind > 0 ? "Match result" : "Fan take"}</span></div>
       </div>
       <div className="face-call">{marketTitle(m, match)}</div>
       <div className="oddsrow two" style={{ marginTop: 12 }}>
