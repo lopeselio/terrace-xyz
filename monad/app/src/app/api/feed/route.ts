@@ -33,7 +33,7 @@ export async function GET(req: Request) {
       room ? { since, room } : { since },
     );
     const now = Date.now() / 1000;
-    const ranked = data.Message.map((m) => {
+    const ranked = data.Message.filter((m) => !m.text.startsWith("E2E ")).map((m) => {
       const hours = (now - Number(m.postedAt)) / 3600;
       return { ...m, rank: (Number(m.heat) + 1) / Math.pow(hours + 2, 1.5) };
     })

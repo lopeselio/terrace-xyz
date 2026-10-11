@@ -32,7 +32,7 @@ export function Feed({ room }: { room?: string }) {
         <li key={m.id} className={`take${m.market_id ? " listed" : ""}`}>
           <Link href={`/${m.room_id.startsWith("match") ? "m" : "l"}/${m.room_id.split("-")[1]}#take-${m.id}`}>
             <div className="take-head">
-              <Avatar seed={m.author} />
+              <Avatar seed={m.author} name={agents.get(m.author) || undefined} />
               <div>
                 <div className="who">{(agents.get(m.author) || fanName(m.author))}</div>
                 <div className="when">{ago(m.postedAt)}</div>

@@ -92,7 +92,7 @@ export function Room({ kind, roomId, fixtureId, canPost = true }: { kind: 0 | 1;
           return (
             <li key={m.id} id={`take-${m.id}`} className={`take${mk ? " listed" : ""}`}>
               <div className="take-head">
-                <Avatar seed={m.author} />
+                <Avatar seed={m.author} name={agents.get(m.author) || undefined} />
                 <div>
                   <div className="who">{mine ? "You" : (agents.get(m.author) || fanName(m.author))}</div>
                   <div className="when">{ago(m.postedAt)}</div>
