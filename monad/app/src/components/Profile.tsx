@@ -33,7 +33,7 @@ const TIERS = ["Casual", "Sharp", "Legend"];
 
 /** Profile (screen-profile.html): record, balance, Play tiles, and every bet you've got going. */
 export function Profile() {
-  const { status, address, keys, send } = useAccount();
+  const { status, address, keys, send, logout } = useAccount();
   const router = useRouter();
   const params = useSearchParams();
   const matches = useMatches();
@@ -316,6 +316,13 @@ export function Profile() {
         </div>
         <div style={{ height: 20 }} />
       </div>
+      <div className="pad" style={{ margin: "22px 0 8px" }}>
+        <button className="cta cta-ghost cta-sm" onClick={() => { logout(); router.replace("/"); }}>
+          <Icon name="logout" size={16} /> Sign out
+        </button>
+        <div className="umeta" style={{ textAlign: "center", marginTop: 8 }}>Your passkey brings everything back when you sign in again, on any device.</div>
+      </div>
+
       {walletOpen && <WalletSheet inBets={inBets} feesEarned={created.length ? fees : null} onClose={() => router.replace("/me", { scroll: false })} />}
     </>
   );
