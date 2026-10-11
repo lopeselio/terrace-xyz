@@ -14,3 +14,16 @@
 .composer .send { width: 46px; height: 46px; background: var(--green); border-color: var(--green); color: var(--on-green); align-self: center; }
 .composer .send:disabled { background: var(--raised); border-color: var(--line); color: var(--ink-4); }
 .take .settles { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--blue); margin-top: 4px; }
+
+/* Chat: floating "jump to latest" pill above the composer */
+.jump-latest {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 9;
+  bottom: calc(var(--tabbar-h) + 18px + var(--safe-b) + 74px);
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: var(--r-pill);
+  background: rgba(26, 26, 26, 0.92); border: 1px solid var(--line); color: var(--ink);
+  font-size: 12.5px; font-weight: 700; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  animation: jumpin 0.24s var(--ease) both;
+}
+.jump-latest.fresh { background: var(--green); border-color: var(--green); color: var(--on-green); }
+@keyframes jumpin { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }

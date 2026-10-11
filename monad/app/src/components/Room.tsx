@@ -56,6 +56,12 @@ export function Room({
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const scrolled = useRef(false);
+  // Chat-style scrolling: open at the latest, follow new takes while you're at the bottom,
+  // otherwise offer a "jump to latest" pill.
+  const atBottom = useRef(true);
+  const seen = useRef(0);
+  const [away, setAway] = useState(false);
+  const [unseen, setUnseen] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +87,45 @@ export function Room({
     document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center" });
   }, [messages]);
 
+  const toLatest = useCallback((smooth = true) => {
+    const glide = smooth && document.visibilityState === "visible" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: glide ? "smooth" : "auto" });
+    setUnseen(0);
+  }, []);
+
+  useEffect(() => {
+    if (view !== "all") return;
+    const onScroll = () => {
+      const near = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 240;
+      atBottom.current = near;
+      setAway(!near && window.scrollY > 200);
+      if (near) setUnseen(0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "all" || !messages) return;
+    const count = messages.length;
+    const fresh = count - seen.current;
+    const first = seen.current === 0;
+    seen.current = count;
+    if (!count || fresh <= 0) return;
+    if (first) {
+      if (!window.location.hash.startsWith("#take-")) requestAnimationFrame(() => toLatest(false));
+    } else if (atBottom.current) {
+      requestAnimationFrame(() => toLatest(true));
+    } else {
+      setUnseen((n) => n + fresh);
+    }
+  }, [messages, view, toLatest]);
+
   async function run(key: string, fn: () => Promise<unknown>) {
     setBusy(key);
     setError(null);
@@ -100,6 +145,7 @@ export function Room({
     await run("post", async () => {
       await postMessage(send, kind, BigInt(roomId), text);
       setDraft("");
+      atBottom.current = true; // your own take: always show it
     });
   }
 
@@ -260,6 +306,12 @@ export function Room({
         ) : (
           <SignIn reason={kind === 0 ? "Join the match chat and back your takes." : "Sign in to join the league chat."} />
         ))}
+
+      {view === "all" && (away || unseen > 0) && (
+        <button className={`jump-latest${unseen ? " fresh" : ""}`} onClick={() => toLatest(true)}>
+          <Icon name="arrowDown" size={14} /> {unseen ? `${unseen} new take${unseen > 1 ? "s" : ""}` : "Latest"}
+        </button>
+      )}
 
       {betPick && <BetSheet pick={betPick} onClose={() => setBetPick(null)} onPlaced={load} />}
     </section>
