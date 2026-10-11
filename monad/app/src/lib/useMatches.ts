@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export type MatchLite = { id: number; kickoff: number; status: string; home: { name: string; logo: string }; away: { name: string; logo: string } };
+export type MatchLite = { id: number; kickoff: number; status: string; elapsed?: number | null; home: { name: string; logo: string }; away: { name: string; logo: string }; goals?: { home: number | null; away: number | null } };
 
 /** Match names and crests for labelling questions (shared, fetched once per page). */
 export function useMatches() {
