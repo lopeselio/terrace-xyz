@@ -37,7 +37,7 @@ export function backTake(send: Send, messageId: bigint) {
 export async function listTake(
   send: Send,
   owner: Address,
-  t: { messageId: bigint; fixtureId: bigint; closeTime: number; text: string; spec: string; money: Money; dollars: number },
+  t: { messageId: bigint; fixtureId: bigint; closeTime: number; text: string; spec: string; money: Money; dollars: number; feeBps?: number },
 ) {
   const token = tokenOf(t.money);
   const stake = toUnits(t.dollars);
@@ -46,7 +46,7 @@ export async function listTake(
     address: ADDR.markets,
     abi: marketsAbi,
     functionName: "createTakeMarket",
-    args: [t.messageId, t.fixtureId, BigInt(t.closeTime), t.text, t.spec ? stringToHex(t.spec) : "0x", token, 300, YES, stake],
+    args: [t.messageId, t.fixtureId, BigInt(t.closeTime), t.text, t.spec ? stringToHex(t.spec) : "0x", token, t.feeBps ?? 300, YES, stake],
     dollars: t.dollars,
   });
 }

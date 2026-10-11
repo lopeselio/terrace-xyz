@@ -1,0 +1,16 @@
+/* Match detail, match markets and the chat room (handoff screen-detail). */
+.match-hero { border-color: var(--line); }
+.mh-team { width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.mh-team .umeta { color: var(--ink); margin: 0; font-weight: 600; }
+.mh-mid { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px; }
+.mh-score { font-family: var(--cond); font-size: 34px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.mm-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.mm-actions .chip { color: var(--ink); }
+.mm-actions .chip.on { color: var(--green); }
+
+.room .chat { margin-bottom: 4px; }
+.room .take .actions .btn-out { height: 32px; font-size: 12.5px; padding: 0 12px; }
+.room .take .actions .btn-out:disabled { opacity: 0.5; }
+.composer .send { width: 46px; height: 46px; background: var(--green); border-color: var(--green); color: var(--on-green); align-self: center; }
+.composer .send:disabled { background: var(--raised); border-color: var(--line); color: var(--ink-4); }
+.take .settles { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--blue); margin-top: 4px; }
