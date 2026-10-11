@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
+import { NotificationsSheet, useNotifications } from "./Notifications";
 import { TerraceMark } from "./TerraceMark";
 import { money } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -52,10 +53,37 @@ export function Header({
         {children}
         {search && <Link href="/markets" className="iconbtn" aria-label="Search markets"><Icon name="search" /></Link>}
         {share && <button className="iconbtn" aria-label="Share" onClick={share}><Icon name="share" /></button>}
-        {bell && <Link href="/social" className="iconbtn" aria-label="What your mates are doing"><Icon name="bell" /><span className="dot" /></Link>}
+        {bell && <Bell />}
         {balance && <BalancePill />}
       </div>
     </header>
+  );
+}
+
+function Bell() {
+  const { status } = useAccount();
+  const { notes, unread, markSeen, seenAt } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const [lastSeen, setLastSeen] = useState(0);
+  if (status !== "ready") {
+    return <Link href="/social" className="iconbtn" aria-label="What fans are doing"><Icon name="bell" /></Link>;
+  }
+  return (
+    <>
+      <button
+        className="iconbtn"
+        aria-label={unread ? `${unread} new notifications` : "Notifications"}
+        onClick={() => {
+          setLastSeen(seenAt); // highlight what was new when the panel opened
+          setOpen(true);
+          markSeen();
+        }}
+      >
+        <Icon name="bell" />
+        {unread > 0 && <span className="dot" />}
+      </button>
+      {open && <NotificationsSheet notes={notes} seenAt={lastSeen} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
