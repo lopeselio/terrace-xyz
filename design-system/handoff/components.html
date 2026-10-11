@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="utf-8" />
+<title>Terrace — Components</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body{padding:28px 24px;max-width:480px}
+  h2{font-family:var(--cond);font-size:13px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-3);margin:28px 0 12px}
+  h2:first-child{margin-top:0}
+  .note{font-size:11.5px;color:var(--ink-4);margin-top:7px}
+  .bar{position:relative;border:1px solid var(--line-hair);border-radius:var(--r-md);overflow:hidden}
+</style>
+</head>
+<body>
+<h2>Odds button — the one control everything resolves to</h2>
+<div class="oddsrow" id="o1"></div>
+<div class="oddsrow" style="margin-top:8px" id="o2"></div>
+<div class="oddsrow two" style="margin-top:8px" id="o3"></div>
+<div class="note">Fractional odds in Barlow Condensed. Green tint = back, red tint = fade, filled border = selected.</div>
+
+<h2>Segmented control</h2>
+<div class="seg" id="sg1"></div>
+<div class="seg sub" style="margin-top:8px"><button class="on">Match result</button><button>Goals</button><button>Flash</button></div>
+
+<h2>Filter chips</h2>
+<div style="display:flex;gap:7px;flex-wrap:wrap" id="ch"></div>
+
+<h2>Badges</h2>
+<div style="display:flex;gap:7px;flex-wrap:wrap" id="bd"></div>
+
+<h2>Crests — real badge with coloured-initials fallback</h2>
+<div style="display:flex;gap:9px;align-items:center" id="cr"></div>
+
+<h2>Match card</h2>
+<div id="mc"></div>
+
+<h2>Fan row</h2>
+<div class="card" id="fr" style="padding:4px 14px"></div>
+
+<h2>Bet slip bar</h2>
+<div class="bar" style="height:78px;background:var(--canvas)"><button class="slipbar" style="bottom:14px"></button></div>
+<h2>Tab bar — line icons, active pill, raised create</h2>
+<div class="bar" id="tb" style="background:var(--canvas)"></div>
+
+<h2>Switch · loaders</h2>
+<div style="display:flex;gap:16px;align-items:center">
+  <div class="switch"><i></i></div><div class="switch on"><i></i></div>
+  <div class="spinner"></div>
+  <div style="flex:1"><div class="sk" style="height:12px;width:70%"></div><div class="sk" style="height:12px;width:45%;margin-top:7px"></div></div>
+</div>
+
+<script src="icons.js"></script>
+<script src="screens.js"></script>
+<script src="screens2.js"></script>
+<script>
+document.getElementById('o1').innerHTML = odd('Home','4/9','up')+odd('Draw','7/2')+odd('Away','6/1');
+document.getElementById('o2').innerHTML = odd('Home','4/9','on')+odd('Draw','7/2')+odd('Away','6/1','')
+document.getElementById('o3').innerHTML = odd('Back · yes','8/13','odd-yes')+odd('Fade · no','5/4','odd-no');
+document.getElementById('sg1').innerHTML = '<button class="on">'+ic('list','i-16')+' List</button><button>'+ic('cards','i-16')+' Swipe</button>';
+document.getElementById('ch').innerHTML = ['<button class="chip on">All</button>','<button class="chip">'+ic('flame','i-14')+' Live</button>','<button class="chip">Premier League <span class="ct">42</span></button>','<button class="chip">Champions League <span class="ct">18</span></button>'].join('');
+document.getElementById('bd').innerHTML = ['<span class="badge b-live"><i class="livedot"></i>LIVE</span>','<span class="badge b-min">67\'</span>','<span class="badge b-open">Open</span>','<span class="badge b-flash">'+ic('bolt','i-14')+' Flash</span>','<span class="badge b-private">'+ic('lock','i-14')+' Private</span>','<span class="badge b-settled">Settled</span>','<span class="badge b-terrace">Terrace</span>','<span class="badge b-poly">Polymarket</span>','<span class="badge b-won">Won</span>','<span class="badge b-lost">Lost</span>'].join('');
+document.getElementById('cr').innerHTML = crest('ARS')+crest('CHE')+crest('LIV','crest-lg')+crest('RMA','crest-lg')+crest('BAY');
+document.getElementById('mc').innerHTML = marketCard('ARS','CHE','Premier League','Arsenal to win',['8/13','5/4'],'Terrace','2h 14m');
+document.getElementById('fr').innerHTML = fanRow('JB','#166534','jamie.b','78% win rate · 46 bets','follow')+fanRow('AT','#4c1d95','arsenal_tom','71% win rate · 132 bets','following');
+document.querySelector('.slipbar').innerHTML = '<span class="n">1</span><b>Both teams to score · Yes</b><span class="rt">4/6 '+ic('chevronRight','i-16')+'</span>';
+document.getElementById('tb').innerHTML = tabbar('markets');
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terrace — Prototype</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="deskbg">
+<div class="phone" id="phone">
+  <div class="statusbar"><span>9:41</span><div class="sbr"><span style="font-weight:700">100%</span></div></div>
+  <div id="stage" style="flex:1;position:relative;min-height:0;display:flex;flex-direction:column"></div>
+  <div id="overlay"></div>
+</div>
+<div style="max-width:250px;color:#6b7280;font-family:Barlow,sans-serif;font-size:12.5px;line-height:1.7;padding:8px 0 0 26px">
+  <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#4b5563;margin-bottom:10px">Try it</div>
+  Tap the <b style="color:#9ca3af">bottom tabs</b> — each switch shows skeletons for 380ms, then cross-fades in.<br><br>
+  <b style="color:#9ca3af">Markets → Swipe</b>: drag the card, or use the buttons. Right backs, left fades, both open the bet slip.<br><br>
+  Any <b style="color:#9ca3af">match card</b> opens the match screen; the green slip bar opens the bet sheet.<br><br>
+  <b style="color:#9ca3af">Profile → Wallet &amp; payouts</b> is where the address and network details live — nowhere else.
+</div>
+<script src="icons.js"></script>
+<script src="screens.js"></script>
+<script src="screens2.js"></script>
+<script src="screens3.js"></script>
+<script>
+const stage = document.getElementById('stage'), overlay = document.getElementById('overlay');
+const TABS = ['home','markets','create','social','profile'];
+let current = null, busy = false;
+
+function paint(html, animate){
+  stage.innerHTML = '<div class="view'+(animate?' enter':'')+'">'+html+'</div>';
+}
+function tabOf(name){
+  if(name==='markets-swipe'||name==='detail'||name==='flash') return 'markets';
+  if(name==='leagues'||name==='league-detail'||name==='league-create'||name==='league-join'||
+     name==='matchups'||name==='matchups-active'||name==='matchups-inbox'||name==='parlay') return 'profile';
+  return TABS.includes(name) ? name : 'home';
+}
+function go(name, opts){
+  opts = opts || {};
+  if(busy || name===current) return;
+  const skeleton = opts.skeleton !== false && tabOf(name) !== tabOf(current||'');
+  closeSheet();
+  if(skeleton){
+    busy = true;
+    paint(SCREENS.__skeleton(tabOf(name)), false);
+    setTimeout(()=>{ busy = false; current = name; paint(SCREENS[name](), true); wire(); }, 380);
+  } else {
+    current = name; paint(SCREENS[name](), true); wire();
+  }
+}
+function openSheet(kind, sel){
+  if(!kind){ closeSheet(); return; }
+  overlay.innerHTML = SCREENS['__sheet_'+kind](sel);
+  const s = overlay.querySelector('.sheet');
+  s.style.transform='translateY(24px)'; s.style.opacity='0';
+  requestAnimationFrame(()=>{ s.style.transition='transform .3s cubic-bezier(.22,1,.36,1),opacity .2s'; s.style.transform='none'; s.style.opacity='1'; });
+}
+function closeSheet(){ overlay.innerHTML=''; }
+
+document.addEventListener('click', e=>{
+  const sheetEl = e.target.closest('[data-sheet]');
+  if(sheetEl){ const k = sheetEl.getAttribute('data-sheet'); const g = sheetEl.getAttribute('data-goto'); if(g){ closeSheet(); go(g); } else { openSheet(k); } return; }
+  const g = e.target.closest('[data-goto]');
+  if(g){ go(g.getAttribute('data-goto')); return; }
+  const sw = e.target.closest('[data-swipe]');
+  if(sw){ fling(sw.getAttribute('data-swipe')); return; }
+  const o = e.target.closest('.odd:not([disabled])');
+  if(o && !o.classList.contains('on')){ o.closest('.oddsrow').querySelectorAll('.odd').forEach(x=>x.classList.remove('on')); o.classList.add('on'); }
+});
+
+/* ── swipe deck gestures ─────────────────────────────────────────────── */
+let drag = null;
+function wire(){
+  const card = document.getElementById('topcard');
+  if(!card) return;
+  const stamps = { yes: card.querySelector('.stamp.y'), no: card.querySelector('.stamp.n') };
+  const start = e=>{
+    const p = e.touches ? e.touches[0] : e;
+    drag = { x:p.clientX, y:p.clientY, card, stamps };
+    card.style.transition='none';
+  };
+  card.addEventListener('mousedown', start);
+  card.addEventListener('touchstart', start, {passive:true});
+}
+document.addEventListener('mousemove', move); document.addEventListener('touchmove', move, {passive:true});
+function move(e){
+  if(!drag) return;
+  const p = e.touches ? e.touches[0] : e;
+  const dx = p.clientX - drag.x, dy = p.clientY - drag.y;
+  drag.dx = dx; drag.dy = dy;
+  drag.card.style.transform = 'translate('+dx+'px,'+dy+'px) rotate('+Math.max(-12,Math.min(12,dx/20))+'deg)';
+  const t = Math.min(1, Math.abs(dx)/110);
+  drag.stamps.yes.style.opacity = dx>0 ? t : 0;
+  drag.stamps.no.style.opacity  = dx<0 ? t : 0;
+}
+document.addEventListener('mouseup', end); document.addEventListener('touchend', end);
+function end(){
+  if(!drag) return;
+  const d = drag; drag = null;
+  const dx = d.dx || 0;
+  d.card.style.transition = 'transform .24s cubic-bezier(.22,1,.36,1),opacity .24s';
+  if(Math.abs(dx) > 105){ exit(d.card, dx>0?'yes':'no'); }
+  else { d.card.style.transform='none'; d.stamps.yes.style.opacity=0; d.stamps.no.style.opacity=0; }
+}
+function fling(kind){
+  const card = document.getElementById('topcard'); if(!card) return;
+  const stamp = card.querySelector(kind==='yes'?'.stamp.y':'.stamp.n');
+  if(stamp) stamp.style.opacity = 1;
+  card.style.transition='transform .24s cubic-bezier(.22,1,.36,1),opacity .24s';
+  exit(card, kind);
+}
+function exit(card, kind){
+  const dir = kind==='yes' ? 1 : kind==='no' ? -1 : 0;
+  card.style.transform = dir ? 'translate('+(dir*460)+'px,-40px) rotate('+(dir*18)+'deg)' : 'translateY(460px)';
+  card.style.opacity = 0;
+  setTimeout(()=>{
+    closeSheet(); current='markets-swipe'; paint(SCREENS['markets-swipe'](), false); wire();
+    if(kind==='yes') openSheet('bet', {market:'Arsenal v Chelsea · Match result', side:'Yes', odds:'8/13', returns:'£32.31'});
+    if(kind==='no')  openSheet('bet', {market:'Arsenal v Chelsea · Match result', side:'No', odds:'5/4', returns:'£45.00'});
+  }, 230);
+}
+
+/* cold start: branded splash → home */
+stage.innerHTML = '<div class="view">'+SCREENS.__splash()+'</div>';
+setTimeout(()=>{ current='onboarding'; paint(SCREENS.onboarding(), true); }, 1100);
+</script>
+</body>
+</html>

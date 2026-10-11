@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="utf-8" />
+<title>Terrace — Foundations</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body{padding:34px 36px;max-width:900px}
+  h2{font-family:var(--cond);font-size:13px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-3);margin:34px 0 14px}
+  h2:first-child{margin-top:0}
+  .sw{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .swatch{border-radius:var(--r-md);border:1px solid var(--line);overflow:hidden}
+  .swatch .chip2{height:62px}
+  .swatch .meta{padding:8px 10px;background:var(--surface)}
+  .swatch .nm{font-size:12px;font-weight:600}
+  .swatch .hex{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .icons{display:grid;grid-template-columns:repeat(9,1fr);gap:12px}
+  .ibox{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-md);padding:12px 6px;text-align:center;color:var(--ink)}
+  .ibox .nm{font-size:9.5px;color:var(--ink-4);margin-top:7px;word-break:break-all}
+  .ibox svg{margin:0 auto}
+  .tr{display:flex;align-items:baseline;gap:16px;padding:11px 0;border-bottom:1px solid var(--line-hair)}
+  .tr .sp{font-size:10.5px;color:var(--ink-4);width:180px;flex:none;font-variant-numeric:tabular-nums}
+  .scale{display:flex;gap:8px;align-items:flex-end}
+  .scale div{background:var(--green-deep);border:1px solid #14532d;border-radius:6px;color:var(--green-ink);font-size:10px;font-weight:700;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+</style>
+</head>
+<body>
+<h2>Canvas &amp; lines</h2>
+<div class="sw" id="s1"></div>
+<h2>Conviction — green backs, red fades</h2>
+<div class="sw" id="s2"></div>
+<h2>Signals</h2>
+<div class="sw" id="s3"></div>
+<h2>Ink</h2>
+<div class="sw" id="s4"></div>
+
+<h2>Type — Barlow Condensed for numbers, Barlow for prose</h2>
+<div class="tr"><span class="sp">Cond 46 / 800 / -.5 / upper</span><span style="font-family:var(--cond);font-size:46px;font-weight:800;text-transform:uppercase;letter-spacing:-.5px;line-height:1">Back your take.</span></div>
+<div class="tr"><span class="sp">Cond 26 / 700 / upper</span><span style="font-family:var(--cond);font-size:26px;font-weight:700;text-transform:uppercase">Arsenal to win</span></div>
+<div class="tr"><span class="sp">Cond 19 / 700 — odds</span><span style="font-family:var(--cond);font-size:19px;font-weight:700">8/13 · 4/9 · 11/4 · 2–0 · 67'</span></div>
+<div class="tr"><span class="sp">Cond 17 / 700 / 1.4 — section</span><span style="font-family:var(--cond);font-size:17px;font-weight:700;letter-spacing:.6px;text-transform:uppercase">In-play now</span></div>
+<div class="tr"><span class="sp">Sans 14.5 / 600 — title</span><span style="font-size:14.5px;font-weight:600">Both teams to score</span></div>
+<div class="tr"><span class="sp">Sans 13.5 / 400 — body</span><span style="font-size:13.5px;color:var(--ink-2)">Football calls with your mates. Real odds, instant payouts.</span></div>
+<div class="tr"><span class="sp">Sans 11.5 / 500 — meta</span><span style="font-size:11.5px;color:var(--ink-3)">Premier League · Sun 16:30</span></div>
+<div class="tr"><span class="sp">Sans 10 / 700 / 1.2 caps — eyebrow</span><span class="eyebrow">Available balance</span></div>
+
+<h2>Spacing — 4 based, 16 gutter</h2>
+<div class="scale">
+  <div style="width:4px;height:26px"></div><div style="width:8px;height:34px">8</div><div style="width:12px;height:42px">12</div>
+  <div style="width:16px;height:50px">16</div><div style="width:24px;height:58px">24</div><div style="width:32px;height:66px">32</div>
+</div>
+
+<h2>Radii</h2>
+<div class="scale" style="align-items:center">
+  <div style="width:56px;height:56px;border-radius:8px;align-items:center">8</div>
+  <div style="width:56px;height:56px;border-radius:10px;align-items:center">10</div>
+  <div style="width:56px;height:56px;border-radius:14px;align-items:center">14</div>
+  <div style="width:56px;height:56px;border-radius:18px;align-items:center">18</div>
+  <div style="width:56px;height:56px;border-radius:24px;align-items:center">24</div>
+  <div style="width:56px;height:56px;border-radius:999px;align-items:center">pill</div>
+</div>
+
+<h2>Icons — 24 grid, 1.75 stroke, currentColor. Emoji are banned.</h2>
+<div class="icons" id="ic"></div>
+
+<script src="icons.js"></script>
+<script>
+const groups = {
+  s1:[['Canvas','#0a0a0a'],['Surface','#111111'],['Raised','#1a1a1a'],['Line','#262626']],
+  s2:[['Green · back','#22c55e'],['Green ink','#4ade80'],['Green deep','#052e16'],['Red · fade','#ef4444'],['Red ink','#f87171'],['Red deep','#3b0a0a'],['Red mid','#450a0a'],['Green mid','#14532d']],
+  s3:[['Amber · urgency','#f59e0b'],['Amber ink','#fbbf24'],['Violet · private','#a78bfa'],['Blue · source','#60a5fa']],
+  s4:[['Ink','#f9fafb'],['Ink 2','#9ca3af'],['Ink 3','#6b7280'],['Ink 4','#4b5563']]
+};
+for (const [id, list] of Object.entries(groups))
+  document.getElementById(id).innerHTML = list.map(([n,h])=>`<div class="swatch"><div class="chip2" style="background:${h}"></div><div class="meta"><div class="nm">${n}</div><div class="hex">${h}</div></div></div>`).join('');
+document.getElementById('ic').innerHTML = Object.keys(TERRACE_ICONS).map(n=>`<div class="ibox">${ic(n,'i-22')}<div class="nm">${n}</div></div>`).join('');
+</script>
+</body>
+</html>
