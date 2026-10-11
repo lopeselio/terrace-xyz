@@ -3,6 +3,7 @@ import { Barlow, Barlow_Condensed } from "next/font/google";
 import { TerraceMark } from "@/components/TerraceMark";
 import { Onboarding } from "@/components/Onboarding";
 import { OutcomePopup } from "@/components/OutcomePopup";
+import { PointsToast } from "@/components/PointsToast";
 import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TabBar />
           <Onboarding />
           <OutcomePopup />
+          <PointsToast />
         </Providers>
       </body>
     </html>

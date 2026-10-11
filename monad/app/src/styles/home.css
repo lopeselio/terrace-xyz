@@ -3,3 +3,7 @@
 .chiprow.inplay .live-card { min-width: 262px; max-width: 262px; flex: none; scroll-snap-align: start; margin-top: 0; }
 .chiprow.inplay .live-card + .live-card { margin-top: 0; }
 .chiprow.inplay::after { content: ""; flex: 0 0 1px; }
+
+/* Founding fans banner */
+.points-banner { display: flex; align-items: center; gap: 12px; width: 100%; border-color: #4a3410; background: linear-gradient(90deg, #1c1407, #0f0f0f); color: var(--ink); }
+.points-banner .points-coin { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--amber-deep); border: 1.5px solid var(--amber); color: var(--amber-ink); flex: none; }

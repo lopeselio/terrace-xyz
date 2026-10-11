@@ -1,2 +1,6 @@
 /* Profile (screen-profile.html) — everything else comes from the shared system. */
 .agent-card { border-color: #3b2d6b; background: linear-gradient(180deg, #160f28, #0f0f0f); margin-top: 10px; }
+
+/* Terrace Points card */
+.points-card { display: block; width: 100%; border-color: #4a3410; background: linear-gradient(180deg, #1c1407, #0f0f0f 80%); }
+.points-coin { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--amber-deep); border: 1.5px solid var(--amber); color: var(--amber-ink); flex: none; }

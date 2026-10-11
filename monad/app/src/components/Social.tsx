@@ -11,6 +11,7 @@ import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { useFollows } from "@/lib/follows";
 import { query } from "@/lib/indexer";
+import { points } from "@/lib/terracePoints";
 import { questionLabel, sideLabel } from "@/lib/labels";
 import { fractional, price } from "@/lib/odds";
 import { bet } from "@/lib/play";
@@ -44,6 +45,8 @@ export function Social() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [sides, setSides] = useState<Map<string, number>>(new Map());
   const [fans, setFans] = useState<Fan[]>([]);
+  const [ranked, setRanked] = useState<{ id: string; terracePoints: string; dayStreak: number }[] | null>(null);
+  const [board, setBoard] = useState<"points" | "winrate">("points");
   const [pick, setPick] = useState<BetPick | null>(null);
   const me = address?.toLowerCase();
 
@@ -60,6 +63,9 @@ export function Social() {
         { kinds: KINDS },
       );
       const list = d.FeedItem.filter((i) => !i.market?.question.text.startsWith("E2E "));
+      query<{ Player: { id: string; terracePoints: string; dayStreak: number }[] }>(
+        `{ Player(where: { terracePoints: { _gt: "0" }, isAgent: { _eq: false } }, order_by: { terracePoints: desc }, limit: 30) { id terracePoints dayStreak } }`,
+      ).then((x) => setRanked(x.Player)).catch(() => setRanked(null));
       setItems(list);
       setFans(d.Player);
       const ids = list.filter((i) => i.kind === "BET" && i.market).map((i) => `${i.market!.id}-${i.actor}`);
@@ -73,7 +79,7 @@ export function Social() {
   }, []);
   useEffect(() => {
     load();
-    const t = setInterval(load, 8000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 8000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -149,7 +155,32 @@ export function Social() {
 
         {tab === "leaderboard" && (
           <>
-            <div className="eyebrow" style={{ margin: "4px 0 8px" }}>Top fans · points</div>
+            {ranked && ranked.length > 0 && (
+              <div style={{ margin: "4px 0 10px" }}>
+                <Seg sub options={[{ id: "points", label: "Terrace Points" }, { id: "winrate", label: "Win rate" }]} value={board} onChange={setBoard} />
+              </div>
+            )}
+            {board === "points" && ranked && ranked.length > 0 ? (
+              <>
+                <div className="eyebrow amber" style={{ margin: "4px 0 8px" }}>Founding fans · Terrace Points</div>
+                <div className="card rowlist" style={{ padding: "4px 14px" }}>
+                  {ranked.map((f, n) => (
+                    <div key={f.id} className={`listrow${f.id === me ? " lb-me" : ""}`}>
+                      <span className={`lb-rank${n < 3 ? ` p${n + 1}` : ""}`}>{n + 1}</span>
+                      <Avatar seed={f.id} size={34} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="uname" style={f.id === me ? { color: "var(--green)" } : undefined}>{name(f.id)}</div>
+                        <div className="umeta">{f.dayStreak > 1 ? `${f.dayStreak}-day run` : "Early fan"}</div>
+                      </div>
+                      <div className="lb-rate amber">{points(f.terracePoints)}<small>POINTS</small></div>
+                      {f.id !== me && <FollowButton who={f.id} />}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+            <>
+            <div className="eyebrow" style={{ margin: "4px 0 8px" }}>Top fans · win rate</div>
             <div className="card rowlist" style={{ padding: "4px 14px" }}>
               {fans.map((f, n) => (
                 <div key={f.id} className={`listrow${f.id === me ? " lb-me" : ""}`}>
@@ -167,6 +198,8 @@ export function Social() {
               ))}
               {fans.length === 0 && <div className="listrow umeta">No settled calls yet. The first results land after today&apos;s matches.</div>}
             </div>
+            </>
+            )}
             <Link href="/leagues" className="card card-tap row" style={{ marginTop: 12 }}>
               <Icon name="trophy" size={22} />
               <div style={{ flex: 1 }}><div className="uname">Private leagues</div><div className="umeta">Your mates, one table</div></div>

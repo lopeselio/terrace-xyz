@@ -11,6 +11,8 @@ import { fixtureOf, marketOdds, marketPick, marketTitle, useOpenMarkets, type Op
 import { FINISHED, LIVE } from "./MatchRow";
 import { Avatar, Badge, Odd, SectionHead, SkeletonCards, Tile, ago, countdown, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
+import { foundingFans } from "@/lib/terracePoints";
+import { PointsSheet } from "./PointsSheet";
 import { useAgents } from "@/lib/agents";
 import { query } from "@/lib/indexer";
 import { useMatchPrices } from "@/lib/picks";
@@ -26,6 +28,7 @@ export function Home() {
   const all = [...matches.values()].sort((a, b) => a.kickoff - b.kickoff);
   const prices = useMatchPrices(all.map((m) => m.id));
   const [pick, setPick] = useState<BetPick | null>(null);
+  const [pointsOpen, setPointsOpen] = useState(false);
   const [now, setNow] = useState(Date.now() / 1000);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now() / 1000), 1000);
@@ -69,6 +72,20 @@ export function Home() {
       <FlashTeaser matches={matches} now={now} onPick={(m, side) => setPick(marketPick(m, matches.get(fixtureOf(m)), side, send, owner))} />
       <FansBacking matches={matches} onCopy={setPick} send={send} owner={owner} />
       <YourLeague />
+
+      {foundingFans() && (
+        <div className="sec">
+          <button className="card points-banner" onClick={() => setPointsOpen(true)}>
+            <span className="points-coin"><Icon name="bolt" size={20} /></span>
+            <span style={{ flex: 1, textAlign: "left" }}>
+              <span className="uname" style={{ display: "block" }}>Founding fans earn double Terrace Points</span>
+              <span className="umeta">Bet, post takes, start leagues, bring your mates. Until 1 November.</span>
+            </span>
+            <Icon name="chevronRight" size={16} />
+          </button>
+        </div>
+      )}
+      {pointsOpen && <PointsSheet address={address} onClose={() => setPointsOpen(false)} />}
 
       <div className="sec" style={{ paddingBottom: 18 }}>
         <div className="stats four">
@@ -139,7 +156,7 @@ function FansBacking({ matches, onCopy, send, owner }: { matches: Map<number, Ma
       }
     };
     load();
-    const t = setInterval(load, 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 15_000);
     return () => {
       alive = false;
       clearInterval(t);

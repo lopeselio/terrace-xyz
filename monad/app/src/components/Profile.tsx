@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
+import { PointsSheet } from "./PointsSheet";
+import { foundingFans, points } from "@/lib/terracePoints";
 import { OnboardingPanel } from "./Onboarding";
 import { WalletSheet } from "./WalletSheet";
 import { Avatar, Badge, Empty, Seg, Tile, fanName, handle, money, usd } from "./ui";
@@ -38,6 +40,8 @@ export function Profile() {
   const { follows } = useFollows();
   const { balance } = useBalance();
   const [p, setP] = useState<Player | null>(null);
+  const [pointsOpen, setPointsOpen] = useState(false);
+  const [tp, setTp] = useState<{ terracePoints: string; dayStreak: number; invitesLanded: number } | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [accas, setAccas] = useState<Acca[]>([]);
   const [duels, setDuels] = useState<Duel[]>([]);
@@ -65,6 +69,10 @@ export function Profile() {
     )
       .then((d) => {
         setP(d.Player_by_pk);
+        query<{ Player_by_pk: { terracePoints: string; dayStreak: number; invitesLanded: number } | null }>(
+          `query TP($me: String!) { Player_by_pk(id: $me) { terracePoints dayStreak invitesLanded } }`,
+          { me: address.toLowerCase() },
+        ).then((x) => setTp(x.Player_by_pk)).catch(() => {});
         setBets(d.Bet.filter((b) => !b.market.question.text.startsWith("E2E ")).reverse());
         setAccas(d.Parlay);
         setDuels(d.Matchup);
@@ -75,7 +83,7 @@ export function Profile() {
   }, [address]);
   useEffect(() => {
     load();
-    const t = setInterval(load, 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 15_000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -169,6 +177,22 @@ export function Profile() {
           <div className="stat"><div className="v red">{losses}</div><div className="k">Lost</div></div>
           <div className="stat"><div className={`v${pnl < 0 ? " red" : ""}`}>{pnl >= 0 ? "+" : "−"}{usd(Math.abs(pnl))}</div><div className="k">Profit</div></div>
         </div>
+
+        <button className="card points-card" style={{ marginTop: 10 }} onClick={() => setPointsOpen(true)}>
+          <div className="row">
+            <span className="points-coin"><Icon name="bolt" size={20} /></span>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div className="eyebrow amber">Terrace Points{foundingFans() && " · founding fan 2×"}</div>
+              <div className="cond" style={{ fontSize: 30, lineHeight: 1.1 }}>{points(tp?.terracePoints ?? 0)}</div>
+              <div className="umeta">
+                {tp?.dayStreak ? `${tp.dayStreak}-day run` : "Play today to start a run"}
+                {tp?.invitesLanded ? ` · ${tp.invitesLanded} fan${tp.invitesLanded > 1 ? "s" : ""} brought in` : ""}
+              </div>
+            </div>
+            <span className="textbtn amber">How to earn ›</span>
+          </div>
+        </button>
+        {pointsOpen && <PointsSheet address={address} total={tp?.terracePoints ?? 0} onClose={() => setPointsOpen(false)} />}
 
         <div className="card" style={{ marginTop: 10 }}>
           <div className="row">
