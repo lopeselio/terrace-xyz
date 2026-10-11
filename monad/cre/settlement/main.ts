@@ -26,6 +26,7 @@ const configSchema = z.object({
   leagues: z.array(z.object({ id: z.number(), season: z.number() })), // e.g. [{ id: 39, season: 2026 }] = Premier League
   daysAhead: z.number(),
   maxFixturesPerRun: z.number(), // API-Football accepts up to 20 ids per request
+  maxNewFixtures: z.number(), // new matches scheduled per fixtures run
   chainSelectorName: z.string(),
   chainId: z.number(),
   oracleAddress: z.string(),
@@ -86,7 +87,10 @@ const onResults = (runtime: Runtime<Config>): string => {
 
   const apiKey = runtime.getSecret({ id: "RESULTS_API_KEY" }).result().value;
   const http = new cre.capabilities.HTTPClient();
-  const batch = pending.slice(0, Math.min(cfg.maxFixturesPerRun, 20));
+  // Rotate through everything waiting, so a postponed match can't hog the batch while live ones wait.
+  const size = Math.min(cfg.maxFixturesPerRun, 20);
+  const start = (Math.floor(runtime.now().getTime() / 300_000) % Math.ceil(pending.length / size)) * size;
+  const batch = pending.slice(start, start + size);
   const agreed = http
     .sendRequest(runtime, fetchResults, consensusIdenticalAggregation<string>())(
       `${cfg.resultsApiBaseUrl}/fixtures?ids=${batch.join("-")}`,
@@ -136,26 +140,32 @@ const onFixtures = (runtime: Runtime<Config>): string => {
   const cfg = runtime.config;
   const apiKey = runtime.getSecret({ id: "RESULTS_API_KEY" }).result().value;
   const http = new cre.capabilities.HTTPClient();
+  const known = new Set(read(runtime, evmClient(cfg), cfg.oracleAddress, ORACLE_ABI, "fixtureIds").map(String));
 
   const from = runtime.now();
   const to = new Date(from.getTime() + cfg.daysAhead * 86_400_000);
-  const ids: bigint[] = [];
-  const kickoffs: bigint[] = [];
-  for (const league of cfg.leagues) {
+  const upcoming: { id: bigint; kickoff: bigint }[] = [];
+  // CRE allows 15 HTTP calls per run: take the leagues in groups of 14, a different group every 10 minutes.
+  const groups = Math.ceil(cfg.leagues.length / 14);
+  const group = Math.floor(from.getTime() / 600_000) % groups;
+  for (const league of cfg.leagues.slice(group * 14, group * 14 + 14)) {
     const url = `${cfg.resultsApiBaseUrl}/fixtures?league=${league.id}&season=${league.season}&from=${isoDate(from)}&to=${isoDate(to)}`;
     const agreed = http.sendRequest(runtime, fetchSchedule, consensusIdenticalAggregation<string>())(url, apiKey).result();
     for (const entry of agreed ? agreed.split(",") : []) {
       const [id, kickoff] = entry.split("@");
-      ids.push(BigInt(id));
-      kickoffs.push(BigInt(kickoff));
+      if (!known.has(id)) upcoming.push({ id: BigInt(id), kickoff: BigInt(kickoff) });
     }
   }
-  if (ids.length === 0) return "no upcoming matches";
+  if (upcoming.length === 0) return "no new matches";
 
-  const payload = encodeAbiParameters([{ type: "uint256[]" }, { type: "uint64[]" }], [ids, kickoffs]);
-  const status = writeReport(runtime as Runtime<unknown>, cfg, REPORT.FIXTURES, payload, attestorKey(runtime));
-  runtime.log(`scheduled ${ids.length} match(es); tx ${status}`);
-  return `scheduled ${ids.length}`;
+  // Soonest first, a bounded batch per run; Monad bills the gas limit, so size it to the batch.
+  upcoming.sort((a, b) => Number(a.kickoff - b.kickoff));
+  const batch = upcoming.slice(0, cfg.maxNewFixtures);
+  const payload = encodeAbiParameters([{ type: "uint256[]" }, { type: "uint64[]" }], [batch.map((f) => f.id), batch.map((f) => f.kickoff)]);
+  const gas = String(150_000 + 75_000 * batch.length);
+  const status = writeReport(runtime as Runtime<unknown>, cfg, REPORT.FIXTURES, payload, attestorKey(runtime), gas);
+  runtime.log(`scheduled ${batch.length} new match(es) of ${upcoming.length}; tx ${status}`);
+  return `scheduled ${batch.length}`;
 };
 
 const initWorkflow = (config: Config) => {

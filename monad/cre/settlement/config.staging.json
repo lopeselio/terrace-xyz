@@ -2,7 +2,7 @@
   "resultsSchedule": "0 */5 * * * *",
   "fixturesSchedule": "0 0 */6 * * *",
   "resultsApiBaseUrl": "https://v3.football.api-sports.io",
-  "daysAhead": 7,
+  "daysAhead": 3,
   "maxFixturesPerRun": 20,
   "chainSelectorName": "monad-testnet",
   "chainId": 10143,
@@ -13,6 +13,79 @@
     {
       "id": 39,
       "season": 2026
+    },
+    {
+      "id": 140,
+      "season": 2026
+    },
+    {
+      "id": 135,
+      "season": 2026
+    },
+    {
+      "id": 78,
+      "season": 2026
+    },
+    {
+      "id": 61,
+      "season": 2026
+    },
+    {
+      "id": 88,
+      "season": 2026
+    },
+    {
+      "id": 94,
+      "season": 2026
+    },
+    {
+      "id": 179,
+      "season": 2026
+    },
+    {
+      "id": 203,
+      "season": 2026
+    },
+    {
+      "id": 40,
+      "season": 2026
+    },
+    {
+      "id": 2,
+      "season": 2026
+    },
+    {
+      "id": 3,
+      "season": 2026
+    },
+    {
+      "id": 848,
+      "season": 2026
+    },
+    {
+      "id": 17,
+      "season": 2026
+    },
+    {
+      "id": 307,
+      "season": 2026
+    },
+    {
+      "id": 253,
+      "season": 2026
+    },
+    {
+      "id": 71,
+      "season": 2026
+    },
+    {
+      "id": 128,
+      "season": 2026
+    },
+    {
+      "id": 262,
+      "season": 2026
     }
-  ]
+  ],
+  "maxNewFixtures": 40
 }

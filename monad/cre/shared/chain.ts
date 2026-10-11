@@ -101,6 +101,7 @@ export function writeReport(
   kind: number,
   payload: Hex,
   attestorKey?: Hex,
+  gasLimit = cfg.gasLimit,
 ): string {
   const evm = evmClient(cfg);
   let report = encodeAbiParameters([{ type: "uint8" }, { type: "bytes" }], [kind, payload]);
@@ -115,7 +116,7 @@ export function writeReport(
     .writeReport(runtime, {
       receiver: cfg.oracleAddress,
       report: signed,
-      gasConfig: { gasLimit: cfg.gasLimit },
+      gasConfig: { gasLimit },
     })
     .result();
   return String(tx.txStatus);
