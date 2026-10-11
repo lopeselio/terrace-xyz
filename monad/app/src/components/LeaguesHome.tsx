@@ -66,7 +66,7 @@ export function LeaguesHome({ open, tab: initial }: { open: OpenLeague[]; tab: T
 
   return (
     <>
-      <Header title="Leagues" sub="Season 2026 · Premier League" back="/me" />
+      <Header title="Leagues" sub="Season 2026" back="/me" />
       <div style={{ padding: "12px var(--gutter) 6px" }}>
         <Seg value={tab} onChange={go} options={[{ id: "mine", label: "Mine" }, { id: "create", label: "Create" }, { id: "join", label: "Join" }]} />
       </div>

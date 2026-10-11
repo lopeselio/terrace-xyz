@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ADDR, oracleAbi } from "@/lib/contracts";
-import { football } from "@/lib/server/football";
+import { football, matches } from "@/lib/server/football";
 import { serverClient } from "@/lib/server/rpc";
 
 /** Bookmakers' opening lines (decimal, median across books) for every scheduled match. */
@@ -17,10 +17,12 @@ const median = (xs: number[]) => {
 export async function GET() {
   const ids = await serverClient.readContract({ address: ADDR.oracle, abi: oracleAbi, functionName: "fixtureIds" });
   const out: Record<number, OpeningLine> = {};
+  // Opening lines only matter before kick-off: look up upcoming matches, hourly.
+  const upcoming = (await matches(ids)).filter((m) => m.status === "NS").map((m) => m.id);
   await Promise.all(
-    ids.map(async (id) => {
+    upcoming.map(async (id) => {
       try {
-        const [row] = await football<ApiOdds[]>(`/odds?fixture=${id}`, 10 * 60_000);
+        const [row] = await football<ApiOdds[]>(`/odds?fixture=${id}`, 60 * 60_000);
         if (!row) return;
         const pick = (bet: number, value: string) =>
           median(row.bookmakers.flatMap((b) => b.bets.filter((x) => x.id === bet).flatMap((x) => x.values.filter((v) => v.value === value).map((v) => Number(v.odd)))));
@@ -32,5 +34,5 @@ export async function GET() {
       } catch {}
     }),
   );
-  return NextResponse.json(out, { headers: { "Cache-Control": "s-maxage=600, stale-while-revalidate=1200" } });
+  return NextResponse.json(out, { headers: { "Cache-Control": "s-maxage=1800, stale-while-revalidate=3600" } });
 }
