@@ -100,7 +100,7 @@ export function WalletSheet({ inBets, feesEarned, onClose }: { inBets: number; f
       </div>
       <div className="row" style={{ justifyContent: "center", gap: 6, marginTop: 14 }}>
         <Badge tone="terrace">Non-custodial</Badge>
-        <Badge tone="private" icon="lock">Sealed bets</Badge>
+        <Badge tone="sealed">Sealed bets</Badge>
       </div>
       <button
         className="cta cta-ghost cta-sm"

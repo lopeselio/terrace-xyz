@@ -169,7 +169,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
             <div className="umeta">{season.find((s) => s.member === r.member)?.points ?? 0} pts this season</div>
           </span>
           {hide ? (
-            <Badge tone="sealed" icon="lock">Hidden</Badge>
+            <Badge tone="private" icon="lock">Hidden</Badge>
           ) : (
             <span className="pts">{r.points}<small>{unit}</small></span>
           )}

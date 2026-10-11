@@ -280,7 +280,7 @@ export function Profile() {
                     <div className="cond upper" style={{ fontSize: 20 }}>{l.league.name}</div>
                     <div className="umeta">{l.league.memberCount} members · {l.seasonScore} season pts</div>
                   </div>
-                  {l.league.isPrivate ? <Badge tone="private" icon="lock">Private</Badge> : <Badge tone="open">Open</Badge>}
+                  {l.league.isPrivate ? <Badge tone="sealed">Sealed</Badge> : <Badge tone="open">Open</Badge>}
                   <Icon name="chevronRight" size={16} />
                 </Link>
               ))}
@@ -312,7 +312,7 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
           <div className="uname" style={{ marginBottom: 6 }}>{label}</div>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             {b.side === 0 ? (
-              <Badge tone="private" icon="lock">Sealed</Badge>
+              <Badge tone="sealed">Sealed</Badge>
             ) : (
               <Badge tone={b.side === 1 ? "terrace" : "lost"}>{b.side === 1 ? "Yes" : "No"} · {fractional(dec ?? 2)}</Badge>
             )}

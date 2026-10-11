@@ -236,7 +236,7 @@ function YourLeague() {
               <span className="umeta">of {l.memberCount} · {rank === 1 ? "top of the table" : `${leader - top.seasonScore} points off the top`}</span>
             </div>
           </div>
-          {hidden ? <Badge tone="private" icon="lock">Hidden</Badge> : l.isPrivate ? <Badge tone="private" icon="lock">Private</Badge> : <Badge tone="open">Open</Badge>}
+          {hidden ? <Badge tone="sealed">Hidden</Badge> : l.isPrivate ? <Badge tone="sealed">Sealed</Badge> : <Badge tone="open">Open</Badge>}
         </div>
         <div className="oddsrow" style={{ marginTop: 12 }}>
           <div className="odd sm"><span className="lbl">Season</span><span className="val">{top.seasonScore} pts</span></div>

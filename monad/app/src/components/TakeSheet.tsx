@@ -30,7 +30,7 @@ export function TakeReading({ compiled, kickoff }: { compiled: Compiled; kickoff
   return (
     <div className="card take-reading">
       <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-        <Badge tone="chainlink" icon="shield">{compiled.spec ? "Match data · Chainlink" : "AI judge · Chainlink"}</Badge>
+        <Badge tone="chainlink">{compiled.spec ? "Match data · Chainlink" : "AI judge · Chainlink"}</Badge>
         <Badge tone="flash" icon="clock">Closes {closesLabel(compiled.closeTime, kickoff)}</Badge>
       </div>
       <div className="eyebrow" style={{ marginTop: 12 }}>How it settles</div>

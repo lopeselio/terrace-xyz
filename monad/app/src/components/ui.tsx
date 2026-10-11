@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useEffect, type ReactNode } from "react";
+import { ChainlinkMark } from "./ChainlinkMark";
 import { Icon, type IconName } from "./Icon";
 
 /* Terrace Night primitives from the revamp handoff (design-system/handoff/styles.css). */
@@ -44,11 +45,13 @@ export function Badge({ tone, icon, children }: { tone: BadgeTone; icon?: IconNa
   return (
     <span className={`badge ${TONE[tone]}`}>
       {tone === "live" && <i className="livedot" />}
-      {icon && <Icon name={icon} size={12} />}
+      {tone === "chainlink" || tone === "sealed" ? <ChainlinkMark size={12} /> : icon && <Icon name={icon} size={12} />}
       {children}
     </span>
   );
 }
+
+/* "sealed" and "chainlink" badges carry the Chainlink mark: CRE settles every market and opens sealed picks. */
 
 /** Condensed uppercase section head, with an optional "more ›" link. */
 export function SectionHead({ title, more, href, color, children }: { title: string; more?: string; href?: string; color?: string; children?: ReactNode }) {
