@@ -1,10 +1,10 @@
 import { ChallengeList } from "@/components/ChallengeList";
+import { Header } from "@/components/Header";
 
 export default function Challenges() {
   return (
     <>
-      <h1>Challenges</h1>
-      <p className="lede">1v1 with your mates. Winner takes both stakes, settled by Chainlink.</p>
+      <Header title="1v1 Matchups" sub="Head to head with a mate" back="/me" />
       <ChallengeList />
     </>
   );

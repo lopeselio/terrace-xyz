@@ -1,0 +1,19 @@
+/* 1v1 matchups (design-system/handoff screen-matchups*.html) */
+.versus-form .field.row, .field.row.call-row { display: flex; width: 100%; cursor: pointer; }
+.versus-glyph {
+  width: 58px; height: 58px; border-radius: 50%; margin: 6px auto 14px;
+  background: var(--green-deep); border: 1.5px solid var(--green); color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+}
+.vs-card .vs-q { font-size: 14.5px; font-weight: 600; margin: 11px 0 9px; color: var(--ink); }
+.vs-card .vs-pot { margin-left: auto; font-family: var(--cond); font-size: 19px; font-weight: 700; color: var(--green); }
+.vs-card .vs-pot.dim { color: var(--ink-3); }
+.vs-card.incoming { border-color: #1f3a2a; }
+.vs-tags { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.call-row { cursor: pointer; text-align: left; }
+.call-fixture + .call-fixture { margin-top: 10px; }
+.call-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 0; text-align: left; color: var(--ink); }
+.call-opt + .call-opt { border-top: 1px solid var(--line-hair); }
+.call-opt .q { flex: 1; font-size: 14px; font-weight: 600; }
+.call-opt .p { font-family: var(--cond); font-size: 18px; font-weight: 700; }
+.call-opt.on .q, .call-opt.on .p { color: var(--green); }

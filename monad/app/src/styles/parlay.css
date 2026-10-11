@@ -1,0 +1,17 @@
+/* Build a parlay (design-system/handoff screen-parlay.html, screen-parlay-slip.html) */
+.leg { width: 100%; text-align: left; }
+.leg.on { border-color: var(--green); background: #0c1710; }
+.leg + .leg { margin-top: 10px; }
+.leg .box {
+  width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line); flex: none;
+  display: flex; align-items: center; justify-content: center; color: var(--on-green);
+}
+.leg.on .box { border-color: var(--green); background: var(--green); }
+.leg .q { font-size: 14px; font-weight: 600; }
+.leg .p { font-family: var(--cond); font-size: 19px; font-weight: 700; }
+.leg.on .p { color: var(--green); }
+.leg:disabled { opacity: 0.4; }
+.parlay-legs .kv .k { color: var(--ink); }
+.parlay-legs .kv .v { font-family: var(--cond); font-size: 18px; }
+.parlay-spacer { height: 88px; }
+.sheet .field.row { display: flex; }

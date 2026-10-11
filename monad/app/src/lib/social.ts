@@ -21,11 +21,11 @@ export async function standardQuestion(send: Send, fixtureId: number, kind: numb
 
 // ---- 1v1 challenges ----------------------------------------------------------
 
-/** An open challenge (anyone with the link can take the other side). Returns the challenge id. */
-export async function challenge(send: Send, owner: Address, questionId: bigint, side: 1 | 2, token: Address, dollars: number): Promise<bigint> {
+/** A challenge: open to anyone with the link, or to one named fan. Returns the challenge id. */
+export async function challenge(send: Send, owner: Address, questionId: bigint, side: 1 | 2, token: Address, dollars: number, opponent: Address = zeroAddress): Promise<bigint> {
   const stake = toUnits(dollars);
   await ensureAllowance(send, owner, token, ADDR.matchups, stake);
-  const hash = await send({ address: ADDR.matchups, abi: matchupsAbi, functionName: "challenge", args: [zeroAddress, questionId, side, token, stake], dollars });
+  const hash = await send({ address: ADDR.matchups, abi: matchupsAbi, functionName: "challenge", args: [opponent, questionId, side, token, stake], dollars });
   const receipt = await publicClient.getTransactionReceipt({ hash });
   for (const log of receipt.logs) {
     try {

@@ -21,3 +21,8 @@ export function toggleLeg(leg: SlipLeg) {
   const rest = legs.filter((l) => l.fixtureId !== leg.fixtureId || (l.questionId ?? `k${l.kind}`) !== (leg.questionId ?? `k${leg.kind}`));
   writeSlip(rest.length < legs.length && legs.some((l) => l.key === leg.key) ? rest : [...rest, leg]);
 }
+
+/** Parlays take 2 to 8 legs (TerraceParlays MIN_LEGS / MAX_LEGS). */
+export const MIN_LEGS = 2;
+export const MAX_LEGS = 8;
+export const removeLeg = (key: string) => writeSlip(readSlip().filter((l) => l.key !== key));
