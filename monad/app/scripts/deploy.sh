@@ -26,7 +26,7 @@ PY
 vercel build --prod
 # Uploads to Vercel sometimes stall ("fetch failed"); a retry picks up where it left off.
 for attempt in 1 2 3 4 5; do
-  if vercel deploy --prebuilt --prod; then exit 0; fi
+  if npx -y vercel@63.1.2 deploy --prebuilt --prod; then exit 0; fi
   echo "upload attempt $attempt failed, retrying" >&2
   sleep 4
 done
