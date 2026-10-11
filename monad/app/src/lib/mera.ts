@@ -52,7 +52,13 @@ let session: Secp256k1SigningSession | null = null;
 let agentSession: Secp256k1SigningSession | null = null;
 let lastUsed = 0;
 
-const rpId = () => process.env.NEXT_PUBLIC_RP_ID || window.location.hostname;
+// Passkeys belong to a site. On terrace.social (and app.terrace.social) they belong to the parent
+// domain, so one passkey works on every Terrace address there; elsewhere, to the current host.
+const rpId = () => {
+  if (process.env.NEXT_PUBLIC_RP_ID) return process.env.NEXT_PUBLIC_RP_ID;
+  const host = window.location.hostname;
+  return host === "terrace.social" || host.endsWith(".terrace.social") ? "terrace.social" : host;
+};
 
 function derive(prf: Uint8Array, info: string, length = 32): Uint8Array {
   return hkdf(sha256, prf, enc.encode("terrace"), enc.encode(info), length);
