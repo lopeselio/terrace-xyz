@@ -13,9 +13,14 @@ rm -rf "$BUILDDIR/node_modules" "$BUILDDIR/.next" "$BUILDDIR/.vercel/output" "$B
 
 cd "$BUILDDIR"
 npm install
-vercel pull --yes --environment production
-vercel build --prod
-vercel deploy --prebuilt --prod
+npx -y vercel@63.1.2 pull --yes --environment production
+npx -y vercel@63.1.2 build --prod
+# Uploads sometimes stall ("fetch failed"); retry a few times.
+for attempt in 1 2 3 4 5; do
+  if npx -y vercel@63.1.2 deploy --prebuilt --prod; then break; fi
+  echo "upload attempt $attempt failed, retrying" >&2
+  sleep 4
+done
 
 echo "Deploy complete. Cleaning up $BUILDDIR"
 rm -rf "$BUILDDIR"
