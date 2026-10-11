@@ -87,28 +87,42 @@ export function Room({
     document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center" });
   }, [messages]);
 
+  // The chat is its own scroll window (like a messaging app): sized to fill the screen above the
+  // composer and tab bar, pinned to the newest take.
+  const pane = useRef<HTMLDivElement>(null);
   const toLatest = useCallback((smooth = true) => {
+    const el = pane.current;
+    if (!el) return;
     const glide = smooth && document.visibilityState === "visible" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: glide ? "smooth" : "auto" });
+    el.scrollTo({ top: el.scrollHeight, behavior: glide ? "smooth" : "auto" });
+    atBottom.current = true;
+    setAway(false);
     setUnseen(0);
   }, []);
 
   useEffect(() => {
-    if (view !== "all") return;
+    const el = pane.current;
+    if (view !== "all" || !el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const reserve = 78 /* composer */ + 80 /* tab bar */ + 12;
+      el.style.height = `${Math.max(300, window.innerHeight - top - reserve)}px`;
+    };
     const onScroll = () => {
-      const near = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 240;
+      const near = el.scrollTop + el.clientHeight >= el.scrollHeight - 120;
       atBottom.current = near;
-      setAway(!near && window.scrollY > 200);
+      setAway(!near);
       if (near) setUnseen(0);
     };
+    fit();
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", fit);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", fit);
     };
-  }, [view]);
+  }, [view, messages === null]);
 
   useEffect(() => {
     if (view !== "all" || !messages) return;
@@ -178,6 +192,8 @@ export function Room({
           {[0, 1].map((i) => <div key={i} className="sk" style={{ height: 112, borderRadius: 18 }} />)}
         </div>
       )}
+      <div className={view === "all" ? "chat-wrap" : undefined}>
+      <div ref={view === "all" ? pane : undefined} className={view === "all" ? "chat-pane" : undefined}>
       <ul className="chat">
         {list.map((m) => {
           const mine = m.author === me;
@@ -289,6 +305,13 @@ export function Room({
         ) : (
           <Empty title="Quiet so far">Say something worth backing.</Empty>
         ))}
+      </div>
+      {view === "all" && (away || unseen > 0) && (
+        <button className={`jump-latest${unseen ? " fresh" : ""}`} onClick={() => toLatest(true)}>
+          <Icon name="arrowDown" size={14} /> {unseen ? `${unseen} new take${unseen > 1 ? "s" : ""}` : "Latest"}
+        </button>
+      )}
+      </div>
       {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}
 
       {view === "all" &&
@@ -306,12 +329,6 @@ export function Room({
         ) : (
           <SignIn reason={kind === 0 ? "Join the match chat and back your takes." : "Sign in to join the league chat."} />
         ))}
-
-      {view === "all" && (away || unseen > 0) && (
-        <button className={`jump-latest${unseen ? " fresh" : ""}`} onClick={() => toLatest(true)}>
-          <Icon name="arrowDown" size={14} /> {unseen ? `${unseen} new take${unseen > 1 ? "s" : ""}` : "Latest"}
-        </button>
-      )}
 
       {betPick && <BetSheet pick={betPick} onClose={() => setBetPick(null)} onPlaced={load} />}
     </section>

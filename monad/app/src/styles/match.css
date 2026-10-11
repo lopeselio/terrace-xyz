@@ -15,12 +15,19 @@
 .composer .send:disabled { background: var(--raised); border-color: var(--line); color: var(--ink-4); }
 .take .settles { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--blue); margin-top: 4px; }
 
-/* Chat: floating "jump to latest" pill above the composer */
+/* Chat: its own scroll window, with a "jump to latest" pill floating at its bottom */
+.chat-wrap { position: relative; }
+.chat-pane {
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  border-radius: var(--r-lg); scroll-padding-bottom: 12px;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 10px), transparent 100%);
+  padding: 8px 0 12px;
+}
+.chat-pane .chat { margin-bottom: 0; }
 .jump-latest {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 9;
-  bottom: calc(var(--tabbar-h) + 18px + var(--safe-b) + 74px);
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 4;
   display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: var(--r-pill);
-  background: rgba(26, 26, 26, 0.92); border: 1px solid var(--line); color: var(--ink);
+  background: rgba(26, 26, 26, 0.94); border: 1px solid var(--line); color: var(--ink);
   font-size: 12.5px; font-weight: 700; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   animation: jumpin 0.24s var(--ease) both;
