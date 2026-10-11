@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
+import { MonadMark } from "@/components/MonadMark";
 import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="header">
             <Link href="/" className="logo"><span className="mark">T</span><b>Terrace</b></Link>
             <span className="spacer" />
-            <span className="chain">ON MONAD</span>
+            <span className="chain"><MonadMark size={16} /> MONAD</span>
             <Link href="/social" className="icon-btn" aria-label="What your mates are doing"><Icon name="bell" size={18} /></Link>
           </header>
           <main className="page">{children}</main>

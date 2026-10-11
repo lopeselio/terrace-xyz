@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "./Icon";
+import { MonadMark } from "./MonadMark";
 import { SignIn } from "./SignIn";
 import { Avatar, Badge, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -163,7 +164,7 @@ export function MyRecord() {
       <div className="section-head"><h3>Wallet</h3></div>
       <div className="card">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="live-pill">Monad testnet</span>
+          <span className="live-pill no-dot" style={{ paddingLeft: 6 }}><MonadMark size={16} /> Monad testnet</span>
           <strong style={{ marginLeft: "auto", fontFamily: "var(--font-cond)", fontSize: 22 }}>{money ? usd(money.usd) : "…"}</strong>
           <span className="muted" style={{ fontSize: 12 }}>dollars</span>
         </div>
