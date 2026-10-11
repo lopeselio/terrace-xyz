@@ -8,7 +8,7 @@ const TABS: { href: string; icon: IconName; label: string; match: (p: string) =>
   { href: "/", icon: "home", label: "Home", match: (p) => p === "/" },
   { href: "/matches", icon: "ball", label: "Matches", match: (p) => p.startsWith("/matches") || p.startsWith("/m/") },
   { href: "/take", icon: "plus", label: "Take", match: (p) => p.startsWith("/take") },
-  { href: "/leagues", icon: "users", label: "Leagues", match: (p) => p.startsWith("/leagues") || p.startsWith("/l/") },
+  { href: "/social", icon: "users", label: "Social", match: (p) => p.startsWith("/social") || p.startsWith("/leagues") || p.startsWith("/l/") || p.startsWith("/challenges") || p.startsWith("/c/") },
   { href: "/me", icon: "trophy", label: "Profile", match: (p) => p.startsWith("/me") },
 ];
 
