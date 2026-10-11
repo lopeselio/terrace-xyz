@@ -20,6 +20,24 @@ type Player {
   takesWon: Int!
   takesSettled: Int!
   backersReceived: Int!
+  # Terrace Points: rewards for playing, computed here from on-chain actions (no cash value)
+  terracePoints: BigInt!
+  firstSeen: BigInt # first rewarded action (unix seconds)
+  lastActiveDay: Int! # UTC day number of the last rewarded action
+  dayStreak: Int! # consecutive days with a rewarded action
+  dayMessages: Int! # takes posted today (capped for points)
+  invitesLanded: Int! # new fans who joined through your 1v1 or league
+}
+
+# One line on a fan's Terrace Points ledger, so every point is traceable to an on-chain action.
+type PointsEvent {
+  id: ID!
+  player: String! @index
+  reason: String! # WELCOME, DAILY, STREAK_3, STREAK_7, TAKE, TAKE_BACKED, BACKED_A_TAKE, TAKE_LISTED, BET, BET_ON_YOUR_TAKE, WIN, CHALLENGE, CHALLENGE_ACCEPTED, CHALLENGE_TAKEN, PARLAY, LEAGUE_CREATED, LEAGUE_JOINED, LEAGUE_MEMBER, PICKS, VOTE, PROPOSAL, INVITE
+  base: BigInt!
+  multiplier: Int! # 2 for founding fans (Season 0)
+  amount: BigInt!
+  timestamp: BigInt!
 }
 
 type Fixture {

@@ -1,5 +1,6 @@
 import { indexer } from "envio";
 import { feed, id } from "../lib";
+import { award } from "../points";
 
 indexer.onEvent({ contract: "TerraceGovernance", event: "Proposed" }, async ({ event, context }) => {
   const p = event.params;
@@ -15,11 +16,13 @@ indexer.onEvent({ contract: "TerraceGovernance", event: "Proposed" }, async ({ e
     status: 0,
   });
   feed(context, event, { kind: "PROPOSAL", actor: p.proposer, league_id: id(p.leagueId), text: Number(p.kind) === 0 ? "gameweek" : "feature take" });
+  await award(context, event, p.proposer, "PROPOSAL");
 });
 
 indexer.onEvent({ contract: "TerraceGovernance", event: "Voted" }, async ({ event, context }) => {
   const prop = await context.Proposal.get(id(event.params.proposalId));
   if (prop) context.Proposal.set({ ...prop, yes: Number(event.params.yes), no: Number(event.params.no) });
+  await award(context, event, event.params.voter, "VOTE");
 });
 
 indexer.onEvent({ contract: "TerraceGovernance", event: "Resolved" }, async ({ event, context }) => {

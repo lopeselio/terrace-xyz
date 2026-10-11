@@ -1,5 +1,6 @@
 import { indexer } from "envio";
 import { feed, id, type Ctx } from "../lib";
+import { award, invited } from "../points";
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueCreated" }, async ({ event, context }) => {
   const p = event.params;
@@ -14,6 +15,7 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueCreated" }, async ({
     memberCount: 0,
     ended: false,
   });
+  await award(context, event, p.creator, "LEAGUE_CREATED");
 });
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueJoined" }, async ({ event, context }) => {
@@ -29,6 +31,10 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueJoined" }, async ({ 
     joinedAt: BigInt(event.block.timestamp),
   });
   feed(context, event, { kind: "LEAGUE_JOIN", actor: p.member, league_id: league.id, text: league.name });
+  if (id(p.member) === league.creator) return; // creating a league already earns its points
+  const isNew = await award(context, event, p.member, "LEAGUE_JOINED");
+  await award(context, event, league.creator, "LEAGUE_MEMBER");
+  if (isNew) await invited(context, event, league.creator);
 });
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "ContestCreated" }, async ({ event, context }) => {
@@ -57,18 +63,19 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "GameweekAdded" }, async ({
 
 async function enter(context: Ctx, contestId: bigint, playerAddr: string, sealed: boolean, at: number) {
   const entryId = `${id(contestId)}-${id(playerAddr)}`;
-  if (await context.Entry.get(entryId)) return; // re-submissions don't count twice
+  if (await context.Entry.get(entryId)) return false; // re-submissions don't count twice
   context.Entry.set({ id: entryId, contest_id: id(contestId), player: id(playerAddr), isSealed: sealed, revealed: !sealed, enteredAt: BigInt(at) });
   const c = await context.Contest.get(id(contestId));
   if (c) context.Contest.set({ ...c, entrants: c.entrants + 1 });
+  return true;
 }
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "PicksSubmitted" }, async ({ event, context }) => {
-  await enter(context, event.params.contestId, event.params.player, false, event.block.timestamp);
+  if (await enter(context, event.params.contestId, event.params.player, false, event.block.timestamp)) await award(context, event, event.params.player, "PICKS");
 });
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "SealedPicksSubmitted" }, async ({ event, context }) => {
-  await enter(context, event.params.contestId, event.params.player, true, event.block.timestamp);
+  if (await enter(context, event.params.contestId, event.params.player, true, event.block.timestamp)) await award(context, event, event.params.player, "PICKS");
 });
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "PicksRevealed" }, async ({ event, context }) => {

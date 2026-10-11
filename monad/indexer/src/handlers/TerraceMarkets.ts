@@ -1,5 +1,6 @@
 import { indexer, type EvmOnEventContext } from "envio";
-import { feed, heat, id, player } from "../lib";
+import { feed, heat, id, player, type EventMeta } from "../lib";
+import { award, stakeBonus } from "../points";
 
 indexer.onEvent({ contract: "TerraceMarkets", event: "MarketCreated" }, async ({ event, context }) => {
   const p = event.params;
@@ -32,6 +33,7 @@ indexer.onEvent({ contract: "TerraceMarkets", event: "TakeListed" }, async ({ ev
   const author = await player(context, p.author);
   context.Player.set({ ...author, takesListed: author.takesListed + 1 });
   feed(context, event, { kind: "TAKE_LISTED", actor: p.author, room_id: message.room_id, message_id: message.id, market_id: market.id, text: message.text });
+  await award(context, event, p.author, "TAKE_LISTED");
 });
 
 async function addStake(context: EvmOnEventContext, marketId: string, bettor: string, side: number, stake: bigint, sealed: boolean) {
@@ -75,13 +77,22 @@ indexer.onEvent({ contract: "TerraceMarkets", event: "BetPlaced" }, async ({ eve
   const p = event.params;
   const m = await addStake(context, id(p.marketId), p.bettor, Number(p.side), p.stake, false);
   if (m) feed(context, event, { kind: "BET", actor: p.bettor, market_id: m.id, message_id: m.take_id, amount: p.stake });
+  if (m) await betPoints(context, event, m.take_id, p.bettor, p.stake);
 });
 
 indexer.onEvent({ contract: "TerraceMarkets", event: "SealedBetPlaced" }, async ({ event, context }) => {
   const p = event.params;
   const m = await addStake(context, id(p.marketId), p.bettor, 0, p.stake, true);
   if (m) feed(context, event, { kind: "BET", actor: p.bettor, market_id: m.id, message_id: m.take_id, amount: p.stake });
+  if (m) await betPoints(context, event, m.take_id, p.bettor, p.stake);
 });
+
+/** Points for a bet, and for the take's author when someone else backs their call with money. */
+async function betPoints(context: EvmOnEventContext, event: EventMeta, takeId: string | undefined, bettor: string, stake: bigint) {
+  await award(context, event, bettor, "BET", stakeBonus(stake));
+  const take = takeId ? await context.Message.get(takeId) : undefined;
+  if (take && take.author !== id(bettor)) await award(context, event, take.author, "BET_ON_YOUR_TAKE");
+}
 
 indexer.onEvent({ contract: "TerraceMarkets", event: "BetRevealed" }, async ({ event, context }) => {
   const p = event.params;
@@ -118,5 +129,8 @@ indexer.onEvent({ contract: "TerraceMarkets", event: "BetSettled" }, async ({ ev
       });
     }
   }
-  if (Number(p.result) === 1) feed(context, event, { kind: "WIN", actor: p.bettor, market_id: marketId, message_id: market?.take_id, amount: p.payout });
+  if (Number(p.result) === 1) {
+    feed(context, event, { kind: "WIN", actor: p.bettor, market_id: marketId, message_id: market?.take_id, amount: p.payout });
+    await award(context, event, p.bettor, "WIN");
+  }
 });

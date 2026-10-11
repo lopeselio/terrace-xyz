@@ -1,5 +1,6 @@
 import { BigDecimal, indexer } from "envio";
 import { feed, heat, id, player, roomKey } from "../lib";
+import { award } from "../points";
 
 indexer.onEvent({ contract: "TerraceChat", event: "MessagePosted" }, async ({ event, context }) => {
   const p = event.params;
@@ -31,6 +32,7 @@ indexer.onEvent({ contract: "TerraceChat", event: "MessagePosted" }, async ({ ev
     heat: new BigDecimal(0),
   });
   feed(context, event, { kind: "TAKE", actor: p.author, room_id: roomId, message_id: messageId, text: p.text });
+  await award(context, event, p.author, "TAKE");
 });
 
 indexer.onEvent({ contract: "TerraceChat", event: "TakeBacked" }, async ({ event, context }) => {
@@ -40,4 +42,6 @@ indexer.onEvent({ contract: "TerraceChat", event: "TakeBacked" }, async ({ event
   const next = { ...m, backers: Number(event.params.backers) };
   context.Message.set({ ...next, heat: heat(next, author) });
   context.Player.set({ ...author, backersReceived: author.backersReceived + 1 });
+  await award(context, event, event.params.backer, "BACKED_A_TAKE");
+  if (id(event.params.backer) !== m.author) await award(context, event, m.author, "TAKE_BACKED");
 });

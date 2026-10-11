@@ -1,5 +1,6 @@
 import { indexer } from "envio";
 import { feed, id } from "../lib";
+import { award } from "../points";
 
 indexer.onEvent({ contract: "TerraceParlays", event: "ParlayPlaced" }, async ({ event, context }) => {
   const p = event.params;
@@ -15,6 +16,7 @@ indexer.onEvent({ contract: "TerraceParlays", event: "ParlayPlaced" }, async ({ 
     payout: undefined,
   });
   feed(context, event, { kind: "ACCA", actor: p.player, amount: p.stake, text: `${p.legs}-fold` });
+  await award(context, event, p.player, "PARLAY", 5n * (BigInt(p.legs) - 1n));
 });
 
 indexer.onEvent({ contract: "TerraceParlays", event: "ParlaySettled" }, async ({ event, context }) => {

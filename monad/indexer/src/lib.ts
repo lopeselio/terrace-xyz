@@ -28,6 +28,12 @@ export function newPlayer(address: string): Player {
     takesWon: 0,
     takesSettled: 0,
     backersReceived: 0,
+    terracePoints: 0n,
+    firstSeen: undefined,
+    lastActiveDay: -1,
+    dayStreak: 0,
+    dayMessages: 0,
+    invitesLanded: 0,
   };
 }
 

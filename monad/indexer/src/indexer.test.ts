@@ -48,6 +48,17 @@ describe("takes become ranked markets", () => {
     t.expect(author.takesListed).toBe(1);
     t.expect(author.takesWon).toBe(1);
     t.expect(author.backersReceived).toBe(1);
+
+    // Terrace Points (x2 while founding fans' Season 0 runs; bob's 112 base gives the multiplier).
+    const backer = await indexer.Player.getOrThrow(bob.toLowerCase());
+    const m = backer.terracePoints / 112n; // welcome 100 + daily 10 + backed a take 2
+    t.expect([1n, 2n]).toContain(m);
+    // alice: welcome 100 + daily 10 + take 5 + backed 5 + listed 25 + bet 10+10 + bet on her take 5 + win 20
+    t.expect(author.terracePoints).toBe(190n * m);
+    // carol: welcome 100 + daily 10 + bet 10 + 25 (stake bonus capped at $25)
+    const carolP = await indexer.Player.getOrThrow(carol.toLowerCase());
+    t.expect(carolP.terracePoints).toBe(145n * m);
+    t.expect(author.dayStreak).toBe(1);
   });
 
   it("someone else can't list your take as theirs", async (t) => {
