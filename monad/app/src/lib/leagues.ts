@@ -72,3 +72,35 @@ export async function table(leagueId: bigint, members: readonly Address[]) {
   );
   return members.map((m, i) => ({ member: m, points: Number(scores[i]) })).sort((a, b) => b.points - a.points);
 }
+
+/** Gameweek points for every member: final once the gameweek is added up, live otherwise. */
+export async function gameweekTable(contestId: bigint, members: readonly Address[], finalized: boolean) {
+  const scores = await Promise.all(
+    members.map((m) => publicClient.readContract({ ...L, functionName: finalized ? "contestScore" : "currentScore", args: [contestId, m] })),
+  );
+  return members.map((m, i) => ({ member: m, points: Number(scores[i]) })).sort((a, b) => b.points - a.points);
+}
+
+export const hasEntered = (contestId: bigint, player: Address) => publicClient.readContract({ ...L, functionName: "hasEntered", args: [contestId, player] });
+
+export const getPick = (contestId: bigint, player: Address, fixtureId: bigint) =>
+  publicClient.readContract({ ...L, functionName: "getPick", args: [contestId, player, fixtureId] });
+
+/** The short code fans share: "L12-ABCD" (league 12, invite code ABCD). */
+export const leagueCode = (leagueId: number | bigint, code: string) => `L${leagueId}${code ? `-${code}` : ""}`;
+
+/** Reads "L12-ABCD", "12 ABCD" or a pasted invite link back into a league id and code. */
+export function parseInvite(input: string): { leagueId: number; code: string } | null {
+  const s = input.trim();
+  const link = s.match(/\/l\/(\d+)(?:\?code=([A-Za-z0-9]+))?/);
+  if (link) return { leagueId: Number(link[1]), code: (link[2] ?? "").toUpperCase() };
+  const short = s.match(/^L?(\d+)(?:[\s-]+([A-Za-z0-9]{3,12}))?$/i);
+  if (short) return { leagueId: Number(short[1]), code: (short[2] ?? "").toUpperCase() };
+  return null;
+}
+
+/** "1st", "2nd", "3rd", "11th". */
+export function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+}

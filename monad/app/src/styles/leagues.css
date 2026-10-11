@@ -1,0 +1,17 @@
+/* Leagues: list, create, join and league detail (handoff screens 11, 17–20). */
+.lg-name { font-family: var(--cond); font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.1; }
+.lg-big { font-family: var(--cond); font-size: 32px; font-weight: 700; line-height: 1.05; }
+.lg-big small { font-size: 16px; color: var(--ink-3); }
+.lg-card .stats { margin-top: 12px; }
+.lg-card .stat { background: var(--deep); }
+.lg-hero .pts { font-family: var(--cond); font-size: 40px; font-weight: 700; line-height: 1; color: var(--violet-ink); margin-top: 4px; }
+.lg-fixture { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.lg-fixture .side { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 12px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.lg-fixture .side span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-fixture .res { font-family: var(--cond); font-size: 28px; font-weight: 700; text-align: center; min-width: 90px; }
+.lg-fixture .res small { display: block; font-family: var(--sans); font-size: 11px; font-weight: 600; color: var(--ink-3); }
+.lg-code { font-family: var(--cond); font-size: 26px; font-weight: 700; letter-spacing: 2px; }
+.lg-vote .bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); margin: 10px 0 6px; }
+.lg-vote .bar i { display: block; background: var(--green); }
+.lg-vote .bar b { display: block; background: var(--red); }
+.board li.me .name { color: var(--green); }
