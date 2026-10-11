@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
-import Link from "next/link";
-import { Icon } from "@/components/Icon";
-import { MonadMark } from "@/components/MonadMark";
 import { TerraceMark } from "@/components/TerraceMark";
+import { Onboarding } from "@/components/Onboarding";
 import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -31,14 +29,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`}>
       <body>
         <Providers>
-          <header className="header">
-            <Link href="/" className="logo"><TerraceMark size={32} /><b>Terrace</b></Link>
-            <span className="spacer" />
-            <span className="chain"><MonadMark size={16} /> MONAD</span>
-            <Link href="/social" className="icon-btn" aria-label="What your mates are doing"><Icon name="bell" size={18} /></Link>
-          </header>
-          <main className="page">{children}</main>
+          <div className="splash" aria-hidden>
+            <span className="logo" style={{ flexDirection: "column", gap: 14 }}>
+              <TerraceMark size={56} />
+              <span className="logo-word" style={{ fontSize: 26 }}>Terrace</span>
+            </span>
+            <span className="bar"><i /></span>
+          </div>
+          <div className="app">
+            <main className="page">{children}</main>
+          </div>
           <TabBar />
+          <Onboarding />
         </Providers>
       </body>
     </html>

@@ -1,10 +1,10 @@
-import { MyRecord } from "@/components/MyRecord";
+import { Suspense } from "react";
+import { Profile } from "@/components/Profile";
 
 export default function Me() {
   return (
-    <>
-      <h1 style={{ marginTop: 4 }}>Profile</h1>
-      <MyRecord />
-    </>
+    <Suspense>
+      <Profile />
+    </Suspense>
   );
 }

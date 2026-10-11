@@ -1,0 +1,10 @@
+/* Onboarding (screen-onboarding.html) */
+.onb-overlay { position: fixed; inset: 0; z-index: 35; background: var(--canvas); display: flex; justify-content: center; animation: fadein 0.26s var(--ease) both; }
+.onb { width: 100%; max-width: 480px; min-height: 100dvh; display: flex; flex-direction: column; padding: calc(24px + env(safe-area-inset-top, 0px)) 22px calc(26px + var(--safe-b)); }
+.onb.compact { min-height: 0; padding: 0; gap: 28px; }
+.onb-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 26px; }
+.onb.compact .onb-body { flex: none; }
+.onb-hero { font-family: var(--cond); font-size: 46px; font-weight: 800; line-height: 0.98; text-transform: uppercase; letter-spacing: -0.5px; }
+.onb-sub { color: var(--ink-2); font-size: 15px; margin-top: 12px; max-width: 290px; text-wrap: pretty; }
+.onb .umeta svg { display: inline; vertical-align: -2px; }
+.onb-skip { display: block; margin: 12px auto 0; color: var(--ink-2); }
