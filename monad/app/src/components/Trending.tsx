@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
+import { SwipeDeck } from "./SwipeDeck";
 import { Badge, usd } from "./ui";
 import { query } from "@/lib/indexer";
 import { useMatches, type MatchLite } from "@/lib/useMatches";
@@ -19,6 +20,7 @@ const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE"]);
 export function Trending() {
   const matches = useMatches();
   const [tab, setTab] = useState<"takes" | "matches">("takes");
+  const [view, setView] = useState<"list" | "swipe">("list");
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
@@ -41,6 +43,13 @@ export function Trending() {
           <button className={tab === "matches" ? "on" : undefined} onClick={() => setTab("matches")}>Matches</button>
         </div>
       </div>
+      {tab === "takes" && (
+        <div className="seg" style={{ marginBottom: 10 }}>
+          <button className={view === "list" ? "on" : undefined} onClick={() => setView("list")}><Icon name="list" size={13} /> List</button>
+          <button className={view === "swipe" ? "on" : undefined} onClick={() => setView("swipe")}><Icon name="cards" size={13} /> Swipe</button>
+        </div>
+      )}
+      {tab === "takes" && view === "swipe" ? <SwipeDeck /> : (
       <div className="mrows">
         {tab === "takes" &&
           (rows ?? []).filter((r) => !r.text.startsWith("E2E ")).map((r) => {
@@ -78,6 +87,7 @@ export function Trending() {
             </Link>
           ))}
       </div>
+      )}
     </>
   );
 }
