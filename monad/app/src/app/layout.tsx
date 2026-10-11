@@ -3,6 +3,7 @@ import { Barlow, Barlow_Condensed } from "next/font/google";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { MonadMark } from "@/components/MonadMark";
+import { TerraceMark } from "@/components/TerraceMark";
 import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <header className="header">
-            <Link href="/" className="logo"><span className="mark">T</span><b>Terrace</b></Link>
+            <Link href="/" className="logo"><TerraceMark size={32} /><b>Terrace</b></Link>
             <span className="spacer" />
             <span className="chain"><MonadMark size={16} /> MONAD</span>
             <Link href="/social" className="icon-btn" aria-label="What your mates are doing"><Icon name="bell" size={18} /></Link>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { Icon } from "./Icon";
-import { MonadMark } from "./MonadMark";
+import { TerraceMark } from "./TerraceMark";
 import { SignIn } from "./SignIn";
 import { Badge, usd } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -194,7 +194,7 @@ function DeckCard({ card, matches, stake, now, under }: { card: Card; matches: R
   const inner = (
     <>
       <div className="deck-meta">
-        <span className="badge open"><MonadMark size={12} /> TERRACE</span>
+        <span className="badge open"><TerraceMark size={13} round /> TERRACE</span>
         <Badge tone="chainlink">{card.market.question.spec ? "MATCH DATA" : "AI JUDGE"}</Badge>
         {card.market.isFlash && <Badge tone="flash">FLASH</Badge>}
         <span className="deck-clock">{countdown(close, now)}</span>
