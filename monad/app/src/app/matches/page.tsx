@@ -1,22 +1,11 @@
-import { MatchRow } from "@/components/MatchRow";
-import { ADDR, oracleAbi } from "@/lib/contracts";
-import { matches } from "@/lib/server/football";
-import { serverClient } from "@/lib/server/rpc";
+import { FixtureList } from "@/components/FixtureCard";
+import { Header } from "@/components/Header";
 
-export const revalidate = 20;
-
-export default async function Matches() {
-  const ids = await serverClient.readContract({ address: ADDR.oracle, abi: oracleAbi, functionName: "fixtureIds" });
-  const list = await matches(ids);
+export default function Matches() {
   return (
     <>
-      <h1>Matches</h1>
-      <p className="lede">Every match has a room. Pick one to chat, back takes and start markets.</p>
-      <div className="fixtures">
-        {list.map((m) => (
-          <MatchRow key={m.id} m={m} />
-        ))}
-      </div>
+      <Header title="Fixtures" sub="Every match has a room and a market" back="/" />
+      <FixtureList />
     </>
   );
 }

@@ -1,0 +1,32 @@
+/* Markets: swipe deck (handoff "Markets — swipe deck") and flash screen bits. */
+.stage { position: relative; margin: 6px var(--gutter) 0; height: 376px; user-select: none; -webkit-user-select: none; }
+.swipecard {
+  position: absolute; inset: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl);
+  padding: 16px; display: flex; flex-direction: column; box-shadow: var(--shadow-card);
+}
+.swipecard.top { touch-action: none; cursor: grab; will-change: transform; }
+.swipecard.top:active { cursor: grabbing; }
+.swipecard.under { transform: scale(0.945) translateY(13px); opacity: 0.5; pointer-events: none; }
+.swipecard.under2 { transform: scale(0.9) translateY(26px); opacity: 0.24; pointer-events: none; }
+.swipecard.caught-up { align-items: center; justify-content: center; }
+.stamp {
+  position: absolute; top: 22px; z-index: 3; border: 3px solid; border-radius: 10px; padding: 2px 11px;
+  font-family: var(--cond); font-size: 27px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: 0; pointer-events: none;
+}
+.stamp.y { left: 20px; color: var(--green); border-color: var(--green); transform: rotate(-13deg); }
+.stamp.n { right: 20px; color: var(--red); border-color: var(--red); transform: rotate(13deg); }
+.face-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--ink-4); }
+.crest-col { text-align: center; display: flex; flex-direction: column; align-items: center; width: 96px; }
+.crest-col .umeta { margin-top: 7px; color: var(--ink-2); }
+.face-call { font-family: var(--cond); font-size: 26px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; line-height: 1.05; }
+.face-matched { padding: 9px 0 0; border-top: 1px solid var(--line-hair); margin-top: 12px; }
+.deckacts { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 16px 0 6px; }
+.act { border-radius: 50%; border: 1.5px solid; display: flex; align-items: center; justify-content: center; transition: transform 0.12s var(--ease); }
+.act:active { transform: scale(0.92); }
+.a-no { width: 56px; height: 56px; background: #1b0c0c; border-color: var(--red); color: var(--red); }
+.a-skip { width: 44px; height: 44px; background: #141414; border-color: var(--ink-5); color: var(--ink-3); }
+.a-info { width: 44px; height: 44px; background: #0e1a28; border-color: #2f5c8f; color: var(--blue); }
+.a-yes { width: 56px; height: 56px; background: var(--green-deep); border-color: var(--green); color: var(--green); }
+.deckmeta { text-align: center; font-size: 11.5px; color: var(--ink-4); font-weight: 600; }
+.markets-list { padding: 8px var(--gutter) 0; }
+.flash-sec { padding: 16px 0 0; }

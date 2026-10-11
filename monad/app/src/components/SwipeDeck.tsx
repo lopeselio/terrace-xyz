@@ -1,223 +1,262 @@
 "use client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Address } from "viem";
+import { BetSheet, type BetPick } from "./BetSheet";
 import { Icon } from "./Icon";
-import { TerraceMark } from "./TerraceMark";
-import { SignIn } from "./SignIn";
-import { Badge, usd } from "./ui";
+import { fixtureOf, marketOdds, marketPick, marketTitle, type OpenMarket } from "./MarketCard";
+import { Badge, Crest, Odd, countdown, usd } from "./ui";
 import { useAccount } from "@/lib/account";
-import { query } from "@/lib/indexer";
-import { bet } from "@/lib/play";
-import { useMatches } from "@/lib/useMatches";
+import type { MatchLite } from "@/lib/useMatches";
+import "@/styles/markets.css";
 
 /*
- * The swipe deck from the Solana app (SwipeDeck.tsx), for the web:
- *   right → back it (YES)    left → fade it (NO)    up → open the room    down → skip
- * Pointer events drive the drag; a fast flick commits below the distance.
+ * The swipe deck (handoff "Markets — swipe deck").
+ *   right → back (yes)   left → fade (no)   up → open the match   down → skip
+ * The card follows the finger 1:1 through refs (never React state); rotation clamp(dx/20, ±12deg).
+ * Commit at |dx| > 105px or a fling ≥ 0.35px/ms, then the bet sheet opens on that side:
+ * cancelling it puts the card back, placing the bet consumes it.
  */
-type Card = {
-  id: string;
-  text: string;
-  room_id: string;
-  market: { id: string; token: string; yesPool: string; noPool: string; bettors: number; isSealed: boolean; isFlash: boolean; question: { answer: number; closeTime: string; spec: string | null } };
-};
-type Dir = "yes" | "no" | "detail" | "skip";
+const COMMIT_X = 105;
+const COMMIT_Y = 105;
+const FLING = 0.35;
+const EASE = "cubic-bezier(.22,1,.36,1)";
 
-const COMMIT_FRACTION = 0.32;
-const SWIPE_Y = 110;
-const FLING = 0.6; // px per ms
-
-const multiple = (yes: number, no: number, side: 1 | 2, stake: number) => {
-  const total = yes + no + stake;
-  return total / ((side === 1 ? yes : no) + stake);
+const buzz = (ms: number) => {
+  try {
+    navigator.vibrate?.(ms);
+  } catch {}
 };
 
-function countdown(closeTime: number, now: number) {
-  const s = Math.max(0, closeTime - now);
-  if (s <= 0) return "RESOLVING";
-  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m ${Math.floor(s % 60)}s`;
-}
-
-export function SwipeDeck() {
+export function SwipeDeck({ markets, matches, now }: { markets: OpenMarket[]; matches: Map<number, MatchLite>; now: number }) {
+  const router = useRouter();
   const { status, address, send } = useAccount();
-  const matches = useMatches();
-  const [cards, setCards] = useState<Card[] | null>(null);
-  const [index, setIndex] = useState(0);
-  const [stake, setStake] = useState(5);
-  const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
-  const [leaving, setLeaving] = useState<Dir | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now() / 1000);
-  const start = useRef<{ x: number; y: number; t: number } | null>(null);
-  const width = useRef(340);
+  const owner = status === "ready" ? address : null;
+  const [done, setDone] = useState<Set<string>>(new Set());
+  const [skipped, setSkipped] = useState<string[]>([]);
+  const [pick, setPick] = useState<BetPick | null>(null);
+  const placed = useRef(false);
+  const card = useRef<HTMLDivElement>(null);
+  const yes = useRef<HTMLDivElement>(null);
+  const no = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; t: number; dx: number; dy: number; crossed: boolean } | null>(null);
+  const busy = useRef(false);
 
+  const deck = markets.filter((m) => !m.isFlash && !done.has(m.id) && !skipped.includes(m.id)).slice(0, 40);
+  const top = deck[0];
+  const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  const paint = (dx: number, dy: number, transition = "none") => {
+    const el = card.current;
+    if (!el) return;
+    const rot = reduce ? 0 : Math.max(-12, Math.min(12, dx / 20));
+    el.style.transition = transition;
+    el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+    if (yes.current) yes.current.style.opacity = String(Math.max(0, Math.min(1, dx / 110)));
+    if (no.current) no.current.style.opacity = String(Math.max(0, Math.min(1, -dx / 110)));
+  };
+  const springHome = () => paint(0, 0, `transform 220ms ${EASE}`);
+
+  // A new top card always starts centred.
   useEffect(() => {
-    query<{ Message: Card[] }>(
-      `{ Message(where: { market_id: { _is_null: false } }, order_by: { heat: desc }, limit: 40) {
-          id text room_id market { id token yesPool noPool bettors isSealed isFlash question { answer closeTime spec } } } }`,
-    )
-      .then((d) => {
-        const t = Date.now() / 1000;
-        setCards(d.Message.filter((c) => !c.text.startsWith("E2E ") && !c.market.isSealed && c.market.question.answer === 0 && Number(c.market.question.closeTime) > t));
-      })
-      .catch(() => setCards([]));
-    const tick = setInterval(() => setNow(Date.now() / 1000), 1000);
-    return () => clearInterval(tick);
-  }, []);
-
-  const card = cards?.[index];
-  const next = cards?.[index + 1];
+    paint(0, 0);
+    busy.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [top?.id]);
 
   const commit = useCallback(
-    async (dir: Dir) => {
-      if (!card || leaving) return;
-      if ((dir === "yes" || dir === "no") && status !== "ready") {
-        setToast("Sign in to back or fade.");
-        setDrag({ x: 0, y: 0, active: false });
-        return;
-      }
-      setLeaving(dir);
+    (dir: "yes" | "no" | "detail" | "skip") => {
+      if (!top || busy.current) return;
+      busy.current = true;
+      buzz(18);
+      const el = card.current;
       if (dir === "detail") {
-        window.location.href = `/m/${card.room_id.split("-")[1]}#take-${card.id}`;
+        if (el) {
+          el.style.transition = `transform 240ms ${EASE}, opacity 240ms`;
+          el.style.transform = "translate(0, -460px)";
+          el.style.opacity = "0";
+        }
+        router.push(`/m/${fixtureOf(top)}${top.take ? `#take-${top.take.id}` : ""}`);
         return;
       }
-      if (dir === "yes" || dir === "no") {
-        const side = dir === "yes" ? 1 : 2;
-        bet(send, address!, BigInt(card.market.id), card.market.token as Address, side, stake)
-          .then(() => setToast(`${dir === "yes" ? "Backed" : "Faded"} for $${stake}. Locked in.`))
-          .catch((e) => setToast((e as Error).message));
+      if (dir === "skip") {
+        if (el) {
+          el.style.transition = `transform 240ms ${EASE}, opacity 240ms`;
+          el.style.transform = "translate(0, 460px)";
+          el.style.opacity = "0";
+        }
+        setTimeout(() => {
+          if (el) el.style.opacity = "1";
+          setSkipped((s) => [...s, top.id]);
+        }, 240);
+        return;
       }
-      setTimeout(() => {
-        setIndex((i) => i + 1);
-        setLeaving(null);
-        setDrag({ x: 0, y: 0, active: false });
-      }, 260);
+      const side = dir === "yes" ? 1 : 2;
+      const sign = side === 1 ? 1 : -1;
+      if (el) {
+        el.style.transition = `transform 240ms ${EASE}, opacity 240ms`;
+        el.style.transform = `translate(${sign * 460}px, -40px) rotate(${reduce ? 0 : sign * 18}deg)`;
+        el.style.opacity = "0";
+      }
+      placed.current = false;
+      setTimeout(() => setPick(marketPick(top, matches.get(fixtureOf(top)), side, send, owner)), 200);
     },
-    [card, leaving, status, send, address, stake],
+    [top, matches, send, owner, router, reduce],
   );
 
-  // Pointer drag --------------------------------------------------------------
-  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    width.current = e.currentTarget.offsetWidth;
-    start.current = { x: e.clientX, y: e.clientY, t: performance.now() };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({ x: 0, y: 0, active: true });
-  };
-  const onMove = (e: React.PointerEvent) => {
-    if (!start.current) return;
-    setDrag({ x: e.clientX - start.current.x, y: e.clientY - start.current.y, active: true });
-  };
-  const onUp = (e: React.PointerEvent) => {
-    if (!start.current) return;
-    const dx = e.clientX - start.current.x;
-    const dy = e.clientY - start.current.y;
-    const v = Math.hypot(dx, dy) / Math.max(1, performance.now() - start.current.t);
-    start.current = null;
-    const horizontal = Math.abs(dx) > Math.abs(dy);
-    if (horizontal && (Math.abs(dx) > width.current * COMMIT_FRACTION || (v > FLING && Math.abs(dx) > 40))) return commit(dx > 0 ? "yes" : "no");
-    if (!horizontal && (Math.abs(dy) > SWIPE_Y || (v > FLING && Math.abs(dy) > 40))) return commit(dy < 0 ? "detail" : "skip");
-    setDrag({ x: 0, y: 0, active: false });
-  };
+  function closeSheet() {
+    setPick(null);
+    const el = card.current;
+    if (placed.current && top) {
+      if (el) el.style.opacity = "1";
+      setDone((d) => new Set(d).add(top.id));
+    } else if (el) {
+      // Cancelled: the card comes back to the deck.
+      el.style.opacity = "1";
+      springHome();
+      busy.current = false;
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const map: Record<string, Dir> = { ArrowRight: "yes", ArrowLeft: "no", ArrowUp: "detail", ArrowDown: "skip" };
-      if (map[e.key]) commit(map[e.key]);
+      if (pick || (e.target as HTMLElement)?.tagName === "INPUT") return;
+      const map = { ArrowRight: "yes", ArrowLeft: "no", ArrowUp: "detail", ArrowDown: "skip" } as const;
+      const dir = map[e.key as keyof typeof map];
+      if (dir) {
+        e.preventDefault();
+        commit(dir);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [commit]);
+  }, [commit, pick]);
 
-  if (cards === null) return <div className="deck-state"><div className="spinner" /> Dealing the cards…</div>;
-  if (!card)
+  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (busy.current || (e.target as HTMLElement).closest("button")) return;
+    drag.current = { x: e.clientX, y: e.clientY, t: performance.now(), dx: 0, dy: 0, crossed: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    d.dx = e.clientX - d.x;
+    d.dy = e.clientY - d.y;
+    const crossed = Math.abs(d.dx) > COMMIT_X;
+    if (crossed !== d.crossed) {
+      d.crossed = crossed;
+      if (crossed) buzz(8);
+    }
+    paint(d.dx, d.dy);
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    const v = Math.hypot(d.dx, d.dy) / Math.max(1, performance.now() - d.t);
+    const horizontal = Math.abs(d.dx) >= Math.abs(d.dy);
+    if (horizontal && (Math.abs(d.dx) > COMMIT_X || (v >= FLING && Math.abs(d.dx) > 30))) return commit(d.dx > 0 ? "yes" : "no");
+    if (!horizontal && (Math.abs(d.dy) > COMMIT_Y || (v >= FLING && Math.abs(d.dy) > 30))) return commit(d.dy < 0 ? "detail" : "skip");
+    springHome();
+  };
+
+  if (!top) {
     return (
-      <div className="deck-state">
-        <Icon name="check" size={32} />
-        <p className="caught-up">You&apos;re all caught up.</p>
-        <p className="muted">New takes land as fans post them. Start one yourself.</p>
-        <Link href="/take" className="cta small" style={{ marginTop: 8 }}>Say your take</Link>
-      </div>
+      <>
+        <div className="stage">
+          <div className="swipecard caught-up">
+            <div className="empty" style={{ padding: "60px 12px" }}>
+              <h4>You&apos;re all caught up</h4>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-3)" }}>
+                {markets.length ? "New calls land as fans post takes." : "No open markets right now. Start one with +."}
+              </div>
+              {skipped.length > 0 && (
+                <button className="textbtn" style={{ marginTop: 14 }} onClick={() => setSkipped([])}>Reshuffle skipped</button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="deckacts" style={{ opacity: 0.4 }} aria-hidden>
+          <span className="act a-no"><Icon name="close" size={26} /></span>
+          <span className="act a-skip"><Icon name="arrowDown" /></span>
+          <span className="act a-info"><Icon name="info" /></span>
+          <span className="act a-yes"><Icon name="check" size={26} /></span>
+        </div>
+      </>
     );
-
-  const exitX = leaving === "yes" ? 600 : leaving === "no" ? -600 : 0;
-  const exitY = leaving === "detail" ? -600 : leaving === "skip" ? 600 : 0;
-  const x = leaving ? exitX : drag.x;
-  const y = leaving ? exitY : drag.y;
-  const rot = x / 18;
-  const yesOpacity = Math.max(0, Math.min(1, x / 90));
-  const noOpacity = Math.max(0, Math.min(1, -x / 90));
+  }
 
   return (
-    <div className="deck">
-      <div className="deck-stage">
-        {next && <DeckCard card={next} matches={matches} stake={stake} now={now} under />}
+    <>
+      <div className="stage">
+        {deck[2] && <div className="swipecard under2" aria-hidden />}
+        {deck[1] && (
+          <div className="swipecard under" aria-hidden>
+            <Face m={deck[1]} match={matches.get(fixtureOf(deck[1]))} now={now} />
+          </div>
+        )}
         <div
-          className="deck-card top"
-          style={{ transform: `translate(${x}px, ${y}px) rotate(${rot}deg)`, transition: drag.active && !leaving ? "none" : "transform 260ms cubic-bezier(.22,1,.36,1)" }}
+          key={top.id}
+          ref={card}
+          className="swipecard top"
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
         >
-          <span className="stamp yes" style={{ opacity: yesOpacity }}>BACK</span>
-          <span className="stamp no" style={{ opacity: noOpacity }}>FADE</span>
-          <DeckCard card={card} matches={matches} stake={stake} now={now} />
+          <div className="stamp y" ref={yes}>Back</div>
+          <div className="stamp n" ref={no}>Fade</div>
+          <Face m={top} match={matches.get(fixtureOf(top))} now={now} onSide={(s) => commit(s === 1 ? "yes" : "no")} />
         </div>
       </div>
-
-      <div className="chips" style={{ justifyContent: "center", marginTop: 14 }}>
-        {[1, 5, 10, 25].map((d) => (
-          <button key={d} className={`chip${stake === d ? " on" : ""}`} onClick={() => setStake(d)}>${d}</button>
-        ))}
+      <div className="deckacts">
+        <button className="act a-no" aria-label="Fade it" onClick={() => commit("no")}><Icon name="close" size={26} /></button>
+        <button className="act a-skip" aria-label="Skip" onClick={() => commit("skip")}><Icon name="arrowDown" /></button>
+        <button className="act a-info" aria-label="Open the match" onClick={() => commit("detail")}><Icon name="info" /></button>
+        <button className="act a-yes" aria-label="Back it" onClick={() => commit("yes")}><Icon name="check" size={26} /></button>
       </div>
-      <div className="deck-actions">
-        <button className="act no" aria-label="Fade it" onClick={() => commit("no")}><Icon name="close" size={26} /></button>
-        <button className="act skip" aria-label="Skip" onClick={() => commit("skip")}><Icon name="arrowDown" size={20} /></button>
-        <button className="act detail" aria-label="Open the room" onClick={() => commit("detail")}><Icon name="arrowUpRight" size={20} /></button>
-        <button className="act yes" aria-label="Back it" onClick={() => commit("yes")}><Icon name="check" size={28} /></button>
-      </div>
-      <p className="deck-counter">{index + 1} of {cards.length} · swipe right to back, left to fade</p>
-      {toast && <p className="deck-toast" onAnimationEnd={() => setToast(null)}>{toast}</p>}
-      {status !== "ready" && <SignIn reason="Sign in to back or fade with a swipe." />}
-    </div>
+      <div className="deckmeta">{deck.length} {deck.length === 1 ? "call" : "calls"} left · swipe left to fade · right to back</div>
+      {pick && (
+        <BetSheet
+          pick={pick}
+          onPlaced={() => {
+            placed.current = true;
+          }}
+          onClose={closeSheet}
+        />
+      )}
+    </>
   );
 }
 
-function DeckCard({ card, matches, stake, now, under }: { card: Card; matches: ReturnType<typeof useMatches>; stake: number; now: number; under?: boolean }) {
-  const m = matches.get(Number(card.room_id.split("-")[1]));
-  const yes = Number(card.market.yesPool);
-  const no = Number(card.market.noPool);
-  const total = yes + no;
-  const close = Number(card.market.question.closeTime);
-  const inner = (
+function Face({ m, match, now, onSide }: { m: OpenMarket; match?: MatchLite; now: number; onSide?: (side: 1 | 2) => void }) {
+  return (
     <>
-      <div className="deck-meta">
-        <span className="badge open"><TerraceMark size={13} round /> TERRACE</span>
-        <Badge tone="chainlink">{card.market.question.spec ? "MATCH DATA" : "AI JUDGE"}</Badge>
-        {card.market.isFlash && <Badge tone="flash">FLASH</Badge>}
-        <span className="deck-clock">{countdown(close, now)}</span>
+      <div className="match-top">
+        <Badge tone="terrace">Terrace</Badge>
+        <Badge tone="chainlink">{m.question.spec || m.question.kind > 0 ? "Match data" : "AI judge"}</Badge>
+        <span style={{ marginLeft: "auto" }}><Badge tone="flash" icon="clock">{countdown(Number(m.question.closeTime), now)}</Badge></span>
       </div>
-      <div className="deck-hero">
-        {m ? (
-          <div className="crest-pair">
-            <span className="crest-col"><img src={m.home.logo} alt="" width={64} height={64} />{m.home.name}</span>
-            <span className="vs">vs</span>
-            <span className="crest-col"><img src={m.away.logo} alt="" width={64} height={64} />{m.away.name}</span>
+      <div className="face-hero">
+        {match ? (
+          <div className="row" style={{ gap: 16 }}>
+            <div className="crest-col"><Crest lg logo={match.home.logo} name={match.home.name} /><div className="umeta">{match.home.name}</div></div>
+            <div className="cond" style={{ fontSize: 15, color: "var(--ink-4)" }}>V</div>
+            <div className="crest-col"><Crest lg logo={match.away.logo} name={match.away.name} /><div className="umeta">{match.away.name}</div></div>
           </div>
         ) : (
-          <Icon name="ball" size={56} />
+          <Icon name="ball" size={48} />
         )}
+        <div className="match-lg">{match?.league ?? "Football"} · {m.question.kind > 0 ? "Match result" : "Fan take"}</div>
       </div>
-      <div className="deck-context">{m ? `${m.home.name} v ${m.away.name}` : "Match room"}</div>
-      <div className="deck-statement">{card.text}</div>
-      <div className="odds-row">
-        <div className="odds no"><span className="lbl">Fade</span><span className="val">{multiple(yes, no, 2, stake * 1e6).toFixed(2)}x</span></div>
-        <div className="odds yes"><span className="lbl">Back</span><span className="val">{multiple(yes, no, 1, stake * 1e6).toFixed(2)}x</span></div>
+      <div className="face-call">{marketTitle(m, match)}</div>
+      <div className="oddsrow two" style={{ marginTop: 12 }}>
+        <Odd label="Back · yes" value={marketOdds(m, 1)} tone="yes" onClick={() => onSide?.(1)} />
+        <Odd label="Fade · no" value={marketOdds(m, 2)} tone="no" onClick={() => onSide?.(2)} />
       </div>
-      <div className="deck-matched">{card.market.bettors} in · {usd(total)} pool · payout for ${stake}</div>
+      <div className="kv face-matched">
+        <span className="k">Matched</span>
+        <span className="v">{usd(Number(m.yesPool) + Number(m.noPool))}</span>
+      </div>
     </>
   );
-  return under ? <div className="deck-card under">{inner}</div> : inner;
 }
