@@ -20,8 +20,13 @@ import {
   createSecp256k1SigningSession,
   getPasskeyPrfOutput,
   isMeraError,
+  type PasskeyCredentialMetadata,
   type Secp256k1SigningSession,
 } from "@category-labs/mera";
+
+// The passkey this session signed in with: re-confirming asks for exactly that one, so a phone
+// holding several Terrace passkeys can't hand back the wrong account mid-bet.
+let activeCredential: PasskeyCredentialMetadata | null = null;
 import { toViemAccount } from "@category-labs/mera/viem";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { x25519 } from "@noble/curves/ed25519";
@@ -91,18 +96,20 @@ function fromPrf(prf: Uint8Array): Keys {
 /** New fan: one passkey ceremony creates the passkey and the account behind it. */
 export async function createAccount(): Promise<Keys> {
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-  const { prfOutput } = await createPasskeyWithPrfOutput({
+  const { prfOutput, credentialId, transports } = await createPasskeyWithPrfOutput({
     rp: { id: rpId(), name: "Terrace" },
     // A label per passkey so several are easy to tell apart in the phone's picker.
     user: { name: `Terrace ${stamp}`, displayName: "Terrace" },
     prfSalt: PRF_SALT,
   });
+  activeCredential = { credentialId, transports };
   return fromPrf(prfOutput);
 }
 
 /** Returning fan, any device: the phone offers their Terrace passkey; everything rebuilds from it. */
-export async function signIn(): Promise<Keys> {
-  const { prfOutput } = await getPasskeyPrfOutput({ rpId: rpId(), prfSalt: PRF_SALT });
+export async function signIn(credential?: PasskeyCredentialMetadata): Promise<Keys> {
+  const { prfOutput, credentialId } = await getPasskeyPrfOutput({ rpId: rpId(), prfSalt: PRF_SALT, credential });
+  activeCredential = { credentialId, transports: credential?.transports };
   return fromPrf(prfOutput);
 }
 
@@ -111,10 +118,10 @@ export async function signIn(): Promise<Keys> {
  * Also renews an idle session.
  */
 export async function confirmPresence(expected: Hex): Promise<Keys> {
-  const keys = await signIn();
+  const keys = await signIn(activeCredential ?? undefined);
   if (keys.account.address.toLowerCase() !== expected.toLowerCase()) {
-    signOut();
-    throw new Error("That passkey belongs to a different Terrace account.");
+    // Wrong passkey picked: say so, but keep the fan signed in to the account they were using.
+    throw new Error("That's a different Terrace passkey. Pick the one you signed in with and try again.");
   }
   return keys;
 }
@@ -130,6 +137,7 @@ export function signOut() {
   session?.end(); // zeroes the key copy
   agentSession?.end();
   session = agentSession = null;
+  activeCredential = null;
 }
 
 /** Deterministic salt for a sealed bet or entry: recoverable from the passkey on any device. */
