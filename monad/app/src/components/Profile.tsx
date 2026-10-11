@@ -324,8 +324,9 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
   const why =
     (b.result === 0 || due === "refund") &&
     (answer === 3 ? "Called off, so stakes go back." : "Nobody backed the winning side, so everyone gets their stake back.");
+  const tone = state === "Won" ? "won" : state === "Lost" ? "lost" : state === "Refund" ? "refund" : "";
   return (
-    <div className="card">
+    <div className={`card ${tone}`}>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="uname" style={{ marginBottom: 6 }}>{label}</div>
@@ -340,7 +341,7 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
         </div>
         <div style={{ textAlign: "right" }}>
           <Badge tone={state === "Won" ? "won" : state === "Lost" ? "lost" : state === "Refund" ? "settled" : "flash"}>{state}</Badge>
-          <div className="cond" style={{ fontSize: 20, marginTop: 6, color: state === "Lost" ? "var(--ink-3)" : "var(--green)" }}>{value}</div>
+          <div className={`cond amt-${tone || "won"}`} style={{ fontSize: 20, marginTop: 6 }}>{state === "Lost" ? `−${value}` : value}</div>
         </div>
       </div>
       {why && <div className="umeta" style={{ marginTop: 8 }}>{why}</div>}
@@ -356,7 +357,7 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
 function AccaRow({ a }: { a: Acca }) {
   const state = ["Open", "Won", "Lost", "Refund", "Paid"][a.status];
   return (
-    <Link href="/acca" className="card card-tap" style={{ display: "block" }}>
+    <Link href="/acca" className={`card card-tap ${a.status === 1 || a.status === 4 ? "won" : a.status === 2 ? "lost" : a.status === 3 ? "refund" : ""}`} style={{ display: "block" }}>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
           <div className="uname" style={{ marginBottom: 6 }}>{a.legs}-leg parlay</div>
@@ -364,7 +365,11 @@ function AccaRow({ a }: { a: Acca }) {
         </div>
         <div style={{ textAlign: "right" }}>
           <Badge tone={a.status === 2 ? "lost" : a.status === 0 ? "flash" : a.status === 3 ? "settled" : "won"}>{a.status === 1 ? "Claim" : state}</Badge>
-          {a.payout && <div className="cond green" style={{ fontSize: 20, marginTop: 6 }}>+{money(a.payout)}</div>}
+          {a.payout ? (
+            <div className="cond amt-won" style={{ fontSize: 20, marginTop: 6 }}>+{money(a.payout)}</div>
+          ) : a.status === 2 ? (
+            <div className="cond amt-lost" style={{ fontSize: 20, marginTop: 6 }}>−{money(a.stake)}</div>
+          ) : null}
         </div>
       </div>
     </Link>
@@ -375,7 +380,7 @@ function DuelRow({ d, me, label }: { d: Duel; me: string; label: string }) {
   const mine = d.challenger === me ? d.challengerSide : d.challengerSide === 1 ? 2 : 1;
   const state = d.status === 4 ? (d.winner === me ? "Won" : "Lost") : ["Waiting", "Active", "Declined", "Expired", "", "Refund"][d.status];
   return (
-    <Link href={`/c/${d.id}`} className="card card-tap" style={{ display: "block" }}>
+    <Link href={`/c/${d.id}`} className={`card card-tap ${state === "Won" ? "won" : state === "Lost" ? "lost" : state === "Refund" ? "refund" : ""}`} style={{ display: "block" }}>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="uname" style={{ marginBottom: 6 }}><Icon name="swords" size={14} /> {label || "Match result 1v1"}</div>
@@ -386,7 +391,9 @@ function DuelRow({ d, me, label }: { d: Duel; me: string; label: string }) {
         </div>
         <div style={{ textAlign: "right" }}>
           <Badge tone={state === "Won" ? "won" : state === "Lost" ? "lost" : d.status <= 1 ? "open" : "settled"}>{state}</Badge>
-          <div className="cond" style={{ fontSize: 20, marginTop: 6, color: state === "Lost" ? "var(--ink-3)" : "var(--green)" }}>{money(Number(d.stake) * 2)}</div>
+          <div className={`cond ${state === "Lost" ? "amt-lost" : state === "Won" ? "amt-won" : "amt-refund"}`} style={{ fontSize: 20, marginTop: 6 }}>
+            {state === "Lost" ? `−${money(d.stake)}` : state === "Won" ? `+${money(Number(d.stake) * 2)}` : money(Number(d.stake) * 2)}
+          </div>
         </div>
       </div>
     </Link>

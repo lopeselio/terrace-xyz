@@ -354,3 +354,11 @@ img { display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ─── results: one colour per outcome, wherever your money moved ─────── */
+.card.won, .take.won { border-color: #1f6b3a; background: linear-gradient(180deg, #0c1f14, #0f0f0f 75%); box-shadow: inset 3px 0 0 var(--green); }
+.card.lost, .take.lost { border-color: #4a1f1f; background: linear-gradient(180deg, #1d0d0d, #0f0f0f 75%); box-shadow: inset 3px 0 0 var(--red); }
+.card.refund, .take.refund { border-color: var(--line); box-shadow: inset 3px 0 0 var(--ink-3); }
+.amt-won { color: var(--green); }
+.amt-lost { color: var(--red-ink); }
+.amt-refund { color: var(--ink-2); }

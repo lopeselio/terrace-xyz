@@ -7,12 +7,13 @@ import { ChallengeSheet } from "./ChallengeSheet";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
 import { TakeSheet } from "./TakeSheet";
-import { Avatar, Badge, Empty, Odd, ago, countdown, fanName, usd } from "./ui";
+import { Avatar, Badge, Empty, Odd, ago, countdown, fanName, money, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { query, type RoomMessage } from "@/lib/indexer";
 import { fractional, price } from "@/lib/odds";
 import { backTake, bet, postMessage } from "@/lib/play";
+import { betOutcome, type BetLike } from "@/lib/outcome";
 import { toggleLeg } from "@/lib/slip";
 import "@/styles/match.css";
 
@@ -56,6 +57,7 @@ export function Room({
   const [betPick, setBetPick] = useState<BetPick | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [myBets, setMyBets] = useState<Map<string, BetLike>>(new Map());
   const scrolled = useRef(false);
   // Chat-style scrolling: open at the latest, follow new takes while you're at the bottom,
   // otherwise offer a "jump to latest" pill.
@@ -67,13 +69,24 @@ export function Room({
   const load = useCallback(async () => {
     try {
       const d = await query<{ Message: Msg[] }>(ROOM, { room: `${kind === 0 ? "match" : "league"}-${roomId}` });
-      setMessages(d.Message.filter((m) => !m.text.startsWith("E2E ")));
+      const msgs = d.Message.filter((m) => !m.text.startsWith("E2E "));
+      setMessages(msgs);
       setOffline(false);
+      // Your own bets on these takes, so settled ones show what you won or lost.
+      const ids = msgs.flatMap((m) => (m.market ? [m.market.id] : []));
+      if (address && ids.length) {
+        const b = await query<{ Bet: { side: number; stake: string; result: number | null; payout: string | null; market: { id: string } }[] }>(
+          `query Mine($me: String!, $ids: [String!]) { Bet(where: { bettor: { _eq: $me }, market_id: { _in: $ids } }) { side stake result payout market { id } } }`,
+          { me: address.toLowerCase(), ids },
+        );
+        const byMarket = new Map(msgs.flatMap((m) => (m.market ? [[m.market.id, m.market] as const] : [])));
+        setMyBets(new Map(b.Bet.map((x) => [x.market.id, { ...x, market: byMarket.get(x.market.id)! } as BetLike])));
+      }
     } catch {
       setOffline(true);
       setMessages((m) => m ?? []);
     }
-  }, [kind, roomId]);
+  }, [kind, roomId, address]);
 
   useEffect(() => {
     load();
@@ -204,11 +217,12 @@ export function Room({
           const total = yes + no;
           const yesPct = total ? Math.round((yes / total) * 100) : 50;
           const answer = mk?.question.answer ?? 0;
+          const result = mk && myBets.has(mk.id) ? betOutcome(myBets.get(mk.id)!) : null;
           const close = mk ? Number(mk.question.closeTime) : 0;
           const open = !!mk && answer === 0 && close > now;
           const agent = agents.get(m.author);
           return (
-            <li key={m.id} id={`take-${m.id}`} className={`take${mk ? " listed" : ""}`}>
+            <li key={m.id} id={`take-${m.id}`} className={`take${mk ? " listed" : ""}${result && result.outcome !== "open" ? ` ${result.outcome}` : ""}`}>
               <div className="take-head">
                 <Avatar seed={m.author} name={agent || undefined} size={34} />
                 <div style={{ minWidth: 0 }}>
@@ -220,6 +234,11 @@ export function Room({
                   {mk && open && <Badge tone="flash" icon="clock">{countdown(close, now)}</Badge>}
                   {mk && answer === 0 && !open && <Badge tone="amber">Settling</Badge>}
                   {answer > 0 && <Badge tone={answer === 1 ? "won" : answer === 2 ? "lost" : "settled"}>{OUTCOME[answer]}</Badge>}
+                  {result && result.outcome !== "open" && (
+                    <Badge tone={result.outcome === "won" ? "won" : result.outcome === "lost" ? "lost" : "settled"}>
+                      {result.outcome === "won" ? `You won +${money(result.amount)}` : result.outcome === "lost" ? `You lost −${money(result.amount)}` : `Stake back ${money(result.amount)}`}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <p className="take-text">{m.text}</p>
