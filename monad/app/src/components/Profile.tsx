@@ -302,9 +302,28 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
   const sidePool = b.side === 1 ? yes : no;
   const dec = b.side ? poolDecimal(sidePool, b.side === 1 ? no : yes) : null;
   const est = sidePool > 0 ? (Number(b.stake) * (yes + no)) / sidePool : Number(b.stake);
-  const toCollect = b.result === null && b.market.question.answer !== 0;
-  const state = b.result === 1 ? "Won" : b.result === 2 ? "Lost" : b.result === 0 ? "Refund" : toCollect ? "Result in" : "Open";
-  const value = b.result === 1 ? `+${money(b.payout ?? 0)}` : b.result === 2 ? money(b.stake) : b.result === 0 ? money(b.payout ?? b.stake) : money(est);
+  const answer = b.market.question.answer; // 0 open, 1 yes, 2 no, 3 void
+  const toCollect = b.result === null && answer !== 0;
+  // What Collect will do, mirroring TerraceMarkets.settleBet: void, or nobody on the winning side, means a refund.
+  const winningPool = answer === 1 ? yes : answer === 2 ? no : 0;
+  const due: "won" | "lost" | "refund" | null = !toCollect
+    ? null
+    : answer === 3 || b.side === 0 || winningPool === 0
+      ? "refund"
+      : b.side === answer
+        ? "won"
+        : "lost";
+  const grossDue = due === "won" ? (Number(b.stake) * (yes + no)) / winningPool : 0;
+  const winDue = grossDue - ((grossDue - Number(b.stake)) * b.market.feeBps) / 10_000;
+  const state =
+    b.result === 1 ? "Won" : b.result === 2 ? "Lost" : b.result === 0 ? "Refund"
+    : due === "won" ? "Won" : due === "lost" ? "Lost" : due === "refund" ? "Refund" : "Open";
+  const value =
+    b.result === 1 ? `+${money(b.payout ?? 0)}` : b.result === 2 ? money(b.stake) : b.result === 0 ? money(b.payout ?? b.stake)
+    : due === "won" ? `+${money(winDue)}` : due === "lost" ? money(b.stake) : due === "refund" ? money(b.stake) : money(est);
+  const why =
+    (b.result === 0 || due === "refund") &&
+    (answer === 3 ? "Called off, so stakes go back." : "Nobody backed the winning side, so everyone gets their stake back.");
   return (
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start" }}>
@@ -324,9 +343,10 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
           <div className="cond" style={{ fontSize: 20, marginTop: 6, color: state === "Lost" ? "var(--ink-3)" : "var(--green)" }}>{value}</div>
         </div>
       </div>
+      {why && <div className="umeta" style={{ marginTop: 8 }}>{why}</div>}
       {toCollect && onCollect && (
-        <button className="cta cta-sm" style={{ marginTop: 12 }} disabled={busy} onClick={onCollect}>
-          {busy ? "Collecting…" : "Collect"}
+        <button className={`cta cta-sm${due === "lost" ? " cta-ghost" : ""}`} style={{ marginTop: 12 }} disabled={busy} onClick={onCollect}>
+          {busy ? "One moment…" : due === "won" ? `Collect ${money(winDue)}` : due === "refund" ? `Get my ${money(b.stake)} back` : "Close it out"}
         </button>
       )}
     </div>

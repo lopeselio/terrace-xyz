@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
@@ -11,7 +12,7 @@ import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { query, type RoomMessage } from "@/lib/indexer";
 import { fractional, price } from "@/lib/odds";
-import { backTake, bet, collect, postMessage } from "@/lib/play";
+import { backTake, bet, postMessage } from "@/lib/play";
 import { toggleLeg } from "@/lib/slip";
 import "@/styles/match.css";
 
@@ -277,10 +278,10 @@ export function Room({
                       </button>
                     </>
                   )}
-                  {mk && answer > 0 && (
-                    <button className="btn-out" disabled={!!busy} onClick={() => run(`c${m.id}`, () => collect(send, BigInt(mk.id), address))}>
-                      <Icon name="check" size={14} /> {busy === `c${m.id}` ? "…" : "Collect"}
-                    </button>
+                  {mk && answer > 0 && status === "ready" && (
+                    <Link href="/me" className="btn-out">
+                      <Icon name="check" size={14} /> See my result ›
+                    </Link>
                   )}
                 </div>
               )}
