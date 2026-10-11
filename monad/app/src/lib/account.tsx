@@ -66,6 +66,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     async (call) => {
       let k = keys;
       if (!k) throw new Error("Sign in to save this.");
+      // Tell the activity indicator something is happening (and when it's done).
+      window.dispatchEvent(new CustomEvent("terrace-busy", { detail: 1 }));
+      try {
       // Idle too long, or a big stake: one passkey prompt to confirm it's really you.
       if (!sessionLive() || (call.dollars ?? 0) > PROMPT_FREE_LIMIT) {
         k = await confirmPresence(k.account.address);
@@ -92,6 +95,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         return hash;
       } catch (e) {
         throw new Error(friendlyError(e));
+      }
+      } finally {
+        window.dispatchEvent(new CustomEvent("terrace-busy", { detail: -1 }));
       }
     },
     [keys],

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import { TerraceMark } from "@/components/TerraceMark";
+import { Activity } from "@/components/Activity";
 import { Onboarding } from "@/components/Onboarding";
 import { OutcomePopup } from "@/components/OutcomePopup";
 import { PointsToast } from "@/components/PointsToast";
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="page">{children}</main>
           </div>
           <TabBar />
+          <Activity />
           <Onboarding />
           <OutcomePopup />
           <PointsToast />
