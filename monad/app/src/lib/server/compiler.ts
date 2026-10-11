@@ -47,7 +47,7 @@ or you are not sure which player is meant, return null for rule.
 Reply with JSON only: {"rule": Rule | null, "windowStart": number | null}  (windowStart = first minute of the window, if any).`;
 }
 
-async function askGemini(text: string, model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"): Promise<string> {
+async function askGemini(text: string, model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash"): Promise<string> {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
@@ -67,10 +67,10 @@ async function ask(text: string): Promise<string> {
   try {
     return await askGemini(text);
   } catch (e) {
-    if (!/gemini (429|5\d\d)/.test((e as Error).message)) throw e;
+    if (!/gemini (404|429|5\d\d)/.test((e as Error).message)) throw e;
     await new Promise((r) => setTimeout(r, 1200));
     try {
-      return await askGemini(text, process.env.GEMINI_FALLBACK_MODEL ?? "gemini-2.5-flash-lite");
+      return await askGemini(text, process.env.GEMINI_FALLBACK_MODEL ?? "gemini-flash-latest");
     } catch (e2) {
       if (process.env.ANTHROPIC_API_KEY) return askClaude(text);
       throw e2;

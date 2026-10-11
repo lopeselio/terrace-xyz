@@ -65,7 +65,7 @@ async function terrace<T>(path: string, body?: unknown): Promise<T> {
 const gql = <T>(query: string, variables = {}) => terrace<{ data: T }>("/api/indexer", { query, variables }).then((r) => r.data);
 
 async function gemini(prompt: string): Promise<string> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL ?? "gemini-3.5-flash"}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.9 } }),
