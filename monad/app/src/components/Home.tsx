@@ -6,11 +6,13 @@ import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { FixtureCard, LiveFixtureCard, kickoffDay } from "./FixtureCard";
 import { ActivityTicker } from "./ActivityTicker";
+import { FeatureCarousel } from "./FeatureCarousel";
+import { TeamBrief } from "./TeamBrief";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
 import { fixtureOf, marketOdds, marketPick, marketTitle, useOpenMarkets, type OpenMarket } from "./MarketCard";
 import { FINISHED, LIVE } from "./MatchRow";
-import { Avatar, Badge, Odd, SectionHead, SkeletonCards, Tile, ago, countdown, fanName, usd } from "./ui";
+import { Avatar, Badge, Odd, SectionHead, SkeletonCards, ago, countdown, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { foundingFans } from "@/lib/terracePoints";
 import { PointsSheet } from "./PointsSheet";
@@ -46,6 +48,8 @@ export function Home() {
     <>
       <Header brand search bell />
       <ActivityTicker />
+      <FeatureCarousel />
+      <TeamBrief odds={prices.odds} onPick={(m, kind) => setPick(prices.pick(m, kind, 1, send, owner))} />
 
       {live.length > 0 && (
         <>
@@ -89,14 +93,7 @@ export function Home() {
       )}
       {pointsOpen && <PointsSheet address={address} onClose={() => setPointsOpen(false)} />}
 
-      <div className="sec" style={{ paddingBottom: 18 }}>
-        <div className="stats four">
-          <Tile href="/flash" icon="bolt">Flash<br />markets</Tile>
-          <Tile href="/challenges" icon="swords">1v1<br />matchups</Tile>
-          <Tile href="/acca" icon="list">Build a<br />parlay</Tile>
-          <Tile href="/leagues" icon="trophy">Private<br />leagues</Tile>
-        </div>
-      </div>
+      <div style={{ height: 18 }} />
 
       {pick && <BetSheet pick={pick} onClose={() => setPick(null)} />}
     </>
