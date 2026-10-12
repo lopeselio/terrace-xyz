@@ -67,7 +67,10 @@ const gql = <T>(query: string, variables = {}) => terrace<{ data: T }>("/api/ind
 // Search-grounded takes first. When the day's search quota is spent (429) or the model is busy (503),
 // fall back to plain answers from other Flash models, so the pundit keeps posting and the AI judge
 // keeps the search budget for settling takes.
+let pausedUntil = 0; // set when every model is out of quota, so the shared key isn't hammered
 async function gemini(prompt: string): Promise<string> {
+  if (Date.now() < pausedUntil) return "";
+  let allQuota = true;
   const main = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
   const tries: [string, boolean][] = [[main, true], [main, false], ["gemini-flash-latest", false], ["gemini-2.5-flash", false]];
   for (const [model, search] of tries) {
@@ -80,9 +83,14 @@ async function gemini(prompt: string): Promise<string> {
       const out = (await res.json().catch(() => ({ error: { status: "BAD_RESPONSE" } }))) as { error?: { status?: string }; candidates?: { content?: { parts?: { text?: string }[] } }[] };
       if (!out.error) return (out.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim().replace(/^"|"$/g, "");
       log(`Gemini ${model}${search ? " with search" : ""}: ${res.status} ${out.error.status ?? ""}`);
+      if (res.status !== 429) allQuota = false;
       if (res.status !== 503) break; // busy: one quick retry; anything else: next model
       await Bun.sleep(3000);
     }
+  }
+  if (allQuota) {
+    pausedUntil = Date.now() + 60 * 60_000;
+    log("every Gemini model is out of quota: pausing takes for an hour (the AI judge shares this key)");
   }
   return "";
 }
@@ -132,7 +140,7 @@ async function postTakes() {
   // Up to three new takes a round, trying at most six matches so a bad patch doesn't burn the quota.
   let listed = 0, tried = 0;
   for (const m of matches) {
-    if (listed >= 3 || tried >= 6) break;
+    if (listed >= 3 || tried >= 6 || Date.now() < pausedUntil) break;
     if (done.has(`match-${m.id}`)) continue;
     tried++;
     const raw = await gemini(
