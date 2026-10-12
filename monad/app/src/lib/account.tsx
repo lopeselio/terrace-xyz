@@ -14,6 +14,8 @@ type Ctx = {
   error: string | null;
   join: () => Promise<Keys | null>;
   login: () => Promise<Keys | null>;
+  /** Sign in with a passkey made on an older Terrace address (WebAuthn related origins). */
+  loginFrom: (home: string) => Promise<Keys | null>;
   logout: () => void;
   /** Sign and send with the Mera session. Pass `dollars` for stakes: big ones ask for the passkey again. */
   send: <const abi extends Abi, fn extends ContractFunctionName<abi, "nonpayable" | "payable">>(call: {
@@ -53,7 +55,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const join = useCallback(() => finish(createAccount), [finish]);
-  const login = useCallback(() => finish(signIn), [finish]);
+  const login = useCallback(() => finish(() => signIn()), [finish]);
+  const loginFrom = useCallback((home: string) => finish(() => signIn(undefined, home)), [finish]);
   const logout = useCallback(() => {
     signOut();
     setKeys(null);
@@ -104,8 +107,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<Ctx>(
-    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, logout, send }),
-    [status, keys, error, join, login, logout, send],
+    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send }),
+    [status, keys, error, join, login, loginFrom, logout, send],
   );
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

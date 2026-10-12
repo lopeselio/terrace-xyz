@@ -27,6 +27,10 @@ import {
 // The passkey this session signed in with: re-confirming asks for exactly that one, so a phone
 // holding several Terrace passkeys can't hand back the wrong account mid-bet.
 let activeCredential: PasskeyCredentialMetadata | null = null;
+let activeRpId: string | null = null;
+
+/** Where Terrace has lived before: passkeys made there still sign in here (see /.well-known/webauthn). */
+export const PREVIOUS_HOMES = ["terrace-monad.vercel.app"];
 import { toViemAccount } from "@category-labs/mera/viem";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { x25519 } from "@noble/curves/ed25519";
@@ -103,13 +107,17 @@ export async function createAccount(): Promise<Keys> {
     prfSalt: PRF_SALT,
   });
   activeCredential = { credentialId, transports };
+  activeRpId = rpId();
   return fromPrf(prfOutput);
 }
 
 /** Returning fan, any device: the phone offers their Terrace passkey; everything rebuilds from it. */
-export async function signIn(credential?: PasskeyCredentialMetadata): Promise<Keys> {
-  const { prfOutput, credentialId } = await getPasskeyPrfOutput({ rpId: rpId(), prfSalt: PRF_SALT, credential });
+/** Sign in with a passkey. `home` names an older Terrace address whose passkeys should be used. */
+export async function signIn(credential?: PasskeyCredentialMetadata, home?: string): Promise<Keys> {
+  const rp = home ?? activeRpId ?? rpId();
+  const { prfOutput, credentialId } = await getPasskeyPrfOutput({ rpId: rp, prfSalt: PRF_SALT, credential });
   activeCredential = { credentialId, transports: credential?.transports };
+  activeRpId = rp;
   return fromPrf(prfOutput);
 }
 
@@ -138,6 +146,7 @@ export function signOut() {
   agentSession?.end();
   session = agentSession = null;
   activeCredential = null;
+  activeRpId = null;
 }
 
 /** Deterministic salt for a sealed bet or entry: recoverable from the passkey on any device. */

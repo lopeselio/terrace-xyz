@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { useAccount } from "@/lib/account";
+import { OldPasskey } from "./OldPasskey";
 
 /** One passkey ceremony. No seed phrase, no extension, no email code. */
 export function SignIn({ reason = "Save your picks and join the chat.", bare }: { reason?: string; bare?: boolean }) {
@@ -24,6 +25,7 @@ export function SignIn({ reason = "Save your picks and join the chat.", bare }: 
       <button className="cta cta-ghost cta-sm" style={{ marginTop: 8 }} onClick={returning ? join : login} disabled={busy}>
         {returning ? "New here? Create a passkey" : "I already have an account"}
       </button>
+      <OldPasskey />
       <div className="umeta" style={{ textAlign: "center", marginTop: 10 }}>No seed phrase, no app to install. Your passkey is your account on any device.</div>
       {error && <p className="error" style={{ marginTop: 8 }}>{error}</p>}
     </div>

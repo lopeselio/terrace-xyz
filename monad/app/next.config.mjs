@@ -8,6 +8,10 @@ const nextConfig = {
   reactStrictMode: true,
   // The rule language and sealing code are shared with the CRE workflows in ../cre/shared.
   experimental: { externalDir: true },
+  // Passkeys made on an older Terrace address keep working here (WebAuthn related origins).
+  async rewrites() {
+    return [{ source: "/.well-known/webauthn", destination: "/api/webauthn" }];
+  },
   // Files outside the app (../cre/shared) fall back to the app's node_modules,
   // so a deploy only needs the app's own install.
   webpack: (config) => {

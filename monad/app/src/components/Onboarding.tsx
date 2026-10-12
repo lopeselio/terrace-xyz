@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Icon, type IconName } from "./Icon";
 import { TerraceMark } from "./TerraceMark";
 import { useAccount } from "@/lib/account";
+import { OldPasskey } from "./OldPasskey";
 import "@/styles/onboarding.css";
 
 const FLAG = "terrace.onboarded";
@@ -47,6 +48,7 @@ export function OnboardingPanel({ compact, onDone }: { compact?: boolean; onDone
         <button className="cta cta-ghost cta-sm" style={{ marginTop: 8 }} disabled={busy} onClick={() => login()}>
           I already have an account
         </button>
+        <OldPasskey />
         <div className="umeta" style={{ textAlign: "center", marginTop: 10 }}>
           <Icon name="shield" size={12} /> Face ID or fingerprint. No passwords, nothing to install.
         </div>
