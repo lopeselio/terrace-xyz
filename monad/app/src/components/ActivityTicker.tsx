@@ -62,6 +62,7 @@ export function ActivityTicker() {
         switch (i.kind) {
           case "BET": {
             const side = sides.get(`${i.market?.id}-${i.actor}`) ?? 1;
+            if (who === "Terrace House") return [{ ...base, tone: "neutral", verb: `🏦 LIQUIDITY ${amt} ${side === 2 ? "NO" : "YES"}`, what: q }];
             return [{ ...base, tone: ai ? "ai" : side === 2 ? "down" : "up", verb: side === 2 ? `▼ FADED ${amt}` : side === 0 ? `● SEALED ${amt}` : `▲ BACKED ${amt}`, what: q }];
           }
           case "TAKE":
