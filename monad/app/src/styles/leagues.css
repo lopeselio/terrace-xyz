@@ -15,3 +15,22 @@
 .lg-vote .bar i { display: block; background: var(--green); }
 .lg-vote .bar b { display: block; background: var(--red); }
 .board li.me .name { color: var(--green); }
+
+/* Create league → Who runs it: two cards that say what each choice means */
+.run-choices { display: grid; gap: 10px; }
+.run-choice {
+  display: flex; gap: 12px; width: 100%; padding: 14px; text-align: left; border-radius: var(--r-lg);
+  background: var(--surface); border: 1.5px solid var(--line); color: var(--ink); transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.run-choice.on { border-color: var(--green); background: var(--green-deep); }
+.run-icon { flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--line); color: var(--ink-2); }
+.run-choice.on .run-icon { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.run-body { flex: 1; min-width: 0; display: block; }
+.run-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.run-tick { margin-left: auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.run-choice.on .run-tick { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.run-lede { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-2); }
+.run-choice ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.run-choice li { position: relative; padding-left: 14px; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
+.run-choice li::before { content: ""; position: absolute; left: 2px; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+.run-choice.on li { color: var(--ink-2); }

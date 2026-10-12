@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { SignIn } from "./SignIn";
 import { Badge, Seg, Switch } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -13,6 +13,32 @@ const WEEKS = [1, 4, 8, 38] as const;
 const FEES = [0, 1, 2, 5] as const;
 
 /** Create a league (screen-league-create.html): name, size, length, entry, who runs it, sealed table. */
+/* "Who runs it", in plain words: what each choice means for the gameweeks. */
+const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: string; points: string[] }[] = [
+  {
+    id: "members",
+    icon: "users",
+    title: "The group votes",
+    lede: "Everyone in the league has a say.",
+    points: [
+      "Any member suggests the next gameweek's matches in Votes",
+      "Voting stays open 24 hours; most yes votes wins, once a third of the league has voted",
+      "Suggest matches at least a day ahead",
+    ],
+  },
+  {
+    id: "me",
+    icon: "whistle",
+    title: "I do",
+    lede: "You're the organiser.",
+    points: [
+      "You pick each gameweek's matches in Gameweeks",
+      "They open for picks straight away, no vote",
+      "Members just make their picks and chat",
+    ],
+  },
+];
+
 export function CreateLeague() {
   const { status, send } = useAccount();
   const router = useRouter();
@@ -62,7 +88,21 @@ export function CreateLeague() {
       <div className="umeta" style={{ marginTop: 6 }}>Every entry goes to the prize pool. The winner takes the pool at the end of the season.</div>
 
       <div className="flabel" style={{ marginTop: 20 }}>Who runs it</div>
-      <Seg sub value={governed ? "members" : "me"} onChange={(v) => setGoverned(v === "members")} options={[{ id: "members", label: "The group votes" }, { id: "me", label: "I do" }]} />
+      <div className="run-choices" role="radiogroup" aria-label="Who runs it">
+        {RUNS.map((r) => {
+          const on = governed === (r.id === "members");
+          return (
+            <button key={r.id} type="button" role="radio" aria-checked={on} className={`run-choice${on ? " on" : ""}`} onClick={() => setGoverned(r.id === "members")}>
+              <span className="run-icon"><Icon name={r.icon} size={18} /></span>
+              <span className="run-body">
+                <span className="run-title">{r.title}<span className="run-tick">{on && <Icon name="check" size={14} />}</span></span>
+                <span className="run-lede">{r.lede}</span>
+                <ul>{r.points.map((p) => <li key={p}>{p}</li>)}</ul>
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       <div className="flabel" style={{ marginTop: 20 }}>Privacy</div>
       <div className="card" style={{ padding: "4px 14px" }}>
