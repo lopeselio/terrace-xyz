@@ -438,3 +438,128 @@ export function SettleScene() {
     </div>
   );
 }
+
+/* ── Flash: an in-play question that locks at the whistle ──────────────── */
+const FLASH_CLOCK = ["0:42", "0:31", "Locked", "Settled"];
+export function FlashScene() {
+  const { ref, step } = useScene(4, 2200);
+  return (
+    <div ref={ref}>
+      <Phone header={<Header title="Flash" sub="In-play · locks at the whistle" />} tab="markets">
+        <div className="sec">
+          <div className="card redish">
+            <div className="match-top"><Badge cls="b-live">LIVE</Badge><span className="badge b-min">{step >= 3 ? "72'" : "63'"}</span><span className="match-lg" style={{ marginLeft: "auto" }}>Premier League</span></div>
+            <div className="row" style={{ justifyContent: "center", gap: 18, marginTop: 10 }}>
+              <Crest code="ARS" lg /><span className="cond" style={{ fontSize: 30 }}>{step >= 3 ? "2 – 1" : "1 – 1"}</span><Crest code="CHE" lg />
+            </div>
+          </div>
+        </div>
+        <div className="sec">
+          <div className={`card flash-card${step >= 2 ? " locked" : ""}`}>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="badge b-flash"><Icon name="bolt" size={12} /> Flash</span>
+              <span className="flash-clock" style={{ marginLeft: "auto" }}>
+                <Icon name={step >= 2 ? "lock" : "clock"} size={13} />
+                <AnimatePresence mode="wait"><motion.span key={step} {...fade}>{FLASH_CLOCK[step]}</motion.span></AnimatePresence>
+              </span>
+            </div>
+            <div className="deck-q" style={{ marginTop: 10 }}>A goal before the 70th minute?</div>
+            <div className="flash-bar"><motion.i animate={{ scaleX: [1, 0.74, 0, 0][step] }} transition={{ duration: 2, ease: "linear" }} /></div>
+            <div className="oddsrow two" style={{ marginTop: 12 }}><Odd tone="yes" label="Yes" value="6/4" on={step >= 1} /><Odd tone="no" label="No" value="1/2" /></div>
+            <AnimatePresence mode="wait">
+              {step === 2 && <motion.div key="l" {...fade} className="sent"><Icon name="check" size={16} /> Locked in · $5 on Yes</motion.div>}
+              {step === 3 && <motion.div key="w" {...fade} className="won-toast" style={{ position: "static", marginTop: 12 }}><Icon name="trophy" size={20} /> Goal 67&apos; · you won $12.50</motion.div>}
+            </AnimatePresence>
+          </div>
+        </div>
+      </Phone>
+    </div>
+  );
+}
+
+/* ── Parlays: stack legs, all must land, the weekly pot ────────────────── */
+const LEGS = [
+  { h: "LIV" as const, a: "MCI" as const, q: "Liverpool to win", p: 1.67 },
+  { h: "RMA" as const, a: "BAR" as const, q: "Both teams to score", p: 1.8 },
+  { h: "ATA" as const, a: "INT" as const, q: "Over 2.5 goals", p: 1.62 },
+];
+export function ParlayScene() {
+  const { ref, step } = useScene(4, 2200);
+  const n = Math.min(step + 1, 3);
+  const combined = LEGS.slice(0, n).reduce((x, l) => x * l.p, 1);
+  return (
+    <div ref={ref}>
+      <Phone header={<Header title="Build a parlay" sub="2-8 legs · all must land" back />} tab="markets">
+        <div className="sec" style={{ display: "grid", gap: 8 }}>
+          <AnimatePresence initial={false}>
+            {LEGS.slice(0, n).map((l) => (
+              <motion.div key={l.q} layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease }} className="card leg-row">
+                <span className="tickbox"><Icon name="check" size={13} /></span>
+                <span className="crest-pair"><Crest code={l.h} /><Crest code={l.a} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}><div className="uname">{l.q}</div><div className="umeta">Match result · Sat</div></div>
+                <span className="cond" style={{ fontSize: 18 }}>{l.p.toFixed(2)}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <div className="card greenish">
+            <div className="kv flush"><span className="k">Combined price</span><span className="v cond green" style={{ fontSize: 24 }}><Count to={combined} decimals={2} /></span></div>
+            <div className="kv"><span className="k">Stake</span><span className="v">$10.00</span></div>
+            <div className="kv" style={{ paddingBottom: 0 }}><span className="k">This week&apos;s pot</span><span className="v cond" style={{ fontSize: 20 }}>$<Count to={step >= 3 ? 1250 : 1240} /></span></div>
+          </div>
+          <AnimatePresence mode="wait">
+            {step === 3 ? (
+              <motion.div key="p" {...fade} className="sent"><Icon name="check" size={16} /> 3-leg parlay placed · in the pot</motion.div>
+            ) : (
+              <motion.span key="c" {...fade} className="cta">Place parlay · $10</motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+      </Phone>
+    </div>
+  );
+}
+
+/* ── Terrace Points: every play counts, founding fans double ────────────── */
+const PTS = [
+  { r: "Bet placed", p: 20, icon: "dollar" as const },
+  { r: "Called it", p: 40, icon: "trophy" as const },
+  { r: "3-day streak", p: 60, icon: "flame" as const },
+];
+export function PointsScene() {
+  const { ref, step } = useScene(4, 2100);
+  const total = 470 + PTS.slice(0, step).reduce((s, e) => s + e.p, 0);
+  return (
+    <div ref={ref}>
+      <Phone header={<Header title="mikeyd" sub="Sharp tier · 24 calls" />} tab="profile">
+        <div className="sec">
+          <div className="card points-card">
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <div className="eyebrow" style={{ color: "var(--amber-ink)" }}>Terrace Points</div>
+                <div className="cond" style={{ fontSize: 40, lineHeight: 1 }}><Count to={total} /></div>
+                <div className="umeta">Founding fan · every point counts double</div>
+              </div>
+              <span className="badge b-flash">2×</span>
+            </div>
+          </div>
+        </div>
+        <div className="sec" style={{ display: "grid", gap: 8 }}>
+          <AnimatePresence initial={false}>
+            {PTS.slice(0, step).reverse().map((e) => (
+              <motion.div key={e.r} layout initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, ease }} className="card row" style={{ gap: 10 }}>
+                <span className="pt-icon"><Icon name={e.icon} size={16} /></span>
+                <span className="uname" style={{ flex: 1 }}>{e.r}</span>
+                <span className="cond" style={{ fontSize: 20, color: "var(--amber-ink)" }}>+{e.p}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <div className="card row" style={{ gap: 10 }}>
+            <Icon name="crown" size={18} />
+            <span className="uname" style={{ flex: 1 }}>Leaderboard</span>
+            <AnimatePresence mode="wait"><motion.span key={step >= 3 ? "a" : "b"} {...fade} className="cond" style={{ fontSize: 20 }}>#{step >= 3 ? 9 : 14}</motion.span></AnimatePresence>
+          </div>
+        </div>
+      </Phone>
+    </div>
+  );
+}
