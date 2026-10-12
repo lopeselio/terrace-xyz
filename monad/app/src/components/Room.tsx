@@ -244,7 +244,7 @@ export function Room({
               <p className="take-text">{m.text}</p>
               {(m.backers > 0 || mk) && (
                 <p className="take-meta">
-                  {m.backers} backing{mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
+                  {m.backers} {kind === 0 ? "backing" : "agree"}{mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
                 </p>
               )}
               {mk && (
@@ -280,7 +280,7 @@ export function Room({
                 <div className="actions">
                   {!mine && !mk && (
                     <button className="btn-out mute" disabled={!!busy} onClick={() => run(`b${m.id}`, () => backTake(send, BigInt(m.id)))}>
-                      <Icon name="flame" size={14} /> {busy === `b${m.id}` ? "…" : "Back this take"}
+                      <Icon name="flame" size={14} /> {busy === `b${m.id}` ? "…" : kind === 0 ? "Back this take" : "Agree"}
                     </button>
                   )}
                   {mine && !mk && fixtureId !== undefined && listing?.id !== m.id && (
