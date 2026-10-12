@@ -15,7 +15,7 @@ import { ADDR, leaguesAbi } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import {
   addGameweek, countMarketWins, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
-  leagueCode, ordinal, pendingMarketWins, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
+  leagueCode, ordinal, parseInvite, pendingMarketWins, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
 
@@ -163,6 +163,11 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const canSetGameweek = league.contests.length < league.gameweeks && (!league.contests.length || current.finalized);
   const seasonDone = league.contests.length === league.gameweeks && league.contests.every((c) => c.finalized);
   const needsCode = league.inviteCodeHash !== ZERO_HASH;
+  // Fans paste what they were sent: "L2-Z4N3", a link, or just "Z4N3". The contract wants the last part.
+  const inviteCode = (typed: string) => {
+    const p = parseInvite(typed);
+    return p && p.leagueId === leagueId && p.code ? p.code : typed.trim().toUpperCase();
+  };
   const invite = typeof window !== "undefined" ? `${window.location.origin}/l/${leagueId}${code ? `?code=${code}` : ""}` : "";
 
   const myRank = season.findIndex((r) => isMe(r.member)) + 1;
@@ -282,10 +287,10 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                 </div>
                 {needsCode && (
                   <label className="field" style={{ marginBottom: 10 }}>
-                    <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Invite code from your mate" />
+                    <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={`Invite code, e.g. ${leagueCode(leagueId, "AB12")}`} />
                   </label>
                 )}
-                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={() => run("join", () => joinLeague(send, address!, id, code))}>
+                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={() => run("join", () => joinLeague(send, address!, id, inviteCode(code)))}>
                   {league.members.length >= league.maxMembers ? "League is full" : busy === "join" ? "Joining…" : `Join league${league.entryFee > 0n ? ` · ${money(league.entryFee)}` : ""}`}
                 </button>
               </div>
