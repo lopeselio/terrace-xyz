@@ -142,6 +142,20 @@ img { display: block; }
 .crest-lg { width: 52px; height: 52px; border-radius: 14px; font-size: 20px; }
 .crest-pair { display: flex; }
 .crest-pair > :last-child { margin-left: -9px; box-shadow: 0 0 0 2px var(--surface); }
+/* fixture art: crest pair + league badge, for text-only cards */
+.fx-art { position: relative; display: inline-flex; flex: none; padding: 0 4px 4px 0; }
+.fx-art .crest { width: var(--fx); height: var(--fx); border-radius: calc(var(--fx) * 0.28); }
+.fx-art .crest-pair > :last-child { margin-left: calc(var(--fx) * -0.3); }
+.fx-league {
+  position: absolute; right: 0; bottom: 0; width: calc(var(--fx) * 0.52); height: calc(var(--fx) * 0.52); border-radius: 50%;
+  background: #f4f4f5; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--surface);
+}
+.fx-league img { width: 72%; height: 72%; object-fit: contain; }
+.fx-tag .fx-art { padding: 0; }
+.fx-tag { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.fx-tag-league { width: 16px; height: 16px; border-radius: 4px; background: #f4f4f5; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.fx-tag-league img { width: 12px; height: 12px; object-fit: contain; }
+.fx-tag-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
 /* match card */
 .match-top { display: flex; align-items: center; gap: 8px; }

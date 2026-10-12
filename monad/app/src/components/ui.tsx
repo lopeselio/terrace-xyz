@@ -74,6 +74,34 @@ export function Crest({ logo, name, lg }: { logo?: string; name: string; lg?: bo
   return <span className={`crest${lg ? " crest-lg" : ""}`}>{logo ? <img src={logo} alt="" /> : name.slice(0, 3).toUpperCase()}</span>;
 }
 
+type FixtureFace = { league?: string; leagueLogo?: string; home: { name: string; logo: string }; away: { name: string; logo: string } };
+
+/** Both club crests with the competition's logo tucked in the corner: gives a text card a face. */
+export function FixtureArt({ m, size = 34 }: { m?: FixtureFace | null; size?: number }) {
+  if (!m) return null;
+  return (
+    <span className="fx-art" style={{ ["--fx" as string]: `${size}px` }} aria-hidden>
+      <span className="crest-pair">
+        <Crest logo={m.home.logo} name={m.home.name} />
+        <Crest logo={m.away.logo} name={m.away.name} />
+      </span>
+      {m.leagueLogo && <span className="fx-league"><img src={m.leagueLogo} alt="" /></span>}
+    </span>
+  );
+}
+
+/** "[league] Home v Away" for a card's meta line, optionally with small crests. */
+export function FixtureTag({ m, tail, crests }: { m?: FixtureFace | null; tail?: ReactNode; crests?: boolean }) {
+  if (!m) return null;
+  return (
+    <span className="fx-tag">
+      {m.leagueLogo && <span className="fx-tag-league"><img src={m.leagueLogo} alt={m.league ?? ""} /></span>}
+      {crests && <FixtureArt m={{ ...m, leagueLogo: undefined }} size={18} />}
+      <span className="fx-tag-text">{m.home.name} v {m.away.name}{tail}</span>
+    </span>
+  );
+}
+
 /** The core control: a label over a price. */
 export function Odd({
   label, value, tone, on, up, small, disabled, onClick,
