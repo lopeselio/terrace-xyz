@@ -5,7 +5,7 @@ import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { FollowButton } from "./FollowButton";
 import { ActivityTicker } from "./ActivityTicker";
-import { Header } from "./Header";
+import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { Avatar, Badge, Empty, Odd, Seg, SkeletonCards, ago, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -230,6 +230,22 @@ function FeedCard({
   const oddsFor = (s: 1 | 2) => fractional(price(s === 1 ? { side: yes, other: no } : { side: no, other: yes }).decimal);
   const won = WON.has(i.kind);
   const other = (side === 1 ? 2 : 1) as 1 | 2;
+  const [copied, setCopied] = useState(false);
+
+  async function share() {
+    const what =
+      i.kind === "WIN" ? (mk ? `called it on "${label(mk.question, m)}"` : "called it")
+      : i.kind === "ACCA_WON" ? `landed a ${i.text} parlay`
+      : i.kind === "CHALLENGE_WON" ? "won a 1v1"
+      : `won ${i.text ?? "a league"}`;
+    const amount = i.amount && Number(i.amount) > 0 ? ` +${usd(i.amount)}` : "";
+    const text = `${mine ? "I" : name} ${what} on Terrace.${amount}`;
+    const url = `${window.location.origin}${m ? `/m/${m.id}` : "/social"}`;
+    if (await shareLink("Terrace", text, url)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
+  }
 
   let line: React.ReactNode = null;
   if (i.kind === "BET" && mk)
@@ -271,6 +287,11 @@ function FeedCard({
         )}
         {i.kind === "BET" && mk && !open && <Badge tone="settled">{mk.question.answer ? "Settled" : "Closed"}</Badge>}
         <span className="umeta">{ago(i.timestamp)}</span>
+        {won && (
+          <button className="umeta feed-share" onClick={share} aria-label="Share this win">
+            <Icon name="share" size={14} /> {copied ? "Copied" : "Share"}
+          </button>
+        )}
         {m && (
           <Link href={`/m/${m.id}`} className="umeta" style={{ marginLeft: "auto" }}>
             {m.home.name} v {m.away.name} <Icon name="chevronRight" size={14} />

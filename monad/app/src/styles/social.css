@@ -5,6 +5,7 @@
 .feed-card .meta-row { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
 .feed-card .meta-row .umeta { display: inline-flex; align-items: center; gap: 5px; margin: 0; }
 .feed-card.won { border-color: #17422a; background: linear-gradient(180deg, #0c1a12 0%, var(--surface) 70%); }
+.feed-share { background: none; border: 0; padding: 0; font: inherit; color: var(--green-ink); cursor: pointer; }
 .win-amount { font-family: var(--cond); font-size: 20px; font-weight: 700; color: var(--green); }
 .lb-rank { width: 22px; text-align: center; font-family: var(--cond); font-size: 17px; font-weight: 700; color: var(--ink-4); flex: none; }
 .lb-rank.p1 { color: #fbbf24; } .lb-rank.p2 { color: #cbd5e1; } .lb-rank.p3 { color: #b98155; }
