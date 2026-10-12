@@ -65,7 +65,15 @@ async function terrace<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${TERRACE}${path}`, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : undefined);
   return (await res.json()) as T;
 }
-const gql = <T>(query: string, variables = {}) => terrace<{ data: T }>("/api/indexer", { query, variables }).then((r) => r.data);
+// The hosted indexer rate-limits now and then: retry once, and say what it said if it fails again.
+async function gql<T>(query: string, variables = {}): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const r = await terrace<{ data?: T; errors?: { message?: string }[]; error?: string }>("/api/indexer", { query, variables }).catch((e) => ({ error: (e as Error).message }) as { data?: T; errors?: { message?: string }[]; error?: string });
+    if (r.data) return r.data;
+    if (attempt >= 1) throw new Error(`indexer: ${r.errors?.[0]?.message ?? r.error ?? "no data"}`);
+    await Bun.sleep(3000);
+  }
+}
 
 async function call(side: 1 | 2, to: Address, functionName: string, args: unknown[] = []) {
   const data = encodeFunctionData({ abi, functionName: functionName as never, args: args as never });
