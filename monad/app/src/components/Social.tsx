@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { FollowButton } from "./FollowButton";
+import { ActivityTicker } from "./ActivityTicker";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
 import { Avatar, Badge, Empty, Odd, Seg, SkeletonCards, ago, fanName, usd } from "./ui";
@@ -106,6 +107,7 @@ export function Social() {
   return (
     <>
       <Header title="The Feed" sub="Who is backing what" balance={false} search />
+      <ActivityTicker />
       <div style={{ padding: "12px var(--gutter) 10px" }}>
         <Seg<Tab>
           value={tab}

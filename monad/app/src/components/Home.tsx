@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { FixtureCard, LiveFixtureCard, kickoffDay } from "./FixtureCard";
+import { ActivityTicker } from "./ActivityTicker";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
 import { fixtureOf, marketOdds, marketPick, marketTitle, useOpenMarkets, type OpenMarket } from "./MarketCard";
@@ -44,6 +45,7 @@ export function Home() {
   return (
     <>
       <Header brand search bell />
+      <ActivityTicker />
 
       {live.length > 0 && (
         <>
