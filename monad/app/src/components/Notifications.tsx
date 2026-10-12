@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { FollowButton } from "./FollowButton";
 import { Icon, type IconName } from "./Icon";
 import { Avatar, Badge, Sheet, SheetHead, ago, fanName, money } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -34,6 +35,8 @@ export type Note = {
   sub?: string;
   href: string;
   action?: string;
+  /** Show a Follow back button for this fan instead of a link. */
+  followBack?: string;
 };
 
 const SOCIAL_REASONS = new Set(["TAKE_BACKED", "BET_ON_YOUR_TAKE", "CHALLENGE_TAKEN", "LEAGUE_MEMBER", "INVITE", "STREAK_3", "STREAK_7"]);
@@ -74,6 +77,11 @@ export function useNotifications() {
         `query P($me: String!) { PointsEvent(where: { player: { _eq: $me } }, order_by: { timestamp: desc }, limit: 30) { id reason amount timestamp } }`,
         { me },
       ).catch(() => ({ PointsEvent: [] as PointN[] }));
+      // New followers (only once the follow graph is indexed).
+      const fl = await query<{ Follow: { follower: string; since: string }[] }>(
+        `query W($me: String!) { Follow(where: { followee: { _eq: $me }, active: { _eq: true } }, order_by: { since: desc }, limit: 20) { follower since } }`,
+        { me },
+      ).catch(() => ({ Follow: [] as { follower: string; since: string }[] }));
 
       const name = (a: string) => agents.get(a) || fanName(a);
       const label = (q: Q) => questionLabel(q, q.fixture ? matches.get(Number(q.fixture.id)) : undefined) || "a match result";
@@ -109,6 +117,10 @@ export function useNotifications() {
           href: r.collected ? (fixture ? `/m/${fixture}` : "/me") : "/me",
           action: !r.collected && r.outcome !== "lost" ? "Collect" : undefined,
         });
+      }
+
+      for (const f of fl.Follow) {
+        out.push({ id: `f${f.follower}`, at: Number(f.since), icon: "users", tone: "green", who: f.follower, title: `${name(f.follower)} followed you`, sub: "Follow back to see their calls in your feed", href: "/social", followBack: f.follower });
       }
 
       for (const e of p.PointsEvent) {
@@ -161,7 +173,16 @@ export function NotificationsSheet({ notes, seenAt, onClose }: { notes: Note[]; 
       )}
       {waiting.length > 0 && <div className="flabel" style={{ marginTop: 16 }}>Waiting for you</div>}
       <div className="rowlist" style={{ marginTop: waiting.length ? 0 : 12 }}>
-        {[...waiting, ...notes.filter((n) => n.action !== "Accept")].map((n) => (
+        {[...waiting, ...notes.filter((n) => n.action !== "Accept")].map((n) => n.followBack ? (
+          <div key={n.id} className={`note${n.at > seenAt ? " unread" : ""}`}>
+            <Avatar seed={n.followBack} size={38} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="uname" style={{ display: "block", color: TONE[n.tone] }}>{n.title}</span>
+              <span className="umeta" style={{ display: "block", opacity: 0.8 }}>{ago(n.at)}</span>
+            </span>
+            <FollowButton who={n.followBack} />
+          </div>
+        ) : (
           <Link key={n.id} href={n.href} className={`note${n.at > seenAt ? " unread" : ""}`} onClick={onClose}>
             {n.who ? (
               <Avatar seed={n.who} size={38} />

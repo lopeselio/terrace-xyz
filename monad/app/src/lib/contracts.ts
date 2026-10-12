@@ -14,7 +14,14 @@ export const ADDR = {
   leagues: c.TerraceLeagues,
   governance: c.TerraceGovernance,
   chat: c.TerraceChat,
+  follows: c.TerraceFollows as Address | undefined,
 } as const;
+
+export const followsAbi = parseAbi([
+  "function follow(address who)",
+  "function unfollow(address who)",
+  "function isFollowing(address follower, address followee) view returns (bool)",
+]);
 
 /** Answer and side codes shared with the contracts. */
 export const YES = 1;

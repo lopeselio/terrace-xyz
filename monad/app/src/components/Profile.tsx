@@ -42,6 +42,7 @@ export function Profile() {
   const [p, setP] = useState<Player | null>(null);
   const [pointsOpen, setPointsOpen] = useState(false);
   const [tp, setTp] = useState<{ terracePoints: string; dayStreak: number; invitesLanded: number } | null>(null);
+  const [graph, setGraph] = useState<{ followers: number; following: number } | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [accas, setAccas] = useState<Acca[]>([]);
   const [duels, setDuels] = useState<Duel[]>([]);
@@ -73,6 +74,10 @@ export function Profile() {
           `query TP($me: String!) { Player_by_pk(id: $me) { terracePoints dayStreak invitesLanded } }`,
           { me: address.toLowerCase() },
         ).then((x) => setTp(x.Player_by_pk)).catch(() => {});
+        query<{ Player_by_pk: { followers: number; following: number } | null }>(
+          `query G($me: String!) { Player_by_pk(id: $me) { followers following } }`,
+          { me: address.toLowerCase() },
+        ).then((x) => setGraph(x.Player_by_pk)).catch(() => {});
         setBets(d.Bet.filter((b) => !b.market.question.text.startsWith("E2E ")).reverse());
         setAccas(d.Parlay);
         setDuels(d.Matchup);
@@ -160,7 +165,10 @@ export function Profile() {
                 <span className="cond" style={{ fontSize: 23, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>@{handle(address)}</span>
                 {streak > 0 && <Badge tone="flash" icon="flame">{streak}</Badge>}
               </div>
-              <div className="umeta">{p?.points ?? 0} pts · following {follows.size}{copied ? " · link copied" : ""}</div>
+              <div className="umeta">
+                {graph ? `${graph.followers} follower${graph.followers === 1 ? "" : "s"} · following ${graph.following}` : `following ${follows.size}`}
+                {copied ? " · link copied" : ""}
+              </div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div className="cond" style={{ fontSize: 38, lineHeight: 0.9 }}>
