@@ -6,8 +6,10 @@ import type { Address } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { PointsSheet } from "./PointsSheet";
+import { RollingNumber } from "./RollingNumber";
 import { ThemeSwitch } from "./ThemeSwitch";
-import { foundingFans, points } from "@/lib/terracePoints";
+import { foundingFans } from "@/lib/terracePoints";
+import { usePoints } from "@/lib/usePoints";
 import { OnboardingPanel } from "./Onboarding";
 import { announceCollected } from "./OutcomePopup";
 import { WalletSheet } from "./WalletSheet";
@@ -44,6 +46,7 @@ export function Profile() {
   const { balance } = useBalance();
   const [p, setP] = useState<Player | null>(null);
   const [pointsOpen, setPointsOpen] = useState(false);
+  const live = usePoints();
   const [tp, setTp] = useState<{ terracePoints: string; dayStreak: number; invitesLanded: number } | null>(null);
   const [graph, setGraph] = useState<{ followers: number; following: number } | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
@@ -197,10 +200,10 @@ export function Profile() {
 
         <button className="card points-card" style={{ marginTop: 10 }} onClick={() => setPointsOpen(true)}>
           <div className="row">
-            <span className="points-coin"><Icon name="bolt" size={20} /></span>
+            <span className={`points-coin${live.charging ? " charging" : ""}`}><Icon name="bolt" size={20} /></span>
             <div style={{ flex: 1, textAlign: "left" }}>
               <div className="eyebrow amber">Terrace Points{foundingFans() && " · founding fan 2×"}</div>
-              <div className="cond" style={{ fontSize: 30, lineHeight: 1.1 }}>{points(tp?.terracePoints ?? 0)}</div>
+              <div className="cond" style={{ fontSize: 30, lineHeight: 1.1 }}><RollingNumber value={live.total ?? Number(tp?.terracePoints ?? 0)} /></div>
               <div className="umeta">
                 {!tp || tp.terracePoints === "0"
                   ? `Your welcome ${foundingFans() ? 200 : 100} lands with your first bet or take`
@@ -211,7 +214,7 @@ export function Profile() {
             <span className="textbtn amber">How to earn ›</span>
           </div>
         </button>
-        {pointsOpen && <PointsSheet address={address} total={tp?.terracePoints ?? 0} onClose={() => setPointsOpen(false)} />}
+        {pointsOpen && <PointsSheet address={address} total={live.total ?? tp?.terracePoints ?? 0} onClose={() => setPointsOpen(false)} />}
 
         <div className="card" style={{ marginTop: 10 }}>
           <div className="row">

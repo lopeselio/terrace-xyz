@@ -4,3 +4,5 @@
 /* Terrace Points card */
 .points-card { display: block; width: 100%; border-color: #4a3410; background: linear-gradient(180deg, #1c1407, #0f0f0f 80%); }
 .points-coin { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--amber-deep); border: 1.5px solid var(--amber); color: var(--amber-ink); flex: none; }
+.points-coin.charging { color: #fff7d6; border-color: #fde047; background: radial-gradient(circle, #fb923c, #b45309); animation: charge-glow 0.9s ease-in-out infinite alternate; }
+.points-coin.charging .i { animation: charge-bolt 0.45s ease-in-out infinite alternate; }
