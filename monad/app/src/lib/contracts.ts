@@ -85,6 +85,8 @@ export const leaguesAbi = parseAbi([
   "function finalizeContest(uint256 contestId)",
   "function endSeason(uint256 leagueId)",
   "function countMarketWin(uint256 leagueId, uint8 gameweek, uint256 marketId, address member)",
+  "function marketWinCounted(uint256 leagueId, uint256 marketId, address member) view returns (bool)",
+  "function featuredMarket(uint256 leagueId, uint256 marketId) view returns (bool)",
   "function getContest(uint256 contestId) view returns ((address creator, address token, uint256 leagueId, uint128 prizePool, uint128 entryFee, uint64 lockTime, bool sealed_, bool finalized, uint32 unrevealed, uint256[] fixtureIds, address[] entrants))",
   "function getLeague(uint256 leagueId) view returns ((address creator, address token, bool governed, string name, uint16 season, uint8 gameweeks, uint8 maxMembers, bool isPrivate, bool ended, uint128 entryFee, uint128 prizePool, bytes32 inviteCodeHash, uint256[] contestIds, address[] members))",
   "function getPick(uint256 contestId, address player, uint256 fixtureId) view returns ((bool set, uint8 home, uint8 away))",

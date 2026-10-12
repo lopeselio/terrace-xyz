@@ -4,6 +4,7 @@ import { seal } from "@shared/sealed";
 import type { useAccount } from "./account";
 import { publicClient } from "./chain";
 import { ADDR, erc20Abi, governanceAbi, leaguesAbi } from "./contracts";
+import { query } from "./indexer";
 import { sealSalt, type Keys } from "./mera";
 import { tokenOf, toUnits, type Money } from "./play";
 
@@ -79,6 +80,57 @@ export async function gameweekTable(contestId: bigint, members: readonly Address
     members.map((m) => publicClient.readContract({ ...L, functionName: finalized ? "contestScore" : "currentScore", args: [contestId, m] })),
   );
   return members.map((m, i) => ({ member: m, points: Number(scores[i]) })).sort((a, b) => b.points - a.points);
+}
+
+/*
+ * League tables also count market wins: backing the right side of a market on one of a finished
+ * gameweek's matches is 1 point, and a take the league voted to feature is 2. Anyone can add them,
+ * so one tap after a gameweek is added up counts every member's wins.
+ */
+export type MarketWin = { gameweek: number; marketId: bigint; member: Address; featured: boolean };
+
+export async function pendingMarketWins(
+  leagueId: bigint,
+  members: readonly Address[],
+  contests: readonly { fixtureIds: readonly bigint[]; finalized: boolean }[],
+): Promise<MarketWin[]> {
+  const done = contests.map((c, i) => ({ gw: i + 1, c })).filter((x) => x.c.finalized);
+  if (!done.length || !members.length) return [];
+  const gwOf = new Map<string, number>();
+  done.forEach(({ gw, c }) => c.fixtureIds.forEach((f) => gwOf.set(f.toString(), gw)));
+  const d = await query<{ Bet: { bettor: string; side: number; market: { id: string; question: { answer: number; fixture: { id: string } | null } } }[] }>(
+    `query W($who: [String!]) { Bet(where: { bettor: { _in: $who }, side: { _in: [1, 2] } }, limit: 500) { bettor side market { id question { answer fixture { id } } } } }`,
+    { who: members.map((m) => m.toLowerCase()) },
+  );
+  const won = d.Bet.filter((b) => b.market.question.answer === b.side);
+  const out: MarketWin[] = [];
+  await Promise.all(
+    won.map(async (b) => {
+      const marketId = BigInt(b.market.id);
+      const member = members.find((m) => m.toLowerCase() === b.bettor.toLowerCase())!;
+      const [counted, featured] = await Promise.all([
+        publicClient.readContract({ ...L, functionName: "marketWinCounted", args: [leagueId, marketId, member] }),
+        publicClient.readContract({ ...L, functionName: "featuredMarket", args: [leagueId, marketId] }),
+      ]);
+      if (counted) return;
+      const gw = gwOf.get(b.market.question.fixture?.id ?? "") ?? (featured ? done[done.length - 1].gw : 0);
+      if (gw) out.push({ gameweek: gw, marketId, member, featured });
+    }),
+  );
+  return out;
+}
+
+export async function countMarketWins(send: Send, leagueId: bigint, wins: MarketWin[]) {
+  for (const w of wins) await send({ ...L, functionName: "countMarketWin", args: [leagueId, w.gameweek, w.marketId, w.member] });
+}
+
+/** Markets the league voted to feature (worth 2 table points to everyone who backed the right side). */
+export async function featuredMarkets(leagueId: number) {
+  const d = await query<{ FeedItem: { market: { id: string } | null }[] }>(
+    `query F($l: String!) { FeedItem(where: { kind: { _eq: "FEATURED" }, league_id: { _eq: $l } }) { market { id } } }`,
+    { l: String(leagueId) },
+  );
+  return new Set(d.FeedItem.flatMap((f) => (f.market ? [f.market.id] : [])));
 }
 
 export const hasEntered = (contestId: bigint, player: Address) => publicClient.readContract({ ...L, functionName: "hasEntered", args: [contestId, player] });
