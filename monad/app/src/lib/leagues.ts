@@ -1,6 +1,6 @@
 "use client";
-import { encodeAbiParameters, keccak256, maxUint256, toBytes, zeroAddress, type Address, type Hex } from "viem";
-import { seal } from "@shared/sealed";
+import { bytesToHex, encodeAbiParameters, keccak256, maxUint256, toBytes, zeroAddress, type Address, type Hex } from "viem";
+import { envelope, openOwn, seal, type SealedPicks } from "@shared/sealed";
 import type { useAccount } from "./account";
 import { publicClient } from "./chain";
 import { ADDR, erc20Abi, governanceAbi, leaguesAbi } from "./contracts";
@@ -56,7 +56,13 @@ export async function submitPicks(send: Send, keys: Keys, contestId: bigint, sea
       [contestId, keys.account.address, home, away, salt],
     ),
   );
-  const ciphertext = seal(process.env.NEXT_PUBLIC_REVEAL_PUBLIC_KEY as Hex, { v: 1, home, away, salt }, (n) => crypto.getRandomValues(new Uint8Array(n)));
+  const rand = (n: number) => crypto.getRandomValues(new Uint8Array(n));
+  // Two boxes in one: one for the CRE reveal key, one for the fan's own passkey-derived key, so they
+  // can read their sealed picks back on any device while nobody else can.
+  const ciphertext = envelope(
+    seal(process.env.NEXT_PUBLIC_REVEAL_PUBLIC_KEY as Hex, { v: 1, home, away, salt }, rand),
+    seal(keys.selfBoxPublic, { v: 1, home, away, salt }, rand),
+  );
   return send({ ...L, functionName: "submitSealedPicks", args: [contestId, commitment, ciphertext] });
 }
 
@@ -162,6 +168,13 @@ export function rememberedCode(leagueId: number | bigint): string {
   } catch {
     return "";
   }
+}
+
+/** Your sealed picks, read back from the chain and opened with your passkey (null for older entries). */
+export async function ownSealedPicks(keys: Keys, contestId: bigint) {
+  const sealed = await publicClient.readContract({ ...L, functionName: "sealedPicks", args: [contestId, keys.account.address] });
+  if (!sealed || sealed === "0x") return null;
+  return openOwn<SealedPicks>(bytesToHex(keys.selfBoxPrivate), sealed);
 }
 
 /** The short code fans share: "L12-ABCD" (league 12, invite code ABCD). */

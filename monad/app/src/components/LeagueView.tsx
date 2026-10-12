@@ -16,7 +16,7 @@ import { ADDR, leaguesAbi } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import {
   addGameweek, countMarketWins, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
-  leagueCode, ordinal, parseInvite, pendingMarketWins, rememberCode, rememberedCode, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
+  leagueCode, ordinal, ownSealedPicks, parseInvite, pendingMarketWins, rememberCode, rememberedCode, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
 
@@ -114,18 +114,31 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
     return () => clearInterval(t);
   }, [load]);
 
-  // Open (unsealed) gameweeks: show the fan's saved picks so they can change them.
+  // Show the fan's saved picks so they can change them. Sealed ones come back from the chain,
+  // opened with the passkey (Mera self-box key): readable on any device, by nobody else.
   const contestKey = league ? `${league.contestIds.length}` : "";
+  const [sealedOwn, setSealedOwn] = useState(false);
   useEffect(() => {
     if (!league || !address || !entered) return;
     const n = league.contests.length;
     const cur = league.contests[n - 1];
-    if (!cur || cur.sealed_) return;
+    if (!cur) return;
+    if (cur.sealed_) {
+      if (!keys) return;
+      ownSealedPicks(keys, league.contestIds[n - 1])
+        .then((own) => {
+          if (!own) return;
+          setSealedOwn(true);
+          setPicks((old) => (Object.keys(old).length ? old : Object.fromEntries(cur.fixtureIds.map((f, i) => [f.toString(), [own.home[i] ?? 0, own.away[i] ?? 0] as [number, number]]))));
+        })
+        .catch(() => {});
+      return;
+    }
     Promise.all(cur.fixtureIds.map((f) => getPick(league.contestIds[n - 1], address, f)))
       .then((ps) => setPicks((old) => (Object.keys(old).length ? old : Object.fromEntries(ps.map((p, i) => [cur.fixtureIds[i].toString(), [p.home, p.away] as [number, number]])))))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contestKey, address, entered]);
+  }, [contestKey, address, entered, keys]);
 
   async function run(key: string, fn: () => Promise<unknown>) {
     setBusy(key);
@@ -464,6 +477,12 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
               <div className="umeta" style={{ marginTop: -4, marginBottom: 10 }}>
                 Exact score 3 pts, right result 1 pt.{current.sealed_ ? " Picks stay hidden until the final whistle, then Chainlink reveals them, so nobody can copy." : ""}
               </div>
+              {sealedOwn && (
+                <div className="card lg-own">
+                  <Icon name="lock" size={14} />
+                  <span>Your sealed picks, unlocked with your passkey. Only you can read them, on any device.</span>
+                </div>
+              )}
               {current.fixtureIds.map((f) => {
                 const m = byId.get(Number(f));
                 const key = f.toString();
@@ -477,6 +496,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                     ) : (
                       <div className="res">
                         {started ? `${m!.goals.home}–${m!.goals.away}` : "v"}
+                        {sealedOwn && picks[key] && <small className="violet">You: {picks[key][0]}–{picks[key][1]}</small>}
                         <small>{m ? (FINISHED.has(m.status) ? "Full time" : started ? "In play" : new Date(m.kickoff * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })) : ""}</small>
                       </div>
                     )}
