@@ -103,6 +103,7 @@
 <script>
 const Q = new URLSearchParams(location.search);
 const RENDER = Q.has("render");
+const REC = Q.has("rec"); // play the screen recordings (clips/NN/*.jpg) instead of the screenshots
 const DUR = 180;
 const $ = (id) => document.getElementById(id);
 
@@ -168,6 +169,10 @@ for (const s of used) {
   view.appendChild(im); IMG[s] = im;
 }
 const ITEMS = SHOTS.flatMap((sh) => sh.items);
+let META = null;
+const clip = document.createElement("img");
+clip.className = "scr"; clip.alt = ""; clip.style.zIndex = 2;
+view.appendChild(clip);
 
 const shotEls = SHOTS.map((sh, n) => {
   const box = document.createElement("div"); box.className = "shot";
@@ -300,10 +305,25 @@ window.seek = async (t) => {
   if (ci >= 0) { const im = IMG[ITEMS[ci].s]; $("home").style.opacity = SW * (im.naturalHeight / im.naturalWidth) < VH - 20 ? 1 : 0; }
   set($("ring"), { top: y0 + "px", height: y1 - y0 + "px", opacity: sk, transform: `scale(${0.97 + 0.03 * sk})` });
 
+  // recordings: the frame of the current shot's clip for this exact time
+  if (REC && META) {
+    for (const s of used) IMG[s].style.visibility = "hidden";
+    $("scrim").style.opacity = 0;
+    ["shadeT", "shadeB", "ring"].forEach((id) => ($(id).style.opacity = 0));
+    let n = META.findIndex((m) => t >= m.t0 && t < m.t1);
+    if (n < 0) n = t < META[0].t0 ? 0 : META.length - 1;
+    const m = META[n];
+    const f = clamp(Math.floor((t - m.t0) * 60), 0, m.frames - 1);
+    const src = `clips/${String(n).padStart(2, "0")}/${String(f).padStart(5, "0")}.jpg`;
+    if (!clip.src.endsWith(src)) { clip.src = src; await clip.decode().catch(() => {}); }
+    set(clip, { visibility: "visible", transform: "none", opacity: 1 });
+    $("home").style.opacity = 1;
+  }
+
   // finger: glides in, presses, ripples
   const tap = $("tap"), rip = $("ripple");
   let tapOn = false;
-  for (const it of ITEMS) for (const [x, y, at] of it.taps || []) {
+  for (const it of REC ? [] : ITEMS) for (const [x, y, at] of it.taps || []) {
     if (t < at - 0.8 || t > at + 0.55) continue;
     const img = IMG[it.s], H = SW * (img.naturalHeight / img.naturalWidth || 2);
     const pose = screenPose(it, at);
@@ -332,6 +352,7 @@ window.seek = async (t) => {
   await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r)))));
   layoutShots();
   if (RENDER) $("hud").remove();
+  if (REC) META = await (await fetch("clips/meta.json")).json();
   const t0 = parseFloat(Q.get("t") || "0");
   await window.seek(t0);
   window.ready = true;
