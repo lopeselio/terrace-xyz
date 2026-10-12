@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChainlinkMark } from "./ChainlinkMark";
 import { Icon, type IconName } from "./Icon";
 
@@ -110,9 +111,14 @@ export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boo
   );
 }
 
-/** Bottom sheet: scrim, grabber, springs up from +24px. Escape or a scrim tap closes it. */
+/**
+ * Bottom sheet: scrim, grabber, springs up from +24px. Escape or a scrim tap closes it.
+ * Rendered into <body> so a blurred or transformed parent (like the sticky header) can't trap it.
+ */
 export function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
     const prev = document.body.style.overflow;
@@ -122,14 +128,16 @@ export function Sheet({ onClose, children }: { onClose: () => void; children: Re
       document.body.style.overflow = prev;
     };
   }, [onClose]);
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div className="sheetwrap" role="dialog" aria-modal>
       <div className="scrim" onClick={onClose} />
       <div className="sheet">
         <div className="grabber" />
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
