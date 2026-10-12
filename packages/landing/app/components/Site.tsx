@@ -459,7 +459,7 @@ const STACK: { name: string; logo?: string; mark?: string; wordmark?: string; ic
   { name: "Envio", wordmark: "/envio.png", fan: "Feeds, tables and points update as it happens.", tech: "HyperIndex indexes every contract event into the feed, leaderboards, notifications and Terrace Points." },
   { name: "Alchemy", wordmark: "/alchemy.png", fan: "Fast and reliable behind the scenes.", tech: "RPC for the app's servers, the CRE workflows and the AI agents." },
   { name: "MetaMask Agent Wallet", mark: "/metamask.svg", fan: "Your own AI can play Terrace for you.", tech: "terrace-mm-plugin: find value, back or fade takes, list takes, accept 1v1s and collect, inside the wallet's own policies." },
-  { name: "Circle USDC", icon: "dollar", fan: "Play with test dollars or digital dollars.", tech: "Stakes settle in Terrace test dollars or Circle's testnet USDC." },
+  { name: "Circle USDC", mark: "/circle.png", fan: "Play with test dollars or digital dollars.", tech: "Stakes settle in Terrace test dollars or Circle's testnet USDC." },
 ];
 
 export function Judges() {
