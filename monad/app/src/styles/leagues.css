@@ -55,3 +55,12 @@
 .lg-clock .countdown { flex: none; font-family: var(--cond); font-size: 20px; font-weight: 800; letter-spacing: 0.3px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .lg-clock.soon { border-color: var(--amber); background: var(--amber-deep); color: var(--amber-ink); }
 .lg-clock.soon .countdown { color: var(--amber-ink); }
+
+/* Invite sheet: what the league is before you join */
+.invite-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.invite-facts span { padding: 10px 8px; border-radius: var(--r-md); background: var(--raised); border: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); text-align: center; line-height: 1.3; }
+.invite-facts b { display: block; font-family: var(--cond); font-size: 20px; color: var(--ink); }
+.invite-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 12px 14px; color: var(--ink-2); }
+.invite-row .uname { font-size: 14px; }
+.invite-row.soon { border-color: var(--amber); background: var(--amber-deep); color: var(--amber-ink); }
+.invite-row .countdown { font-family: var(--cond); font-size: 20px; font-weight: 800; color: var(--amber-ink); font-variant-numeric: tabular-nums; }

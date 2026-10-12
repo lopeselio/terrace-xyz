@@ -4,6 +4,7 @@ import { decodeAbiParameters, type Address, type Hex } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { Countdown } from "./Countdown";
+import { LeagueInvite } from "./LeagueInvite";
 import { Room } from "./Room";
 import { ScorePicker } from "./ScorePicker";
 import { SignIn } from "./SignIn";
@@ -60,6 +61,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const [picks, setPicks] = useState<Record<string, [number, number]>>({});
   const [nextGw, setNextGw] = useState<number[]>([]);
   const [code, setCode] = useState(codeFromLink);
+  const [showInvite, setShowInvite] = useState(!!codeFromLink); // came from an invite link: show what the league is first
   // Keep the invite code this device has seen, so shares from /l/1 (no code in the link) still carry it.
   useEffect(() => {
     if (codeFromLink) rememberCode(leagueId, codeFromLink);
@@ -201,6 +203,13 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
     else if (lastKickoff + FULL_TIME > now) clocks.push({ key: "end", label: `Gameweek ${gw} ends`, to: lastKickoff + FULL_TIME, note: "Around the last final whistle", go: "table" });
   }
   if (nextVote) clocks.push({ key: "vote", label: nextVote.kind === 0 ? "Vote on the next gameweek" : "Vote on a featured take", to: Number(nextVote.deadline), note: "Voting closes", go: "run" });
+  const joinNow = () =>
+    run("join", async () => {
+      await joinLeague(send, address!, id, inviteCode(code));
+      rememberCode(leagueId, inviteCode(code));
+      setCode(inviteCode(code));
+      setShowInvite(false);
+    });
   const winPts = wins.reduce((n, w) => n + (w.featured ? 2 : 1), 0);
 
   async function share() {
@@ -246,6 +255,25 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
             <div className="umeta">{code ? "Share the link, or give them this code to type into Leagues → Join." : "Share the link; it's open to anyone."}</div>
           </div>
         </div>
+      )}
+
+      {showInvite && !member && (
+        <LeagueInvite
+          name={league.name}
+          organiser={name(league.creator)}
+          governed={league.governed}
+          isPrivate={league.isPrivate}
+          members={league.members.length}
+          maxMembers={league.maxMembers}
+          gameweeks={league.gameweeks}
+          gw={gw}
+          entryFee={league.entryFee}
+          next={clocks.find((c) => c.key !== "vote")}
+          busy={busy === "join"}
+          error={error}
+          onJoin={joinNow}
+          onClose={() => setShowInvite(false)}
+        />
       )}
 
       {clocks.length > 0 && (
@@ -295,11 +323,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                     <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={`Invite code, e.g. ${leagueCode(leagueId, "AB12")}`} />
                   </label>
                 )}
-                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={() => run("join", async () => {
-                  await joinLeague(send, address!, id, inviteCode(code));
-                  rememberCode(leagueId, inviteCode(code));
-                  setCode(inviteCode(code));
-                })}>
+                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={joinNow}>
                   {league.members.length >= league.maxMembers ? "League is full" : busy === "join" ? "Joining…" : `Join league${league.entryFee > 0n ? ` · ${money(league.entryFee)}` : ""}`}
                 </button>
               </div>

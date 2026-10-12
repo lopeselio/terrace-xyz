@@ -14,7 +14,7 @@ const FEES = [0, 1, 2, 5] as const;
 
 /** Create a league (screen-league-create.html): name, size, length, entry, who runs it, sealed table. */
 /* "Who runs it", in plain words: what each choice means for the gameweeks. */
-const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: string; points: string[] }[] = [
+export const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: string; points: string[] }[] = [
   {
     id: "members",
     icon: "users",
