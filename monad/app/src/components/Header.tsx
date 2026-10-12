@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { NotificationsSheet, useNotifications } from "./Notifications";
 import { TerraceMark } from "./TerraceMark";
+import { ThemeButton } from "./ThemeSwitch";
 import { money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useBalance } from "@/lib/useBalance";
@@ -53,6 +54,7 @@ export function Header({
         {children}
         {search && <Link href="/markets" className="iconbtn" aria-label="Search markets"><Icon name="search" /></Link>}
         {share && <button className="iconbtn" aria-label="Share" onClick={share}><Icon name="share" /></button>}
+        <ThemeButton />
         {bell && <Bell />}
         {balance && <BalancePill />}
       </div>

@@ -38,6 +38,9 @@ export const ICON_PATHS = {
   crown: '<path d="M4 17.5 5.2 7l4 4L12 5l2.8 6 4-4 1.2 10.5z"/><path d="M4 20h16"/>',
   calendar: '<rect x="4" y="5.5" width="16" height="15" rx="2.4"/><path d="M4 10h16M9 3.5v4M15 3.5v4"/>',
   sliders: '<path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="11" cy="17" r="2" fill="currentColor" stroke="none"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.2M12 19v2.2M2.8 12h2.2M19 12h2.2M5.5 5.5 7 7M17 17l1.5 1.5M5.5 18.5 7 17M17 7l1.5-1.5"/>',
+  moon: '<path d="M19.5 14.2A7.8 7.8 0 0 1 9.8 4.5a7.8 7.8 0 1 0 9.7 9.7z"/>',
+  monitor: '<rect x="3.5" y="4.5" width="17" height="11.5" rx="2"/><path d="M9 20h6M12 16v4"/>',
   logout: '<path d="M15 5.5h3.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5H15"/><path d="M11 8 7 12l4 4M7 12h9"/>',
 } as const;
 
