@@ -108,18 +108,22 @@ img { display: block; }
 }
 @keyframes charge-bolt { from { transform: scale(1) rotate(-6deg); } to { transform: scale(1.22) rotate(6deg); } }
 
-/* Phones: the mark alone says Terrace, leaving room for points and balance */
+/* The app column is never wider than 480px, so titled headers always run compact:
+   the title needs the room. Theme lives on Home and in Profile → Appearance;
+   inner screens keep points, and the balance shows in every bet sheet. */
+.hdr-titled { gap: 7px; }
+.hdr-titled .hdr-act { gap: 6px; }
+.hdr-titled .theme-btn, .hdr-titled .balpill .i, .hdr-back .balpill { display: none; }
+.hdr-titled .hdr-title { font-size: 20px; }
+.hdr-titled .ptspill { padding: 0 9px 0 7px; }
+.hdr-titled .balpill { padding: 0 10px; }
+/* Phones: on Home the mark alone says Terrace, leaving room for points and balance */
 @media (max-width: 430px) {
   .hdr .logo-word { display: none; }
   .hdr { gap: 7px; }
   .hdr-act { gap: 6px; }
   .ptspill { padding: 0 9px 0 7px; }
   .balpill { padding: 0 10px; }
-  /* Titled screens: the title needs the room. Theme lives on Home and in Profile → Appearance. */
-  .hdr-titled .theme-btn, .hdr-titled .balpill .i { display: none; }
-  .hdr-titled .hdr-title { font-size: 20px; }
-  /* Inner screens keep points; the balance shows in every bet sheet */
-  .hdr-back .balpill { display: none; }
 }
 
 /* RollingNumber: each digit that changes drops in, like a clock ticking over */
