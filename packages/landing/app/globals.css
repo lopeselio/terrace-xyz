@@ -360,6 +360,8 @@ img { display: block; }
 .stack-card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 22px; }
 .stack-card .trust-mark { margin-bottom: 0; }
 .stack-card h4 { margin: 0; }
+.stack-head { min-height: 44px; }
+.stack-wordmark { height: 26px; width: auto; max-width: 160px; object-fit: contain; }
 .stack-fan { color: var(--ink); font-weight: 600; font-size: 15px; margin-top: 14px; }
 .stack-tech { color: var(--ink-3); font-size: 13.5px; margin-top: 8px; }
 .model { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 40px; }
