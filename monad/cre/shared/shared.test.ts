@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { encodeAbiParameters, decodeAbiParameters, keccak256, recoverMessageAddress, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { attest, type ChainConfig } from "./chain";
-import { open, revealPublicKey, seal, type SealedPicks } from "./sealed";
+import { envelope, open, openOwn, revealPublicKey, seal, unwrap, type SealedPicks } from "./sealed";
 
 const rand = (n: number) => new Uint8Array(randomBytes(n));
 
@@ -65,5 +65,33 @@ describe("AI verdicts", () => {
     const p = prompt({ question: "Will Saka score?", closedAt: "2026-10-11T14:00:00Z", match: "Arsenal 2-1 Chelsea" });
     expect(p).toContain("Will Saka score?");
     expect(p).toContain("Arsenal 2-1 Chelsea");
+  });
+});
+
+describe("two-box envelope (CRE + the fan's own copy)", () => {
+  const rand = (n: number) => crypto.getRandomValues(new Uint8Array(n));
+  const hex = (b: Uint8Array) => `0x${Buffer.from(b).toString("hex")}` as `0x${string}`;
+  const creKey = hex(rand(32));
+  const selfKey = hex(rand(32));
+  const picks: SealedPicks = { v: 1, home: [2, 1, 0], away: [1, 1, 3], salt: `0x${"ab".repeat(32)}` };
+
+  test("CRE opens its box and the fan opens theirs, each with only their own key", () => {
+    const sealed = envelope(seal(revealPublicKey(creKey), picks, rand), seal(revealPublicKey(selfKey), picks, rand));
+    expect(open<SealedPicks>(creKey, sealed)).toEqual(picks);
+    expect(openOwn<SealedPicks>(selfKey, sealed)).toEqual(picks);
+    expect(openOwn<SealedPicks>(creKey, sealed)).toBeNull();
+    expect(open<SealedPicks>(selfKey, sealed)).toBeNull();
+  });
+
+  test("old single-box entries still open for CRE and have no self copy", () => {
+    const old = seal(revealPublicKey(creKey), picks, rand);
+    expect(unwrap(old)).toEqual({ cre: old, self: null });
+    expect(open<SealedPicks>(creKey, old)).toEqual(picks);
+    expect(openOwn<SealedPicks>(selfKey, old)).toBeNull();
+  });
+
+  test("malformed envelopes fail closed", () => {
+    expect(open<SealedPicks>(creKey, "0x5453423100ff00")).toBeNull();
+    expect(openOwn<SealedPicks>(selfKey, "0x")).toBeNull();
   });
 });

@@ -5,9 +5,14 @@
  * a commitment plus this ciphertext. After close, the reveal workflow opens the ciphertext
  * and reports the plaintext; the contract checks it against the commitment.
  *
- * Format: ephemeral X25519 public key (32) | nonce (24) | XChaCha20-Poly1305 ciphertext.
+ * Box format: ephemeral X25519 public key (32) | nonce (24) | XChaCha20-Poly1305 ciphertext.
  * The key is derived as sha256(sharedSecret || ephemeralPub || recipientPub).
- * The app ships an identical copy of this file (app/src/lib/sealed.ts).
+ *
+ * Two-box envelope (sealed league picks): "TSB1" | uint16 length of the CRE box | CRE box | self box.
+ * The self box is sealed to the fan's own passkey-derived X25519 key (Mera's terrace/self-box/v1
+ * namespace), so the fan can read their sealed picks back on any device before the reveal, while
+ * nobody else can. A plain box (no "TSB1" tag) is still read as before.
+ * The app imports this same file (via the @shared alias).
  */
 import { x25519 } from "@noble/curves/ed25519";
 import { xchacha20poly1305 } from "@noble/ciphers/chacha";
@@ -49,8 +54,41 @@ export function seal(recipientPub: Hex, message: SealedBet | SealedPicks, random
   return bytesToHex(concat(ephemeralPub, nonce, xchacha20poly1305(key, nonce).encrypt(plaintext)));
 }
 
+const TAG = [0x54, 0x53, 0x42, 0x31]; // "TSB1"
+
+/** Pack the CRE box and the fan's own box into one ciphertext. */
+export function envelope(creBox: Hex, selfBox: Hex): Hex {
+  const cre = hexToBytes(creBox);
+  if (cre.length > 0xffff) throw new Error("box too large");
+  return bytesToHex(concat(Uint8Array.from(TAG), Uint8Array.from([cre.length >> 8, cre.length & 0xff]), cre, hexToBytes(selfBox)));
+}
+
+/** Split an envelope into its boxes. A plain (untagged) box is the CRE box with no self box. */
+export function unwrap(sealed: Hex): { cre: Hex; self: Hex | null } {
+  try {
+    const b = hexToBytes(sealed);
+    if (b.length < 6 || TAG.some((t, i) => b[i] !== t)) return { cre: sealed, self: null };
+    const n = (b[4] << 8) | b[5];
+    if (b.length < 6 + n) return { cre: sealed, self: null };
+    const self = b.slice(6 + n);
+    return { cre: bytesToHex(b.slice(6, 6 + n)), self: self.length ? bytesToHex(self) : null };
+  } catch {
+    return { cre: sealed, self: null };
+  }
+}
+
+/** The fan's own copy of their sealed picks, opened with their passkey-derived self-box key. */
+export function openOwn<T extends SealedBet | SealedPicks>(selfBoxPrivateKey: Hex, sealed: Hex): T | null {
+  const { self } = unwrap(sealed);
+  return self ? openBox<T>(selfBoxPrivateKey, self) : null;
+}
+
 /** Decrypt with the reveal key. Returns null for anything malformed, so one bad entry can't stop a batch. */
 export function open<T extends SealedBet | SealedPicks>(revealPrivateKey: Hex, sealed: Hex): T | null {
+  return openBox<T>(revealPrivateKey, unwrap(sealed).cre);
+}
+
+function openBox<T extends SealedBet | SealedPicks>(revealPrivateKey: Hex, sealed: Hex): T | null {
   try {
     const bytes = hexToBytes(sealed);
     if (bytes.length < 32 + 24 + 16) return null;
