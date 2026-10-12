@@ -1,12 +1,15 @@
-import { Faq, FinalCta, Footer, Hero, Nav, Story, Trust } from "./components/Site";
+import { Faq, Fair, Fans, FinalCta, Footer, Hero, Judges, Nav, Problem, Story } from "./components/Site";
 
 export default function Home() {
   return (
     <main>
       <Nav />
       <Hero />
+      <Problem />
       <Story />
-      <Trust />
+      <Fair />
+      <Fans />
+      <Judges />
       <Faq />
       <FinalCta />
       <Footer />
