@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
-import { Badge, Empty, Seg, Sheet, SheetHead, SkeletonCards, money } from "./ui";
+import { Badge, Empty, FixtureArt, FixtureTag, Seg, Sheet, SheetHead, SkeletonCards, money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { publicClient } from "@/lib/chain";
 import { ADDR, parlaysAbi } from "@/lib/contracts";
@@ -27,7 +27,7 @@ type Acca = { id: string; token: string; stake: string; legs: number; liveLegs: 
 type Pot = { total: bigint; unsettled: number; winningWeight: bigint };
 
 /** One pickable leg in the list. */
-type Option = { key: string; label: string; sub: string; group: "result" | "goals" | "take"; fixtureId: number; kind?: number; questionId?: string; close: number; decimal: number | null; live: boolean; league?: string };
+type Option = { key: string; label: string; sub: string; group: "result" | "goals" | "take"; fixtureId: number; kind?: number; questionId?: string; close: number; decimal: number | null; live: boolean; league?: string; tail: string; m?: MatchLite };
 
 const legName = (m: MatchLite, kind: number) =>
   kind === KIND.HOME ? `${m.home.name} to win` : kind === KIND.AWAY ? `${m.away.name} to win` : kind === KIND.DRAW ? "Draw" : kind === KIND.OVER ? "Over 2.5 goals" : "Both teams to score";
@@ -85,6 +85,7 @@ export function AccaBuilder() {
         out.push({
           key: `${m.id}-${k}-1`, label: legName(m, k), sub: `${m.home.name} v ${m.away.name} · ${k === KIND.OVER || k === KIND.BTTS ? "Goals" : "Match result"}`,
           group: k === KIND.OVER || k === KIND.BTTS ? "goals" : "result", fixtureId: m.id, kind: k, close: m.kickoff, decimal: stdDecimal(m.id, k, 1), live: false, league: m.league,
+          tail: k === KIND.OVER || k === KIND.BTTS ? "Goals" : "Match result", m,
         });
       }
     }
@@ -94,7 +95,7 @@ export function AccaBuilder() {
       out.push({
         key: `q${t.id}`, label: t.question.text, sub: `${m ? `${m.home.name} v ${m.away.name}` : "Match room"} · Fan take`, group: "take",
         fixtureId: m?.id ?? 0, questionId: t.question.id, close: Number(t.question.closeTime), decimal: price({ side: yes, other: no }, null).decimal,
-        live: !!m && LIVE.has(m.status), league: m?.league,
+        live: !!m && LIVE.has(m.status), league: m?.league, tail: "Fan take", m,
       });
     }
     return out;
@@ -184,6 +185,7 @@ export function AccaBuilder() {
               return (
                 <div key={l.key} className="card leg on row">
                   <button className="box" aria-label="Remove leg" onClick={() => removeLeg(l.key)}><Icon name="check" size={14} /></button>
+                  <FixtureArt m={matches.get(l.fixtureId)} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="q">{l.label}</div>
                     <div className="umeta">{optionFor(l) || d ? "Picked in a match room" : "Closed: remove it to place your parlay"}</div>
@@ -212,9 +214,10 @@ export function AccaBuilder() {
                 <button key={o.key} type="button" className={`card card-tap leg${on ? " on" : ""}`} onClick={() => toggle(o)}>
                   <div className="row">
                     <span className="box">{on && <Icon name="check" size={14} />}</span>
+                    <FixtureArt m={o.m} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="q">{o.label}</div>
-                      <div className="umeta">{o.sub}</div>
+                      <div className="umeta">{o.m ? <FixtureTag m={o.m} tail={` · ${o.tail}`} /> : o.sub}</div>
                     </div>
                     <span className="p">{fractional(o.decimal)}</span>
                   </div>
@@ -292,6 +295,7 @@ export function AccaBuilder() {
       {sheet && (
         <ParlaySheet
           slip={slip}
+          matches={matches}
           decimals={decimals}
           guide={guide}
           closes={slip.map((l) => (l.kind && !l.questionId ? matches.get(l.fixtureId)?.kickoff ?? 0 : optionFor(l)?.close ?? 0))}
@@ -316,9 +320,10 @@ export function AccaBuilder() {
 
 /** The parlay slip sheet: legs, combined price (a guide), stake, the pot, Place parlay. */
 function ParlaySheet({
-  slip, decimals, guide, closes, signedIn, onClose, onPlace,
+  slip, matches, decimals, guide, closes, signedIn, onClose, onPlace,
 }: {
   slip: SlipLeg[];
+  matches: Map<number, MatchLite>;
   decimals: (number | null)[];
   guide: number | null;
   closes: number[];
@@ -379,7 +384,7 @@ function ParlaySheet({
       <div className="card parlay-legs" style={{ marginTop: 14, padding: "4px 14px" }}>
         {slip.map((l, i) => (
           <div key={l.key} className="kv">
-            <span className="k">{l.label}</span>
+            <span className="k row" style={{ gap: 10 }}><FixtureArt m={matches.get(l.fixtureId)} size={24} /><span style={{ minWidth: 0 }}>{l.label}</span></span>
             <span className="v">{decimals[i] ? fractional(decimals[i]) : "—"}</span>
           </div>
         ))}
