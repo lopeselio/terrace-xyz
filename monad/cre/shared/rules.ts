@@ -46,8 +46,8 @@ export type FixtureDetail = {
   events?: {
     time: { elapsed: number; extra: number | null };
     team: { id: number };
-    player: { id: number | null };
-    assist: { id: number | null };
+    player: { id: number | null; name?: string | null };
+    assist: { id: number | null; name?: string | null };
     type: string;
     detail: string;
   }[];
@@ -168,7 +168,8 @@ export function evidence(f: FixtureDetail & { teams: { home: { id: number; name?
   const name = (id: number) => (id === f.teams.home.id ? f.teams.home.name : f.teams.away.name) ?? String(id);
   const lines = (f.events ?? []).map(
     (e) =>
-      `${e.time.elapsed}${e.time.extra ? `+${e.time.extra}` : ""}' ${e.type} (${e.detail}) ${name(e.team.id)} player#${e.player.id ?? "?"}`,
+      // Names let the judge read "who scored" straight from the evidence instead of searching for it.
+      `${e.time.elapsed}${e.time.extra ? `+${e.time.extra}` : ""}' ${e.type} (${e.detail}) ${name(e.team.id)} ${e.player.name ?? `player#${e.player.id ?? "?"}`}${e.assist?.name ? ` (assist ${e.assist.name})` : ""}`,
   );
   return [
     `Status: ${f.fixture.status.short}, minute ${f.fixture.status.elapsed ?? "-"}`,

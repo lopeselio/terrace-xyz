@@ -58,11 +58,13 @@ function fromBody(b: Uint8Array): unknown {
 
 export function prompt(ctx: QuestionContext): string {
   return [
-    "You settle prediction questions for a football app. Search the web for the facts, then answer.",
+    ctx.match
+      ? "You settle prediction questions for a football app. The official match data below is the source of truth: answer from it. Search the web only if it can't settle the question."
+      : "You settle prediction questions for a football app. Search the web for the facts, then answer.",
     "",
     `Question: ${ctx.question}`,
     `The question closed at: ${ctx.closedAt}`,
-    ctx.match ? `Match: ${ctx.match}` : "",
+    ctx.match ? `Official match data:\n${ctx.match}` : "",
     "",
     "Reply with exactly one word:",
     "YES - the event clearly happened.",
