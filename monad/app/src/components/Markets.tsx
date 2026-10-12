@@ -67,7 +67,7 @@ export function Markets() {
 
   return (
     <>
-      <Header title="Football" sub={leagues.length ? `${leagues.length} leagues · ${fixtures.length} matches` : "Every call, every match"} search bell />
+      <Header title="Football" sub={leagues.length ? `${fixtures.length} matches · ${leagues.length} leagues` : "Every call, every match"} search bell />
       <div style={{ padding: "12px var(--gutter) 10px" }}>
         <Seg
           value={view}

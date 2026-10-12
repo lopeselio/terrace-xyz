@@ -180,7 +180,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
 
   return (
     <>
-      <Header title={league.name} sub={`Season ${league.season} · gameweek ${gw || "–"} of ${league.gameweeks}`} back="/leagues" share={share} />
+      <Header title={league.name} sub={gw ? `Gameweek ${gw} of ${league.gameweeks} · Season ${league.season}` : `Pre-season · ${league.gameweeks} gameweeks · ${league.season}`} back="/leagues" share={share} />
 
       {fresh && member && (
         <div className="sec">
