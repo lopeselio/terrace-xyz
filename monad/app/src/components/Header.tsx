@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { NotificationsSheet, useNotifications } from "./Notifications";
+import { PointsSheet } from "./PointsSheet";
+import { RollingNumber } from "./RollingNumber";
 import { TerraceMark } from "./TerraceMark";
 import { ThemeButton } from "./ThemeSwitch";
 import { money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useBalance } from "@/lib/useBalance";
+import { usePoints } from "@/lib/usePoints";
 
 /**
  * The 54px sticky header from the handoff: back button or logo or title, then actions and
@@ -56,6 +59,7 @@ export function Header({
         {share && <button className="iconbtn" aria-label="Share" onClick={share}><Icon name="share" /></button>}
         <ThemeButton />
         {bell && <Bell />}
+        {balance && <PointsPill />}
         {balance && <BalancePill />}
       </div>
     </header>
@@ -85,6 +89,23 @@ function Bell() {
         {unread > 0 && <span className="dot" />}
       </button>
       {open && <NotificationsSheet notes={notes} seenAt={lastSeen} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/** Terrace Points: the bolt charges while something is being locked in, then the total rolls up. */
+function PointsPill() {
+  const { status, address } = useAccount();
+  const { total, charging } = usePoints();
+  const [open, setOpen] = useState(false);
+  if (status !== "ready") return null;
+  return (
+    <>
+      <button className={`ptspill${charging ? " charging" : ""}`} aria-label={`${total ?? 0} Terrace Points`} onClick={() => setOpen(true)}>
+        <Icon name="bolt" size={15} />
+        {total === null ? <span className="ptspill-ph" /> : <RollingNumber value={total} />}
+      </button>
+      {open && <PointsSheet address={address} total={total ?? 0} onClose={() => setOpen(false)} />}
     </>
   );
 }
