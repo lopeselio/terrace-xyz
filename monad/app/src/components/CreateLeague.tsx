@@ -5,7 +5,7 @@ import { Icon, type IconName } from "./Icon";
 import { SignIn } from "./SignIn";
 import { Badge, Seg, Switch } from "./ui";
 import { useAccount } from "@/lib/account";
-import { createLeague, randomCode } from "@/lib/leagues";
+import { createLeague, randomCode, rememberCode } from "@/lib/leagues";
 import "@/styles/leagues.css";
 
 const SIZES = [10, 20, 50, 100] as const;
@@ -58,6 +58,7 @@ export function CreateLeague() {
     try {
       const code = isPrivate ? randomCode() : "";
       const id = await createLeague(send, { name: name.trim(), gameweeks, maxMembers: size, money: "usd", entry, isPrivate, governed, code });
+      rememberCode(id, code);
       router.push(`/l/${id}?${code ? `code=${code}&` : ""}new=1`);
     } catch (e) {
       setError((e as Error).message);

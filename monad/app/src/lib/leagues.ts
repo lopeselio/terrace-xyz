@@ -143,6 +143,27 @@ export const hasEntered = (contestId: bigint, player: Address) => publicClient.r
 export const getPick = (contestId: bigint, player: Address, fixtureId: bigint) =>
   publicClient.readContract({ ...L, functionName: "getPick", args: [contestId, player, fixtureId] });
 
+/*
+ * Only a hash of a league's invite code lives onchain, so each device keeps the codes it has seen
+ * (made the league, opened an invite link, joined with a code) to put back into every share.
+ */
+const CODES = "terrace.leagueCodes";
+export function rememberCode(leagueId: number | bigint, code: string) {
+  if (!code) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(CODES) || "{}");
+    all[String(leagueId)] = code.toUpperCase();
+    localStorage.setItem(CODES, JSON.stringify(all));
+  } catch {}
+}
+export function rememberedCode(leagueId: number | bigint): string {
+  try {
+    return JSON.parse(localStorage.getItem(CODES) || "{}")[String(leagueId)] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /** The short code fans share: "L12-ABCD" (league 12, invite code ABCD). */
 export const leagueCode = (leagueId: number | bigint, code: string) => `L${leagueId}${code ? `-${code}` : ""}`;
 

@@ -15,7 +15,7 @@ import { ADDR, leaguesAbi } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import {
   addGameweek, countMarketWins, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
-  leagueCode, ordinal, parseInvite, pendingMarketWins, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
+  leagueCode, ordinal, parseInvite, pendingMarketWins, rememberCode, rememberedCode, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
 
@@ -60,6 +60,11 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const [picks, setPicks] = useState<Record<string, [number, number]>>({});
   const [nextGw, setNextGw] = useState<number[]>([]);
   const [code, setCode] = useState(codeFromLink);
+  // Keep the invite code this device has seen, so shares from /l/1 (no code in the link) still carry it.
+  useEffect(() => {
+    if (codeFromLink) rememberCode(leagueId, codeFromLink);
+    else setCode((c) => c || rememberedCode(leagueId));
+  }, [leagueId, codeFromLink]);
   const [tab, setTab] = useState<Tab>("table");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -290,7 +295,11 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                     <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={`Invite code, e.g. ${leagueCode(leagueId, "AB12")}`} />
                   </label>
                 )}
-                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={() => run("join", () => joinLeague(send, address!, id, inviteCode(code)))}>
+                <button className="cta" disabled={!!busy || league.members.length >= league.maxMembers} onClick={() => run("join", async () => {
+                  await joinLeague(send, address!, id, inviteCode(code));
+                  rememberCode(leagueId, inviteCode(code));
+                  setCode(inviteCode(code));
+                })}>
                   {league.members.length >= league.maxMembers ? "League is full" : busy === "join" ? "Joining…" : `Join league${league.entryFee > 0n ? ` · ${money(league.entryFee)}` : ""}`}
                 </button>
               </div>
@@ -350,6 +359,11 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
               </button>
             </div>
             {code && member && <div className="umeta" style={{ textAlign: "center", marginTop: 8 }}>Invite code {leagueCode(leagueId, code)}</div>}
+            {!code && member && needsCode && (
+              <div className="umeta" style={{ textAlign: "center", marginTop: 8 }}>
+                This device doesn&apos;t have the invite code yet. Open the invite link once here, or ask {creator ? "the phone you made the league on" : "the organiser"} to share it.
+              </div>
+            )}
           </div>
 
           {league.ended && (
