@@ -7,7 +7,7 @@
  * Every tick it asks the oracle what needs doing and only runs a workflow when there is work:
  *   questions   every minute, when a take or question has closed and is waiting for an answer
  *   results     every 2 minutes, when a match has kicked off without a final score
- *   reveal      every 5 minutes, opening sealed bets and picks whose reveal window is open
+ *   reveal      every 2 minutes, opening sealed bets and picks whose reveal window is open
  *   fixtures    every 6 hours, scheduling upcoming matches
  * Workflows run one at a time, so simulated reports reach the oracle in nonce order.
  */
@@ -49,7 +49,7 @@ const jobs: Job[] = [
       return ids.length > 0 && `${ids.length} under way`;
     },
   },
-  { name: "reveal", workflow: "reveal", trigger: 0, everyMs: 300_000, hasWork: async () => true },
+  { name: "reveal", workflow: "reveal", trigger: 0, everyMs: 120_000, hasWork: async () => true },
   { name: "fixtures", workflow: "settlement", trigger: 1, everyMs: 6 * 3_600_000, hasWork: async () => true },
 ];
 
