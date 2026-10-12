@@ -92,6 +92,36 @@ async function askClaude(text: string): Promise<string> {
   return blocks.map((b) => b.text).join("");
 }
 
+/**
+ * The model's JSON answer. Claude may reason in prose first, so when the reply isn't bare JSON,
+ * take the last {"rule": ...} object in it (fenced or not).
+ */
+function jsonReply(raw: string): { rule?: unknown; windowStart?: number | null } {
+  const tryParse = (t: string) => {
+    try {
+      const v = JSON.parse(t);
+      return v && typeof v === "object" && "rule" in v ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  const bare = tryParse(raw.replace(/^```(json)?|```$/g, "").trim());
+  if (bare) return bare;
+  for (const m of [...raw.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].reverse()) {
+    const v = tryParse(m[1].trim());
+    if (v) return v;
+  }
+  // Unfenced: try each '{"rule"' from the last one back, growing to each closing brace.
+  const starts = [...raw.matchAll(/\{\s*"rule"/g)].map((m) => m.index!).reverse();
+  for (const start of starts) {
+    for (let end = raw.indexOf("}", start); end !== -1; end = raw.indexOf("}", end + 1)) {
+      const v = tryParse(raw.slice(start, end + 1));
+      if (v) return v;
+    }
+  }
+  return {};
+}
+
 export type Compiled = {
   rule: Rule | null;
   spec: string; // JSON rule, or "" for the AI judge
@@ -121,10 +151,7 @@ export async function compileTake(take: string, fixtureId: number): Promise<Comp
   } catch (e) {
     console.warn(`take compiler: ${(e as Error).message}; falling back to the AI judge`);
   }
-  let parsed: { rule?: unknown; windowStart?: number | null } = {};
-  try {
-    parsed = JSON.parse(raw.replace(/^```(json)?|```$/g, "").trim());
-  } catch {}
+  const parsed = jsonReply(raw);
   const rule = parsed.rule ? parseRule(JSON.stringify(parsed.rule)) : null;
 
   const names: Names = {
