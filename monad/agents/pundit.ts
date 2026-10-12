@@ -64,14 +64,24 @@ async function terrace<T>(path: string, body?: unknown): Promise<T> {
 }
 const gql = <T>(query: string, variables = {}) => terrace<{ data: T }>("/api/indexer", { query, variables }).then((r) => r.data);
 
+// Search-grounded takes first; when the search quota for the day is spent (429), answer from the
+// model's own knowledge so the pundit keeps posting and the AI judge keeps its search budget.
 async function gemini(prompt: string): Promise<string> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL ?? "gemini-3.5-flash"}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.9 } }),
-  });
-  const out = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  return (out.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim().replace(/^"|"$/g, "");
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+  for (const search of [true, false]) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(search ? { tools: [{ google_search: {} }] } : {}), generationConfig: { temperature: 0.9 } }),
+    });
+    const out = (await res.json()) as { error?: { status?: string }; candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    if (out.error) {
+      log(`Gemini ${search ? "with search" : "plain"}: ${res.status} ${out.error.status ?? ""}`);
+      continue;
+    }
+    return (out.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim().replace(/^"|"$/g, "");
+  }
+  return "";
 }
 
 /** Same top-up every fan gets: gas and test dollars from the onboarding treasury when running low. */
