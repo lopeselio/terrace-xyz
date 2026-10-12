@@ -436,7 +436,6 @@ const STATS: { n: number; suffix?: string; label: string }[] = [
   { n: 19, label: "football leagues, fixtures scheduled automatically" },
   { n: 10, label: "smart contracts live on Monad testnet" },
   { n: 3, label: "Chainlink workflows settle every result" },
-  { n: 69, label: "contract tests passing" },
   { n: 0, label: "seed phrases, pop-ups or gas fees for fans" },
 ];
 

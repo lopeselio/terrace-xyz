@@ -352,7 +352,7 @@ img { display: block; }
 
 /* ═══ Judges & investors ═══════════════════════════════════════════════ */
 .judges { max-width: 1160px; margin: 0 auto; padding: 110px 20px 40px; }
-.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 40px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 40px; }
 .stat { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 20px; display: flex; flex-direction: column; gap: 6px; }
 .stat b { font-size: 52px; line-height: 1; color: var(--green); font-weight: 800; }
 .stat > span { color: var(--ink-2); font-size: 14px; }
@@ -388,7 +388,7 @@ img { display: block; }
 @media (max-width: 1024px) {
   .trust-grid { grid-template-columns: repeat(2, 1fr); }
   .pains { grid-template-columns: repeat(2, 1fr); }
-  .stats { grid-template-columns: repeat(3, 1fr); }
+  .stats { grid-template-columns: repeat(2, 1fr); }
   .stack { grid-template-columns: repeat(2, 1fr); }
   .fans-card { grid-template-columns: 1fr; }
 }
