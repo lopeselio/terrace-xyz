@@ -440,13 +440,13 @@ const STATS: { n: number; suffix?: string; label: string }[] = [
   { n: 0, label: "seed phrases, pop-ups or gas fees for fans" },
 ];
 
-const STACK: { name: string; logo?: string; wordmark?: string; icon?: IconName; fan: string; tech: string }[] = [
+const STACK: { name: string; logo?: string; mark?: string; wordmark?: string; icon?: IconName; fan: string; tech: string }[] = [
   { name: "Monad", logo: "/monad.png", fan: "Bets lock in instantly and cost next to nothing, so you can back a call in the 89th minute.", tech: "Every bet, take, pick, chat message and follow is a Monad transaction across 10 contracts." },
   { name: "Chainlink CRE", logo: "/chainlink.png", fan: "The independent referee. Nobody at Terrace decides who won.", tech: "Three workflows: settlement (fixtures + scores), questions (rule engine + AI judge) and reveal (sealed picks in a TEE via handlerInTee)." },
   { name: "Mera", icon: "shield", fan: "Face ID is your whole account, on any phone.", tech: "Passkey accounts from Category Labs. One passkey ceremony derives the account, sealing, agent and agent-memory keys with HKDF; signing sessions remove pop-ups." },
   { name: "Envio", wordmark: "/envio.png", fan: "Feeds, tables and points update as it happens.", tech: "HyperIndex indexes every contract event into the feed, leaderboards, notifications and Terrace Points." },
   { name: "Alchemy", wordmark: "/alchemy.png", fan: "Fast and reliable behind the scenes.", tech: "RPC for the app's servers, the CRE workflows and the AI agents." },
-  { name: "MetaMask Agent Wallet", icon: "swords", fan: "Your own AI can play Terrace for you.", tech: "terrace-mm-plugin: find value, back or fade takes, list takes, accept 1v1s and collect, inside the wallet's own policies." },
+  { name: "MetaMask Agent Wallet", mark: "/metamask.svg", fan: "Your own AI can play Terrace for you.", tech: "terrace-mm-plugin: find value, back or fade takes, list takes, accept 1v1s and collect, inside the wallet's own policies." },
   { name: "Circle USDC", icon: "dollar", fan: "Play with test dollars or digital dollars.", tech: "Stakes settle in Terrace test dollars or Circle's testnet USDC." },
 ];
 
@@ -476,7 +476,7 @@ export function Judges() {
                 <img className="stack-wordmark" src={s.wordmark} alt={s.name} />
               ) : (
                 <>
-                  <span className="trust-mark">{s.logo ? <img src={s.logo} alt="" /> : <Icon name={s.icon!} size={20} />}</span>
+                  <span className="trust-mark">{s.logo ? <img src={s.logo} alt="" /> : s.mark ? <img className="contain" src={s.mark} alt="" /> : <Icon name={s.icon!} size={20} />}</span>
                   <h4>{s.name}</h4>
                 </>
               )}
