@@ -242,9 +242,11 @@ export function Room({
                 </div>
               </div>
               <p className="take-text">{m.text}</p>
-              <p className="take-meta">
-                {m.backers} backing{mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
-              </p>
+              {(m.backers > 0 || mk) && (
+                <p className="take-meta">
+                  {m.backers} backing{mk ? ` · ${mk.bettors} in · ${usd(total)} on it` : ""}
+                </p>
+              )}
               {mk && (
                 <p className="settles">
                   <Icon name="shield" size={12} />
@@ -340,7 +342,7 @@ export function Room({
         ) : status === "ready" ? (
           <form id="compose" className="composer" onSubmit={(e) => { e.preventDefault(); postTake(); }}>
             <label className="field">
-              <input value={draft} maxLength={200} placeholder="Your take… e.g. Haaland scores before the hour" onChange={(e) => setDraft(e.target.value)} />
+              <input value={draft} maxLength={200} placeholder={kind === 0 ? "Your take… e.g. Haaland scores before the hour" : "Say something to the league…"} onChange={(e) => setDraft(e.target.value)} />
             </label>
             <button className="iconbtn send" aria-label="Post" disabled={busy === "post" || !draft.trim()}>
               {busy === "post" ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Icon name="arrowUpRight" size={18} />}
