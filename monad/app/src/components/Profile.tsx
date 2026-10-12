@@ -9,12 +9,14 @@ import { PointsSheet } from "./PointsSheet";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { foundingFans, points } from "@/lib/terracePoints";
 import { OnboardingPanel } from "./Onboarding";
+import { announceCollected } from "./OutcomePopup";
 import { WalletSheet } from "./WalletSheet";
 import { Avatar, Badge, Empty, Seg, Tile, fanName, handle, money, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useFollows } from "@/lib/follows";
 import { query } from "@/lib/indexer";
 import { questionLabel } from "@/lib/labels";
+import { betOutcome } from "@/lib/outcome";
 import { fractional, poolDecimal } from "@/lib/odds";
 import { collect } from "@/lib/play";
 import { balanceChanged, useBalance } from "@/lib/useBalance";
@@ -139,7 +141,12 @@ export function Profile() {
     setBusy(b.id);
     setError(null);
     try {
+      const r = betOutcome(b);
       await collect(send, BigInt(b.market.id), address as Address);
+      if (r.outcome === "won" || r.outcome === "refund") {
+        const fixture = b.market.question.fixture?.id;
+        announceCollected({ id: b.market.id, outcome: r.outcome, title: label(b.market.question), amount: r.amount, href: fixture ? `/m/${fixture}` : "/me" });
+      }
       balanceChanged();
       load();
     } catch (e) {

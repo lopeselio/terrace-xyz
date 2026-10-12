@@ -36,6 +36,16 @@ type ParlayRow = { id: string; legs: number; stake: string; status: number; payo
 type DuelRow = { id: string; stake: string; status: number; winner: string | null; question: { text: string } };
 
 const POLL_MS = 20_000;
+const ANNOUNCE = "terrace-outcome";
+
+/** Show the popup for a result the fan just collected somewhere else (Profile, Notifications). */
+export function announceCollected(m: { id: string; outcome: Exclude<Outcome, "open">; title: string; amount: number; href: string }) {
+  window.dispatchEvent(
+    new CustomEvent<Moment>(ANNOUNCE, {
+      detail: { key: `bet:${m.id}`, outcome: m.outcome, title: m.title, amount: m.amount, kind: "bet", marketId: m.id, collected: true, href: m.href },
+    }),
+  );
+}
 
 export function OutcomePopup() {
   const { status, address, send } = useAccount();
@@ -148,6 +158,19 @@ export function OutcomePopup() {
     if (p === "won" || p === "lost" || p === "refund")
       setQueue([{ key: "preview", outcome: p, title: "Haaland scores in the first half", amount: p === "won" ? 13_330_000 : 5_000_000, kind: "bet", collected: true, href: "/" }]);
   }, []);
+
+  // A collect made elsewhere: put it up front, and don't announce it again from the poll.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const m = (e as CustomEvent<Moment>).detail;
+      const seen = readSeen() ?? new Set<string>();
+      seen.add(m.key);
+      writeSeen(seen);
+      setQueue((q) => [m, ...q.filter((x) => x.key !== m.key)]);
+    };
+    window.addEventListener(ANNOUNCE, on);
+    return () => window.removeEventListener(ANNOUNCE, on);
+  }, [readSeen, writeSeen]);
 
   useEffect(() => {
     if (status !== "ready") return;
