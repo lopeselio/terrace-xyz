@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace · Called it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<style>
+  :root {
+    --canvas: #0a0a0a; --surface: #111; --raised: #1a1a1a; --line: #262626; --hair: #1c1c1c;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16;
+    --red: #ef4444; --red-ink: #f87171; --red-deep: #2a0b0b;
+    --amber: #f59e0b; --amber-ink: #fbbf24; --violet: #a78bfa; --violet-deep: #2e1065;
+    --ink: #f9fafb; --ink2: #9ca3af; --ink3: #6b7280;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; left: 0; top: 0; z-index: 1; }
+  #glow { position: absolute; inset: -20%; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.2px); background-size: 28px 28px; }
+
+  /* captions */
+  #cap { position: absolute; z-index: 5; font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.95; letter-spacing: -0.5px; }
+  .capline { display: block; white-space: nowrap; }
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.05em 0.06em 0.1em; margin: -0.05em -0.06em -0.1em; }
+  .w { display: inline-block; transform-origin: 0 100%; }
+  .hot { color: var(--green); }
+
+  /* stage: everything card-related lives in a 620 x 620 box that the layout scales and places */
+  #stage { position: absolute; left: 0; top: 0; width: 620px; height: 620px; transform-origin: 0 0; z-index: 3; }
+  .card { position: absolute; background: var(--surface); border: 1.5px solid var(--line); border-radius: 26px; overflow: hidden; }
+  .row { display: flex; align-items: center; }
+  .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: var(--cond); font-weight: 700; font-size: 16px; color: #fff; flex: none; border: 2px solid var(--surface); }
+  .name { font-weight: 700; font-size: 15px; color: var(--ink2); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 8px; font-weight: 700; font-size: 13px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .b-green { background: var(--green-deep); color: var(--green-ink); border: 1px solid #14532d; }
+  .b-amber { background: #2a1605; color: var(--amber-ink); border: 1px solid #4a2a08; }
+  .b-violet { background: var(--violet-deep); color: #c4b5fd; border: 1px solid #4c1d95; }
+  .b-red { background: var(--red-deep); color: var(--red-ink); border: 1px solid #4a1515; }
+
+  /* chat */
+  #chat { left: 0; top: 0; width: 620px; height: 600px; }
+  #chathead { position: absolute; left: 24px; right: 24px; top: 20px; height: 34px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--ink3); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+  .bub { position: absolute; left: 24px; width: 572px; height: 80px; background: var(--raised); border: 1.5px solid var(--line); border-radius: 20px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .bub .t { font-weight: 600; font-size: 19px; color: var(--ink); line-height: 1.25; }
+
+  /* the take: one element that goes bubble -> market -> win -> features -> app icon */
+  #take { z-index: 4; }
+  #take .layer { position: absolute; inset: 0; }
+  #mkt-text { font-weight: 700; color: var(--ink); line-height: 1.18; }
+  .odd { position: absolute; width: 272px; height: 96px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .odd .l { font-weight: 700; font-size: 14px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .odd .v { font-family: var(--cond); font-weight: 800; font-size: 40px; line-height: 1; }
+  .yes { background: #0b1a10; border: 1.5px solid #1f5133; color: var(--green-ink); }
+  .no { background: #1a0b0b; border: 1.5px solid #4f1d1d; color: var(--red-ink); }
+  .settles { position: absolute; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; color: var(--ink2); }
+  .settles img { width: 26px; height: 26px; border-radius: 50%; background: #fff; }
+  #pool { font-family: var(--cond); font-weight: 800; font-size: 34px; }
+  #flood { position: absolute; border-radius: 50%; background: radial-gradient(circle, #0f3a20 0%, #072615 60%, #05200f 100%); }
+  .big { font-family: var(--cond); font-weight: 800; line-height: 0.9; }
+  .cta { position: absolute; height: 64px; border-radius: 16px; background: var(--green); color: #04180c; display: grid; place-items: center; font-weight: 800; font-size: 20px; }
+  .fakebtn { position: absolute; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 12px; background: var(--green); color: #04180c; font-weight: 800; font-size: 15px; white-space: nowrap; }
+  #tap { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.92); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 9; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.8); z-index: 9; }
+  #pill { position: absolute; z-index: 6; height: 46px; border-radius: 23px; background: #151515; border: 1.5px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 18px; font-family: var(--cond); font-weight: 700; font-size: 22px; white-space: nowrap; overflow: hidden; }
+  .chip { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-family: var(--sans); font-weight: 800; color: #fff; }
+  #goal { position: absolute; z-index: 7; height: 54px; border-radius: 14px; background: var(--green); color: #04180c; display: flex; align-items: center; gap: 10px; padding: 0 20px; font-family: var(--cond); font-weight: 800; font-size: 30px; text-transform: uppercase; white-space: nowrap; }
+  .lrow { position: absolute; left: 28px; right: 28px; height: 54px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--hair); font-weight: 700; font-size: 18px; }
+  .lrow .p { margin-left: auto; font-family: var(--cond); font-weight: 800; font-size: 28px; }
+  .bar { position: absolute; height: 8px; border-radius: 6px; background: var(--raised); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--amber); transform-origin: 0 50%; }
+
+  /* end card */
+  #icon { position: absolute; z-index: 8; }
+  #tag { position: absolute; z-index: 8; font-family: var(--cond); font-weight: 800; text-transform: uppercase; white-space: nowrap; line-height: 0.95; text-align: center; }
+  #url { position: absolute; z-index: 8; height: 72px; border-radius: 36px; border: 1.5px solid #1f5133; background: #0b1a10; color: var(--green-ink); display: flex; align-items: center; padding: 0 32px; font-weight: 700; font-size: 34px; white-space: nowrap; }
+  #sub { position: absolute; z-index: 8; font-weight: 600; font-size: 28px; color: var(--ink2); white-space: nowrap; }
+  #built { position: absolute; z-index: 8; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 22px; color: var(--ink2); white-space: nowrap; }
+  #built img { width: 30px; height: 30px; border-radius: 50%; background: #fff; }
+  #fine { position: absolute; z-index: 8; font-weight: 500; font-size: 17px; color: #6b7280; white-space: nowrap; }
+
+  /* preview HUD (never rendered) */
+  #hud { position: fixed; left: 10px; bottom: 10px; z-index: 99; font: 12px ui-monospace, monospace; color: #9ca3af; background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="cap"></div>
+
+  <div id="stage">
+    <div id="pill"><span class="dot"></span><span class="chip" style="background:#c8102e">LIV</span><span id="score">0 – 0</span><span class="chip" style="background:#6cabdd">MCI</span><span id="clock" style="color:var(--ink2)">31'</span></div>
+    <div id="goal">⚽ Goal · Haaland 38'</div>
+
+    <div id="chat" class="card">
+      <div id="chathead"><span class="dot"></span> Match chat · Liverpool v Man City</div>
+      <div class="bub" id="b1"><span class="av" style="background:#166534">JB</span><div><div class="name">jamie.b</div><div class="t">City look shaky at the back today</div></div></div>
+      <div class="bub" id="b3"><span class="av" style="background:#7c2d12">SK</span><div><div class="name">saoirse.k</div><div class="t">No chance.</div></div></div>
+      <div class="bub" id="b4"><span class="av" style="background:#7c2d12">SK</span><div><div class="name">saoirse.k</div><div class="t">Fiver says he doesn't.</div></div></div>
+    </div>
+
+    <div id="take" class="card">
+      <!-- market -->
+      <div class="layer" id="L-market">
+        <div class="row abs" id="mkt-head" style="gap:12px;align-items:flex-start"><span class="av" style="background:#831843">LU</span><span class="name" id="mkt-name">Loud Ultra</span></div>
+        <span class="badge b-green abs" id="mkt-badge">Market</span>
+        <div class="abs" id="mkt-text">Haaland scores before half-time. Guaranteed.</div>
+        <div class="odd yes" id="o-yes"><span class="l">Back</span><span class="v">1/3</span></div>
+        <div class="odd no" id="o-no"><span class="l">Fade</span><span class="v">3/1</span></div>
+        <div id="avs-yes" class="abs"></div>
+        <div id="avs-no" class="abs"></div>
+        <div class="abs" id="pool-row"><span id="pool">$10</span> <span style="color:var(--ink2);font-weight:600;font-size:17px" id="pool-sub">on it</span></div>
+        <div class="settles" id="mkt-settles"><img src="assets/chainlink.png" alt="" /> Settles from the official match data</div>
+        <div class="fakebtn" id="mkt-btn">🔥 Make it a market</div>
+      </div>
+      <!-- win -->
+      <div id="flood"></div>
+      <div class="layer" id="L-win">
+        <span class="badge b-green abs" id="win-badge" style="left:28px;top:28px">✓ You won</span>
+        <div class="abs big" id="win-amt" style="left:28px;top:84px;font-size:132px;color:var(--green)">+$11.40</div>
+        <div class="abs" style="left:30px;top:228px;width:560px;font-weight:700;font-size:22px;line-height:1.25">Called it on <span style="color:var(--green-ink)">Haaland scores before half-time</span></div>
+        <div class="settles" style="left:30px;top:310px"><img src="assets/chainlink.png" alt="" /> Settled from the official match data</div>
+        <div class="cta" style="left:28px;right:28px;top:380px">Collect $11.40</div>
+      </div>
+      <!-- flash -->
+      <div class="layer" id="L-flash">
+        <span class="badge b-amber abs" style="left:28px;top:28px">⚡ Flash</span>
+        <span class="abs big" id="fl-clock" style="left:520px;top:26px;font-size:30px;color:var(--amber-ink)">0:42</span>
+        <div class="abs big" style="left:28px;top:96px;width:560px;font-size:56px;text-transform:uppercase">A goal before the 70th minute?</div>
+        <div class="bar" style="left:28px;right:28px;top:246px"><i id="fl-bar"></i></div>
+        <div class="odd yes" style="left:28px;top:290px">  <span class="l">Yes</span><span class="v">6/4</span></div>
+        <div class="odd no" style="left:320px;top:290px"><span class="l">No</span><span class="v">1/2</span></div>
+      </div>
+      <!-- 1v1 -->
+      <div class="layer" id="L-duel">
+        <span class="badge b-green abs" style="left:28px;top:28px">⚔ 1v1 challenge</span>
+        <div class="row abs" style="left:28px;top:92px;gap:14px"><span class="av" style="background:#1d4ed8;width:58px;height:58px;font-size:22px">YOU</span><span class="big" style="font-size:38px;color:var(--ink3)">V</span><span class="av" style="background:#7c2d12;width:58px;height:58px;font-size:22px">SK</span><span style="font-weight:700;font-size:22px;margin-left:6px">saoirse.k</span></div>
+        <div class="abs big" style="left:28px;top:178px;font-size:52px;text-transform:uppercase">Arsenal to win</div>
+        <div class="abs" style="left:28px;right:28px;top:252px;display:flex;justify-content:space-between;font-weight:600;font-size:19px;color:var(--ink2)"><span>$5 each</span><span>Winner takes <b style="color:var(--green);font-family:var(--cond);font-size:30px">$10</b></span></div>
+        <div class="cta" style="left:28px;right:28px;top:380px">Send challenge link</div>
+      </div>
+      <!-- league -->
+      <div class="layer" id="L-league">
+        <span class="badge b-violet abs" style="left:28px;top:28px" id="lg-badge">🔒 Picks sealed</span>
+        <div class="abs big" style="left:28px;top:80px;font-size:44px;text-transform:uppercase">The Sharp Eleven · GW12</div>
+        <div id="lg-rows"></div>
+      </div>
+      <!-- icon -->
+      <div class="layer" id="L-icon" style="display:grid;place-items:center"><img src="assets/terrace.png" alt="" style="width:100%;height:100%;object-fit:cover" /></div>
+    </div>
+
+    <div id="tap"></div>
+    <div id="ripple"></div>
+  </div>
+
+  <div id="tag">Back your <span class="hot">take.</span></div>
+  <div id="url">play.terrace.social</div>
+  <div id="sub">Sign in with Face ID · Free to play</div>
+  <div id="built">Built on <img src="assets/monad.png" alt="" /> Monad · Settled by <img src="assets/chainlink.png" alt="" /> Chainlink</div>
+  <div id="fine">Illustration. Testnet: no real money.</div>
+</div>
+<div id="hud"></div>
+
+<script>
+/* ───────────── format + layout ───────────── */
+const Q = new URLSearchParams(location.search);
+const FORMAT = Q.get("f") || "16x9";
+const SIZES = { "16x9": [1920, 1080], "9x16": [1080, 1920], "4x5": [1080, 1350] };
+const [W, H] = SIZES[FORMAT];
+const RENDER = Q.has("render");
+const DUR = 30;
+
+// Where the caption and the 620 x 620 stage sit, per format. The stage is scaled, never cropped.
+const LAYOUT = {
+  "16x9": { cap: { x: 150, y: 540, size: 86, align: "left", maxW: 760, anchor: "mid" }, stage: { cx: 1380, cy: 560, s: 1.25 }, end: { cx: 960, cy: 410, s: 1, tag: 150, y: 640 } },
+  "9x16": { cap: { x: 540, y: 330, size: 108, align: "center", maxW: 960, anchor: "mid" }, stage: { cx: 540, cy: 1150, s: 1.5 }, end: { cx: 540, cy: 760, s: 1.2, tag: 128, y: 1020 } },
+  "4x5": { cap: { x: 540, y: 205, size: 88, align: "center", maxW: 980, anchor: "mid" }, stage: { cx: 540, cy: 820, s: 1.2 }, end: { cx: 540, cy: 520, s: 1.05, tag: 130, y: 760 } },
+}[FORMAT];
+
+const $ = (id) => document.getElementById(id);
+const frame = $("frame");
+frame.style.width = W + "px"; frame.style.height = H + "px";
+
+/* ───────────── maths ───────────── */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const mix = (a, b, p) => a + (b - a) * p;
+const io = (x) => (x = clamp(x), x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const out = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const inn = (x) => Math.pow(clamp(x), 3);
+const PRESET = { snappy: [320, 30], base: [170, 26], heavy: [120, 24] };
+// Closed-form spring step response from 0 to 1, started at t0. Damping ratio >= 0.72 everywhere.
+function sp(t, t0, name = "base") {
+  const dt = t - t0;
+  if (dt <= 0) return 0;
+  const [k, d] = PRESET[name];
+  const w = Math.sqrt(k), z = d / (2 * w);
+  if (z >= 1) return 1 - (1 + w * dt) * Math.exp(-w * dt);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * dt) * (Math.cos(wd * dt) + (z * w / wd) * Math.sin(wd * dt));
+}
+// in at t0 on a spring, out at t1 with an ease-in
+const life = (t, t0, t1, name = "base", outDur = 0.35) => (t < t1 ? sp(t, t0, name) : 1 - inn((t - t1) / outDur));
+const money = (n) => "$" + n.toFixed(2);
+const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
+
+/* ───────────── captions ───────────── */
+const CAPS = [
+  { t0: 0.45, t1: 3.9, lines: ["Every match has", "a call like this."], hot: ["call"] },
+  { t0: 4.2, t1: 6.9, lines: ["…and nobody", "ever settles it."], hot: ["settles"] },
+  { t0: 7.4, t1: 9.75, lines: ["Now it's", "a market."], hot: ["market."] },
+  { t0: 10.1, t1: 14.6, lines: ["Your mates back you.", "Or fade you."], hot: ["back", "fade"] },
+  { t0: 18.15, t1: 21.7, lines: ["Called it."], hot: ["Called"], big: 1.35 },
+  { t0: 22.05, t1: 25.85, lines: ["Flash. 1v1s.", "Leagues with", "your mates."], hot: ["Flash.", "1v1s."] },
+];
+const capEl = $("cap");
+const capNodes = CAPS.map((c) => {
+  const box = document.createElement("div");
+  box.style.position = "absolute"; box.style.left = "0"; box.style.top = "0";
+  const words = [];
+  c.lines.forEach((line) => {
+    const ln = document.createElement("span"); ln.className = "capline";
+    line.split(" ").forEach((w, i) => {
+      if (i) ln.appendChild(document.createTextNode(" "));
+      const m = document.createElement("span"); m.className = "m";
+      const s = document.createElement("span"); s.className = "w" + (c.hot.some((h) => w.toLowerCase().startsWith(h.toLowerCase())) ? " hot" : "");
+      s.textContent = w; m.appendChild(s); ln.appendChild(m); words.push(s);
+    });
+    box.appendChild(ln);
+  });
+  capEl.appendChild(box);
+  return { c, box, words };
+});
+function layoutCaptions() {
+  const L = LAYOUT.cap;
+  for (const n of capNodes) {
+    const size = L.size * (n.c.big || 1);
+    n.box.style.fontSize = size + "px";
+    n.box.style.textAlign = L.align;
+    const w = n.box.offsetWidth, h = n.box.offsetHeight;
+    const x = L.align === "center" ? L.x - w / 2 : L.x;
+    n.box.style.transform = `translate(${x}px, ${L.y - h / 2}px)`;
+  }
+}
+
+/* ───────────── avatars that pile in ───────────── */
+const PILE = [
+  { side: "yes", ini: "MD", c: "#1d4ed8", t: 10.35 },
+  { side: "no", ini: "SK", c: "#7c2d12", t: 10.85 },
+  { side: "yes", ini: "GR", c: "#166534", t: 11.35 },
+  { side: "yes", ini: "JB", c: "#0e7490", t: 11.85 },
+  { side: "yes", ini: "CV", c: "#a16207", t: 12.35 },
+  { side: "no", ini: "TG", c: "#4c1d95", t: 12.95, ai: true },
+];
+const POOL = [10, 12, 8, 14, 12, 20]; // $ added by each (with the author's $10, $86 in all)
+const avNodes = PILE.map((p) => {
+  const a = document.createElement("span");
+  a.className = "av abs"; a.textContent = p.ini; a.style.background = p.c; a.style.zIndex = 5;
+  if (p.ai) { a.style.boxShadow = "0 0 0 3px #a78bfa"; }
+  $("take").appendChild(a);
+  return a;
+});
+const aiTag = document.createElement("span");
+aiTag.className = "badge b-violet abs"; aiTag.textContent = "The Gaffer · AI faded it"; aiTag.style.zIndex = 6;
+$("take").appendChild(aiTag);
+
+/* league rows */
+const LG = [["You", "#1d4ed8", 9, "YOU"], ["saoirse.k", "#7c2d12", 7, "SK"], ["The Gaffer", "#4c1d95", 6, "TG"], ["jamie.b", "#166534", 4, "JB"]];
+const lgRows = LG.map((r, i) => {
+  const el = document.createElement("div"); el.className = "lrow"; el.style.top = 150 + i * 58 + "px";
+  el.innerHTML = `<span class="big" style="font-size:24px;width:20px;color:${i ? "var(--ink3)" : "var(--green)"}">${i + 1}</span><span class="av" style="background:${r[1]};width:36px;height:36px;font-size:13px">${r[3]}</span><span>${r[0]}</span><span class="badge b-violet hid" style="margin-left:auto">🔒 Hidden</span><span class="p" style="display:none">${r[2]}</span>`;
+  $("lg-rows").appendChild(el);
+  return el;
+});
+
+/* ───────────── rects ───────────── */
+const BUB = (y) => ({ x: 24, y, w: 572, h: 80 });
+const R_BUB2 = BUB(170);
+const R_MKT = { x: 0, y: 70, w: 620, h: 500 };
+const R_ICON_SIZE = 230;
+const lerpRect = (a, b, p) => ({ x: mix(a.x, b.x, p), y: mix(a.y, b.y, p), w: mix(a.w, b.w, p), h: mix(a.h, b.h, p) });
+
+/* ───────────── seek(t): the whole film is a pure function of t ───────────── */
+window.seek = async (t) => {
+  t = clamp(t, 0, DUR);
+
+  // background: a slow drifting glow, greener after the drop
+  const drop = sp(t, 18, "heavy");
+  const gx = 50 + 8 * Math.sin(t * 0.21), gy = 40 + 6 * Math.cos(t * 0.17);
+  $("glow").style.background = `radial-gradient(ellipse 45% 40% at ${gx}% ${gy}%, rgba(34,197,94,${0.07 + 0.12 * drop - 0.06 * sp(t, 26)}), transparent 70%), radial-gradient(ellipse 35% 35% at ${100 - gx}% ${100 - gy}%, rgba(167,139,250,0.05), transparent 70%)`;
+  $("grid").style.opacity = 0.6 + 0.2 * Math.sin(t * 0.3);
+
+  // captions: words rise out of a mask (55 ms stagger), leave upwards
+  for (const n of capNodes) {
+    const { t0, t1 } = n.c;
+    const vis = t > t0 - 0.05 && t < t1 + 0.6;
+    n.box.style.visibility = vis ? "visible" : "hidden";
+    if (!vis) continue;
+    n.words.forEach((w, i) => {
+      const pin = sp(t, t0 + i * 0.055, "heavy");
+      const pout = inn((t - t1 - i * 0.03) / 0.32);
+      const y = t < t1 ? (1 - pin) * 105 : -105 * pout;
+      const r = t < t1 ? (1 - pin) * 4 : -3 * pout;
+      w.style.transform = `translateY(${y}%) rotate(${r}deg)`;
+    });
+  }
+
+  // stage camera: card area, then centre for the end card; tiny beat punches after the drop
+  const toEnd = sp(t, 25.95, "heavy");
+  const S = LAYOUT.stage, E = LAYOUT.end;
+  let s = mix(S.s, E.s, toEnd);
+  let beat = 0;
+  if (t >= 18 && t < 22) { const b = (t - 18) % 0.5; beat = 0.012 * Math.exp(-b / 0.12); }
+  // tension before the drop: a slow push in from 15 s, released on the payout
+  const push = 0.07 * io((t - 15) / 3) * (1 - sp(t, 18, "base"));
+  s *= 1 + beat + push;
+  const cx = mix(S.cx, E.cx, toEnd), cy = mix(S.cy, E.cy, toEnd) + 3 * Math.sin(t * 0.9);
+  $("stage").style.transform = `translate(${cx - 310 * s}px, ${cy - 310 * s}px) scale(${s})`;
+
+  // chat panel
+  const chatIn = sp(t, 0.15, "base");
+  const chatOut = io((t - 7.0) / 0.55);
+  set($("chat"), { opacity: chatIn * (1 - chatOut), transform: `translateY(${(1 - chatIn) * 60 + chatOut * 40}px) scale(${1 - chatOut * 0.04})`, height: "600px" });
+  const grey = io((t - 4.35) / 0.5);
+  const roomFor = 56 * sp(t, 5.55, "snappy");
+  [["b1", 92, 0.55, 0], ["b3", 260, 2.6, 1], ["b4", 344, 3.25, 1]].forEach(([id, y, t0, push]) => {
+    const p = sp(t, t0, "snappy");
+    set($(id), { top: y + push * roomFor + "px", opacity: p * (1 - 0.62 * grey), transform: `translateY(${(1 - p) * 18}px) scale(${0.94 + 0.06 * p})`, filter: `saturate(${1 - grey})` });
+  });
+
+  // THE TAKE: bubble (lifted) -> market card
+  const take = $("take");
+  const bIn = sp(t, 1.15, "snappy");
+  const lift = sp(t, 5.55, "snappy") * (t < 7.2 ? 1 : 1);
+  const morph = sp(t, 7.15, "base");
+  let r = lerpRect({ ...R_BUB2, y: R_BUB2.y - lift * 6, h: R_BUB2.h + 56 * lift }, R_MKT, morph);
+  // features: card height eases to fit; end: card becomes the app icon
+  const icon = sp(t, 25.95, "base");
+  const iconRect = { x: 310 - R_ICON_SIZE / 2, y: 310 - R_ICON_SIZE / 2 - 70, w: R_ICON_SIZE, h: R_ICON_SIZE };
+  r = lerpRect(r, iconRect, icon);
+  const liftScale = 1 + 0.035 * lift * (1 - morph);
+  set(take, {
+    left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px",
+    opacity: bIn,
+    transform: `translateY(${(1 - bIn) * 18}px) scale(${(0.94 + 0.06 * bIn) * liftScale})`,
+    borderRadius: mix(mix(20, 26, morph), 54, icon) + "px",
+    borderColor: lift > 0.02 && morph < 0.98 ? `rgba(34,197,94,${lift * (1 - morph)})` : t > 18 && t < 22 ? "#1f5133" : "#262626",
+    boxShadow: `0 0 0 ${6 * lift * (1 - morph)}px rgba(34,197,94,0.14), 0 ${20 + 30 * morph}px ${40 + 40 * morph}px rgba(0,0,0,0.55)`,
+    background: morph < 0.5 ? "#1a1a1a" : "#111",
+  });
+
+  // market layer content: bubble look before the morph, market look after
+  const mk = morph;
+  const head = $("mkt-head");
+  set(head, { transform: `translate(${mix(18, 28, mk)}px, ${mix(14, 26, mk)}px)` });
+  $("mkt-name").style.fontSize = mix(15, 18, mk) + "px";
+  $("mkt-name").style.marginTop = mix(0, 9, mk) + "px";
+  set($("mkt-badge"), { transform: `translate(${620 - 28 - 92}px, 28px) scale(${sp(t, 7.6, "snappy")})`, opacity: sp(t, 7.6, "snappy") });
+  set($("mkt-text"), { transform: `translate(${mix(72, 28, mk)}px, ${mix(38, 82, mk)}px)`, fontSize: mix(19, 34, mk) + "px", width: mix(480, 564, mk) + "px", fontWeight: mk > 0.5 ? 700 : 600 });
+  // "Make it a market" button + the tap
+  const btn = sp(t, 5.95, "snappy") * (1 - io((t - 7.15) / 0.2));
+  const BTN_W = 214;
+  set($("mkt-btn"), { transform: `translate(${572 - 18 - BTN_W}px, ${80}px) scale(${0.7 + 0.3 * btn})`, opacity: btn, transformOrigin: "100% 0", width: BTN_W + "px", justifyContent: "center" });
+  const tapIn = io((t - 6.15) / 0.55), tapOut = io((t - 7.05) / 0.3);
+  const tapX = mix(700, 24 + 572 - 18 - BTN_W / 2, tapIn), tapY = mix(560, 170 - 6 + 80 + 20, tapIn);
+  const press = t > 6.75 && t < 6.95 ? 0.82 : 1;
+  set($("tap"), { transform: `translate(${tapX - 17}px, ${tapY - 17}px) scale(${press})`, opacity: tapIn * (1 - tapOut) });
+  const rp = clamp((t - 6.8) / 0.45);
+  set($("ripple"), { left: tapX - 10 - 60 * rp + "px", top: tapY - 10 - 60 * rp + "px", width: 20 + 120 * rp + "px", height: 20 + 120 * rp + "px", opacity: t > 6.8 ? (1 - rp) : 0 });
+
+  const odds = sp(t, 7.75, "snappy");
+  set($("o-yes"), { left: "28px", top: "190px", opacity: odds, transform: `translateY(${(1 - odds) * 20}px)` });
+  set($("o-no"), { left: "320px", top: "190px", opacity: sp(t, 7.85, "snappy"), transform: `translateY(${(1 - sp(t, 7.85, "snappy")) * 20}px)` });
+  const setl = sp(t, 8.3, "base");
+  set($("mkt-settles"), { left: "30px", top: "440px", opacity: setl * (1 - sp(t, 17.9)) });
+
+  // mates pile in, one at a time; the pool counts up with each
+  let pool = 10, backers = 1, faders = 0;
+  PILE.forEach((p, i) => {
+    const a = avNodes[i];
+    const k = sp(t, p.t, "base");
+    const sideCount = PILE.slice(0, i).filter((q) => q.side === p.side).length;
+    const tx = p.side === "yes" ? 28 + sideCount * 30 : 320 + sideCount * 30;
+    const ty = 304;
+    const fromX = p.side === "yes" ? -80 : 700, fromY = 340 + (i % 2) * 60;
+    set(a, { transform: `translate(${mix(fromX, tx, k)}px, ${mix(fromY, ty, k)}px) scale(${0.6 + 0.4 * k})`, opacity: clamp(k * 3) * (1 - sp(t, 17.9)) });
+    if (t >= p.t + 0.12) { pool += POOL[i]; p.side === "yes" ? backers++ : faders++; }
+  });
+  const aiK = sp(t, 13.15, "snappy");
+  set(aiTag, { transform: `translate(${320}px, ${352}px) scale(${0.8 + 0.2 * aiK})`, opacity: aiK * (1 - sp(t, 15.0)), transformOrigin: "0 0" });
+  $("pool").textContent = "$" + pool;
+  $("pool-sub").textContent = `on it · ${backers} backing · ${faders} fading`;
+  const poolIn = sp(t, 9.9, "snappy");
+  set($("pool-row"), { transform: `translate(30px, ${380 + (1 - poolIn) * 12}px)`, opacity: poolIn * (1 - sp(t, 17.9)) });
+  set($("L-market"), { opacity: t < 18.1 ? 1 : 1 - io((t - 18.1) / 0.25) });
+
+  // match pill: clock runs 31' -> 38'; GOAL ticker
+  const pillIn = sp(t, 14.9, "base") * (1 - io((t - 21.5) / 0.4));
+  const mins = 31 + Math.floor(clamp((t - 15.2) / 1.9) * 7);
+  $("clock").textContent = mins + "'";
+  $("score").textContent = t >= 17.2 ? "1 – 0" : "0 – 0";
+  set($("pill"), { transform: `translate(${310 - 135}px, ${(1 - pillIn) * -20}px)`, opacity: pillIn, width: "270px" });
+  const g = sp(t, 17.2, "snappy") * (1 - io((t - 18.05) / 0.25));
+  set($("goal"), { transform: `translate(${310 - 170}px, ${-62 + (1 - g) * 18}px) scale(${0.85 + 0.15 * g})`, opacity: g, width: "340px" });
+
+  // DROP 18.0: a green flood from the Back button, the win
+  const fl = io((t - 18.0) / 0.34);
+  const fr = Math.hypot(620, 500) * 1.05 * fl;
+  const fcx = 28 + 136, fcy = 190 + 48;
+  set($("flood"), { left: fcx - fr + "px", top: fcy - fr + "px", width: 2 * fr + "px", height: 2 * fr + "px", opacity: t < 18 ? 0 : 1 - io((t - 21.9) / 0.3) });
+  const win = t >= 18.15 ? 1 - io((t - 21.9) / 0.25) : 0;
+  set($("L-win"), { opacity: win });
+  const amt = 11.4 * out((t - 18.25) / 1.1);
+  $("win-amt").textContent = "+" + money(t < 18.25 ? 0 : amt);
+  set($("win-amt"), { transform: `translateY(${(1 - sp(t, 18.15, "heavy")) * 30}px)` });
+
+  // features: Flash -> 1v1 -> league, each ~1.3 s, crossfading inside the same card
+  const fIn = (t0, t1) => (t < t0 ? 0 : t < t1 ? sp(t, t0, "snappy") : 1 - io((t - t1) / 0.22));
+  const fA = fIn(22.0, 23.3), fB = fIn(23.35, 24.65), fC = fIn(24.7, 25.9);
+  set($("L-flash"), { opacity: fA, transform: `translateY(${(1 - fA) * 14}px)` });
+  set($("L-duel"), { opacity: fB, transform: `translateY(${(1 - fB) * 14}px)` });
+  set($("L-league"), { opacity: fC, transform: `translateY(${(1 - fC) * 14}px)` });
+  $("fl-clock").textContent = "0:" + String(42 - Math.floor(clamp((t - 22) / 1.3) * 4)).padStart(2, "0");
+  $("fl-bar").style.transform = `scaleX(${1 - 0.3 * clamp((t - 22) / 1.3)})`;
+  const reveal = t >= 25.3;
+  lgRows.forEach((el, i) => {
+    el.querySelector(".hid").style.display = reveal ? "none" : "";
+    el.querySelector(".p").style.display = reveal ? "" : "none";
+    const k = sp(t, 24.75 + i * 0.07, "snappy");
+    el.style.opacity = k; el.style.transform = `translateX(${(1 - k) * 20}px)`;
+  });
+  $("lg-badge").textContent = reveal ? "✓ Revealed at kick-off" : "🔒 Picks sealed";
+  $("lg-badge").className = "badge abs " + (reveal ? "b-green" : "b-violet");
+
+  // END: the card becomes the app icon; tagline, url, lines
+  set($("L-icon"), { opacity: io((t - 26.05) / 0.35) });
+  const iconScaleOnScreen = E.s;
+  const tagIn = sp(t, 26.5, "heavy");
+  const tagEl = $("tag");
+  tagEl.style.fontSize = E.tag + "px";
+  const tw = tagEl.offsetWidth;
+  set(tagEl, { transform: `translate(${W / 2 - tw / 2}px, ${E.y + (1 - tagIn) * 50}px)`, opacity: tagIn, clipPath: `inset(0 0 ${(1 - tagIn) * 30}% 0)` });
+  const below = E.y + E.tag * 1.08;
+  const u = sp(t, 27.05, "snappy"), sb = sp(t, 27.35, "base"), bl = sp(t, 27.65, "base"), fi = sp(t, 27.85, "base");
+  const uEl = $("url"); set(uEl, { transform: `translate(${W / 2 - uEl.offsetWidth / 2}px, ${below + 20 + (1 - u) * 14}px) scale(${0.9 + 0.1 * u})`, opacity: u });
+  const sEl = $("sub"); set(sEl, { transform: `translate(${W / 2 - sEl.offsetWidth / 2}px, ${below + 118 + (1 - sb) * 12}px)`, opacity: sb });
+  const bEl = $("built"); set(bEl, { transform: `translate(${W / 2 - bEl.offsetWidth / 2}px, ${H - 130 + (1 - bl) * 12}px)`, opacity: bl });
+  const fEl = $("fine"); set(fEl, { transform: `translate(${W / 2 - fEl.offsetWidth / 2}px, ${H - 76}px)`, opacity: fi * 0.9 });
+  // keep the end card alive: a slow breathe on the icon
+  if (t > 27) take.style.transform += ` scale(${1 + 0.008 * Math.sin((t - 27) * 2.2)})`;
+
+  if (!RENDER) $("hud").textContent = `${FORMAT}  t=${t.toFixed(2)}s  beat ${Math.floor(t * 2) + 1}  [space] play  [←/→] ±1f  [shift] ±0.5s  [r] replay`;
+};
+
+/* ───────────── boot ───────────── */
+(async () => {
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r)))));
+  layoutCaptions();
+  if (RENDER) $("hud").remove();
+  const t0 = parseFloat(Q.get("t") || "0");
+  await window.seek(t0);
+  window.ready = true;
+  if (RENDER) return;
+  // preview: the only place a clock exists
+  let t = t0, playing = !Q.has("t"), last = performance.now();
+  const loop = (now) => { if (playing) { t += (now - last) / 1000; if (t > DUR) t = 0; window.seek(t); } last = now; requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  addEventListener("keydown", (e) => {
+    if (e.code === "Space") playing = !playing;
+    if (e.key === "r") t = 0;
+    if (e.key === "ArrowRight") { t += e.shiftKey ? 0.5 : 1 / 60; window.seek(t); }
+    if (e.key === "ArrowLeft") { t -= e.shiftKey ? 0.5 : 1 / 60; window.seek(t); }
+  });
+  const fit = () => { const k = Math.min(innerWidth / W, innerHeight / H); frame.style.transform = `scale(${k})`; frame.style.transformOrigin = "0 0"; };
+  fit(); addEventListener("resize", fit);
+})();
+</script>
+</body>
+</html>
