@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace · Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@500&family=Tektur:wght@800&display=block" rel="stylesheet" />
+<style>
+  :root {
+    --canvas: #0a0a0a; --surface: #111; --raised: #1a1a1a; --line: #262626;
+    --green: #22c55e; --green-ink: #4ade80; --ink: #f9fafb; --ink2: #9ca3af; --ink3: #6b7280;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #glow { position: absolute; inset: -20%; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.2px); background-size: 28px 28px; }
+  .abs { position: absolute; left: 0; top: 0; }
+
+  #brand { position: absolute; left: 140px; top: 70px; z-index: 5; display: flex; align-items: center; gap: 12px; font-family: var(--cond); font-weight: 800; font-size: 28px; text-transform: uppercase; letter-spacing: 0.5px; }
+  #brand img { width: 38px; height: 38px; border-radius: 10px; }
+  #brand span.k { font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: 1.6px; color: var(--ink3); margin-left: 8px; }
+
+  .shot { position: absolute; left: 140px; top: 0; width: 780px; z-index: 5; visibility: hidden; }
+  .num { font-family: var(--mono); font-size: 16px; letter-spacing: 2px; color: var(--green-ink); text-transform: uppercase; margin-bottom: 18px; display: block; }
+  .title { font-family: var(--cond); font-weight: 800; font-size: 104px; line-height: 0.93; text-transform: uppercase; letter-spacing: -0.5px; }
+  .tl { display: block; }
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.05em 0.06em 0.1em; margin: -0.05em -0.06em -0.1em; }
+  .w { display: inline-block; transform-origin: 0 100%; }
+  .hot { color: var(--green); }
+  .subs { margin-top: 34px; display: grid; gap: 14px; }
+  .sub { display: flex; gap: 16px; align-items: baseline; font-weight: 600; font-size: 31px; line-height: 1.25; color: var(--ink2); }
+  .sub i { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--green); transform: translateY(-4px); }
+
+  #prog { position: absolute; left: 140px; top: 984px; width: 780px; height: 26px; z-index: 5; display: flex; gap: 6px; }
+  #prog div { position: relative; height: 4px; border-radius: 3px; background: #1f1f1f; overflow: hidden; }
+  #prog div b { position: absolute; inset: 0; background: var(--green); transform-origin: 0 50%; }
+  #progLabel { position: absolute; left: 140px; top: 1004px; z-index: 5; font-family: var(--mono); font-size: 13px; letter-spacing: 1.6px; color: var(--ink3); text-transform: uppercase; }
+
+  /* phone */
+  #phone { position: absolute; left: 0; top: 0; width: 470px; height: 914px; z-index: 4; transform-origin: 0 0; }
+  #bezel { position: absolute; inset: 0; border-radius: 70px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 0 0 9px #141414, 0 0 0 10px #2b2b2b, 0 60px 120px rgba(0,0,0,0.7); }
+  #screen { position: absolute; left: 14px; top: 14px; width: 442px; height: 886px; border-radius: 56px; overflow: hidden; background: #0a0a0a; }
+  #status { position: absolute; left: 0; top: 0; width: 442px; height: 54px; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 8px 34px 0 46px; font-weight: 700; font-size: 17px; background: #0a0a0a; }
+  #island { position: absolute; left: 50%; top: 11px; width: 124px; height: 35px; margin-left: -62px; border-radius: 20px; background: #000; z-index: 4; }
+  #view { position: absolute; left: 0; top: 54px; width: 442px; height: 832px; overflow: hidden; z-index: 1; }
+  .scr { position: absolute; left: 0; top: 0; width: 442px; transform-origin: 0 0; visibility: hidden; will-change: transform; }
+  #scrim { position: absolute; inset: 0; background: #000; z-index: 2; pointer-events: none; }
+  #home { position: absolute; left: 50%; bottom: 9px; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: #f3f4f6; z-index: 5; }
+  .shade { position: absolute; left: 0; width: 442px; background: rgba(0,0,0,0.62); z-index: 3; }
+  #ring { position: absolute; left: 6px; width: 430px; border-radius: 16px; border: 2.5px solid var(--green); box-shadow: 0 0 0 6px rgba(34,197,94,0.15), 0 0 40px rgba(34,197,94,0.25); z-index: 3; }
+  #tap { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 4px 14px rgba(0,0,0,0.5); z-index: 6; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); z-index: 6; }
+
+  /* end card */
+  #end { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+  #end img.logo { width: 150px; height: 150px; border-radius: 36px; }
+  #end .tag { font-family: var(--cond); font-weight: 800; font-size: 150px; line-height: 0.9; text-transform: uppercase; }
+  #end .url { height: 72px; border-radius: 36px; border: 1.5px solid #1f5133; background: #0b1a10; color: var(--green-ink); display: flex; align-items: center; padding: 0 32px; font-weight: 700; font-size: 34px; }
+  #end .built { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 24px; color: var(--ink2); }
+  #end .built img { width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+  #end .metro { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(167,139,250,0.4); }
+  #end .metro .l { font-family: var(--mono); font-size: 14px; letter-spacing: 1.6px; text-transform: uppercase; color: #fbfaf9; opacity: 0.8; }
+  #end .metro .w2 { font-family: "Tektur", var(--cond); font-weight: 800; font-size: 24px; letter-spacing: 2px; text-transform: uppercase; background: linear-gradient(90deg, #fbfaf9 0%, #8ab4ff 40%, #a78bfa 55%, #ff8ccf 72%, #ffd2a8 88%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #end > * { will-change: transform, opacity; }
+
+  #hud { position: fixed; left: 10px; bottom: 10px; z-index: 99; font: 12px ui-monospace, monospace; color: #9ca3af; background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="brand"><img src="assets/terrace.png" alt="" /> Terrace <span class="k">Product demo · Monad testnet</span></div>
+  <div id="shots"></div>
+  <div id="prog"></div>
+  <div id="progLabel"></div>
+
+  <div id="phone">
+    <div id="bezel"></div>
+    <div id="screen">
+      <div id="status"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#fff"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#fff"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#fff"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#fff"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#fff"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill="#fff" opacity="0.5"/></svg></span></div>
+      <div id="island"></div>
+      <div id="view"><div id="scrim"></div><div class="shade" id="shadeT"></div><div class="shade" id="shadeB"></div><div id="ring"></div></div>
+      <div id="home"></div>
+      <div id="tap"></div>
+      <div id="ripple"></div>
+    </div>
+  </div>
+
+  <div id="end">
+    <img class="logo" src="assets/terrace.png" alt="" />
+    <div class="tag">Back your <span style="color:var(--green)">take.</span></div>
+    <div class="url">play.terrace.social</div>
+    <div class="built">Built on <img src="assets/monad.png" alt="" /> Monad · Settled by <img src="assets/chainlink.png" alt="" /> Chainlink</div>
+    <div class="metro"><span class="l">Built for the Monad</span><span class="w2">Metropolis</span><span class="l">hackathon</span></div>
+  </div>
+</div>
+<div id="hud"></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const RENDER = Q.has("render");
+const DUR = 180;
+const $ = (id) => document.getElementById(id);
+
+/* ── maths (same spring engine as the ad) ── */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const mix = (a, b, p) => a + (b - a) * p;
+const io = (x) => (x = clamp(x), x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const inn = (x) => Math.pow(clamp(x), 3);
+const PRESET = { snappy: [320, 30], base: [170, 26], heavy: [120, 24], slow: [40, 13] };
+function sp(t, t0, name = "base") {
+  const dt = t - t0;
+  if (dt <= 0) return 0;
+  const [k, d] = PRESET[name];
+  const w = Math.sqrt(k), z = d / (2 * w);
+  if (z >= 1) return 1 - (1 + w * dt) * Math.exp(-w * dt);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * dt) * (Math.cos(wd * dt) + (z * w / wd) * Math.sin(wd * dt));
+}
+const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
+
+/* ── the script: 13 shots on the timings from the brief ──
+   items: screen s (screens/sNN.png) from time t, entering by tr = push | fade | sheet | rise
+   zoom:  { x, y, s, at, until } centre (fractions of the screenshot), scale, start, end
+   taps:  [x, y, t] a finger press on that spot at time t */
+const SHOTS = [
+  { t0: 0, t1: 8, title: "Terrace", hot: ["Terrace"], subs: ["The social prediction layer for football", "Your call. Your mates back it or fade it."],
+    items: [{ s: 1, t: 0.9, tr: "rise" }] },
+  { t0: 8, t1: 22, title: "One passkey\nis your account", hot: ["passkey"], subs: ["Sign up with Face ID", "No wallet, no seed phrase, no email", "Test dollars land, ready to play"],
+    items: [{ s: 4, t: 8, tr: "push", taps: [[0.5, 0.685, 12.1]] }, { s: 5, t: 12.6, tr: "push", focus: { y0: 0.32, y1: 0.52, at: 14.6, until: 21.6 } }] },
+  { t0: 22, t1: 38, title: "Your\nmatchday", hot: ["matchday"], subs: ["A live tape of every back and fade", "A brief for your club: prices, form, a prediction"],
+    items: [{ s: 1, t: 22, tr: "push", focus: { y0: 0.44, y1: 0.78, at: 23.6, until: 29.2 } }, { s: 2, t: 29.6, tr: "push" }, { s: 3, t: 34, tr: "push" }] },
+  { t0: 38, t1: 52, title: "Back a price", hot: ["price"], subs: ["Tap a price, pick a stake, place it", "Confirmed on Monad in under a second", "Terrace Points roll in as you play"],
+    items: [{ s: 18, t: 38, tr: "push", taps: [[0.27, 0.81, 41.2]] }, { s: 17, t: 41.7, tr: "sheet", focus: { y0: 0.55, y1: 0.82, at: 43.5, until: 48.6 }, taps: [[0.5, 0.885, 49.6]] }] },
+  { t0: 52, t1: 75, title: "Any take\nbecomes a market", hot: ["market"], subs: ["Type your take, tap Make it a market", "Terrace AI writes the rule you read first", "Chainlink checks that exact rule at full time"],
+    items: [{ s: 19, t: 52, tr: "push" }, { s: 20, t: 57.4, tr: "fade", focus: { y0: 0.55, y1: 0.68, at: 58.4, until: 61.9 }, taps: [[0.15, 0.645, 62.5]] }, { s: 21, t: 63, tr: "sheet", focus: { y0: 0.30, y1: 0.47, at: 65, until: 72.2 }, taps: [[0.5, 0.905, 73.2]] }] },
+  { t0: 75, t1: 85, title: "Copy it.\nFade it.", hot: ["Copy", "Fade"], subs: ["Mates see your bet in the feed", "House liquidity opens every market at a real price"],
+    items: [{ s: 12, t: 75, tr: "push", focus: { y0: 0.23, y1: 0.46, at: 76.6, until: 80.2 } }, { s: 13, t: 80.6, tr: "fade" }] },
+  { t0: 85, t1: 95, title: "Swipe the\nweekend", hot: ["Swipe"], subs: ["Right to back, left to fade", "Down to skip"],
+    items: [{ s: 16, t: 85, tr: "push", taps: [[0.71, 0.76, 88.3]] }, { s: 14, t: 88.9, tr: "fade", taps: [[0.29, 0.76, 92.1]] }, { s: 15, t: 92.7, tr: "sheet" }] },
+  { t0: 95, t1: 108, title: "1v1s by link", hot: ["1v1s"], subs: ["Five dollars says you can't call it", "They accept, the winner takes both stakes"],
+    items: [{ s: 22, t: 95, tr: "push", taps: [[0.25, 0.38, 98.4], [0.38, 0.62, 100.2]] }, { s: 23, t: 101.2, tr: "sheet", taps: [[0.75, 0.84, 105.6]] }] },
+  { t0: 108, t1: 115, title: "Parlays", hot: ["Parlays"], subs: ["Stack results, goals and fan takes", "Every winner shares the week's pot"],
+    items: [{ s: 27, t: 108, tr: "push", taps: [[0.5, 0.9, 110.9]] }, { s: 28, t: 111.4, tr: "sheet" }] },
+  { t0: 115, t1: 145, title: "Leagues with\nyour mates", hot: ["Leagues"], subs: ["Fantasy football with stakes", "Sealed picks nobody can copy", "A hidden table until the whistle", "Members vote on gameweeks"],
+    items: [{ s: 31, t: 115, tr: "push", focus: { y0: 0.46, y1: 0.82, at: 116.4, until: 120.4 } }, { s: 32, t: 121, tr: "fade", focus: { y0: 0.17, y1: 0.49, at: 122, until: 127 } },
+      { s: 33, t: 127.5, tr: "push", focus: { y0: 0.09, y1: 0.26, at: 128.5, until: 133 } }, { s: 29, t: 133.5, tr: "push", focus: { y0: 0.19, y1: 0.37, at: 134.6, until: 139 } }, { s: 30, t: 139.5, tr: "fade" }] },
+  { t0: 145, t1: 155, title: "Your record", hot: ["record"], subs: ["A leaderboard by points and win rate", "AI players clearly marked", "Every bet in green or red"],
+    items: [{ s: 11, t: 145, tr: "push", focus: { y0: 0.25, y1: 0.62, at: 146.4, until: 150 } }, { s: 7, t: 150.4, tr: "push" }] },
+  { t0: 155, t1: 170, title: "Settled by\nChainlink", hot: ["Chainlink"], subs: ["After full time, Chainlink CRE reads the official match data", "No admin, no settle button", "You won. Collect."],
+    items: [{ s: 6, t: 155, tr: "push" }, { s: 0, t: 159, tr: "fade", focus: { y0: 0.30, y1: 0.67, at: 160.6, until: 167.6 }, taps: [[0.5, 0.62, 168.4]] }] },
+  { t0: 170, t1: 175.2, title: "AI pundits\nplay too", hot: ["AI"], subs: ["Every fan's passkey comes with an AI agent", "They back, fade and keep their own record"],
+    items: [{ s: 9, t: 170, tr: "push", focus: { y0: 0.0, y1: 0.17, at: 171, until: 180 } }] },
+];
+const END = 175.2;
+
+/* ── build the DOM once ── */
+const view = $("view");
+const used = [...new Set(SHOTS.flatMap((s) => s.items.map((i) => i.s)))];
+const IMG = {};
+for (const s of used) {
+  const im = document.createElement("img");
+  im.className = "scr"; im.src = `screens/s${String(s).padStart(2, "0")}.png`; im.alt = "";
+  view.appendChild(im); IMG[s] = im;
+}
+const ITEMS = SHOTS.flatMap((sh) => sh.items);
+
+const shotEls = SHOTS.map((sh, n) => {
+  const box = document.createElement("div"); box.className = "shot";
+  const num = document.createElement("span"); num.className = "num"; num.textContent = `${String(n + 1).padStart(2, "0")} / ${SHOTS.length}`;
+  box.appendChild(num);
+  const title = document.createElement("div"); title.className = "title";
+  const words = [];
+  sh.title.split("\n").forEach((line) => {
+    const tl = document.createElement("span"); tl.className = "tl";
+    line.split(" ").forEach((w, i) => {
+      if (i) tl.appendChild(document.createTextNode(" "));
+      const m = document.createElement("span"); m.className = "m";
+      const e = document.createElement("span"); e.className = "w" + (sh.hot.some((h) => w.toLowerCase().startsWith(h.toLowerCase())) ? " hot" : "");
+      e.textContent = w; m.appendChild(e); tl.appendChild(m); words.push(e);
+    });
+    title.appendChild(tl);
+  });
+  box.appendChild(title);
+  const subs = document.createElement("div"); subs.className = "subs";
+  const subEls = sh.subs.map((s) => { const d = document.createElement("div"); d.className = "sub"; d.innerHTML = `<i></i><span>${s}</span>`; subs.appendChild(d); return d; });
+  box.appendChild(subs);
+  $("shots").appendChild(box);
+  return { box, num, words, subEls };
+});
+const prog = $("prog");
+const progBars = SHOTS.map((sh) => { const d = document.createElement("div"); d.style.flex = String(sh.t1 - sh.t0); const b = document.createElement("b"); d.appendChild(b); prog.appendChild(d); return b; });
+
+function layoutShots() {
+  for (const e of shotEls) e.box.style.top = 540 - e.box.offsetHeight / 2 + 10 + "px";
+}
+
+/* ── seek(t) ── */
+const PHONE = { cx: 1390, cy: 540, s: 1.04 };
+const SW = 442, VH = 832;
+
+function screenPose(it, t) {
+  // zoom: an eased push toward (x, y), released before the next action
+  const z = it.zoom;
+  let k = 0;
+  if (z) k = sp(t, z.at, "slow") * (1 - io((t - (z.until ?? 1e9)) / 0.7));
+  const s = 1 + ((z?.s ?? 1) - 1) * k;
+  const img = IMG[it.s];
+  const H = SW * (img.naturalHeight / img.naturalWidth || 2);
+  const cx = z ? z.x * SW : SW / 2, cy = z ? z.y * H : VH / 2;
+  // keep the zoom target near the middle of the view, never past the image edges
+  let tx = mix(0, SW / 2 - cx * s, k), ty = mix(0, VH * 0.48 - cy * s, k);
+  tx = clamp(tx, SW - SW * s, 0); ty = clamp(ty, Math.min(0, VH - H * s), 0);
+  return { s, tx, ty };
+}
+// spotlight: dim all but the part that matters, ring it in green
+function spot(it, t) {
+  const f = it.focus;
+  if (!f) return 0;
+  return sp(t, f.at, "base") * (1 - io((t - (f.until ?? 1e9)) / 0.4));
+}
+
+window.seek = async (t) => {
+  t = clamp(t, 0, DUR);
+  const gx = 50 + 8 * Math.sin(t * 0.13), gy = 45 + 6 * Math.cos(t * 0.11);
+  $("glow").style.background = `radial-gradient(ellipse 40% 45% at ${70 + gx * 0.1}% ${gy}%, rgba(34,197,94,0.09), transparent 70%), radial-gradient(ellipse 30% 35% at ${20 + gx * 0.1}% ${100 - gy}%, rgba(167,139,250,0.04), transparent 70%)`;
+
+  // captions: number, title words rise out of a mask, bullets follow one at a time; everything leaves upwards
+  SHOTS.forEach((sh, n) => {
+    const e = shotEls[n];
+    const vis = t > sh.t0 - 0.05 && t < sh.t1 + 0.6;
+    e.box.style.visibility = vis ? "visible" : "hidden";
+    if (!vis) return;
+    const tin = sh.t0 + (n === 0 ? 0.3 : 0.15), tout = sh.t1 - 0.4;
+    const nk = sp(t, tin, "snappy"), no = inn((t - tout) / 0.3);
+    set(e.num, { opacity: nk * (1 - no), transform: `translateY(${(1 - nk) * 10 - no * 10}px)` });
+    e.words.forEach((w, i) => {
+      const pin = sp(t, tin + 0.08 + i * 0.055, "heavy"), pout = inn((t - tout - i * 0.025) / 0.3);
+      const y = t < tout ? (1 - pin) * 105 : -105 * pout;
+      w.style.transform = `translateY(${y}%) rotate(${t < tout ? (1 - pin) * 4 : -3 * pout}deg)`;
+    });
+    e.subEls.forEach((s, i) => {
+      const k = sp(t, tin + 0.45 + i * 0.35, "base"), o = inn((t - tout - 0.05 - i * 0.03) / 0.3);
+      set(s, { opacity: k * (1 - o), transform: `translateY(${(1 - k) * 16 - o * 12}px)` });
+    });
+  });
+
+  // progress
+  SHOTS.forEach((sh, n) => { progBars[n].style.transform = `scaleX(${clamp((t - sh.t0) / (sh.t1 - sh.t0))})`; });
+  const cur = SHOTS.findIndex((sh) => t >= sh.t0 && t < sh.t1);
+  $("progLabel").textContent = cur >= 0 ? `${String(cur + 1).padStart(2, "0")} · ${SHOTS[cur].title.replace("\n", " ")}` : "";
+  const endK = sp(t, END, "base");
+  ["prog", "progLabel", "brand"].forEach((id) => ($(id).style.opacity = 1 - endK));
+
+  // phone: rises in at the start, steps aside for the end card; breathes a little so no frame is ever frozen
+  const pin = sp(t, 0.5, "heavy");
+  const pout = io((t - END) / 0.6);
+  const ps = PHONE.s * (1 + 0.004 * Math.sin(t * 0.8));
+  set($("phone"), { transform: `translate(${PHONE.cx - 235 * ps + pout * 140}px, ${PHONE.cy - 480 * ps + (1 - pin) * 120 + 2 * Math.sin(t * 0.6)}px) scale(${ps})`, opacity: pin * (1 - pout) });
+
+  // screens: current item and the one before it, with its entrance
+  let ci = -1;
+  for (let i = 0; i < ITEMS.length; i++) if (t >= ITEMS[i].t) ci = i;
+  for (const s of used) IMG[s].style.visibility = "hidden";
+  let scrim = 0;
+  if (ci >= 0) {
+    const it = ITEMS[ci], prev = ITEMS[ci - 1];
+    const p = it.tr === "fade" ? io((t - it.t) / 0.35) : sp(t, it.t, it.tr === "sheet" ? "base" : "snappy");
+    const pose = screenPose(it, t);
+    const el = IMG[it.s];
+    el.style.visibility = "visible"; el.style.zIndex = 2;
+    let base = "", op = 1;
+    if (it.tr === "push") base = `translateX(${(1 - p) * SW}px)`;
+    if (it.tr === "sheet") base = `translateY(${(1 - p) * VH}px)`;
+    if (it.tr === "rise") { base = `translateY(${(1 - p) * 40}px)`; op = p; }
+    if (it.tr === "fade") op = p;
+    el.style.transform = `${base} translate(${pose.tx}px, ${pose.ty}px) scale(${pose.s})`;
+    el.style.opacity = op;
+    if (prev && p < 0.999 && prev.s !== it.s) {
+      const pe = IMG[prev.s], pp = screenPose(prev, it.t);
+      pe.style.visibility = "visible"; pe.style.zIndex = 1; pe.style.opacity = 1;
+      const shift = it.tr === "push" ? `translateX(${-p * SW * 0.3}px)` : "";
+      pe.style.transform = `${shift} translate(${pp.tx}px, ${pp.ty}px) scale(${pp.s * (it.tr === "push" ? 1 - 0.04 * p : 1)})`;
+      if (it.tr === "push") scrim = 0.45 * p;
+      if (it.tr === "sheet") scrim = 0.35 * p;
+    }
+  }
+  $("scrim").style.opacity = scrim; $("scrim").style.zIndex = 1;
+  let sk = 0, y0 = 0, y1 = 0;
+  if (ci >= 0 && ITEMS[ci].focus) {
+    const it = ITEMS[ci], img = IMG[it.s], H = SW * (img.naturalHeight / img.naturalWidth || 2);
+    sk = spot(it, t); y0 = clamp(it.focus.y0 * H - 8, 0, VH); y1 = clamp(it.focus.y1 * H + 8, 0, VH);
+  }
+  set($("shadeT"), { top: "0px", height: y0 + "px", opacity: sk });
+  set($("shadeB"), { top: y1 + "px", height: Math.max(0, VH - y1) + "px", opacity: sk });
+  if (ci >= 0) { const im = IMG[ITEMS[ci].s]; $("home").style.opacity = SW * (im.naturalHeight / im.naturalWidth) < VH - 20 ? 1 : 0; }
+  set($("ring"), { top: y0 + "px", height: y1 - y0 + "px", opacity: sk, transform: `scale(${0.97 + 0.03 * sk})` });
+
+  // finger: glides in, presses, ripples
+  const tap = $("tap"), rip = $("ripple");
+  let tapOn = false;
+  for (const it of ITEMS) for (const [x, y, at] of it.taps || []) {
+    if (t < at - 0.8 || t > at + 0.55) continue;
+    const img = IMG[it.s], H = SW * (img.naturalHeight / img.naturalWidth || 2);
+    const pose = screenPose(it, at);
+    const px = x * SW * pose.s + pose.tx, py = 54 + y * H * pose.s + pose.ty;
+    const a = io((t - (at - 0.8)) / 0.6), gone = io((t - at - 0.2) / 0.3);
+    const press = t > at - 0.06 && t < at + 0.12 ? 0.8 : 1;
+    set(tap, { left: mix(px + 90, px, a) + "px", top: mix(py + 140, py, a) + "px", opacity: a * (1 - gone), transform: `scale(${press})` });
+    const r = clamp((t - at) / 0.45);
+    set(rip, { left: px - 12 - 50 * r + "px", top: py - 12 - 50 * r + "px", width: 24 + 100 * r + "px", height: 24 + 100 * r + "px", opacity: t >= at ? 1 - r : 0 });
+    tapOn = true;
+  }
+  if (!tapOn) { tap.style.opacity = 0; rip.style.opacity = 0; }
+
+  // end card: one element at a time
+  const endEls = [...$("end").children];
+  endEls.forEach((el, i) => {
+    const k = sp(t, END + 0.35 + i * 0.3, i === 1 ? "heavy" : "base");
+    set(el, { opacity: k, transform: `translateY(${(1 - k) * 30}px) scale(${i === 0 ? 0.85 + 0.15 * k + 0.01 * Math.sin(t * 2) : 1})` });
+  });
+
+  if (!RENDER) $("hud").textContent = `t=${t.toFixed(2)}s  shot ${cur + 1}  [space] play  [←/→] ±1f  [shift] ±1s  [r] replay`;
+};
+
+(async () => {
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r)))));
+  layoutShots();
+  if (RENDER) $("hud").remove();
+  const t0 = parseFloat(Q.get("t") || "0");
+  await window.seek(t0);
+  window.ready = true;
+  if (RENDER) return;
+  let t = t0, playing = !Q.has("t"), last = performance.now();
+  const loop = (now) => { if (playing) { t += (now - last) / 1000; if (t > DUR) t = 0; window.seek(t); } last = now; requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  addEventListener("keydown", (e) => {
+    if (e.code === "Space") playing = !playing;
+    if (e.key === "r") t = 0;
+    if (e.key === "ArrowRight") { t += e.shiftKey ? 1 : 1 / 60; window.seek(t); }
+    if (e.key === "ArrowLeft") { t -= e.shiftKey ? 1 : 1 / 60; window.seek(t); }
+  });
+  const frame = $("frame");
+  const fit = () => { const k = Math.min(innerWidth / 1920, innerHeight / 1080); frame.style.transform = `scale(${k})`; frame.style.transformOrigin = "0 0"; };
+  fit(); addEventListener("resize", fit);
+})();
+</script>
+</body>
+</html>
