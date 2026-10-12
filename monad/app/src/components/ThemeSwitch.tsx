@@ -76,7 +76,7 @@ const LABEL: Record<ThemeChoice, string> = { dark: "Dark theme", light: "Light t
 export function ThemeButton() {
   const { choice, pick } = useTheme();
   return (
-    <button className="iconbtn" aria-label={`${LABEL[choice]} (tap to change)`} title={LABEL[choice]} onClick={() => pick(NEXT[choice])}>
+    <button className="iconbtn theme-btn" aria-label={`${LABEL[choice]} (tap to change)`} title={LABEL[choice]} onClick={() => pick(NEXT[choice])}>
       <Icon name={choice === "light" ? "sun" : choice === "system" ? "monitor" : "moon"} />
     </button>
   );

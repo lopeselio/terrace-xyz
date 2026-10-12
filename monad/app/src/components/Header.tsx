@@ -32,7 +32,7 @@ export function Header({
 }) {
   const router = useRouter();
   return (
-    <header className="hdr">
+    <header className={`hdr${brand ? "" : " hdr-titled"}${back ? " hdr-back" : ""}`}>
       {back && (
         <button
           className="iconbtn"
@@ -48,7 +48,7 @@ export function Header({
           <span className="logo-word">Terrace</span>
         </Link>
       ) : (
-        <div style={{ minWidth: 0 }}>
+        <div className="hdr-text">
           <div className="hdr-title">{title}</div>
           {sub && <div className="hdr-sub">{sub}</div>}
         </div>
