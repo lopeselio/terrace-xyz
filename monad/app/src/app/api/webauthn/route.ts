@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * allowed to use passkeys created for this host. It lets play.terrace.social sign fans in with a
  * passkey made on terrace-monad.vercel.app, and keeps old accounts working through future moves.
  */
-export const ORIGINS = ["https://play.terrace.social", "https://terrace.social", "https://app.terrace.social", "https://terrace-monad.vercel.app"];
+const ORIGINS = ["https://play.terrace.social", "https://terrace.social", "https://app.terrace.social", "https://terrace-monad.vercel.app"];
 
 export function GET() {
   return NextResponse.json({ origins: ORIGINS }, { headers: { "Cache-Control": "public, max-age=300", "Access-Control-Allow-Origin": "*" } });
