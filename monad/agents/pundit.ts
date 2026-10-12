@@ -67,8 +67,32 @@ const gql = <T>(query: string, variables = {}) => terrace<{ data: T }>("/api/ind
 // Search-grounded takes first. When the day's search quota is spent (429) or the model is busy (503),
 // fall back to plain answers from other Flash models, so the pundit keeps posting and the AI judge
 // keeps the search budget for settling takes.
+/** Claude, when a key is set: no web search, so each take costs a fraction of a cent. */
+async function claude(prompt: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5",
+      max_tokens: 4000,
+      output_config: { effort: "low" },
+      messages: [{ role: "user", content: prompt.replace("search the latest team news and ", "") }],
+    }),
+  });
+  const out = (await res.json().catch(() => ({}))) as { error?: { type?: string }; stop_reason?: string; content?: { type: string; text?: string }[] };
+  if (out.error || out.stop_reason === "refusal") {
+    log(`Claude: ${res.status} ${out.error?.type ?? out.stop_reason ?? ""}`);
+    return "";
+  }
+  return (out.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("").trim().replace(/^"|"$/g, "");
+}
+
 let pausedUntil = 0; // set when every model is out of quota, so the shared key isn't hammered
 async function gemini(prompt: string): Promise<string> {
+  if (env.ANTHROPIC_API_KEY) {
+    const text = await claude(prompt);
+    if (text) return text;
+  }
   if (Date.now() < pausedUntil) return "";
   let allQuota = true;
   const main = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
