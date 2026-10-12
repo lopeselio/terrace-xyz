@@ -440,7 +440,14 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
               )}
             </>
           )}
-          {member && !canSetGameweek && !seasonDone && <div className="umeta" style={{ marginBottom: 12 }}>The next gameweek can be set once gameweek {gw} is added up.</div>}
+          {member && !canSetGameweek && !seasonDone && <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <div className="uname">Gameweek {gw} is under way</div>
+              <div className="umeta">
+                {league.governed
+                  ? `Once its last match ends and it's added up on the Table tab, anyone can suggest gameweek ${gw + 1}'s matches here and the group votes.`
+                  : `Once its last match ends and it's added up on the Table tab, the organiser picks gameweek ${gw + 1}'s matches.`}
+              </div>
+            </div>}
 
           {league.governed ? (
             <>
