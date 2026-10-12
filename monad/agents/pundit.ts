@@ -98,6 +98,18 @@ async function setup() {
   }
 }
 
+// Gemini sometimes wraps the call in chat ("Right, X v Y! Here's my call:"). Keep the last line that
+// reads like a prediction, without markdown or quotes, and drop it if it's still chatty.
+function cleanTake(raw: string): string | null {
+  const lines = raw
+    .split("\n")
+    .map((l) => l.replace(/[*_#`]/g, "").replace(/^\s*(prediction|my call|take)\s*:\s*/i, "").replace(/^["“'\s-]+|["”'\s]+$/g, "").trim())
+    .filter(Boolean);
+  const take = lines[lines.length - 1];
+  if (!take || take.endsWith(":") || take.endsWith("?") || take.split(/\s+/).length > 16) return null;
+  return take;
+}
+
 type Match = { id: number; kickoff: number; status: string; home: { name: string }; away: { name: string } };
 
 async function postTakes() {
@@ -106,12 +118,15 @@ async function postTakes() {
   const done = new Set(Message.map((m) => m.room_id));
   for (const m of matches.slice(0, 3)) {
     if (done.has(`match-${m.id}`)) continue;
-    const take = await gemini(
+    const take = cleanTake(await gemini(
       `You are a sharp, funny football pundit on a fan app. For ${m.home.name} v ${m.away.name} (kickoff ${new Date(m.kickoff * 1000).toISOString()}), ` +
         `search the latest team news and give ONE confident prediction under 12 words that can be checked from match data: ` +
         `a named player scoring (optionally before a minute), total goals, a red card, corners, or the result. Reply with the prediction only.`,
-    );
-    if (!take) continue;
+    ));
+    if (!take) {
+      log(`skipped ${m.home.name} v ${m.away.name}: no clean prediction`);
+      continue;
+    }
     const compiled = await terrace<{ spec: string; reading: string; closeTime: number }>("/api/compile-take", { text: take, fixtureId: m.id });
     if (!compiled.spec) {
       log(`skipped "${take}": no data rule`);
