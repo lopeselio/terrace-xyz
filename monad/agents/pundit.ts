@@ -129,18 +129,29 @@ async function postTakes() {
   const matches = (await terrace<Match[]>("/api/matches")).filter((m) => m.status === "NS" && m.kickoff * 1000 > Date.now() + 15 * 60_000);
   const { Message } = await gql<{ Message: { room_id: string }[] }>(`query($me: String!) { Message(where: { author: { _eq: $me } }) { room_id } }`, { me });
   const done = new Set(Message.map((m) => m.room_id));
-  for (const m of matches.slice(0, 3)) {
+  // Up to three new takes a round, trying at most six matches so a bad patch doesn't burn the quota.
+  let listed = 0, tried = 0;
+  for (const m of matches) {
+    if (listed >= 3 || tried >= 6) break;
     if (done.has(`match-${m.id}`)) continue;
-    const take = cleanTake(await gemini(
+    tried++;
+    const raw = await gemini(
       `You are a sharp, funny football pundit on a fan app. For ${m.home.name} v ${m.away.name} (kickoff ${new Date(m.kickoff * 1000).toISOString()}), ` +
         `search the latest team news and give ONE confident prediction under 12 words that can be checked from match data: ` +
-        `a named player scoring (optionally before a minute), total goals, a red card, corners, or the result. Reply with the prediction only.`,
-    ));
+        `a named player scoring (optionally before a minute), total goals, a red card, corners, or the result. ` +
+        `One single condition, never two joined with "and" or "with". Reply with the prediction only.`,
+    );
+    const take = cleanTake(raw);
     if (!take) {
-      log(`skipped ${m.home.name} v ${m.away.name}: no clean prediction`);
+      log(`skipped ${m.home.name} v ${m.away.name}: no clean prediction${raw ? ` (got "${raw.replace(/\s+/g, " ").slice(0, 80)}")` : ""}`);
       continue;
     }
-    const compiled = await terrace<{ spec: string; reading: string; closeTime: number }>("/api/compile-take", { text: take, fixtureId: m.id });
+    const compile = () => terrace<{ spec: string; reading: string; closeTime: number }>("/api/compile-take", { text: take, fixtureId: m.id });
+    let compiled = await compile();
+    if (!compiled.spec) {
+      await Bun.sleep(3000); // the compiler's own Gemini call may just have been busy
+      compiled = await compile();
+    }
     if (!compiled.spec) {
       log(`skipped "${take}": no data rule`);
       continue;
@@ -152,6 +163,7 @@ async function postTakes() {
     if (!messageId) continue;
     await call(A.markets, "createTakeMarket", [messageId.messageId, BigInt(m.id), BigInt(compiled.closeTime), take, stringToHex(compiled.spec), A.usd, 300, 1, STAKE]);
     log(`listed "${take}" (${m.home.name} v ${m.away.name}): ${compiled.reading}`);
+    listed++;
   }
 }
 
