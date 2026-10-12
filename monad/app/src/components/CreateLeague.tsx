@@ -22,8 +22,9 @@ const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: string;
     lede: "Everyone in the league has a say.",
     points: [
       "Any member suggests the next gameweek's matches in Votes",
-      "Voting stays open 24 hours; most yes votes wins, once a third of the league has voted",
-      "Suggest matches at least a day ahead",
+      "It passes the moment more than half the league votes yes",
+      "Otherwise it closes after 24 hours and the most votes win",
+      "Invite your mates before the first vote, or it's just yours",
     ],
   },
   {
