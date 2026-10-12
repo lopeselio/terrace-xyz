@@ -34,3 +34,24 @@
 .run-choice li { position: relative; padding-left: 14px; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
 .run-choice li::before { content: ""; position: absolute; left: 2px; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.6; }
 .run-choice.on li { color: var(--ink-2); }
+
+/* Votes → Feature a take, and the market wins card on the Table tab */
+.lg-take { font-weight: 700; font-size: 14px; line-height: 1.35; margin-top: 3px; color: var(--ink); overflow-wrap: anywhere; }
+.lg-feature { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 8px; }
+.lg-feature .btn-out { flex: none; }
+.lg-feature.on { border-color: var(--amber); background: var(--amber-deep); }
+.lg-wins { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 12px 14px; border-color: var(--green-mid); background: var(--green-deep); }
+.lg-wins .cta { width: auto; flex: none; padding: 0 16px; }
+
+/* Countdown strip: what's due next in the league */
+.lg-clocks { display: grid; gap: 8px; padding: 12px var(--gutter) 0; }
+.lg-clock {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; text-align: left; border-radius: var(--r-md);
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
+}
+.lg-clock-what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lg-clock-what b { color: var(--ink); font-size: 13.5px; font-weight: 700; }
+.lg-clock-what small { font-size: 11.5px; color: var(--ink-3); }
+.lg-clock .countdown { flex: none; font-family: var(--cond); font-size: 20px; font-weight: 800; letter-spacing: 0.3px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.lg-clock.soon { border-color: var(--amber); background: var(--amber-deep); color: var(--amber-ink); }
+.lg-clock.soon .countdown { color: var(--amber-ink); }

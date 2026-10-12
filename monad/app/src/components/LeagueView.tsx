@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import type { Address } from "viem";
+import { decodeAbiParameters, type Address, type Hex } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
+import { Countdown } from "./Countdown";
 import { Room } from "./Room";
 import { ScorePicker } from "./ScorePicker";
 import { SignIn } from "./SignIn";
@@ -13,8 +14,8 @@ import { publicClient } from "@/lib/chain";
 import { ADDR, leaguesAbi } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import {
-  addGameweek, endSeason, executeProposal, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
-  leagueCode, ordinal, proposeGameweek, submitPicks, table, vote,
+  addGameweek, countMarketWins, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
+  leagueCode, ordinal, pendingMarketWins, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
 
@@ -23,6 +24,16 @@ type League = Awaited<ReturnType<typeof readLeague>>;
 type Row = { member: Address; points: number };
 type Proposal = { id: string; proposer: string; kind: number; yes: number; no: number; status: number; deadline: string; payload: string };
 type Tab = "table" | "picks" | "run" | "chat";
+type Take = { id: string; question: { text: string; answer: number; closeTime: string; fixture: { id: string } | null } };
+
+/** The market a "feature a take" vote is about. */
+const featuredId = (p: Proposal) => {
+  try {
+    return decodeAbiParameters([{ type: "uint256" }], p.payload as Hex)[0].toString();
+  } catch {
+    return "";
+  }
+};
 
 const L = { address: ADDR.leagues, abi: leaguesAbi } as const;
 const FINISHED = new Set(["FT", "AET", "PEN"]);
@@ -54,6 +65,9 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [takes, setTakes] = useState<Take[]>([]);
+  const [featured, setFeatured] = useState<Set<string>>(new Set());
+  const [wins, setWins] = useState<MarketWin[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -67,13 +81,24 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
       const prev = l.contests[n - 2];
       setPrevRows(prev?.finalized ? await gameweekTable(l.contestIds[n - 2], l.members, true) : null);
       if (cur && address) setEntered(await hasEntered(l.contestIds[n - 1], address));
+      pendingMarketWins(id, l.members, l.contests).then(setWins).catch(() => {});
+      // Chat takes on this gameweek's matches, plus any take a vote is about, for "Feature a take".
+      const props = await query<{ Proposal: Proposal[] }>(`query P($l: String!) { Proposal(where: { league_id: { _eq: $l } }, order_by: { deadline: desc }) { id proposer kind yes no status deadline payload } }`, { l: String(leagueId) });
+      setProposals(props.Proposal);
+      const voted = props.Proposal.filter((p) => p.kind === 1).map(featuredId).filter(Boolean);
+      const fixtures = (cur?.fixtureIds ?? []).map(String);
+      if (l.governed && (fixtures.length || voted.length)) try {
+        const t = await query<{ Market: Take[] }>(
+          `query T($f: [String!], $ids: [String!]) { Market(where: { _or: [{ take_id: { _is_null: false }, question: { fixture_id: { _in: $f } } }, { id: { _in: $ids } }] }, order_by: { createdAt: desc }, limit: 60) { id question { text answer closeTime fixture { id } } } }`,
+          { f: fixtures, ids: voted },
+        );
+        setTakes(t.Market);
+        setFeatured(await featuredMarkets(leagueId));
+      } catch {} // the table still works without the takes list
     } catch {
       setNotFound(true);
     }
     fetch("/api/matches").then((r) => r.json()).then(setMatches).catch(() => {});
-    query<{ Proposal: Proposal[] }>(`query P($l: String!) { Proposal(where: { league_id: { _eq: $l } }, order_by: { deadline: desc }) { id proposer kind yes no status deadline payload } }`, { l: String(leagueId) })
-      .then((d) => setProposals(d.Proposal))
-      .catch(() => {});
   }, [id, leagueId, address]);
 
   useEffect(() => {
@@ -147,6 +172,26 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const lastKickoff = current ? Math.max(0, ...current.fixtureIds.map((f) => byId.get(Number(f))?.kickoff ?? 0)) : 0;
   const revealDay = lastKickoff ? new Date(lastKickoff * 1000).toLocaleDateString(undefined, { weekday: "long" }) : "full time";
   const name = (a: string) => (isMe(a) ? "You" : agents.get(a.toLowerCase()) || fanName(a));
+  const takeById = new Map(takes.map((t) => [t.id, t]));
+  const inVote = new Set(proposals.filter((p) => p.kind === 1 && p.status <= 1).map(featuredId));
+  const gwFixtures = new Set((current?.fixtureIds ?? []).map(String));
+  const onGw = (t: Take) => gwFixtures.has(t.question.fixture?.id ?? "");
+  const featuredTakes = takes.filter((t) => featured.has(t.id) && onGw(t));
+  const featurable = takes.filter((t) => onGw(t) && !featured.has(t.id) && !inVote.has(t.id) && t.question.answer === 0 && Number(t.question.closeTime) > now);
+  const matchName = (t: Take) => {
+    const m = byId.get(Number(t.question.fixture?.id));
+    return m ? `${m.home.name} v ${m.away.name}` : "";
+  };
+  // What's due next, for the countdown strip: sealing picks, the final whistle, or a vote closing.
+  const FULL_TIME = 115 * 60; // kick-off to final whistle, roughly
+  const nextVote = proposals.filter((p) => p.status === 0 && Number(p.deadline) > now).sort((a, b) => Number(a.deadline) - Number(b.deadline))[0];
+  const clocks: { key: string; label: string; to: number; note: string; go: Tab }[] = [];
+  if (current && !current.finalized) {
+    if (open) clocks.push({ key: "lock", label: entered ? "Picks lock" : `Seal your gameweek ${gw} picks`, to: Number(current.lockTime), note: entered ? "You're in. You can still change them." : "Locks at the first kick-off", go: "picks" });
+    else if (lastKickoff + FULL_TIME > now) clocks.push({ key: "end", label: `Gameweek ${gw} ends`, to: lastKickoff + FULL_TIME, note: "Around the last final whistle", go: "table" });
+  }
+  if (nextVote) clocks.push({ key: "vote", label: nextVote.kind === 0 ? "Vote on the next gameweek" : "Vote on a featured take", to: Number(nextVote.deadline), note: "Voting closes", go: "run" });
+  const winPts = wins.reduce((n, w) => n + (w.featured ? 2 : 1), 0);
 
   async function share() {
     const c = await shareLink(league!.name, `Join my league "${league!.name}" on Terrace${code ? ` (code ${leagueCode(leagueId, code)})` : ""}.`, invite);
@@ -190,6 +235,21 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
             {code && <div className="lg-code" style={{ marginTop: 6 }}>{leagueCode(leagueId, code)}</div>}
             <div className="umeta">{code ? "Share the link, or give them this code to type into Leagues → Join." : "Share the link; it's open to anyone."}</div>
           </div>
+        </div>
+      )}
+
+      {clocks.length > 0 && (
+        <div className="lg-clocks">
+          {clocks.map((c) => (
+            <button key={c.key} type="button" className={`lg-clock${c.to - now < 3600 ? " soon" : ""}`} onClick={() => setTab(c.go)}>
+              <Icon name="clock" size={16} />
+              <span className="lg-clock-what">
+                <b>{c.label}</b>
+                <small>{c.note}</small>
+              </span>
+              <Countdown to={c.to} />
+            </button>
+          ))}
         </div>
       )}
 
@@ -312,6 +372,17 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                 <button className="cta cta-sm" style={{ marginTop: 10 }} disabled={!!busy} onClick={() => run("final", () => finalizeGameweek(send, league.contestIds[gw - 1]))}>
                   {busy === "final" ? "Adding up…" : "Add up the gameweek"}
                 </button>
+              )}
+              {member && wins.length > 0 && (
+                <div className="card lg-wins">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="uname">{wins.length} market win{wins.length > 1 ? "s" : ""} to add · +{winPts} table pts</div>
+                    <div className="umeta">Right calls on finished gameweek matches count 1 point{wins.some((w) => w.featured) ? ", featured takes 2" : ""}. One tap adds everyone&apos;s.</div>
+                  </div>
+                  <button className="cta cta-sm" disabled={!!busy} onClick={() => run("wins", () => countMarketWins(send, id, wins))}>
+                    {busy === "wins" ? "Adding…" : "Add them"}
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -461,6 +532,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                     <div className="row" style={{ alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
                         <div className="uname">{p.kind === 0 ? "Next gameweek's matches" : "Feature a take"}</div>
+                        {p.kind === 1 && <div className="lg-take">“{takeById.get(featuredId(p))?.question.text ?? "A chat take"}”</div>}
                         <div className="umeta">Suggested by {name(p.proposer)}{openVote ? ` · closes ${new Date(Number(p.deadline) * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
                       </div>
                       <Badge tone={p.status === 1 ? "won" : p.status === 0 ? "open" : "lost"}>{openVote ? "Voting" : ["Ready to close", "Passed", "Rejected", "Couldn't run"][p.status]}</Badge>
@@ -484,6 +556,43 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                   </div>
                 );
               })}
+
+              {current && !current.finalized && (
+                <>
+                  <div className="sec-hd" style={{ marginTop: 18 }}><h3>Feature a take</h3></div>
+                  <div className="umeta" style={{ marginTop: -4, marginBottom: 10 }}>
+                    Pick a chat take on gameweek {gw}&apos;s matches. If the group votes it in, everyone who backs the right side gets <b>2 table points</b> instead of 1.
+                  </div>
+                  {featurable.length === 0 && featuredTakes.length === 0 && (
+                    <div className="card" style={{ padding: 12 }}>
+                      <div className="uname">No takes on these matches yet</div>
+                      <div className="umeta">Open one of gameweek {gw}&apos;s matches, post a take in its Chat, then tap Make it a market. It shows up here.</div>
+                    </div>
+                  )}
+                  {featuredTakes.map((t) => (
+                    <div key={t.id} className="card lg-feature on">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="lg-take">“{t.question.text}”</div>
+                        <div className="umeta">{matchName(t)}</div>
+                      </div>
+                      <Badge tone="flash" icon="bolt">Featured · 2 pts</Badge>
+                    </div>
+                  ))}
+                  {featurable.map((t) => (
+                    <div key={t.id} className="card lg-feature">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="lg-take">“{t.question.text}”</div>
+                        <div className="umeta">{matchName(t)}</div>
+                      </div>
+                      {member && (
+                        <button className="btn-out" disabled={!!busy} onClick={() => run(`f${t.id}`, () => proposeFeature(send, id, BigInt(t.id)))}>
+                          {busy === `f${t.id}` ? "Sending…" : "Put it to a vote"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
             </>
           ) : (
             <div className="umeta" style={{ marginTop: 12 }}>Run by {creator ? "you" : fanName(league.creator)}. {league.contests.length} of {league.gameweeks} gameweeks set.</div>
