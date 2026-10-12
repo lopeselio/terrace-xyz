@@ -3,7 +3,7 @@ export const SEASON0_END = 1793491200; // 1 Nov 2026 00:00 UTC: founding fans ea
 export const foundingFans = () => Date.now() / 1000 < SEASON0_END;
 
 export const EARN: { reason: string; label: string; points: number; note?: string }[] = [
-  { reason: "WELCOME", label: "Join Terrace", points: 100 },
+  { reason: "WELCOME", label: "Join Terrace", points: 100, note: "lands with your first bet or take" },
   { reason: "DAILY", label: "Play on a new day", points: 10, note: "+30 on a 3-day run, +100 on a 7-day run" },
   { reason: "BET", label: "Place a bet", points: 10, note: "+1 per dollar staked, up to 25" },
   { reason: "WIN", label: "A bet comes in", points: 20 },

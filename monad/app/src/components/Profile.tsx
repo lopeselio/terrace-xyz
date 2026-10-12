@@ -185,7 +185,9 @@ export function Profile() {
               <div className="eyebrow amber">Terrace Points{foundingFans() && " · founding fan 2×"}</div>
               <div className="cond" style={{ fontSize: 30, lineHeight: 1.1 }}>{points(tp?.terracePoints ?? 0)}</div>
               <div className="umeta">
-                {tp?.dayStreak ? `${tp.dayStreak}-day run` : "Play today to start a run"}
+                {!tp || tp.terracePoints === "0"
+                  ? `Your welcome ${foundingFans() ? 200 : 100} lands with your first bet or take`
+                  : tp.dayStreak ? `${tp.dayStreak}-day run` : "Play today to start a run"}
                 {tp?.invitesLanded ? ` · ${tp.invitesLanded} fan${tp.invitesLanded > 1 ? "s" : ""} brought in` : ""}
               </div>
             </div>
