@@ -1,7 +1,7 @@
 {
   "schedule": "0 * * * * *",
-  "aiProvider": "gemini",
-  "aiModel": "gemini-2.5-flash",
+  "aiProvider": "anthropic",
+  "aiModel": "claude-sonnet-5-5",
   "resultsApiBaseUrl": "https://v3.football.api-sports.io",
   "maxQuestionsPerRun": 8,
   "chainSelectorName": "monad-testnet",
