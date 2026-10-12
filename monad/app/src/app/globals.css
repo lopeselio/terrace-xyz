@@ -33,7 +33,9 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
-html { background: var(--canvas); overflow-x: clip; }
+/* No rubber-band past the ends: on iOS the bounce drags the fixed tab bar up with the page.
+   The app refreshes itself, so losing pull-to-refresh costs nothing. */
+html { background: var(--canvas); overflow-x: clip; overscroll-behavior-y: none; }
 body {
   font-family: var(--sans);
   background: var(--canvas);
@@ -43,6 +45,7 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
   overflow-x: clip;
+  overscroll-behavior-y: none;
 }
 a { color: var(--green-ink); text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
