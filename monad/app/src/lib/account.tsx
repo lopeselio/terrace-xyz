@@ -95,6 +95,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         const hash = await wallet.writeContract({ ...(request as object), gas: (gas * 115n) / 100n } as never);
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error("reverted");
+        window.dispatchEvent(new Event("terrace-sent")); // points are on their way
         return hash;
       } catch (e) {
         throw new Error(friendlyError(e));
