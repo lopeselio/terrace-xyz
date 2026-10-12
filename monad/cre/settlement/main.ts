@@ -26,6 +26,7 @@ const configSchema = z.object({
   leagues: z.array(z.object({ id: z.number(), season: z.number() })), // e.g. [{ id: 39, season: 2026 }] = Premier League
   daysAhead: z.number(),
   maxFixturesPerRun: z.number(), // API-Football accepts up to 20 ids per request
+  idsPerRequest: z.number(), // ?ids= returns events, lineups and player stats: ~40 KB a match, and CRE caps a response at 250 KB
   maxNewFixtures: z.number(), // new matches scheduled per fixtures run
   chainSelectorName: z.string(),
   chainId: z.number(),
@@ -91,12 +92,18 @@ const onResults = (runtime: Runtime<Config>): string => {
   const size = Math.min(cfg.maxFixturesPerRun, 20);
   const start = (Math.floor(runtime.now().getTime() / 300_000) % Math.ceil(pending.length / size)) * size;
   const batch = pending.slice(start, start + size);
-  const agreed = http
-    .sendRequest(runtime, fetchResults, consensusIdenticalAggregation<string>())(
-      `${cfg.resultsApiBaseUrl}/fixtures?ids=${batch.join("-")}`,
-      apiKey,
-    )
-    .result();
+  const per = Math.max(1, Math.min(cfg.idsPerRequest, 20));
+  const parts: string[] = [];
+  for (let i = 0; i < batch.length; i += per) {
+    const part = http
+      .sendRequest(runtime, fetchResults, consensusIdenticalAggregation<string>())(
+        `${cfg.resultsApiBaseUrl}/fixtures?ids=${batch.slice(i, i + per).join("-")}`,
+        apiKey,
+      )
+      .result();
+    if (part) parts.push(part);
+  }
+  const agreed = parts.join(",");
 
   const ids: bigint[] = [];
   const states: number[] = [];

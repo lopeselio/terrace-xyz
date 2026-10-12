@@ -4,6 +4,7 @@
   "resultsApiBaseUrl": "https://v3.football.api-sports.io",
   "daysAhead": 3,
   "maxFixturesPerRun": 20,
+  "idsPerRequest": 4,
   "chainSelectorName": "monad-testnet",
   "chainId": 10143,
   "oracleAddress": "0xca494cB3460b446357a86d656A93aD8b0f2137A3",
