@@ -82,7 +82,7 @@ workflows all read.
 | TerraceReputation | `0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3` |
 | TerraceUSD (test dollars) | `0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe` |
 
-Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/dfa3065/v1/graphql` (each Envio redeploy gets a new id on the Development plan: update `INDEXER_URL` in Vercel and `app/.env.local`)
+Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/b9217d9/v1/graphql` (each Envio redeploy gets a new id on the Development plan: update `INDEXER_URL` in Vercel and `app/.env.local`)
 
 ---
 
