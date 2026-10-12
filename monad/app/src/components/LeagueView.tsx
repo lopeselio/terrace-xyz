@@ -414,7 +414,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                         key={m.id}
                         type="button"
                         className="card card-tap row"
-                        style={{ width: "100%", textAlign: "left", ...(on ? { borderColor: "var(--green)", background: "#0c1710" } : {}) }}
+                        style={{ width: "100%", textAlign: "left", ...(on ? { borderColor: "var(--green)", background: "var(--green-tint)" } : {}) }}
                         onClick={() => setNextGw(on ? nextGw.filter((x) => x !== m.id) : [...nextGw, m.id])}
                       >
                         <span className="crest-pair"><Crest logo={m.home.logo} name={m.home.name} /><Crest logo={m.away.logo} name={m.away.name} /></span>

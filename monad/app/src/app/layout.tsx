@@ -29,7 +29,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Apply the saved theme before first paint (dark is the default). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("terrace.theme")||"dark";if(t==="system")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
         <Providers>
           <div className="splash" aria-hidden>

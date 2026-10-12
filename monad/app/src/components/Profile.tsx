@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { PointsSheet } from "./PointsSheet";
+import { ThemeSwitch } from "./ThemeSwitch";
 import { foundingFans, points } from "@/lib/terracePoints";
 import { OnboardingPanel } from "./Onboarding";
 import { WalletSheet } from "./WalletSheet";
@@ -326,6 +327,11 @@ export function Profile() {
         </div>
         <div style={{ height: 20 }} />
       </div>
+      <div className="pad" style={{ marginTop: 22 }}>
+        <div className="flabel">Appearance</div>
+        <ThemeSwitch />
+      </div>
+
       <div className="pad" style={{ margin: "22px 0 8px" }}>
         <button className="cta cta-ghost cta-sm" onClick={() => { logout(); router.replace("/"); }}>
           <Icon name="logout" size={16} /> Sign out

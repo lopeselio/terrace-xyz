@@ -94,7 +94,7 @@ export function ChallengeView({ id }: { id: number }) {
 
   return (
     <div className="pad" style={{ paddingTop: 14 }}>
-      <div className="card vs-card" style={{ borderColor: m.status === 0 && !closed ? "#1f3a2a" : undefined }}>
+      <div className="card vs-card" style={{ borderColor: m.status === 0 && !closed ? "var(--green-mid)" : undefined }}>
         <div className="row">
           <Avatar seed={m.challenger} />
           <div style={{ flex: 1, minWidth: 0 }}>

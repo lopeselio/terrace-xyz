@@ -11,6 +11,7 @@
   /* conviction */
   --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --green-glow: rgba(34, 197, 94, 0.14);
   --on-green: #04180c;
+  --green-tint: #0c1710; /* selected row / chosen option */
   --red: #ef4444; --red-ink: #f87171; --red-deep: #3b0a0a; --red-mid: #450a0a;
   /* signals */
   --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1605;
@@ -388,3 +389,80 @@ img { display: block; }
 .note { display: flex; align-items: center; gap: 11px; padding: 12px 0; color: var(--ink); }
 .note.unread { background: linear-gradient(90deg, rgba(34, 197, 94, 0.08), transparent 70%); margin: 0 -18px; padding-left: 18px; padding-right: 18px; }
 .note-icon { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid; display: flex; align-items: center; justify-content: center; background: var(--raised); flex: none; }
+
+/* ═══ Light theme ═════════════════════════════════════════════════════════
+   Dark (above) is the default. <html data-theme="light"> swaps the tokens and the few
+   surfaces that hard-code dark values. Set by ThemeSwitch, applied before paint in layout.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  --canvas: #f6f7f5; --surface: #ffffff; --raised: #f0f1ee; --deep: #f7f8f6; --sunken: #eef0ec;
+  --line: #dfe2dd; --line-soft: #e6e8e4; --line-hair: #eceee9;
+  --green: #16a34a; --green-ink: #15803d; --green-deep: #dcfce7; --green-mid: #bbf7d0; --green-glow: rgba(22, 163, 74, 0.12);
+  --on-green: #04180c;
+  --green-tint: #f0fdf4;
+  --red: #dc2626; --red-ink: #b91c1c; --red-deep: #fee2e2; --red-mid: #fecaca;
+  --amber: #d97706; --amber-ink: #b45309; --amber-deep: #fef3c7;
+  --violet: #7c3aed; --violet-ink: #6d28d9; --violet-deep: #ede9fe;
+  --blue: #2563eb; --blue-deep: #dbeafe;
+  --ink: #0b0f0c; --ink-2: #4b5563; --ink-3: #6b7280; --ink-4: #8a929e; --ink-5: #cfd4cc;
+  --shadow-card: 0 6px 18px rgba(16, 24, 40, 0.08);
+  --shadow-lift: 0 12px 32px rgba(16, 24, 40, 0.14);
+  color-scheme: light;
+}
+:root[data-theme="light"] .hdr { background: rgba(246, 247, 245, 0.86); }
+:root[data-theme="light"] .tabbar { background: rgba(255, 255, 255, 0.9); }
+:root[data-theme="light"] .iconbtn:active { background: #e5e7e3; }
+:root[data-theme="light"] .odd-yes { background: #f0fdf4; border-color: #bbf7d0; }
+:root[data-theme="light"] .odd-no { background: #fef2f2; border-color: #fecaca; }
+:root[data-theme="light"] .card-tap:active { background: #f3f4f1; }
+:root[data-theme="light"] .card.violet,
+:root[data-theme="light"] .take-reading,
+:root[data-theme="light"] .agent-card { border-color: #ddd6fe; background: linear-gradient(180deg, #f5f3ff, #ffffff); }
+:root[data-theme="light"] .card.greenish { border-color: #bbf7d0; background: linear-gradient(180deg, #f0fdf4, #ffffff); }
+:root[data-theme="light"] .card.redish { border-color: #fecaca; background: linear-gradient(180deg, #fef2f2, #ffffff); }
+:root[data-theme="light"] .crest { background: #eef0ec; color: var(--ink); }
+:root[data-theme="light"] .seg.sub .on { background: #ffffff; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12); }
+:root[data-theme="light"] .cta:disabled { background: #e5e7e3; color: #9ca3af; }
+:root[data-theme="light"] .cta-violet { color: #ffffff; }
+:root[data-theme="light"] .switch { background: #e5e7e3; }
+:root[data-theme="light"] .switch i { background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.25); }
+:root[data-theme="light"] .switch.on i { background: var(--green); }
+:root[data-theme="light"] .slipbar { box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18); }
+:root[data-theme="light"] .slipbar .n { background: rgba(0, 0, 0, 0.12); }
+:root[data-theme="light"] .scrim { background: rgba(15, 23, 42, 0.38); }
+:root[data-theme="light"] .sheet { background: #ffffff; box-shadow: 0 -16px 40px rgba(16, 24, 40, 0.16); }
+:root[data-theme="light"] .grabber { background: #d1d5db; }
+:root[data-theme="light"] .sk { background: linear-gradient(90deg, #eceee9 0%, #f6f7f5 45%, #eceee9 90%); background-size: 220% 100%; }
+:root[data-theme="light"] .spinner { border-color: #e5e7e3; border-top-color: var(--green); }
+:root[data-theme="light"] .splash .bar { background: #e5e7e3; }
+:root[data-theme="light"] .take.listed { border-color: #bbf7d0; background: linear-gradient(180deg, #f0fdf4 0%, var(--surface) 70%); }
+:root[data-theme="light"] .board li.me,
+:root[data-theme="light"] .lb-me,
+:root[data-theme="light"] .leg.on { background: #f0fdf4; }
+:root[data-theme="light"] .board .pos.p1, :root[data-theme="light"] .lb-rank.p1 { color: #d97706; }
+:root[data-theme="light"] .board .pos.p2, :root[data-theme="light"] .lb-rank.p2 { color: #64748b; }
+:root[data-theme="light"] .board .pos.p3, :root[data-theme="light"] .lb-rank.p3 { color: #9a6b3f; }
+:root[data-theme="light"] .card.won, :root[data-theme="light"] .take.won { border-color: #86efac; background: linear-gradient(180deg, #f0fdf4, #ffffff 75%); }
+:root[data-theme="light"] .card.lost, :root[data-theme="light"] .take.lost { border-color: #fca5a5; background: linear-gradient(180deg, #fef2f2, #ffffff 75%); }
+:root[data-theme="light"] .feed-card.won { border-color: #bbf7d0; background: linear-gradient(180deg, #f0fdf4 0%, var(--surface) 70%); }
+:root[data-theme="light"] .busy-pill { background: rgba(255, 255, 255, 0.96); box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14); }
+:root[data-theme="light"] .busy-pill.done { background: var(--green-deep); border-color: var(--green-mid); }
+:root[data-theme="light"] .league-tile { background: #ffffff; box-shadow: 0 0 0 1px var(--line); }
+/* screen styles */
+:root[data-theme="light"] .fee input[type="range"] { background: linear-gradient(90deg, var(--green) var(--pct), #e5e7e3 var(--pct)); }
+:root[data-theme="light"] .fee input[type="range"]::-webkit-slider-thumb { border-color: #ffffff; }
+:root[data-theme="light"] .fee input[type="range"]::-moz-range-thumb { border-color: #ffffff; }
+:root[data-theme="light"] .points-banner,
+:root[data-theme="light"] .points-card { border-color: #fde68a; background: linear-gradient(180deg, #fffbeb, #ffffff 80%); }
+:root[data-theme="light"] .a-no { background: #fef2f2; }
+:root[data-theme="light"] .a-skip { background: #f3f4f6; }
+:root[data-theme="light"] .a-info { background: #eff6ff; border-color: #93c5fd; }
+:root[data-theme="light"] .jump-latest { background: rgba(255, 255, 255, 0.96); box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14); }
+:root[data-theme="light"] .jump-latest.fresh { background: var(--green); color: var(--on-green); }
+:root[data-theme="light"] .outcome-scrim { background: rgba(15, 23, 42, 0.45); }
+:root[data-theme="light"] .outcome-card { background: #ffffff; }
+:root[data-theme="light"] .outcome.won .outcome-card { border-color: #86efac; background: radial-gradient(120% 70% at 50% 0%, rgba(22, 163, 74, 0.16), #ffffff 60%); }
+:root[data-theme="light"] .outcome.lost .outcome-card { border-color: #fca5a5; background: radial-gradient(120% 70% at 50% 0%, rgba(220, 38, 38, 0.12), #ffffff 60%); }
+:root[data-theme="light"] .points-toast { border-color: #fcd34d; box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14); }
+:root[data-theme="light"] .points-toast span { color: #92400e; }
+:root[data-theme="light"] .vs-card.incoming { border-color: #bbf7d0; }
