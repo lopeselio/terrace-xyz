@@ -105,6 +105,14 @@ img { display: block; }
 }
 @keyframes charge-bolt { from { transform: scale(1) rotate(-6deg); } to { transform: scale(1.22) rotate(6deg); } }
 
+/* Phones: the mark alone says Terrace, leaving room for points and balance */
+@media (max-width: 430px) {
+  .hdr .logo-word { display: none; }
+  .hdr-act { gap: 6px; }
+  .ptspill { padding: 0 9px 0 7px; }
+  .balpill { padding: 0 10px; }
+}
+
 /* RollingNumber: each digit that changes drops in, like a clock ticking over */
 .roll { display: inline-flex; overflow: hidden; line-height: 1.15; }
 .roll-d { display: inline-block; animation: roll-in 0.12s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
