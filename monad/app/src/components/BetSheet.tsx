@@ -19,6 +19,8 @@ export type BetPick = {
   feeBps?: number;
   /** Bookmakers' decimal price, used until the pool has money on both sides. */
   opening?: number | null;
+  /** Price to show with no pool and no opening line (3 for a home/draw/away pick). */
+  neutral?: number;
   /** Places the bet; resolves when it's locked in. */
   place: (dollars: number) => Promise<unknown>;
   /** Extra line under the price (e.g. how it settles). */
@@ -36,7 +38,7 @@ export function BetSheet({ pick, onClose, onPlaced }: { pick: BetPick; onClose: 
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<number | null>(null);
 
-  const p = price(pick.pool, pick.opening);
+  const p = price(pick.pool, pick.opening, pick.neutral);
   const dollars = Math.max(0, Number(stake) || 0);
   const units = dollars * 1e6;
   const max = balance ? Number(balance.usd) / 1e6 : null;

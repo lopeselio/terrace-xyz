@@ -45,12 +45,17 @@ const PRIOR = 5_000_000;
  * One price for a side: the live pool if both sides have money; a one-sided pool leans the price
  * with a small neutral prior (all the money on Yes → Yes short, No long); else the opening line, else evens.
  */
-export function price(pool: { side: number; other: number } | null, opening?: number | null): { decimal: number; source: "pool" | "opening" | "evens" } {
+export function price(
+  pool: { side: number; other: number } | null,
+  opening?: number | null,
+  /** With nothing to go on: evens for yes/no, 2/1 (a three-way split) for home/draw/away. */
+  neutral = 2,
+): { decimal: number; source: "pool" | "opening" | "evens" } {
   const p = pool ? poolDecimal(pool.side, pool.other) : null;
   if (p) return { decimal: p, source: "pool" };
   if (pool && pool.side + pool.other > 0) return { decimal: (pool.side + pool.other + 2 * PRIOR) / (pool.side + PRIOR), source: "pool" };
   if (opening && opening > 1) return { decimal: opening, source: "opening" };
-  return { decimal: 2, source: "evens" };
+  return { decimal: neutral, source: "evens" };
 }
 
 /** Accumulator price: the product of each leg's decimal price. */

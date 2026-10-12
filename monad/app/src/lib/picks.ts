@@ -37,6 +37,9 @@ function poolFor(std: StdMarket | undefined, side: 1 | 2) {
   return side === 1 ? { side: yes, other: no } : { side: no, other: yes };
 }
 
+/** Neutral price with no pool or bookmaker line: a three-way split for result picks, evens otherwise. */
+const threeWay = (kind: number, side: 1 | 2) => (side === 1 && (kind === KIND.HOME || kind === KIND.DRAW || kind === KIND.AWAY) ? 3 : 2);
+
 /** Prices and pools for a set of matches' standard questions, refreshed every 20s. */
 export function useMatchPrices(fixtureIds: number[]) {
   const lines = useOpeningLines();
@@ -53,7 +56,7 @@ export function useMatchPrices(fixtureIds: number[]) {
 
   /** Fractional price shown on an odds button. */
   const odds = (fixtureId: number, kind: number, side: 1 | 2 = 1) =>
-    fractional(price(poolFor(std.get(`${fixtureId}-${kind}`), side), openingFor(lines[fixtureId], kind, side)).decimal);
+    fractional(price(poolFor(std.get(`${fixtureId}-${kind}`), side), openingFor(lines[fixtureId], kind, side), threeWay(kind, side)).decimal);
 
   /** A ready-to-open bet slip for one selection. */
   const pick = (m: Teams, kind: number, side: 1 | 2, send: Send, owner: Address | null): BetPick => {
@@ -65,6 +68,7 @@ export function useMatchPrices(fixtureIds: number[]) {
       pool: poolFor(s, side),
       feeBps: s?.feeBps ?? 0,
       opening: openingFor(lines[m.id], kind, side),
+      neutral: threeWay(kind, side),
       note: "Settled from the final score by Chainlink.",
       place: (dollars) => {
         if (!owner) throw new Error("Sign in to place it.");
