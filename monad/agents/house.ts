@@ -127,10 +127,31 @@ async function setup() {
 
 type Market = {
   id: string; isSealed: boolean; isFlash: boolean; yesPool: string; noPool: string; bettors: number;
-  question: { kind: number; closeTime: string; answer: number; fixture: { id: string } | null };
+  question: { kind: number; closeTime: string; answer: number; spec: string | null; fixture: { id: string } | null };
   bets: { bettor: string }[];
 };
 type Line = { home?: number; draw?: number; away?: number; over25?: number; under25?: number; bttsYes?: number; bttsNo?: number };
+
+/**
+ * A chat take whose rule is really a standard market ("Atalanta win" = home goals > away goals,
+ * "over 2.5 goals" = total > 2.5) gets that market's kind, so it opens at the bookmakers' line too.
+ */
+function kindOfRule(spec: string | null): number {
+  if (!spec) return 0;
+  try {
+    const r = JSON.parse(spec) as { op?: string; value?: number; left?: { score?: { side?: string; period?: string } }; right?: { score?: { side?: string; period?: string } } };
+    const l = r.left?.score, rt = r.right?.score;
+    if (l && (l.period ?? "fulltime") === "fulltime") {
+      if (rt && (rt.period ?? "fulltime") === "fulltime" && r.op === ">") {
+        if (l.side === "home" && rt.side === "away") return 1;
+        if (l.side === "away" && rt.side === "home") return 3;
+      }
+      if (rt && r.op === "==" && ((l.side === "home" && rt.side === "away") || (l.side === "away" && rt.side === "home"))) return 2;
+      if (l.side === "total" && !rt && ((r.op === ">" && r.value === 2.5) || (r.op === ">=" && r.value === 3) || (r.op === ">" && r.value === 2))) return 4;
+    }
+  } catch {}
+  return 0;
+}
 
 /** The bookmakers' chance of Yes for a standard market, or evens for anything else. */
 function chanceOfYes(kind: number, line?: Line): number {
@@ -152,7 +173,7 @@ async function round() {
   const now = Math.floor(Date.now() / 1000);
   const { Market } = await gql<{ Market: Market[] }>(
     `query($now: numeric!) { Market(where: { isSealed: { _eq: false }, isFlash: { _eq: false }, bettors: { _lte: 1 }, question: { answer: { _eq: 0 }, closeTime: { _gt: $now } } }, order_by: { createdAt: desc }, limit: 40) {
-        id isSealed isFlash yesPool noPool bettors question { kind closeTime answer fixture { id } } bets { bettor } } }`,
+        id isSealed isFlash yesPool noPool bettors question { kind closeTime answer spec fixture { id } } bets { bettor } } }`,
     { now: now + 30 * 60 },
   );
   const house = new Set([sides[1].address.toLowerCase(), sides[2].address.toLowerCase()]);
@@ -163,7 +184,7 @@ async function round() {
   let budget = left;
   for (const m of todo) {
     if (budget < SEED) break;
-    const p = chanceOfYes(m.question.kind, m.question.fixture ? lines[m.question.fixture.id] : undefined);
+    const p = chanceOfYes(m.question.kind || kindOfRule(m.question.spec), m.question.fixture ? lines[m.question.fixture.id] : undefined);
     // Top up whichever side is short so the whole pool (fan + house) sits at the line.
     const yes = BigInt(m.yesPool), no = BigInt(m.noPool);
     const total = yes + no + SEED;
