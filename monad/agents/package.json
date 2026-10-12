@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "pundit": "bun pundit.ts",
-    "key": "bun key.ts"
+    "key": "bun key.ts",
+    "house": "bun house.ts"
   },
-  "dependencies": { "viem": "^2.37.0" }
+  "dependencies": {
+    "viem": "^2.37.0"
+  }
 }

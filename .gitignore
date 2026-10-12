@@ -55,3 +55,6 @@ packages/app/.gradle/
 # Local agent skills and project scaffolding context (dev tooling, not source)
 .agents/
 .superstack/
+
+# house liquidity agent's local spend tracker
+monad/agents/.house-state.json
