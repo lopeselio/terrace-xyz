@@ -1,7 +1,7 @@
 # Terrace on Monad: next steps
 
 Deadline: **Wed 14 Oct 2026, 03:59 UTC** (submit Tue evening). Full runbook: [README.md](README.md).
-Live app: https://terrace-monad.vercel.app
+Live app: https://play.terrace.social (also https://terrace-monad.vercel.app) · Website: https://terrace.social
 
 ## Before each match day
 

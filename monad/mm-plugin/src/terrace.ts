@@ -10,7 +10,7 @@ import { createPublicClient, encodeFunctionData, http, parseAbi, parseUnits, typ
 import { monadTestnet } from "viem/chains";
 
 export const CHAIN_ID = 10143;
-export const API = process.env.TERRACE_URL ?? "https://terrace-monad.vercel.app";
+export const API = process.env.TERRACE_URL ?? "https://play.terrace.social";
 
 export const ADDR = {
   usd: "0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe",

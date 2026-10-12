@@ -3,7 +3,7 @@ import { encodeFunctionData } from "viem";
 import { ABI, ADDR, approvalIfNeeded, chainClient, ctxOf, dollars, submit, walletAddress } from "../../terrace.js";
 
 const inputs = {
-  challenge: { type: InputFieldType.Text, flag: "challenge", message: "Challenge id (the number in a terrace-monad.vercel.app/c/<id> link)", required: true, prompt: false, index: 0 },
+  challenge: { type: InputFieldType.Text, flag: "challenge", message: "Challenge id (the number in a play.terrace.social/c/<id> link)", required: true, prompt: false, index: 0 },
   broadcast: { type: InputFieldType.Boolean, flag: "broadcast", message: "Hand the transactions to the wallet. Without this, print them and stop", default: false, prompt: false },
 };
 

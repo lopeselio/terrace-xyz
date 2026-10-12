@@ -5,7 +5,7 @@ on it, and let the room back you or fade you. Leagues with your mates, a ranked 
 hottest takes, and a record you own. Fans sign in with a passkey and never see a seed phrase,
 a gas fee or a signing pop-up.
 
-Live: **https://terrace-monad.vercel.app** · Monad testnet (chain 10143)
+Live: **https://play.terrace.social** (website: https://terrace.social) · Monad testnet (chain 10143)
 
 ---
 
@@ -183,7 +183,7 @@ cd app && pnpm install && pnpm dev               # http://localhost:3000
 ```
 
 Passkeys need HTTPS on phones, so test on the Vercel deployment (or a tunnel) rather than a LAN IP.
-A passkey belongs to one domain: an account made on `terrace-monad.vercel.app` stays there.
+A passkey belongs to one domain: on play.terrace.social (and any terrace.social subdomain) passkeys belong to terrace.social; one made on `terrace-monad.vercel.app` stays there.
 
 ### Keys and secrets
 

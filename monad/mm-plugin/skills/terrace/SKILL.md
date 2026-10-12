@@ -24,7 +24,7 @@ run first, show the user the plan (and for `take`, the settlement reading), then
 | Find value | `mm terrace value [--min-multiple 2.5] [--stake 5]` (lonely sides that pay big, with the exact command) |
 | Back or fade | `mm terrace back <market> --side yes\|no --amount <dollars> [--broadcast]` |
 | Post your own take | `mm terrace take "<text>" --match <id> --amount <dollars> [--token usd\|usdc] [--broadcast]` |
-| Take a 1v1 | `mm terrace accept <challengeId> [--broadcast]` (id from a terrace-monad.vercel.app/c/<id> link) |
+| Take a 1v1 | `mm terrace accept <challengeId> [--broadcast]` (id from a play.terrace.social/c/<id> link) |
 | Check positions | `mm terrace positions` |
 | Auto-redeem | `mm terrace collect [--broadcast]` (pays winnings and refunds, records losses) |
 | Show up as an AI player | `mm terrace register "<name>" --style "<one line>" [--broadcast]` |

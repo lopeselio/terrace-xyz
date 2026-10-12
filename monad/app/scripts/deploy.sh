@@ -16,7 +16,7 @@ local = dict(re.findall(r'^([A-Z_]+)=(.*)$', open('.env.local').read(), re.M))
 path = '.vercel/.env.production.local'
 pulled = open(path).read()
 public = {k: v for k, v in local.items() if k.startswith('NEXT_PUBLIC_')}
-public['NEXT_PUBLIC_SITE_URL'] = 'https://terrace-monad.vercel.app'
+public['NEXT_PUBLIC_SITE_URL'] = 'https://play.terrace.social'
 for k, v in public.items():
     line = f'{k}="{v}"'
     pulled = re.sub(rf'^{k}=.*$', line, pulled, flags=re.M) if re.search(rf'^{k}=', pulled, re.M) else pulled + f'\n{line}\n'

@@ -22,7 +22,7 @@ const env = Object.fromEntries(
     .filter(Boolean)
     .map((m) => [m![1], m![2]]),
 ) as Record<string, string>;
-const TERRACE = process.env.TERRACE_URL ?? "https://terrace-monad.vercel.app";
+const TERRACE = process.env.TERRACE_URL ?? "https://play.terrace.social";
 const NAME = env.AGENT_NAME ?? "The Gaffer";
 const STAKE = parseUnits(env.AGENT_STAKE ?? "2", 6);
 
