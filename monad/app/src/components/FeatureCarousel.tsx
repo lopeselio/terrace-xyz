@@ -31,10 +31,10 @@ export function FeatureCarousel() {
     return () => clearInterval(t);
   }, [paused]);
 
-  // Keep the active card in view.
+  // Keep the active card in view. Cards before it are all collapsed (128px + 10px gap), so its
+  // position is known without waiting for the width animation to finish.
   useEffect(() => {
-    const el = track.current?.children[active] as HTMLElement | undefined;
-    if (el && track.current) track.current.scrollTo({ left: el.offsetLeft - 16, behavior: "smooth" });
+    track.current?.scrollTo({ left: active * 138, behavior: "smooth" });
   }, [active]);
 
   return (
