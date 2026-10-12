@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
-import { Avatar, Badge, Empty, Seg, SkeletonCards, countdown, money } from "./ui";
+import { Avatar, Badge, Empty, FixtureTag, Seg, SkeletonCards, countdown, money } from "./ui";
 import { CallPicker, callLabel, guidePrices, type Call } from "./VersusCall";
 import { ChallengeForm, FanLabel, SentSheet, type Sent } from "./VersusForm";
 import { useAccount } from "@/lib/account";
@@ -133,6 +133,10 @@ export function ChallengeList() {
           </div>
           <Badge tone={state[1]} icon={incoming ? "hourglass" : undefined}>{state[0]}</Badge>
         </Link>
+        {(() => {
+          const m = r.question.fixture ? matches.get(Number(r.question.fixture.id)) : undefined;
+          return m ? <div className="umeta" style={{ marginTop: 12 }}><FixtureTag m={m} crests /></div> : null;
+        })()}
         <Link href={`/c/${r.id}`} className="vs-q" style={{ display: "block" }}>{label(r)}</Link>
         <div className="vs-tags">
           {incoming ? (

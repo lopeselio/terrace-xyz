@@ -7,7 +7,7 @@ import { FollowButton } from "./FollowButton";
 import { ActivityTicker } from "./ActivityTicker";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
-import { Avatar, Badge, Empty, Odd, Seg, SkeletonCards, ago, fanName, usd } from "./ui";
+import { Avatar, Badge, Empty, FixtureTag, Odd, Seg, SkeletonCards, ago, fanName, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { useFollows } from "@/lib/follows";
@@ -293,8 +293,8 @@ function FeedCard({
           </button>
         )}
         {m && (
-          <Link href={`/m/${m.id}`} className="umeta" style={{ marginLeft: "auto" }}>
-            {m.home.name} v {m.away.name} <Icon name="chevronRight" size={14} />
+          <Link href={`/m/${m.id}`} className="umeta" style={{ marginLeft: "auto", minWidth: 0 }}>
+            <FixtureTag m={m} crests /> <Icon name="chevronRight" size={14} />
           </Link>
         )}
       </div>

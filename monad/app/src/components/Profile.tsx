@@ -11,7 +11,7 @@ import { foundingFans, points } from "@/lib/terracePoints";
 import { OnboardingPanel } from "./Onboarding";
 import { announceCollected } from "./OutcomePopup";
 import { WalletSheet } from "./WalletSheet";
-import { Avatar, Badge, Empty, Seg, Tile, fanName, handle, money, usd } from "./ui";
+import { Avatar, Badge, Empty, FixtureArt, Seg, Tile, fanName, handle, money, usd } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useFollows } from "@/lib/follows";
 import { query } from "@/lib/indexer";
@@ -107,7 +107,8 @@ export function Profile() {
   }
 
   const me = address.toLowerCase();
-  const label = (q: Q) => questionLabel(q, q.fixture ? matches.get(Number(q.fixture.id)) : undefined);
+  const matchOf = (q: Q) => (q.fixture ? matches.get(Number(q.fixture.id)) : undefined);
+  const label = (q: Q) => questionLabel(q, matchOf(q));
   const tier = TIERS[p?.badge ?? 0];
   const losses = (p?.results ?? 0) - (p?.wins ?? 0);
   const streak = p?.streak ?? 0;
@@ -269,9 +270,9 @@ export function Profile() {
         <div key={tab} className="page-enter">
           {tab === "open" && (
             <>
-              {openBets.map((b) => <BetRow key={b.id} b={b} label={label(b.market.question)} busy={busy === b.id} onCollect={() => collectBet(b)} />)}
+              {openBets.map((b) => <BetRow key={b.id} b={b} m={matchOf(b.market.question)} label={label(b.market.question)} busy={busy === b.id} onCollect={() => collectBet(b)} />)}
               {openAccas.map((a) => <AccaRow key={`a${a.id}`} a={a} />)}
-              {openDuels.map((d) => <DuelRow key={`d${d.id}`} d={d} me={me} label={label(d.question)} />)}
+              {openDuels.map((d) => <DuelRow key={`d${d.id}`} d={d} me={me} m={matchOf(d.question)} label={label(d.question)} />)}
               {openBets.length + openAccas.length + openDuels.length === 0 && (
                 <Empty title="Nothing live" action={<Link href="/markets" className="textbtn">Find a market</Link>}>Back a take and it shows up here.</Empty>
               )}
@@ -279,9 +280,9 @@ export function Profile() {
           )}
           {tab === "settled" && (
             <>
-              {settledBets.map((b) => <BetRow key={b.id} b={b} label={label(b.market.question)} />)}
+              {settledBets.map((b) => <BetRow key={b.id} b={b} m={matchOf(b.market.question)} label={label(b.market.question)} />)}
               {accas.filter((a) => a.status !== 0).map((a) => <AccaRow key={`a${a.id}`} a={a} />)}
-              {duels.filter((d) => d.status > 1).map((d) => <DuelRow key={`d${d.id}`} d={d} me={me} label={label(d.question)} />)}
+              {duels.filter((d) => d.status > 1).map((d) => <DuelRow key={`d${d.id}`} d={d} me={me} m={matchOf(d.question)} label={label(d.question)} />)}
               {settledBets.length + accas.filter((a) => a.status !== 0).length + duels.filter((d) => d.status > 1).length === 0 && (
                 <Empty title="Nothing settled yet">Results land when Chainlink reads the final whistle.</Empty>
               )}
@@ -351,7 +352,7 @@ export function Profile() {
   );
 }
 
-function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: boolean; onCollect?: () => void }) {
+function BetRow({ b, m, label, busy, onCollect }: { b: Bet; m?: MatchLite; label: string; busy?: boolean; onCollect?: () => void }) {
   const yes = Number(b.market.yesPool), no = Number(b.market.noPool);
   const sidePool = b.side === 1 ? yes : no;
   const dec = b.side ? poolDecimal(sidePool, b.side === 1 ? no : yes) : null;
@@ -382,6 +383,7 @@ function BetRow({ b, label, busy, onCollect }: { b: Bet; label: string; busy?: b
   return (
     <div className={`card ${tone}`}>
       <div className="row" style={{ alignItems: "flex-start" }}>
+        <FixtureArt m={m} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="uname" style={{ marginBottom: 6 }}>{label}</div>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
@@ -430,12 +432,13 @@ function AccaRow({ a }: { a: Acca }) {
   );
 }
 
-function DuelRow({ d, me, label }: { d: Duel; me: string; label: string }) {
+function DuelRow({ d, me, m, label }: { d: Duel; me: string; m?: MatchLite; label: string }) {
   const mine = d.challenger === me ? d.challengerSide : d.challengerSide === 1 ? 2 : 1;
   const state = d.status === 4 ? (d.winner === me ? "Won" : "Lost") : ["Waiting", "Active", "Declined", "Expired", "", "Refund"][d.status];
   return (
     <Link href={`/c/${d.id}`} className={`card card-tap ${state === "Won" ? "won" : state === "Lost" ? "lost" : state === "Refund" ? "refund" : ""}`} style={{ display: "block" }}>
       <div className="row" style={{ alignItems: "flex-start" }}>
+        <FixtureArt m={m} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="uname" style={{ marginBottom: 6 }}><Icon name="swords" size={14} /> {label || "Match result 1v1"}</div>
           <div className="row" style={{ gap: 6 }}>
