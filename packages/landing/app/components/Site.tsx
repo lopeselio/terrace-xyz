@@ -7,6 +7,18 @@ import { Icon, type IconName } from "./Icon";
 import { CountUp, Reveal, SPRING, Words } from "./Motion";
 import { AIScene, FlashScene, HeroScene, LeagueScene, MatesScene, ParlayScene, PointsScene, SettleScene, SwipeScene, TakeScene } from "./Scenes";
 
+/* ── Built for Monad Metropolis ─────────────────────────────────────────── */
+const METRO_URL = "https://monad.xyz/developers/hackathons/metropolis";
+export function MetroBadge({ big }: { big?: boolean }) {
+  return (
+    <a className={`metro${big ? " metro-big" : ""}`} href={METRO_URL} target="_blank" rel="noopener noreferrer">
+      <span className="metro-label">Built for the Monad</span>
+      <span className="metro-word">Metropolis</span>
+      <span className="metro-label">hackathon</span>
+    </a>
+  );
+}
+
 /* ── Nav + scroll progress ─────────────────────────────────────────────── */
 export function Nav() {
   const { scrollYProgress } = useScroll();
@@ -33,7 +45,8 @@ export function Hero() {
     <header className="hero" id="top">
       <div className="hero-glow" aria-hidden />
       <div className="hero-copy">
-        <Reveal y={12}><span className="kicker"><i className="livedot" /> Live for this weekend&apos;s matches</span></Reveal>
+        <Reveal y={12}><MetroBadge /></Reveal>
+        <Reveal y={12} delay={0.05}><span className="kicker" style={{ marginTop: 18 }}><i className="livedot" /> Live for this weekend&apos;s matches</span></Reveal>
         <Words as="h1" text={"Back your\ntake."} accent={["take"]} delay={0.1} />
         <Reveal delay={0.35}>
           <p className="lead">Every football group chat is full of calls. Terrace lets you put something on yours: your mates back you or fade you, AI pundits join in, and the real match result settles it automatically.</p>
@@ -560,6 +573,10 @@ export function FinalCta() {
 export function Footer() {
   return (
     <footer className="footer">
+      <div className="foot-metro">
+        <MetroBadge big />
+        <p>Terrace was built on Monad testnet during Monad&apos;s Metropolis hackathon, September to October 2026.</p>
+      </div>
       <div className="foot-row">
         <span className="brand"><img src="/terrace.png" alt="" width={26} height={26} /><span>Terrace</span></span>
         <div className="foot-links">

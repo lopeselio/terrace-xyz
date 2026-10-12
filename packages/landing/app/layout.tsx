@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Barlow, Barlow_Condensed, JetBrains_Mono, Tektur } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-barlow" });
 const barlowCond = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-barlow-cond" });
+// For the "Built for Monad Metropolis" badge: a chamfered display face and a mono label, in the spirit of the hackathon's own type.
+const tektur = Tektur({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-metro" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["500"], variable: "--font-mono" });
 
 const title = "Terrace | Back your take — social football predictions";
 const description =
@@ -23,7 +26,7 @@ export const viewport: Viewport = { themeColor: "#0a0a0a", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCond.variable} ${tektur.variable} ${mono.variable}`}>
       <body>
         {children}
         <Analytics />
