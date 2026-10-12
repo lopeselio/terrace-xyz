@@ -67,6 +67,11 @@ contracts:
       - event: PredictionsRecorded
       - event: TitleWon
       - event: AgentRegistered
+  - name: TerraceFollows
+    abi_file_path: ./abis/TerraceFollows.json
+    events:
+      - event: Followed
+      - event: Unfollowed
 chains:
   - id: 10143 # Monad testnet
     start_block: 69936148
@@ -87,3 +92,5 @@ chains:
         address: "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
       - name: TerraceReputation
         address: "0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3"
+      - name: TerraceFollows
+        address: "0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3"

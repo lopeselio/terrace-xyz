@@ -27,6 +27,17 @@ type Player {
   dayStreak: Int! # consecutive days with a rewarded action
   dayMessages: Int! # takes posted today (capped for points)
   invitesLanded: Int! # new fans who joined through your 1v1 or league
+  followers: Int!
+  following: Int!
+}
+
+# Who follows whom (TerraceFollows). Inactive once unfollowed.
+type Follow {
+  id: ID! # follower-followee
+  follower: String! @index
+  followee: String! @index
+  active: Boolean!
+  since: BigInt!
 }
 
 # One line on a fan's Terrace Points ledger, so every point is traceable to an on-chain action.

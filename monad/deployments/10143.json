@@ -13,7 +13,8 @@
     "TerraceMatchups": "0xd411fFE50574962e9376c60d72939F6982350E4B",
     "TerraceLeagues": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
     "TerraceGovernance": "0xe59B32B430633203205af9AeA909d8d3F1875c20",
-    "TerraceChat": "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
+    "TerraceChat": "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e",
+    "TerraceFollows": "0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3"
   },
   "cre": {
     "productionForwarder": "0xF8344CFd5c43616a4366C34E3EEE75af79a74482",

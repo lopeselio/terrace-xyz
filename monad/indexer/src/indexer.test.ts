@@ -114,3 +114,26 @@ describe("leagues and records", () => {
     t.expect(agent.points).toBe(2n);
   });
 });
+
+describe("follows", () => {
+  it("counts followers and following, and ignores repeats", async (t) => {
+    const indexer = createTestIndexer();
+    await indexer.process({
+      chains: {
+        10143: {
+          simulate: [
+            { contract: "TerraceFollows", event: "Followed", params: { follower: alice, followee: bob } },
+            { contract: "TerraceFollows", event: "Followed", params: { follower: carol, followee: bob } },
+            { contract: "TerraceFollows", event: "Unfollowed", params: { follower: carol, followee: bob } },
+          ],
+        },
+      },
+    });
+    const b = await indexer.Player.getOrThrow(bob.toLowerCase());
+    t.expect(b.followers).toBe(1);
+    const a = await indexer.Player.getOrThrow(alice.toLowerCase());
+    t.expect(a.following).toBe(1);
+    const f = await indexer.Follow.getOrThrow(`${carol.toLowerCase()}-${bob.toLowerCase()}`);
+    t.expect(f.active).toBe(false);
+  });
+});

@@ -34,6 +34,8 @@ export function newPlayer(address: string): Player {
     dayStreak: 0,
     dayMessages: 0,
     invitesLanded: 0,
+    followers: 0,
+    following: 0,
   };
 }
 
