@@ -34,10 +34,12 @@
   .sub { display: flex; gap: 16px; align-items: baseline; font-weight: 600; font-size: 31px; line-height: 1.25; color: var(--ink2); }
   .sub i { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--green); transform: translateY(-4px); }
 
-  #prog { position: absolute; left: 140px; top: 984px; width: 780px; height: 26px; z-index: 5; display: flex; gap: 6px; }
+  #prog { position: absolute; left: 140px; top: 128px; width: 780px; height: 6px; z-index: 5; display: flex; gap: 6px; }
   #prog div { position: relative; height: 4px; border-radius: 3px; background: #1f1f1f; overflow: hidden; }
   #prog div b { position: absolute; inset: 0; background: var(--green); transform-origin: 0 50%; }
-  #progLabel { position: absolute; left: 140px; top: 1004px; z-index: 5; font-family: var(--mono); font-size: 13px; letter-spacing: 1.6px; color: var(--ink3); text-transform: uppercase; }
+  #vo { position: absolute; left: 160px; right: 160px; top: 968px; z-index: 9; display: flex; justify-content: center; pointer-events: none; }
+  #vo span { max-width: 1500px; text-align: center; font-weight: 600; font-size: 34px; line-height: 1.3; color: #fff; background: rgba(0,0,0,0.72); border-radius: 12px; padding: 8px 20px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  #progLabel { display: none; position: absolute; left: 140px; top: 1004px; z-index: 5; font-family: var(--mono); font-size: 13px; letter-spacing: 1.6px; color: var(--ink3); text-transform: uppercase; }
 
   /* phone */
   #phone { position: absolute; left: 0; top: 0; width: 470px; height: 914px; z-index: 4; transform-origin: 0 0; }
@@ -76,6 +78,7 @@
   <div id="brand"><img src="assets/terrace.png" alt="" /> Terrace <span class="k">Product demo · Monad testnet</span></div>
   <div id="shots"></div>
   <div id="prog"></div>
+  <div id="vo"><span></span></div>
   <div id="progLabel"></div>
 
   <div id="phone">
@@ -104,7 +107,7 @@
 const Q = new URLSearchParams(location.search);
 const RENDER = Q.has("render");
 const REC = Q.has("rec"); // play the screen recordings (clips/NN/*.jpg) instead of the screenshots
-const DUR = 180;
+const DUR = 179;
 const $ = (id) => document.getElementById(id);
 
 /* ── maths (same spring engine as the ad) ── */
@@ -124,51 +127,55 @@ function sp(t, t0, name = "base") {
 }
 const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
 
-/* ── the script: 13 shots on the timings from the brief ──
-   items: screen s (screens/sNN.png) from time t, entering by tr = push | fade | sheet | rise
-   zoom:  { x, y, s, at, until } centre (fractions of the screenshot), scale, start, end
-   taps:  [x, y, t] a finger press on that spot at time t */
+/* ── the script: 13 shots on the brief's timings, captions and voice-over word for word ──
+   clip:  true = the shot plays its screen recording (clips/NN/*.jpg)
+   items: otherwise, screenshots (screens/sNN.png) from time t, entering by tr = push | fade | sheet | rise
+   focus: { y0, y1, at, until } a spotlight on that band of the screen
+   taps:  [x, y, t] a finger press on that spot at time t
+   vo:    the voice-over line, shown as subtitles across the shot */
 const SHOTS = [
-  { t0: 0, t1: 8, title: "Terrace", hot: ["Terrace"], subs: ["The social prediction layer for football", "Your call. Your mates back it or fade it."],
-    items: [{ s: 1, t: 0.9, tr: "rise" }] },
-  { t0: 8, t1: 22, title: "One passkey\nis your account", hot: ["passkey"], subs: ["Sign up with Face ID", "No wallet, no seed phrase, no email", "Test dollars land, ready to play"],
-    items: [{ s: 4, t: 8, tr: "push", taps: [[0.5, 0.685, 12.1]] }, { s: 5, t: 12.6, tr: "push", focus: { y0: 0.32, y1: 0.52, at: 14.6, until: 21.6 } }] },
-  { t0: 22, t1: 38, title: "Your\nmatchday", hot: ["matchday"], subs: ["A live tape of every back and fade", "A brief for your club: prices, form, a prediction"],
-    items: [{ s: 1, t: 22, tr: "push", focus: { y0: 0.44, y1: 0.78, at: 23.6, until: 29.2 } }, { s: 2, t: 29.6, tr: "push" }, { s: 3, t: 34, tr: "push" }] },
-  { t0: 38, t1: 52, title: "Back a price", hot: ["price"], subs: ["Tap a price, pick a stake, place it", "Confirmed on Monad in under a second", "Terrace Points roll in as you play"],
-    items: [{ s: 18, t: 38, tr: "push", taps: [[0.27, 0.81, 41.2]] }, { s: 17, t: 41.7, tr: "sheet", focus: { y0: 0.55, y1: 0.82, at: 43.5, until: 48.6 }, taps: [[0.5, 0.885, 49.6]] }] },
-  { t0: 52, t1: 75, title: "Any take\nbecomes a market", hot: ["market"], subs: ["Type your take, tap Make it a market", "Terrace AI writes the rule you read first", "Chainlink checks that exact rule at full time"],
-    items: [{ s: 19, t: 52, tr: "push" }, { s: 20, t: 57.4, tr: "fade", focus: { y0: 0.55, y1: 0.68, at: 58.4, until: 61.9 }, taps: [[0.15, 0.645, 62.5]] }, { s: 21, t: 63, tr: "sheet", focus: { y0: 0.30, y1: 0.47, at: 65, until: 72.2 }, taps: [[0.5, 0.905, 73.2]] }] },
-  { t0: 75, t1: 85, title: "Copy it.\nFade it.", hot: ["Copy", "Fade"], subs: ["Mates see your bet in the feed", "House liquidity opens every market at a real price"],
-    items: [{ s: 12, t: 75, tr: "push", focus: { y0: 0.23, y1: 0.46, at: 76.6, until: 80.2 } }, { s: 13, t: 80.6, tr: "fade" }] },
-  { t0: 85, t1: 95, title: "Swipe the\nweekend", hot: ["Swipe"], subs: ["Right to back, left to fade", "Down to skip"],
+  { t0: 0, t1: 8, clip: true, title: "Terrace", hot: ["Terrace"], subs: ["The social prediction layer for football"],
+    vo: "Every football group chat is full of calls nobody can hold you to. Terrace changes that." },
+  { t0: 8, t1: 22, clip: true, title: "One passkey = your account", hot: ["passkey"], subs: ["Mera"],
+    vo: "Sign up is one Face ID. No wallet, no seed phrase, no email. The passkey is the account, and it lands with a hundred test dollars, ready to play." },
+  { t0: 22, t1: 38, clip: true, title: "Live tape", hot: ["Live"], subs: ["Your club brief"],
+    vo: "Home is your matchday. A live tape of every back and fade, and a brief for your club: prices, form and a prediction, before kick-off." },
+  { t0: 38, t1: 52, clip: true, title: "Confirmed on Monad in < 1 s", hot: ["Monad"], subs: [],
+    vo: "Tap a price, pick a stake, place it. It's confirmed on Monad in under a second, and your Terrace Points roll in as you play." },
+  { t0: 52, t1: 75, clip: true, title: "Any take → a market", hot: ["market"], subs: ["AI writes the rule", "Chainlink settles it"],
+    vo: "Now the big one. I type my take, Esteghlal to score before half-time, and tap Make it a market. Terrace AI turns the sentence into a rule I can read before I publish. That exact rule is what Chainlink checks at full time." },
+  { t0: 75, t1: 85, clip: true, title: "House liquidity", hot: ["House"], subs: ["Real prices from bet one"],
+    vo: "A mate sees it straight away and fades it. Our house liquidity opened it at the bookmakers' line, so there's a real price from the first bet." },
+  { t0: 85, t1: 95, title: "Swipe to back or fade", hot: ["Swipe"], subs: [],
+    vo: "Short on time? Swipe. Right to back, left to fade, down to skip.",
     items: [{ s: 16, t: 85, tr: "push", taps: [[0.71, 0.76, 88.3]] }, { s: 14, t: 88.9, tr: "fade", taps: [[0.29, 0.76, 92.1]] }, { s: 15, t: 92.7, tr: "sheet" }] },
-  { t0: 95, t1: 108, title: "1v1s by link", hot: ["1v1s"], subs: ["Five dollars says you can't call it", "They accept, the winner takes both stakes"],
+  { t0: 95, t1: 108, title: "1v1 challenges by link", hot: ["1v1"], subs: [],
+    vo: "Want to settle an argument? Send a 1v1 by link. Five dollars says you can't call it. They accept, and the winner takes both stakes.",
     items: [{ s: 22, t: 95, tr: "push", taps: [[0.25, 0.38, 98.4], [0.38, 0.62, 100.2]] }, { s: 23, t: 101.2, tr: "sheet", taps: [[0.75, 0.84, 105.6]] }] },
-  { t0: 108, t1: 115, title: "Parlays", hot: ["Parlays"], subs: ["Stack results, goals and fan takes", "Every winner shares the week's pot"],
-    items: [{ s: 27, t: 108, tr: "push", taps: [[0.5, 0.9, 110.9]] }, { s: 28, t: 111.4, tr: "sheet" }] },
-  { t0: 115, t1: 145, title: "Leagues with\nyour mates", hot: ["Leagues"], subs: ["Fantasy football with stakes", "Sealed picks nobody can copy", "A hidden table until the whistle", "Members vote on gameweeks"],
-    items: [{ s: 31, t: 115, tr: "push", focus: { y0: 0.46, y1: 0.82, at: 116.4, until: 120.4 } }, { s: 32, t: 121, tr: "fade", focus: { y0: 0.17, y1: 0.49, at: 122, until: 127 } },
-      { s: 33, t: 127.5, tr: "push", focus: { y0: 0.09, y1: 0.26, at: 128.5, until: 133 } }, { s: 29, t: 133.5, tr: "push", focus: { y0: 0.19, y1: 0.37, at: 134.6, until: 139 } }, { s: 30, t: 139.5, tr: "fade" }] },
-  { t0: 145, t1: 155, title: "Your record", hot: ["record"], subs: ["A leaderboard by points and win rate", "AI players clearly marked", "Every bet in green or red"],
+  { t0: 108, t1: 115, clip: true, title: "Parlays", hot: ["Parlays"], subs: [],
+    vo: "Or stack calls into a parlay: results, goals and fan takes." },
+  { t0: 115, t1: 145, clip: true, title: "Sealed picks", hot: ["Sealed"], subs: ["Hidden tables", "Group votes"],
+    vo: "Private leagues are fantasy football with stakes. I choose whether I run it or the group votes. Mates join from the invite. Picks are sealed, so nobody can copy them, and only my passkey can read mine back on any phone. The table stays hidden until Chainlink reveals it at the final whistle. Members vote on gameweeks and featured takes." },
+  { t0: 145, t1: 155, title: "Leaderboard", hot: ["Leaderboard"], subs: ["Your record"],
+    vo: "Everything feeds your record: a leaderboard by points and win rate, with AI players marked, and your bets in green and red.",
     items: [{ s: 11, t: 145, tr: "push", focus: { y0: 0.25, y1: 0.62, at: 146.4, until: 150 } }, { s: 7, t: 150.4, tr: "push" }] },
-  { t0: 155, t1: 170, title: "Settled by\nChainlink", hot: ["Chainlink"], subs: ["After full time, Chainlink CRE reads the official match data", "No admin, no settle button", "You won. Collect."],
-    items: [{ s: 6, t: 155, tr: "push" }, { s: 0, t: 159, tr: "fade", focus: { y0: 0.30, y1: 0.67, at: 160.6, until: 167.6 }, taps: [[0.5, 0.62, 168.4]] }] },
-  { t0: 170, t1: 175.2, title: "AI pundits\nplay too", hot: ["AI"], subs: ["Every fan's passkey comes with an AI agent", "They back, fade and keep their own record"],
-    items: [{ s: 9, t: 170, tr: "push", focus: { y0: 0.0, y1: 0.17, at: 171, until: 180 } }] },
+  { t0: 155, t1: 170, clip: true, title: "Settled by Chainlink CRE", hot: ["Chainlink"], subs: ["No admin"],
+    vo: "After full time, Chainlink CRE reads the official match data and settles every market. No admin and no settle button. You won, collect." },
+  { t0: 170, t1: 179, clip: true, title: "play.terrace.social", hot: ["play.terrace.social"], subs: ["Built on Monad", "Settled by Chainlink"],
+    vo: "AI pundits play alongside fans. Built on Monad, settled by Chainlink. This is Terrace. Play at play.terrace.social." },
 ];
-const END = 175.2;
+const END = 174.5;
 
 /* ── build the DOM once ── */
 const view = $("view");
-const used = [...new Set(SHOTS.flatMap((s) => s.items.map((i) => i.s)))];
+const used = [...new Set(SHOTS.flatMap((s) => (s.items || []).map((i) => i.s)))];
 const IMG = {};
 for (const s of used) {
   const im = document.createElement("img");
   im.className = "scr"; im.src = `screens/s${String(s).padStart(2, "0")}.png`; im.alt = "";
   view.appendChild(im); IMG[s] = im;
 }
-const ITEMS = SHOTS.flatMap((sh) => sh.items);
+const ITEMS = SHOTS.flatMap((sh) => sh.items || []);
 let META = null;
 const clip = document.createElement("img");
 clip.className = "scr"; clip.alt = ""; clip.style.zIndex = 2;
@@ -197,15 +204,31 @@ const shotEls = SHOTS.map((sh, n) => {
   $("shots").appendChild(box);
   return { box, num, words, subEls };
 });
+// voice-over subtitles: sentences (long ones split at commas), timed by word count across the shot
+const VO = SHOTS.flatMap((sh) => {
+  const parts = [];
+  for (const sent of sh.vo.split(/(?<=[.?!])\s+/)) {
+    if (sent.split(" ").length <= 14) { parts.push(sent); continue; }
+    let cur = "";
+    for (const piece of sent.split(/(?<=,)\s+/)) {
+      if (cur && (cur + " " + piece).split(" ").length > 14) { parts.push(cur); cur = piece; } else cur = cur ? cur + " " + piece : piece;
+    }
+    if (cur) parts.push(cur);
+  }
+  const words = parts.map((p) => p.split(" ").length), total = words.reduce((a, b) => a + b, 0);
+  const a = sh.t0 + 0.25, b = sh.t1 - 0.25;
+  let t = a;
+  return parts.map((text, i) => { const d = ((b - a) * words[i]) / total; const c = { text, t0: t, t1: t + d }; t += d; return c; });
+});
 const prog = $("prog");
 const progBars = SHOTS.map((sh) => { const d = document.createElement("div"); d.style.flex = String(sh.t1 - sh.t0); const b = document.createElement("b"); d.appendChild(b); prog.appendChild(d); return b; });
 
 function layoutShots() {
-  for (const e of shotEls) e.box.style.top = 540 - e.box.offsetHeight / 2 + 10 + "px";
+  for (const e of shotEls) e.box.style.top = 500 - e.box.offsetHeight / 2 + "px";
 }
 
 /* ── seek(t) ── */
-const PHONE = { cx: 1390, cy: 540, s: 1.04 };
+const PHONE = { cx: 1390, cy: 500, s: 0.96 };
 const SW = 442, VH = 832;
 
 function screenPose(it, t) {
@@ -240,7 +263,7 @@ window.seek = async (t) => {
     const vis = t > sh.t0 - 0.05 && t < sh.t1 + 0.6;
     e.box.style.visibility = vis ? "visible" : "hidden";
     if (!vis) return;
-    const tin = sh.t0 + (n === 0 ? 0.3 : 0.15), tout = sh.t1 - 0.4;
+    const tin = sh.t0 + (n === 0 ? 0.3 : 0.15), tout = Math.min(sh.t1, END + 0.3) - 0.4; // captions clear for the end card
     const nk = sp(t, tin, "snappy"), no = inn((t - tout) / 0.3);
     set(e.num, { opacity: nk * (1 - no), transform: `translateY(${(1 - nk) * 10 - no * 10}px)` });
     e.words.forEach((w, i) => {
@@ -253,6 +276,15 @@ window.seek = async (t) => {
       set(s, { opacity: k * (1 - o), transform: `translateY(${(1 - k) * 16 - o * 12}px)` });
     });
   });
+
+  // voice-over subtitle
+  const v = VO.find((c) => t >= c.t0 && t < c.t1);
+  const voSpan = $("vo").firstElementChild;
+  if (v) {
+    if (voSpan.textContent !== v.text) voSpan.textContent = v.text;
+    const k = Math.min(io((t - v.t0) / 0.15), io((v.t1 - t) / 0.15));
+    set($("vo"), { opacity: k, visibility: "visible" });
+  } else $("vo").style.visibility = "hidden";
 
   // progress
   SHOTS.forEach((sh, n) => { progBars[n].style.transform = `scaleX(${clamp((t - sh.t0) / (sh.t1 - sh.t0))})`; });
@@ -306,11 +338,14 @@ window.seek = async (t) => {
   set($("ring"), { top: y0 + "px", height: y1 - y0 + "px", opacity: sk, transform: `scale(${0.97 + 0.03 * sk})` });
 
   // recordings: the frame of the current shot's clip for this exact time
-  if (REC && META) {
+  const shotNow = SHOTS.findIndex((sh) => t >= sh.t0 && t < sh.t1);
+  const onClip = REC && META && (shotNow < 0 ? true : !!SHOTS[shotNow].clip);
+  if (!onClip) clip.style.visibility = "hidden";
+  if (onClip) {
     for (const s of used) IMG[s].style.visibility = "hidden";
     $("scrim").style.opacity = 0;
     ["shadeT", "shadeB", "ring"].forEach((id) => ($(id).style.opacity = 0));
-    let n = META.findIndex((m) => t >= m.t0 && t < m.t1);
+    let n = shotNow;
     if (n < 0) n = t < META[0].t0 ? 0 : META.length - 1;
     const m = META[n];
     const f = clamp(Math.floor((t - m.t0) * 60), 0, m.frames - 1);
@@ -323,7 +358,7 @@ window.seek = async (t) => {
   // finger: glides in, presses, ripples
   const tap = $("tap"), rip = $("ripple");
   let tapOn = false;
-  for (const it of REC ? [] : ITEMS) for (const [x, y, at] of it.taps || []) {
+  for (const it of ITEMS) for (const [x, y, at] of it.taps || []) {
     if (t < at - 0.8 || t > at + 0.55) continue;
     const img = IMG[it.s], H = SW * (img.naturalHeight / img.naturalWidth || 2);
     const pose = screenPose(it, at);

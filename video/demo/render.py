@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 OUT = ROOT / "out"
 SIZES = {"16x9": (1920, 1080), "9x16": (1080, 1920), "4x5": (1080, 1350)}
-DUR = 180.0
+DUR = 179.0
 
 
 def serve():
@@ -95,6 +95,26 @@ def encode(d, fps, dest, scale_to=None):
     print(dest)
 
 
+def stream(fmt, fps, a, b, dest):
+    """Frames a..b straight into ffmpeg (no PNGs on disk)."""
+    w, h = SIZES[fmt]
+    httpd, port = serve()
+    enc = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", str(fps), "-c:v", "png", "-i", "-",
+                            "-vf", "scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p", "-color_range", "tv", "-colorspace", "bt709",
+                            "-c:v", "libx264", "-crf", "16", "-preset", "medium", "-g", "120", str(dest)], stdin=subprocess.PIPE)
+    with sync_playwright() as p:
+        browser, page = open_page(p, fmt, port)
+        for n in range(a, b):
+            page.evaluate(f"window.seek({n / fps})")
+            page.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+            enc.stdin.write(page.screenshot(clip={"x": 0, "y": 0, "width": w, "height": h}))
+        browser.close()
+    httpd.shutdown()
+    enc.stdin.close()
+    enc.wait()
+    print(dest)
+
+
 if __name__ == "__main__":
     mode, fmt = sys.argv[1], sys.argv[2]
     OUT.mkdir(exist_ok=True)
@@ -106,5 +126,7 @@ if __name__ == "__main__":
         encode(d, fps, OUT / f"draft-{fmt}.mp4")
     elif mode == "chunk":  # full-quality frames a..b (for parallel rendering)
         frames(fmt, 60, 1.0, int(sys.argv[3]), int(sys.argv[4]), f"full-{fmt}")
+    elif mode == "stream":  # .venv/bin/python render.py stream 16x9 <first frame> <last frame> <part.mp4>
+        stream(fmt, 60, int(sys.argv[3]), int(sys.argv[4]), OUT / sys.argv[5])
     elif mode == "encode":
         encode(OUT / f"frames-full-{fmt}", 60, OUT / f"video-{fmt}.mp4")

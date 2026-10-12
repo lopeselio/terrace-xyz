@@ -27,13 +27,13 @@ SHOTS = [
     (38, 52, [(R5, 240, 254, 1)]),
     (52, 75, [(R5, 178, 224, 1)]),
     (75, 85, [(R5, 220, 230, 1)]),
-    (85, 95, [(R4, 28, 40, 1)]),
-    (95, 108, [(R4, 150, 164, 1)]),
+    (85, 95, None),  # swipe: dark screenshots (the recording is in the light theme)
+    (95, 108, None),  # 1v1: dark screenshots
     (108, 115, [(R5, 312, 318, 3 / 7), (R5, 328, 332, 4 / 7)]),
     (115, 145, [(R5, 406, 430, 12 / 30), (R5, 444, 464, 8 / 30), (R5, 484, 504, 10 / 30)]),
-    (145, 155, [(R3, 20, 26, 6 / 10), (R1, 49, 53, 4 / 10)]),
+    (145, 155, None),  # leaderboard: dark screenshots
     (155, 170, [(R2, 0, 16, 1)]),
-    (170, 175.2, [(R5, 12, 17.2, 1)]),
+    (170, 179, [(R5, 12, 21, 1)]),
 ]
 
 
@@ -48,6 +48,10 @@ def main():
     for n, (a, b, clips) in enumerate(SHOTS):
         d = OUT / f"{n:02d}"
         d.mkdir(parents=True)
+        if clips is None:
+            meta.append({"t0": a, "t1": b, "frames": 0})
+            print(n, a, b, "screenshots")
+            continue
         frames = 0
         for k, (rec, i, o, share) in enumerate(clips):
             slot = (b - a) * share
