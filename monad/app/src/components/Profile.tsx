@@ -13,7 +13,8 @@ import { usePoints } from "@/lib/usePoints";
 import { OnboardingPanel } from "./Onboarding";
 import { announceCollected } from "./OutcomePopup";
 import { WalletSheet } from "./WalletSheet";
-import { Avatar, Badge, Empty, FixtureArt, Seg, Tile, fanName, handle, money, usd } from "./ui";
+import { Avatar, Badge, Empty, FixtureArt, Seg, Switch, Tile, fanName, handle, money, usd } from "./ui";
+import { setSoundOn, soundOn } from "@/lib/sound";
 import { useAccount } from "@/lib/account";
 import { useFollows } from "@/lib/follows";
 import { query } from "@/lib/indexer";
@@ -341,6 +342,7 @@ export function Profile() {
       <div className="pad" style={{ marginTop: 22 }}>
         <div className="flabel">Appearance</div>
         <ThemeSwitch />
+        <SoundSwitch />
       </div>
 
       <div className="pad" style={{ margin: "22px 0 8px" }}>
@@ -461,3 +463,20 @@ function DuelRow({ d, me, m, label }: { d: Duel; me: string; m?: MatchLite; labe
 }
 
 export type { MatchLite };
+
+/** Sounds on or off (win and loss chimes, points, locked-in ticks), remembered on this device. */
+function SoundSwitch() {
+  const [on, setOn] = useState(true);
+  useEffect(() => setOn(soundOn()), []);
+  return (
+    <div className="card" style={{ padding: "4px 14px", marginTop: 10 }}>
+      <div className="kv">
+        <div>
+          <div className="v">Sounds</div>
+          <div className="umeta">Chimes for wins, points and things locked in.</div>
+        </div>
+        <Switch on={on} onChange={(v) => { setOn(v); setSoundOn(v); }} label="Sounds" />
+      </div>
+    </div>
+  );
+}

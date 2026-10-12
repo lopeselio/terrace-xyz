@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { NotificationsSheet, useNotifications } from "./Notifications";
 import { PointsSheet } from "./PointsSheet";
@@ -11,6 +11,7 @@ import { ThemeButton } from "./ThemeSwitch";
 import { money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useBalance } from "@/lib/useBalance";
+import { play } from "@/lib/sound";
 import { usePoints } from "@/lib/usePoints";
 
 /**
@@ -66,11 +67,19 @@ export function Header({
   );
 }
 
+// Unread count already announced, shared by every screen's bell so changing page doesn't ping again.
+let heard = -1;
+
 function Bell() {
   const { status } = useAccount();
   const { notes, unread, markSeen, seenAt } = useNotifications();
   const [open, setOpen] = useState(false);
   const [lastSeen, setLastSeen] = useState(0);
+  useEffect(() => {
+    if (status !== "ready") return;
+    if (heard >= 0 && unread > heard) play("notify");
+    heard = unread;
+  }, [unread, status]);
   if (status !== "ready") {
     return <Link href="/social" className="iconbtn" aria-label="What fans are doing"><Icon name="bell" /></Link>;
   }

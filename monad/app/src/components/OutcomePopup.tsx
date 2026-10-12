@@ -9,6 +9,7 @@ import { query } from "@/lib/indexer";
 import { betOutcome, type Outcome } from "@/lib/outcome";
 import { collect } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
+import { play } from "@/lib/sound";
 import "@/styles/outcome.css";
 
 /*
@@ -190,6 +191,7 @@ export function OutcomePopup() {
     if (!now) return;
     setError(null);
     if (now.outcome === "won") navigator.vibrate?.([30, 40, 60]);
+    play(now.outcome === "won" ? "win" : now.outcome === "lost" ? "lose" : "refund");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return setShown(now.amount);
     setShown(0);

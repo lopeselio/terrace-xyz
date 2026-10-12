@@ -1,4 +1,5 @@
 "use client";
+import { play } from "./sound";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createWalletClient, http, type Abi, type Address, type ContractFunctionArgs, type ContractFunctionName, type Hex } from "viem";
 import { chain, publicClient } from "./chain";
@@ -96,6 +97,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error("reverted");
         window.dispatchEvent(new Event("terrace-sent")); // points are on their way
+        play("done");
         return hash;
       } catch (e) {
         throw new Error(friendlyError(e));

@@ -10,6 +10,7 @@ import { publicClient } from "@/lib/chain";
 import { ADDR, leaguesAbi } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import { ordinal } from "@/lib/leagues";
+import { play } from "@/lib/sound";
 import "@/styles/outcome.css";
 
 /*
@@ -83,6 +84,7 @@ export function GameweekPopup() {
 
   const now = queue[0];
   useEffect(() => {
+    if (now) play("fanfare");
     if (now && now.rows[0]?.member === me && now.rows[0].points > 0) navigator.vibrate?.([30, 40, 60]);
   }, [now, me]);
   if (!now) return null;

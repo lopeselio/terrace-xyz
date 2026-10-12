@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "@/lib/account";
 import { query } from "@/lib/indexer";
 import { points, reasonLabel } from "@/lib/terracePoints";
+import { play } from "@/lib/sound";
 import "@/styles/outcome.css";
 
 /** "+20 Terrace Points · A bet comes in": a small toast whenever you earn points. */
@@ -46,6 +47,7 @@ export function PointsToast() {
 
   useEffect(() => {
     if (!toast) return;
+    play("points");
     const t = setTimeout(() => setToast(null), 3200);
     return () => clearTimeout(t);
   }, [toast]);
