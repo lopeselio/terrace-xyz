@@ -58,3 +58,10 @@ packages/app/.gradle/
 
 # house liquidity agent's local spend tracker
 monad/agents/.house-state.json
+
+# Screen recordings, screenshots and rendered video: large binaries, never in git
+monad/video-files/
+*.mp4
+*.MP4
+*.mov
+*.MOV
