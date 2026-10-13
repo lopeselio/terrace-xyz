@@ -25,10 +25,11 @@ SHOTS = [
     (8, 22, [(R1, 3.5, 17.5, 1)]),
     (22, 38, [(R5, 30, 46, 1)]),
     (38, 52, [(R5, 240, 254, 1)]),
-    (52, 75, [(R5, 178, 224, 1)]),
+    (52, 63.5, [(R5, 178, 224, 1)]),
+    (63.5, 75, [(R4, 10, 15, 5 / 19), (R3, 20, 34, 14 / 19)]),  # bell, then the feed: both at 1.65x
     (75, 85, [(R5, 220, 230, 1)]),
     (85, 95, None),  # swipe: dark screenshots (the recording is in the light theme)
-    (95, 108, None),  # 1v1: dark screenshots
+    (95, 108, [(R4, 97, 185, 1)]),  # 1v1: send, accept and settle, squeezed into 13 s
     (108, 115, [(R5, 312, 318, 3 / 7), (R5, 328, 332, 4 / 7)]),
     (115, 145, [(R5, 406, 430, 12 / 30), (R5, 444, 464, 8 / 30), (R5, 484, 504, 10 / 30)]),
     (145, 155, None),  # leaderboard: dark screenshots

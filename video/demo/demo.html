@@ -128,7 +128,7 @@ function sp(t, t0, name = "base") {
 }
 const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
 
-/* ── the script: 13 shots on the brief's timings, captions and voice-over word for word ──
+/* ── the script: 14 shots on the brief's timings, captions and voice-over word for word ──
    clip:  true = the shot plays its screen recording (clips/NN/*.jpg)
    items: otherwise, screenshots (screens/sNN.png) from time t, entering by tr = push | fade | sheet | rise
    focus: { y0, y1, at, until } a spotlight on that band of the screen
@@ -143,14 +143,16 @@ const SHOTS = [
     vo: "Home is your matchday. A live tape of every back and fade, and a brief for your club: prices, form and a prediction, before kick-off." },
   { t0: 38, t1: 52, clip: true, title: "Back a price", hot: ["price"], subs: ["Tap a price, pick a stake, place it", "Confirmed on Monad in under a second", "Every bet earns Terrace Points"],
     vo: "Tap a price, pick a stake, place it. It's confirmed on Monad in under a second, and your Terrace Points roll in as you play." },
-  { t0: 52, t1: 75, clip: true, title: "Any take → a market", hot: ["market"], subs: ["Type your take in the match chat", "Terrace AI turns it into a rule you read first", "Chainlink checks that exact rule at full time"],
-    vo: "Now the big one. I type my take, Esteghlal to score before half-time, and tap Make it a market. Terrace AI turns the sentence into a rule I can read before I publish. That exact rule is what Chainlink checks at full time." },
+  { t0: 52, t1: 63.5, clip: true, title: "Any take → a market", hot: ["market"], subs: ["Type your take in the match chat", "Terrace AI turns it into a rule you read first", "Chainlink checks that exact rule at full time"],
+    vo: "Now the big one. I type my take and tap Make it a market. Terrace AI turns it into a rule I can read, and Chainlink checks that exact rule at full time." },
+  { t0: 63.5, t1: 75, clip: true, title: "Follow. Copy. Win.", hot: ["Copy."], subs: ["The bell: 1v1s, league invites, your crew's points", "Follow the sharpest fans and see what they're backing", "Copy any take in one tap"],
+    vo: "The bell flags your 1v1s, league invites, and points scored by you and your mates. Follow top fans, see what they're backing, and copy their calls in one tap." },
   { t0: 75, t1: 85, clip: true, title: "House liquidity", hot: ["House"], subs: ["Mates back or fade your take straight away", "Terrace House opens it at the bookmakers' line", "A real price from the very first bet"],
     vo: "A mate sees it straight away and fades it. Our house liquidity opened it at the bookmakers' line, so there's a real price from the first bet." },
   { t0: 85, t1: 95, title: "Swipe to back or fade", hot: ["Swipe"], subs: ["A deck of the weekend's calls", "Right to back, left to fade, down to skip", "Every card shows its live price"],
     vo: "Short on time? Swipe. Right to back, left to fade, down to skip.",
     items: [{ s: 16, t: 85, tr: "push", taps: [[0.71, 0.76, 88.3]] }, { s: 14, t: 88.9, tr: "fade", taps: [[0.29, 0.76, 92.1]] }, { s: 15, t: 92.7, tr: "sheet" }] },
-  { t0: 95, t1: 108, title: "1v1 challenges by link", hot: ["1v1"], subs: ["Pick a call, a side and a stake", "Send it by link to any mate", "Equal stakes: the winner takes both"],
+  { t0: 95, t1: 108, clip: true, title: "1v1 challenges by link", hot: ["1v1"], subs: ["Pick a call, a side and a stake", "Send it by link to any mate", "Equal stakes: the winner takes both"],
     vo: "Want to settle an argument? Send a 1v1 by link. Five dollars says you can't call it. They accept, and the winner takes both stakes.",
     items: [{ s: 22, t: 95, tr: "push", taps: [[0.25, 0.38, 98.4], [0.38, 0.62, 100.2]] }, { s: 23, t: 101.2, tr: "sheet", taps: [[0.75, 0.84, 105.6]] }] },
   { t0: 108, t1: 115, clip: true, title: "Parlays", hot: ["Parlays"], subs: ["Stack 2 to 8 calls across matches", "Results, goals and fan takes", "Every leg lands: share the weekly pot"],
