@@ -12,6 +12,7 @@ ROOT = Path(__file__).parent
 REC = ROOT.parents[1] / "monad/screen-recs"
 OUT = ROOT / "clips"
 FPS = 60
+AD = 21  # seconds of the ad squeezed into the opening slot
 
 R1 = "passkey-sign-in-player_profile.MP4"
 R2 = "bet-claim.MP4"
@@ -50,9 +51,10 @@ def main():
         d = OUT / f"{n:02d}"
         d.mkdir(parents=True)
         if clips == "AD":
-            # the ad's first 10 s (chat -> "...and nobody ever settles it" -> "Now it's a market") at 1.25x fills 8 s
-            run("-t", "10", "-i", str(ROOT.parent / "called-it/out/Terrace-Called-it-16x9.mp4"),
-                "-vf", f"setpts=PTS/{10 / (b - a)},fps={FPS}", "-frames:v", str(round((b - a) * FPS)), "-q:v", "2", str(d / "%05d.jpg"))
+            # the ad's first 21 s (chat -> market -> mates back and fade -> Haaland goal, LIV 0-1 MCI -> "Called it" payout)
+            # at 2.625x fills 8 s
+            run("-t", str(AD), "-i", str(ROOT.parent / "called-it/out/Terrace-Called-it-16x9.mp4"),
+                "-vf", f"setpts=PTS/{AD / (b - a)},fps={FPS}", "-frames:v", str(round((b - a) * FPS)), "-q:v", "2", str(d / "%05d.jpg"))
             got = sorted(d.glob("*.jpg"))
             for k, f in enumerate(got):
                 f.rename(d / f"{k:05d}.jpg")
