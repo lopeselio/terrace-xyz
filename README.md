@@ -13,6 +13,12 @@ The group chat, the match and the money, in one place. Social predictions for fo
   Monad testnet (chain 10143)
 </p>
 
+<p align="center">
+  <a href="https://hackathon.monad.xyz"><img src="media/monad-metropolis.jpg" alt="Monad Metropolis: online global hackathon, 1 Sep to 13 Oct 2026" width="100%" /></a>
+</p>
+
+<p align="center">Built for <b>Monad Metropolis</b>, the online global hackathon (1 Sep – 13 Oct 2026) · Track: <b>Social, Attention &amp; Culture</b></p>
+
 ---
 
 ## The idea in one breath
