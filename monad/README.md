@@ -72,15 +72,20 @@ workflows all read.
 
 | Contract | Address |
 |---|---|
-| TerraceOracle | `0xca494cB3460b446357a86d656A93aD8b0f2137A3` |
-| TerraceMarkets | `0xCa6a892e302582eE34a2cfe3a57c7e97A2868773` |
-| TerraceParlays | `0x92Ebb11226E270465EBa9401e839bf4aC627a9C2` |
-| TerraceMatchups | `0xd411fFE50574962e9376c60d72939F6982350E4B` |
-| TerraceLeagues | `0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6` |
-| TerraceGovernance | `0xe59B32B430633203205af9AeA909d8d3F1875c20` |
-| TerraceChat | `0x7C790222f618C068f2Cd549f72CB08E7Ba91108e` |
-| TerraceReputation | `0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3` |
-| TerraceUSD (test dollars) | `0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe` |
+| TerraceOracle | [`0xca494cB3460b446357a86d656A93aD8b0f2137A3`](https://testnet.monadvision.com/address/0xca494cB3460b446357a86d656A93aD8b0f2137A3) |
+| TerraceMarkets | [`0xCa6a892e302582eE34a2cfe3a57c7e97A2868773`](https://testnet.monadvision.com/address/0xCa6a892e302582eE34a2cfe3a57c7e97A2868773) |
+| TerraceParlays | [`0x92Ebb11226E270465EBa9401e839bf4aC627a9C2`](https://testnet.monadvision.com/address/0x92Ebb11226E270465EBa9401e839bf4aC627a9C2) |
+| TerraceMatchups | [`0xd411fFE50574962e9376c60d72939F6982350E4B`](https://testnet.monadvision.com/address/0xd411fFE50574962e9376c60d72939F6982350E4B) |
+| TerraceLeagues | [`0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6`](https://testnet.monadvision.com/address/0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6) |
+| TerraceGovernance | [`0xe59B32B430633203205af9AeA909d8d3F1875c20`](https://testnet.monadvision.com/address/0xe59B32B430633203205af9AeA909d8d3F1875c20) |
+| TerraceChat | [`0x7C790222f618C068f2Cd549f72CB08E7Ba91108e`](https://testnet.monadvision.com/address/0x7C790222f618C068f2Cd549f72CB08E7Ba91108e) |
+| TerraceReputation | [`0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3`](https://testnet.monadvision.com/address/0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3) |
+| TerraceUSD (test dollars) | [`0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe`](https://testnet.monadvision.com/address/0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe) |
+| TerraceFollows | [`0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3`](https://testnet.monadvision.com/address/0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3) |
+
+CRE: production forwarder [`0xF8344CFd5c43616a4366C34E3EEE75af79a74482`](https://testnet.monadvision.com/address/0xF8344CFd5c43616a4366C34E3EEE75af79a74482), simulation forwarder
+[`0xB9F79d863261869B234c481D1f9A7af84AeAd192`](https://testnet.monadvision.com/address/0xB9F79d863261869B234c481D1f9A7af84AeAd192), broadcaster
+[`0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`](https://testnet.monadvision.com/address/0x901E8F75cc9F453fD9530b0C5b6763A1343949d7), attestor `0x34c40bEd79F6d537d9e8C6012D7216766b91c633`.
 
 Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/b9217d9/v1/graphql` (each Envio redeploy gets a new id on the Development plan: update `INDEXER_URL` in Vercel and `app/.env.local`)
 
@@ -194,13 +199,14 @@ Nothing secret is committed; `.env` files are gitignored and a pre-commit hook b
 | `cre/.env` | `CRE_ETH_PRIVATE_KEY` (broadcaster), `CRE_SECRET_SIM_ATTESTOR_PRIVATE_KEY`, `CRE_SECRET_REVEAL_PRIVATE_KEY`, `CRE_SECRET_RESULTS_API_KEY` (API-Football), `CRE_SECRET_GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
 | `app/.env.local` | `ONBOARDING_PRIVATE_KEY` (treasury), `API_FOOTBALL_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY`, `NEXT_PUBLIC_REVEAL_PUBLIC_KEY`, `INDEXER_URL` |
 | `indexer/.env` | `ENVIO_API_TOKEN` |
-| `agents/.env` | `AGENT_PRIVATE_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
+| `agents/.env` | `AGENT_PRIVATE_KEY`, `HOUSE_YES_KEY`, `HOUSE_NO_KEY`, `GEMINI_API_KEY`, `ALCHEMY_API_KEY` |
 
 `cd cre && bun run keys` creates missing workflow keys in `cre/.env` and prints only public halves.
 Wallets to keep funded with testnet MON: CRE broadcaster `0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`
 (simulated reports) and onboarding treasury `0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718`
 (0.5 MON of gas per fan and agent, topped up below 0.15; also send it testnet USDC from faucet.circle.com).
-House agent: `0x637f37B1ED24aA918a7db54847f5906EEDd32d37` (tops itself up from the treasury).
+The Gaffer (pundit, `AGENT_PRIVATE_KEY`): `0x637f37B1ED24aA918a7db54847f5906EEDd32d37`; Terrace House (`HOUSE_YES_KEY` / `HOUSE_NO_KEY`):
+`0x42dA565bd4C472C062aeEA6B4f518950cB7C15B6` / `0x81C2D17ddB4294adabC4d53de05d25642EE96f5D`. Agents top themselves up from the treasury.
 
 ### Contracts
 
