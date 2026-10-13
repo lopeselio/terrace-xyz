@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-REC = ROOT.parents[1] / "monad/video-files/screen-recs"
+REC = ROOT.parents[1] / "monad/screen-recs"
 OUT = ROOT / "clips"
 FPS = 60
 
@@ -21,7 +21,7 @@ R5 = "flash_markets-parlays-private_leagues.MP4"
 
 # (slot start, slot end, [(recording, in s, out s, share of the slot)])
 SHOTS = [
-    (0, 8, [(R5, 0, 8, 1)]),
+    (0, 8, "AD"),  # the opening of the "Called it" ad, full frame
     (8, 22, [(R1, 3.5, 17.5, 1)]),
     (22, 38, [(R5, 30, 46, 1)]),
     (38, 52, [(R5, 240, 254, 1)]),
@@ -48,6 +48,15 @@ def main():
     for n, (a, b, clips) in enumerate(SHOTS):
         d = OUT / f"{n:02d}"
         d.mkdir(parents=True)
+        if clips == "AD":
+            run("-t", str(b - a), "-i", str(ROOT.parent / "called-it/out/Terrace-Called-it-16x9.mp4"),
+                "-vf", f"fps={FPS}", "-frames:v", str(round((b - a) * FPS)), "-q:v", "2", str(d / "%05d.jpg"))
+            got = sorted(d.glob("*.jpg"))
+            for k, f in enumerate(got):
+                f.rename(d / f"{k:05d}.jpg")
+            meta.append({"t0": a, "t1": b, "frames": len(got), "full": True})
+            print(n, a, b, len(got), "ad opening, full frame")
+            continue
         if clips is None:
             meta.append({"t0": a, "t1": b, "frames": 0})
             print(n, a, b, "screenshots")

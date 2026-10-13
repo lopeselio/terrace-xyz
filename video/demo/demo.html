@@ -79,6 +79,7 @@
   <div id="shots"></div>
   <div id="prog"></div>
   <div id="vo"><span></span></div>
+  <img id="full" alt="" style="position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:7;visibility:hidden" />
   <div id="progLabel"></div>
 
   <div id="phone">
@@ -177,6 +178,7 @@ for (const s of used) {
 }
 const ITEMS = SHOTS.flatMap((sh) => sh.items || []);
 let META = null;
+const INTRO = 8; // 0-8 s: the ad's opening plays full frame, then the demo takes over
 const clip = document.createElement("img");
 clip.className = "scr"; clip.alt = ""; clip.style.zIndex = 2;
 view.appendChild(clip);
@@ -291,10 +293,12 @@ window.seek = async (t) => {
   const cur = SHOTS.findIndex((sh) => t >= sh.t0 && t < sh.t1);
   $("progLabel").textContent = cur >= 0 ? `${String(cur + 1).padStart(2, "0")} · ${SHOTS[cur].title.replace("\n", " ")}` : "";
   const endK = sp(t, END, "base");
-  ["prog", "progLabel", "brand"].forEach((id) => ($(id).style.opacity = 1 - endK));
+  const introK = REC ? io((t - INTRO + 0.15) / 0.4) : 1;
+  ["prog", "progLabel", "brand"].forEach((id) => ($(id).style.opacity = introK * (1 - endK)));
+  if (REC) shotEls[0].box.style.visibility = "hidden";
 
   // phone: rises in at the start, steps aside for the end card; breathes a little so no frame is ever frozen
-  const pin = sp(t, 0.5, "heavy");
+  const pin = sp(t, REC ? INTRO - 0.1 : 0.5, "heavy");
   const pout = io((t - END) / 0.6);
   const ps = PHONE.s * (1 + 0.004 * Math.sin(t * 0.8));
   set($("phone"), { transform: `translate(${PHONE.cx - 235 * ps + pout * 140}px, ${PHONE.cy - 480 * ps + (1 - pin) * 120 + 2 * Math.sin(t * 0.6)}px) scale(${ps})`, opacity: pin * (1 - pout) });
@@ -354,6 +358,15 @@ window.seek = async (t) => {
     set(clip, { visibility: "visible", transform: "none", opacity: 1 });
     $("home").style.opacity = 1;
   }
+
+  // the ad's opening, full frame, crossfading into the demo
+  const full = $("full");
+  if (REC && META && META[0].full && t < INTRO + 0.4) {
+    const f = clamp(Math.floor(t * 60), 0, META[0].frames - 1);
+    const src = `clips/00/${String(f).padStart(5, "0")}.jpg`;
+    if (!full.src.endsWith(src)) { full.src = src; await full.decode().catch(() => {}); }
+    set(full, { visibility: "visible", opacity: 1 - io((t - INTRO + 0.15) / 0.35) });
+  } else full.style.visibility = "hidden";
 
   // finger: glides in, presses, ripples
   const tap = $("tap"), rip = $("ripple");
