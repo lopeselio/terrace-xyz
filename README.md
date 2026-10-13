@@ -207,20 +207,63 @@ Nothing is stored on the phone. Small actions are signed silently, while bigger 
 
 ## Deployed contracts (Monad testnet)
 
-All addresses live in [`monad/deployments/10143.json`](monad/deployments/10143.json), which the app, indexer and workflows all read.
+Chain ID 10143. The v2 contracts were deployed on 11 Oct 2026, starting at block 69936148. All addresses live in [`monad/deployments/10143.json`](monad/deployments/10143.json), which the app, indexer and workflows all read. The links go to MonadVision; the same addresses also work on [Monadscan](https://testnet.monadscan.com/).
 
-| Contract | Address |
+| Contract | What it does | Address |
+|---|---|---|
+| TerraceOracle | The CRE receiver: fixtures, results, take answers and reveals | [`0xca494cB3460b446357a86d656A93aD8b0f2137A3`](https://testnet.monadvision.com/address/0xca494cB3460b446357a86d656A93aD8b0f2137A3) |
+| TerraceMarkets | Public, sealed and flash pari-mutuel pools | [`0xCa6a892e302582eE34a2cfe3a57c7e97A2868773`](https://testnet.monadvision.com/address/0xCa6a892e302582eE34a2cfe3a57c7e97A2868773) |
+| TerraceParlays | Parlays and the weekly pot | [`0x92Ebb11226E270465EBa9401e839bf4aC627a9C2`](https://testnet.monadvision.com/address/0x92Ebb11226E270465EBa9401e839bf4aC627a9C2) |
+| TerraceMatchups | 1v1 escrow | [`0xd411fFE50574962e9376c60d72939F6982350E4B`](https://testnet.monadvision.com/address/0xd411fFE50574962e9376c60d72939F6982350E4B) |
+| TerraceLeagues | Contests, seasons, sealed picks | [`0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6`](https://testnet.monadvision.com/address/0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6) |
+| TerraceGovernance | League votes on gameweeks and featured takes | [`0xe59B32B430633203205af9AeA909d8d3F1875c20`](https://testnet.monadvision.com/address/0xe59B32B430633203205af9AeA909d8d3F1875c20) |
+| TerraceChat | Match and league rooms | [`0x7C790222f618C068f2Cd549f72CB08E7Ba91108e`](https://testnet.monadvision.com/address/0x7C790222f618C068f2Cd549f72CB08E7Ba91108e) |
+| TerraceFollows | Onchain follows | [`0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3`](https://testnet.monadvision.com/address/0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3) |
+| TerraceReputation | Records, titles, AI agent registry | [`0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3`](https://testnet.monadvision.com/address/0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3) |
+| TerraceUSD | tUSD, the test dollar | [`0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe`](https://testnet.monadvision.com/address/0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe) |
+| Circle USDC (testnet) | Also accepted for stakes | [`0x534b2f3A21130d7a60830c2Df862319e593943A3`](https://testnet.monadvision.com/address/0x534b2f3A21130d7a60830c2Df862319e593943A3) |
+
+### Chainlink CRE on chain
+
+| | Address / value |
 |---|---|
-| TerraceOracle | [`0xca494cB3460b446357a86d656A93aD8b0f2137A3`](https://testnet.monadexplorer.com/address/0xca494cB3460b446357a86d656A93aD8b0f2137A3) |
-| TerraceMarkets | [`0xCa6a892e302582eE34a2cfe3a57c7e97A2868773`](https://testnet.monadexplorer.com/address/0xCa6a892e302582eE34a2cfe3a57c7e97A2868773) |
-| TerraceParlays | [`0x92Ebb11226E270465EBa9401e839bf4aC627a9C2`](https://testnet.monadexplorer.com/address/0x92Ebb11226E270465EBa9401e839bf4aC627a9C2) |
-| TerraceMatchups | [`0xd411fFE50574962e9376c60d72939F6982350E4B`](https://testnet.monadexplorer.com/address/0xd411fFE50574962e9376c60d72939F6982350E4B) |
-| TerraceLeagues | [`0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6`](https://testnet.monadexplorer.com/address/0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6) |
-| TerraceGovernance | [`0xe59B32B430633203205af9AeA909d8d3F1875c20`](https://testnet.monadexplorer.com/address/0xe59B32B430633203205af9AeA909d8d3F1875c20) |
-| TerraceChat | [`0x7C790222f618C068f2Cd549f72CB08E7Ba91108e`](https://testnet.monadexplorer.com/address/0x7C790222f618C068f2Cd549f72CB08E7Ba91108e) |
-| TerraceFollows | [`0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3`](https://testnet.monadexplorer.com/address/0x9b7A991b365fBaADdb3ddbE5d0b99525A22337B3) |
-| TerraceReputation | [`0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3`](https://testnet.monadexplorer.com/address/0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3) |
-| TerraceUSD (test dollars) | [`0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe`](https://testnet.monadexplorer.com/address/0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe) |
+| Production forwarder (KeystoneForwarder, set on the oracle) | [`0xF8344CFd5c43616a4366C34E3EEE75af79a74482`](https://testnet.monadvision.com/address/0xF8344CFd5c43616a4366C34E3EEE75af79a74482) |
+| Simulation forwarder (MockKeystoneForwarder) | [`0xB9F79d863261869B234c481D1f9A7af84AeAd192`](https://testnet.monadvision.com/address/0xB9F79d863261869B234c481D1f9A7af84AeAd192) |
+| Report broadcaster (sends every CRE report; its history is the live settlement log) | [`0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`](https://testnet.monadvision.com/address/0x901E8F75cc9F453fD9530b0C5b6763A1343949d7) |
+| Workflow attestor (the oracle checks its signature on simulated reports) | `0x34c40bEd79F6d537d9e8C6012D7216766b91c633` |
+| Reveal public key (X25519: fans seal picks to it, and only the reveal workflow can open them) | `0x00fe67774c060a45fce6ef084136f3208f01bae9b36ecfe4c453d0539f5fed5f` |
+
+| Workflow | Schedule | Job |
+|---|---|---|
+| `terrace-settlement` | results every 5 min, new fixtures every 6 h | 19 leagues from API-Football; voids and refunds postponed matches |
+| `terrace-questions` | every minute | rule checks on match events, stats, lineups and players; the AI judge (Claude Sonnet 5.5) for rule-less takes |
+| `terrace-reveal` | every 2 min | opens sealed bets and league picks in a TEE (`handlerInTee`) after the deadline |
+
+**To verify:** open the oracle's events (`FixtureScheduled`, `FixtureSettled`, `QuestionAnswered`) or the broadcaster's transactions on the explorer.
+
+### Envio HyperIndex
+
+- **GraphQL endpoint (public):** `https://indexer.dev.hyperindex.xyz/b9217d9/v1/graphql`
+- **Coverage:** 9 contracts and 41 events from block 69936148, indexed into 17 entities: `Player`, `Follow`, `PointsEvent`, `Fixture`, `Question`, `Market`, `Bet`, `Room`, `Message`, `Parlay`, `Matchup`, `League`, `LeagueMember`, `Contest`, `Entry`, `Proposal`, `FeedItem`.
+- **Source:** the hosted deployment builds from the [`envio`](https://github.com/lopeselio/terrace-xyz/tree/envio) branch (`monad/indexer`: [`config.yaml`](monad/indexer/config.yaml), [`schema.graphql`](monad/indexer/schema.graphql), [`src/handlers`](monad/indexer/src/handlers)).
+
+```graphql
+# Is it synced? (on 13 Oct 2026: block 70683415, 1,331 events processed)
+{ chain_metadata { chain_id latest_processed_block num_events_processed } }
+
+# A peek at the data
+{ Market(limit: 5) { id } Fixture(limit: 5) { id } }
+```
+
+### Agents and operations
+
+| Wallet | Address |
+|---|---|
+| The Gaffer (AI pundit) | [`0x637f37B1ED24aA918a7db54847f5906EEDd32d37`](https://testnet.monadvision.com/address/0x637f37B1ED24aA918a7db54847f5906EEDd32d37) |
+| Terrace House, YES side (opening liquidity) | [`0x42dA565bd4C472C062aeEA6B4f518950cB7C15B6`](https://testnet.monadvision.com/address/0x42dA565bd4C472C062aeEA6B4f518950cB7C15B6) |
+| Terrace House, NO side | [`0x81C2D17ddB4294adabC4d53de05d25642EE96f5D`](https://testnet.monadvision.com/address/0x81C2D17ddB4294adabC4d53de05d25642EE96f5D) |
+| Onboarding treasury (gas and test dollars for new fans) | [`0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718`](https://testnet.monadvision.com/address/0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718) |
+| Deployer and owner | [`0xe03caA2C1661eF712D544A2a92736a6286C37e41`](https://testnet.monadvision.com/address/0xe03caA2C1661eF712D544A2a92736a6286C37e41) |
 
 ---
 
@@ -250,7 +293,7 @@ cd monad/indexer && pnpm test             # handlers and points
 ## Being straight with you
 
 - **Where it started.** Terrace began on Solana before this hackathon; that build is preserved on the [`solana`](https://github.com/lopeselio/terrace-xyz/tree/solana) branch. Everything on `main` under `monad/` (contracts, CRE workflows, indexer, agents, plugin and the Monad app) was built during the hackathon window, and the commit history shows it.
-- **CRE on testnet.** Deploying workflows to a hosted Chainlink DON needs a commercial agreement with Chainlink, so for the hackathon Terrace runs its workflows with `cre workflow simulate --broadcast`, the path Chainlink recommends for hackathon projects. The simulator executes the real workflow code (consensus, HTTP, chain reads, TEE handler) and writes real signed reports through the simulation forwarder. Moving to production means switching the oracle's forwarder with `setForwarder()`; the contracts already support it.
+- **CRE on testnet.** Deploying workflows to a hosted Chainlink DON needs a commercial agreement with Chainlink, so for the hackathon Terrace runs its workflows with `cre workflow simulate --broadcast`, the path Chainlink recommends for hackathon projects. The simulator executes the real workflow code (consensus, HTTP, chain reads, TEE handler) and writes real signed reports through the simulation forwarder. Because the simulation forwarder checks no signatures, `TerraceOracle` also verifies a workflow attestor signature on every simulated report. The production KeystoneForwarder is already set on the oracle, and `lockProduction()` removes the simulation path for good once the workflows run on a DON.
 - **Testnet money.** Stakes are test dollars and Circle's testnet USDC. Nothing here is real-money gambling.
 - **AI is fenced in.** The AI suggests rules and judges only rule-less takes; it never writes the reading a fan agrees to, and an uncertain verdict refunds everyone.
 
