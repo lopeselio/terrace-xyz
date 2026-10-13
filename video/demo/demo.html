@@ -32,6 +32,10 @@
   .hot { color: var(--green); }
   .subs { margin-top: 34px; display: grid; gap: 14px; }
   .sub { display: flex; gap: 16px; align-items: baseline; font-weight: 600; font-size: 31px; line-height: 1.25; color: var(--ink2); }
+  .logos { display: flex; gap: 14px; margin-top: 18px; }
+  .logos span { display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 20px; border-radius: 14px; background: #f4f4f2; }
+  .logos img { height: 30px; display: block; }
+  .logos b { font-weight: 700; font-size: 22px; color: #0b1a2e; }
   .sub i { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--green); transform: translateY(-4px); }
 
   #prog { position: absolute; left: 140px; top: 128px; width: 780px; height: 6px; z-index: 5; display: flex; gap: 6px; }
@@ -162,8 +166,9 @@ const SHOTS = [
   { t0: 145, t1: 155, title: "Your record", hot: ["record"], subs: ["Leaderboard by Terrace Points and win rate", "AI players clearly marked", "Every bet in green or red"],
     vo: "Everything feeds your record: a leaderboard by points and win rate, with AI players marked, and your bets in green and red.",
     items: [{ s: 11, t: 145, tr: "push", focus: { y0: 0.25, y1: 0.62, at: 146.4, until: 150 } }, { s: 7, t: 150.4, tr: "push" }] },
-  { t0: 155, t1: 170, clip: true, title: "Settled by Chainlink CRE", hot: ["Chainlink"], subs: ["At full time, Chainlink CRE reads official match data", "No admin, no settle button", "You won: collect in one tap"],
-    vo: "After full time, Chainlink CRE reads the official match data and settles every market. No admin and no settle button. You won, collect." },
+  { t0: 155, t1: 170, clip: true, title: "Settled by Chainlink", hot: ["Chainlink"], subs: ["Chainlink CRE reads official match data at full time", "Paid out on Monad via Alchemy. No admin.", "Envio puts every result in your feed instantly"],
+    logos: [["chainlink.png", "Chainlink CRE"], ["alchemy.png"], ["envio.png"]],
+    vo: "After full time, Chainlink CRE reads the official match data and settles every market on Monad, through Alchemy. Envio puts every result in your feed in seconds. No admin, no settle button. You won, collect." },
   { t0: 170, t1: 179, clip: true, title: "AI pundits play too", hot: ["AI"], subs: ["AI agents make calls you can back or fade", "Built on Monad, settled by Chainlink", "Play at play.terrace.social"],
     vo: "AI pundits play alongside fans. Built on Monad, settled by Chainlink. This is Terrace. Play at play.terrace.social." },
 ];
@@ -204,6 +209,12 @@ const shotEls = SHOTS.map((sh, n) => {
   box.appendChild(title);
   const subs = document.createElement("div"); subs.className = "subs";
   const subEls = sh.subs.map((s) => { const d = document.createElement("div"); d.className = "sub"; d.innerHTML = `<i></i><span>${s}</span>`; subs.appendChild(d); return d; });
+  // a quiet row of the stack's logos, entering after the bullets
+  if (sh.logos) {
+    const d = document.createElement("div"); d.className = "logos";
+    d.innerHTML = sh.logos.map(([src, label]) => `<span><img src="assets/${src}" alt="" />${label ? `<b>${label}</b>` : ""}</span>`).join("");
+    subs.appendChild(d); subEls.push(d);
+  }
   box.appendChild(subs);
   $("shots").appendChild(box);
   return { box, num, words, subEls };
