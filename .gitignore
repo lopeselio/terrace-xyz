@@ -64,4 +64,6 @@ monad/video-files/
 *.mp4
 *.MP4
 *.mov
+video/*/out/
+video/pitch/pitch.html
 *.MOV
