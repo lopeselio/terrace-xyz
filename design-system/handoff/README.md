@@ -1,10 +1,10 @@
 # Handoff: Terrace UI revamp (full app)
 
 ## Overview
-Terrace is a football prediction-market app on Solana Mobile (Seeker). This handoff is a
+Terrace is a football prediction-market app for mobile. This handoff is a
 **complete UI redesign** of every screen: a sportsbook-grade interface benchmarked against
 bet365 (dark, dense, odds-first, live-led) and Paddy Power (loud condensed type, playful
-voice), while keeping Terrace's existing pure-black + Solana-green identity.
+voice), while keeping Terrace's existing pure-black + Terrace-green identity.
 
 Two rules drove every decision:
 1. **Odds are the interface.** Every screen resolves to a tappable odds button.
@@ -59,7 +59,7 @@ Rename throughout: contract → **bet**, pool → **matched**, volume → **matc
   inside the **Wallet & payouts** sheet (Profile → row), and network details sit behind a
   "Show network details" toggle that is OFF by default.
 - **Kept as trust badges** (small, 10px/700): `Terrace`, `Polymarket`,
-  `Arcium · Private`, `Settled on Solana`.
+  `Arcium · Private`, `Settled by Chainlink`.
 
 ### 5. Home leads with In-play
 Order: **In-play now** (horizontal carousel of live matches, score + minute + 1/X/2 odds) →

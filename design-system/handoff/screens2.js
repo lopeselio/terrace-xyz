@@ -147,7 +147,7 @@ SCREENS.__sheet_wallet = () => `
   <div class="flabel" style="margin-top:20px">Advanced</div>
   <div class="card" style="padding:4px 14px">
     <div class="kv" style="border-bottom:1px solid var(--line-hair)"><span class="k">Wallet address</span><span class="v row" style="gap:6px;color:var(--ink-2);font-size:12.5px">6Gr3R1…YvKZuq ${ic('copy','i-14')}</span></div>
-    <div class="kv"><div><div class="v">Show network details</div><div class="umeta">Solana mainnet · USDC balances</div></div><div class="switch"><i></i></div></div>
+    <div class="kv"><div><div class="v">Show network details</div><div class="umeta">Monad testnet · USDC balances</div></div><div class="switch"><i></i></div></div>
   </div>
   <div class="row" style="justify-content:center;gap:6px;margin-top:14px"><span class="badge b-terrace">Non-custodial</span><span class="badge b-private">${ic('lock','i-14')} Arcium private bets</span></div>
 </div></div>`;

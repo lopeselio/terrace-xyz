@@ -1,10 +1,10 @@
 # Terrace — Design System & UI Revamp Brief
 
-Football prediction markets on Solana Mobile (Seeker), rebuilt to read like a
+Football prediction markets on mobile, rebuilt to read like a
 sportsbook, not a crypto app. Synced to Claude Design project **Terrace Design System**.
 
 ## Direction: "Terrace Night"
-Pure-black canvas and Solana-green conviction are kept. Everything else is
+Pure-black canvas and Terrace-green conviction are kept. Everything else is
 re-crafted against **bet365** (dark, dense, odds-first, live-led) and
 **Paddy Power** (loud condensed type, playful voice). Two rules drove every
 decision: **odds are the interface**, and **nothing on a primary surface reads
@@ -18,9 +18,9 @@ like a blockchain**.
 3. **Fractional odds** (4/9, 11/4, 8/13) replace cent pricing everywhere, with
    sportsbook language: stake, potential returns, bet slip, place bet.
 4. **Crypto pushed to one drawer.** Usernames + avatars everywhere (@mikeyd, never
-   base58). Money in £. SOL / mainnet / devnet / address / non-custodial live only in
+   base58). Money in £. Token / network / address / non-custodial live only in
    the **Wallet & payouts** sheet, behind a "Show network details" toggle.
-   Polymarket / Arcium / Solana stay as small trust badges.
+   Network and settlement names stay as small trust badges.
 5. **Home leads with In-play.** Live matches first, then today's fixtures, then what
    your follows backed — the bet365 model, not a gradient category carousel.
 6. **Football only.** Politics, gaming and event markets from the Polymarket feed are

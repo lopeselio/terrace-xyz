@@ -268,7 +268,7 @@ SCREENS.__sheet_bet = (sel) => `
   <div class="kv" style="border-top:1px solid var(--line-hair);margin-top:14px"><span class="k">Potential returns</span><span class="v" style="font-family:var(--cond);font-size:22px;color:var(--green)">${(sel&&sel.returns)||'£33.33'}</span></div>
   <button class="cta" style="margin-top:6px" data-sheet="placed">Place bet · £20</button>
   <div class="row" style="justify-content:center;gap:6px;margin-top:12px">
-    <span class="badge b-poly">Polymarket liquidity</span><span class="badge b-terrace">Settled on Solana</span>
+    <span class="badge b-poly">Polymarket liquidity</span><span class="badge b-terrace">Settled by Chainlink</span>
   </div>
 </div></div>`;
 

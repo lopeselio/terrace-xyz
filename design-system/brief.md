@@ -1,10 +1,10 @@
 # Terrace — Design System & UI Revamp Brief
 
-On-chain football prediction markets on Solana Mobile (Seeker).
+On-chain football prediction markets, as a mobile app.
 Synced to Claude Design project **Terrace Design System**.
 
 ## Direction: "Terrace Night"
-Keep the identity we already have — **stark dark canvas, Solana-green conviction,
+Keep the identity we already have — **stark dark canvas, Terrace-green conviction,
 red for the fade** — and raise the craft. The revamp is not a repaint; it is a
 paradigm shift from *scrolling a list of markets* to **swiping matchday calls**,
 Seeker-native. Everything below is tuned so the swipe deck feels like the
