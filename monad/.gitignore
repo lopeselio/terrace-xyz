@@ -10,7 +10,7 @@ cre/**/.env
 *.log
 .DS_Store
 
-# Root .gitignore blocks *.json (Solana keypairs); CRE workflow configs are source.
+# Root .gitignore blocks *.json (keypairs); CRE workflow configs are source.
 !cre/**/config.*.json
 !deployments/*.json
 !cre/shared/fixtures-data/*.json

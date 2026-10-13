@@ -19,7 +19,7 @@ test-ledger/
 packages/programs/artifacts/
 packages/programs/Anchor.toml.bak
 
-# Solana keypairs — never commit
+# Keypairs — never commit
 *.json
 !package.json
 !package-lock.json
