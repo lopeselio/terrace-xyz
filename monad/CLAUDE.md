@@ -1,12 +1,11 @@
 # Terrace on Monad — context for Claude Code
 
 This folder (`monad/`) is the Monad port of Terrace for Monad's **Metropolis hackathon**.
-The Solana app (`packages/`) is prior work, preserved on the `solana` branch. `main` is now the
-Monad build; leave `packages/` untouched unless asked to prune it.
+`main` is the Monad build; leave `packages/` untouched unless asked to prune it.
 
 ## Deadline and branch
 - Submission closes **Wed 14 Oct 2026, 03:59 UTC (9:29 AM IST)**. Target: submit Tue 13 Oct evening.
-- Branch: `main` (Monad build). The Solana build lives on the `solana` branch. Commit small and often with clear messages. The rules expect
+- Branch: `main` (Monad build). Commit small and often with clear messages. The rules expect
   commit history covering the build window, so never squash.
 
 ## What we're building
@@ -18,8 +17,8 @@ tables, plus real stakes, all with a consumer-first UX.
 - **Social core**: group chats (league rooms and match rooms) where any message, a "take",
   can become a market people bet on; an Envio-ranked activity feed; community-run leagues
   with governance (members propose and vote on gameweeks and featured takes).
-- **Full parity with the Solana build**: markets, bets, parlays, 1v1 matchups, leagues with
-  gameweeks, private markets, private leagues, reputation and badges. Never drop a Solana
+- **Full feature set**: markets, bets, parlays, 1v1 matchups, leagues with
+  gameweeks, private markets, private leagues, reputation and badges. Never drop a
   feature; improve settlement and UX instead.
 - **Stakes and points together**: every stake won or lost also moves the player's points.
   New testnet users are auto-funded with test dollars. Fiat on/off ramps come later.
@@ -77,7 +76,7 @@ tables, plus real stakes, all with a consumer-first UX.
 - **Tue 13:** 2-min pitch, README disclosures, share repo with metropolis@hackathon.monad.xyz, submit.
 
 ## Disclosure (for README and pitch)
-- Built on the Terrace codebase started on Solana before the hackathon; contracts, CRE workflow and
+- The Terrace idea and design system predate the hackathon; contracts, CRE workflow and
   PWA in this folder were built during the hackathon window.
 - Monad testnet settlement uses CRE simulation with `--broadcast` through the mock forwarder;
   CRE supports production writes on Monad mainnet.

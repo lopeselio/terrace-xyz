@@ -37,7 +37,7 @@ Live: **https://play.terrace.social** (website: https://terrace.social) · Monad
 
 ### What's in the app
 
-Same "Terrace Night" design system as the Solana app (dark canvas, green to back, red to fade,
+The "Terrace Night" design system (dark canvas, green to back, red to fade,
 violet for sealed, Barlow; see `../design-system/` and `../packages/app/src/theme/tokens.ts`).
 
 | Screen | What fans do |
@@ -229,7 +229,7 @@ Run deploys in a normal Terminal tab (the keystore asks for a password). After a
 
 ## Disclosures
 
-- Terrace started on Solana before this hackathon (preserved on the `solana` branch). Everything in
+- The Terrace idea and design system predate this hackathon. Everything in
   this folder (the Monad contracts, CRE workflows, indexer and the Mera-based app) was built during
   the hackathon window.
 - Monad testnet settlement runs through CRE simulation with `--broadcast` via the

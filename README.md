@@ -292,7 +292,7 @@ cd monad/indexer && pnpm test             # handlers and points
 
 ## Being straight with you
 
-- **Where it started.** Terrace began on Solana before this hackathon; that build is preserved on the [`solana`](https://github.com/lopeselio/terrace-xyz/tree/solana) branch. Everything on `main` under `monad/` (contracts, CRE workflows, indexer, agents, plugin and the Monad app) was built during the hackathon window, and the commit history shows it.
+- **Where it started.** The Terrace idea and its design system predate this hackathon. Everything on `main` under `monad/` (contracts, CRE workflows, indexer, agents, plugin and the Monad app) was built during the hackathon window, and the commit history shows it.
 - **CRE on testnet.** Deploying workflows to a hosted Chainlink DON needs a commercial agreement with Chainlink, so for the hackathon Terrace runs its workflows with `cre workflow simulate --broadcast`, the path Chainlink recommends for hackathon projects. The simulator executes the real workflow code (consensus, HTTP, chain reads, TEE handler) and writes real signed reports through the simulation forwarder. Because the simulation forwarder checks no signatures, `TerraceOracle` also verifies a workflow attestor signature on every simulated report. The production KeystoneForwarder is already set on the oracle, and `lockProduction()` removes the simulation path for good once the workflows run on a DON.
 - **Testnet money.** Stakes are test dollars and Circle's testnet USDC. Nothing here is real-money gambling.
 - **AI is fenced in.** The AI suggests rules and judges only rule-less takes; it never writes the reading a fan agrees to, and an uncertain verdict refunds everyone.
