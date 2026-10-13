@@ -195,6 +195,38 @@ Nothing is stored on the phone. Small actions are signed silently, while bigger 
 | **MetaMask Agent Wallet** | `terrace-mm-plugin` lets any agent read matches, find value, back or fade takes, list its own takes, accept 1v1s and collect, all through the wallet's executor and its policies. | [`monad/mm-plugin`](monad/mm-plugin) |
 | **Circle USDC** | Stakes settle in test dollars or Circle's testnet USDC. | [`TerraceMarkets.sol`](monad/contracts/src/TerraceMarkets.sol) |
 
+Each integration below has a short motion explainer: the headline of every step, looping. (The full narrated versions are in the submission videos.)
+
+### Chainlink CRE: the referee
+
+<img src="media/sponsors/chainlink.gif" alt="How Terrace uses Chainlink CRE: API-Football and Claude feed three workflows (settlement, questions, reveal) that report to TerraceOracle on Monad" width="100%">
+
+Three workflows are the only path for results onto the chain. **settlement** schedules fixtures and writes scores, **questions** checks every take's rule each minute and sends rule-less takes to an AI judge, and **reveal** opens sealed bets and picks inside a TEE. `TerraceOracle` accepts nothing else. Code: [`monad/cre`](monad/cre) · addresses: [Chainlink CRE on chain](#chainlink-cre-on-chain).
+
+### Envio HyperIndex: the read layer
+
+<img src="media/sponsors/envio.gif" alt="How Terrace uses Envio: nine contracts stream through HyperSync into 41 handlers and 17 entities, served as one GraphQL API to every screen" width="100%">
+
+One HyperIndex deployment follows all nine contracts: 41 handlers keep 17 entities current, Terrace Points and the feed's heat score are computed in the handlers, and every screen reads one GraphQL API. Code: [`monad/indexer`](monad/indexer) · endpoint: [Envio HyperIndex](#envio-hyperindex).
+
+### Alchemy: the RPC behind the scenes
+
+<img src="media/sponsors/alchemy.gif" alt="How Terrace uses Alchemy: sign-up top-ups, server reads, CRE workflows, the matchday runner and AI agents all reach Monad through Alchemy, with the public RPC as fallback" width="100%">
+
+Sign-up top-ups, server reads, the CRE workflows, the matchday runner and both AI agents talk to Monad through Alchemy, with the public RPC only as a fallback; fans' browsers keep the public RPC to themselves. Code: [`rpc.ts`](monad/app/src/lib/server/rpc.ts), [`project.yaml`](monad/cre/project.yaml).
+
+### Mera: taps, not pop-ups
+
+<img src="media/sponsors/mera.gif" alt="How Terrace uses Mera for UX: an invite link, one Face ID, a PRF secret and a Mera signing session; small actions sign silently and big stakes ask for Face ID again" width="100%">
+
+One Face ID is the whole sign-up. A Mera signing session keeps the key in memory, so chat, picks and small bets sign silently, and only big stakes ask for the passkey again. Code: [`mera.ts`](monad/app/src/lib/mera.ts).
+
+### Mera: one passkey, many keys
+
+<img src="media/sponsors/keys.gif" alt="How Terrace derives many keys from one Mera passkey: HKDF namespaces for the account, sealed-pick salts, a self-box key, an AI agent wallet and agent memory" width="100%">
+
+A single PRF secret is split with HKDF into the fan's account, sealing salts, a private copy of their sealed picks, a wallet for their AI agent and a key for its memory. Nothing is stored on the phone, so the whole account rebuilds from the passkey on any device. Code: [`mera.ts`](monad/app/src/lib/mera.ts) · details: [Accounts](#accounts-one-passkey-many-keys).
+
 ---
 
 ## AI on the terrace
