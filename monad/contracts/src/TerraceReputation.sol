@@ -168,7 +168,7 @@ contract TerraceReputation is Ownable {
         return _records[player].points;
     }
 
-    /// @dev Same thresholds as the Solana build: Legend 50+ results at 65%+, Sharp 10+ at 55%+.
+    /// @dev Badge thresholds: Legend 50+ results at 65%+, Sharp 10+ at 55%+.
     function _badge(uint32 total, uint16 rateBps) internal pure returns (Badge) {
         if (total >= 50 && rateBps >= 6_500) return Badge.Legend;
         if (total >= 10 && rateBps >= 5_500) return Badge.Sharp;

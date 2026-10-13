@@ -338,7 +338,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     }
 
     /// @notice Count a member's winning market bet towards the season table. Anyone can call it.
-    ///         Bets on one of a finished gameweek's matches score 1 point (as in the Solana league);
+    ///         Bets on one of a finished gameweek's matches score 1 point;
     ///         featured takes score FEATURED_TAKE_POINTS once the gameweek they belong to is done.
     function countMarketWin(uint256 leagueId, uint8 gameweek, uint256 marketId, address member) external {
         League storage l = _league(leagueId);

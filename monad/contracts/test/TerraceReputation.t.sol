@@ -33,7 +33,7 @@ contract TerraceReputationTest is Test {
         assertEq(rep.recordOf(fan).streak, 1);
     }
 
-    function test_badgesFollowTheSolanaThresholds() public {
+    function test_badgesFollowTheThresholds() public {
         for (uint256 i; i < 6; ++i) _result(true);
         for (uint256 i; i < 4; ++i) _result(false);
         assertEq(uint8(rep.recordOf(fan).badge), uint8(TerraceReputation.Badge.Sharp)); // 10 at 60%

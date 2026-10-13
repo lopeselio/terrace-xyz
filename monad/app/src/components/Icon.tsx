@@ -1,4 +1,4 @@
-// Terrace icon set (24px grid, 1.75 stroke, currentColor), ported from the Solana app's Icon.tsx.
+// Terrace icon set (24px grid, 1.75 stroke, currentColor), shared with the design system.
 export const ICON_PATHS = {
   home: '<path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   pitch: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 9h3v6H3M21 9h-3v6h3"/><circle cx="12" cy="12" r="2.6"/>',
