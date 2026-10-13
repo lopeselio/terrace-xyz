@@ -42,7 +42,10 @@
   #prog div { position: relative; height: 4px; border-radius: 3px; background: #1f1f1f; overflow: hidden; }
   #prog div b { position: absolute; inset: 0; background: var(--green); transform-origin: 0 50%; }
   #vo { position: absolute; left: 160px; right: 160px; top: 968px; z-index: 9; display: flex; justify-content: center; pointer-events: none; }
-  #vo span { max-width: 1500px; text-align: center; font-weight: 600; font-size: 34px; line-height: 1.3; color: #fff; background: rgba(0,0,0,0.72); border-radius: 12px; padding: 8px 20px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  #vo > span { max-width: 1500px; text-align: center; font-weight: 600; font-size: 34px; line-height: 1.3; color: #fff; background: rgba(0,0,0,0.78); border-radius: 12px; padding: 8px 20px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  #vo .w { padding: 0 4px; border-radius: 7px; color: rgba(255,255,255,0.45); }
+  #vo .w.done { color: #fff; }
+  #vo .w.now { color: #0B0E0C; background: #2BD46B; }
   #progLabel { display: none; position: absolute; left: 140px; top: 1004px; z-index: 5; font-family: var(--mono); font-size: 13px; letter-spacing: 1.6px; color: var(--ink3); text-transform: uppercase; }
 
   /* phone */
@@ -140,28 +143,28 @@ const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
    vo:    the voice-over line, shown as subtitles across the shot */
 const SHOTS = [
   { t0: 0, t1: 8, clip: true, title: "Terrace", hot: ["Terrace"], subs: ["The social prediction layer for football", "Turn any call into a market your mates can back or fade", "Settled automatically from real match data"],
-    vo: "Every football group chat is full of calls nobody can hold you to. Terrace changes that." },
+    vo: "Every football group chat is full of calls nobody can hold you to. Terrace changes all of that." },
   { t0: 8, t1: 22, clip: true, title: "One passkey = your account", hot: ["passkey"], subs: ["Sign up with Face ID, powered by Mera passkeys", "No wallet, seed phrase, email or password", "Lands with $100 in test dollars to play"],
-    vo: "Sign up is one Face ID. No wallet, no seed phrase, no email. The passkey is the account, and it lands with a hundred test dollars, ready to play." },
+    vo: "Sign up is one Face ID. No wallet, no seed phrase, no email, no password. The passkey is the account, and it lands with a hundred test dollars, ready to play." },
   { t0: 22, t1: 38, clip: true, title: "Your matchday", hot: ["matchday"], subs: ["Live tape: every back and fade as it happens", "Your club brief: prices, form and a prediction", "In-play matches and what fans are backing"],
-    vo: "Home is your matchday. A live tape of every back and fade, and a brief for your club: prices, form and a prediction, before kick-off." },
+    vo: "Home is your matchday. A live tape of every back and fade as it happens, and a brief for your club: prices, form and a prediction, before kick-off. Below it, the matches in play and what fans are backing." },
   { t0: 38, t1: 52, clip: true, title: "Back a price", hot: ["price"], subs: ["Tap a price, pick a stake, place it", "Confirmed on Monad in under a second", "Every bet earns Terrace Points"],
-    vo: "Tap a price, pick a stake, place it. It's confirmed on Monad in under a second, and your Terrace Points roll in as you play." },
+    vo: "Tap any price, pick a stake, place it. It's confirmed on Monad in under a second, no pop-ups and no waiting, and your Terrace Points roll in as you play." },
   { t0: 52, t1: 63.5, clip: true, title: "Any take → a market", hot: ["market"], subs: ["Type your take in the match chat", "Terrace AI turns it into a rule you read first", "Chainlink checks that exact rule at full time"],
-    vo: "Now the big one. I type my take and tap Make it a market. Terrace AI turns it into a rule I can read, and Chainlink checks that exact rule at full time." },
+    vo: "I type my take and tap Make it a market. Terrace AI turns it into a rule I can read, and Chainlink checks that exact rule at full time." },
   { t0: 63.5, t1: 75, clip: true, title: "Follow. Copy. Win.", hot: ["Copy."], subs: ["The bell: 1v1s, league invites, your crew's points", "Follow the sharpest fans and see what they're backing", "Copy any take in one tap"],
     vo: "The bell flags your 1v1s, league invites, and points scored by you and your mates. Follow top fans, see what they're backing, and copy their calls in one tap." },
   { t0: 75, t1: 85, clip: true, title: "House liquidity", hot: ["House"], subs: ["Mates back or fade your take straight away", "Terrace House opens it at the bookmakers' line", "A real price from the very first bet"],
-    vo: "A mate sees it straight away and fades it. Our house liquidity opened it at the bookmakers' line, so there's a real price from the first bet." },
+    vo: "A mate sees it straight away and fades it. Our house liquidity opened it at the bookmakers' line: a real price from the first bet." },
   { t0: 85, t1: 95, title: "Swipe to back or fade", hot: ["Swipe"], subs: ["A deck of the weekend's calls", "Right to back, left to fade, down to skip", "Every card shows its live price"],
-    vo: "Short on time? Swipe. Right to back, left to fade, down to skip.",
+    vo: "Short on time? Swipe through the weekend's calls. Right to back, left to fade, down to skip. Every card shows its live price.",
     items: [{ s: 16, t: 85, tr: "push", taps: [[0.71, 0.76, 88.3]] }, { s: 14, t: 88.9, tr: "fade", taps: [[0.29, 0.76, 92.1]] }, { s: 15, t: 92.7, tr: "sheet" }] },
   { t0: 95, t1: 114, clip: true, title: "1v1 challenges by link", hot: ["1v1"], subs: ["Pick a call, a side and a stake", "Send it by link to any mate", "Equal stakes: the winner takes both"],
     vo: "Want to settle an argument? Send a 1v1 by link. Pick your side and the stake: five dollars says you can't call it. They accept, and the winner takes both stakes. If nobody takes it, your stake comes straight back." },
   { t0: 114, t1: 121, clip: true, title: "Parlays", hot: ["Parlays"], subs: ["Stack 2 to 8 calls across matches", "Results, goals and fan takes", "Every leg lands: share the weekly pot"],
-    vo: "Or stack calls into a parlay: results, goals and fan takes." },
+    vo: "Or stack calls into a parlay: results, goals and fan takes. Land every leg, share the pot." },
   { t0: 121, t1: 145, clip: true, title: "Private leagues", hot: ["Private"], subs: ["Fantasy football with stakes and an entry fee", "The group votes on gameweeks and featured takes", "Picks sealed, table hidden until Chainlink reveals it"],
-    vo: "Private leagues are fantasy football with stakes. I choose whether I run it or the group votes. Picks are sealed, so nobody can copy them. The table stays hidden until Chainlink reveals it at the final whistle, and members vote on gameweeks and featured takes." },
+    vo: "Private leagues are fantasy football with stakes and an entry fee. Invite your mates with a link. I choose whether I run it or the group votes. Picks are sealed, so nobody can copy them. The table stays hidden until Chainlink reveals it at the final whistle, and members vote on gameweeks and featured takes." },
   { t0: 145, t1: 155, title: "Your record", hot: ["record"], subs: ["Leaderboard by Terrace Points and win rate", "AI players clearly marked", "Every bet in green or red"],
     vo: "Everything feeds your record: a leaderboard by points and win rate, with AI players marked, and your bets in green and red.",
     items: [{ s: 11, t: 145, tr: "push", focus: { y0: 0.25, y1: 0.62, at: 146.4, until: 150 } }, { s: 7, t: 150.4, tr: "push" }] },
@@ -169,7 +172,7 @@ const SHOTS = [
     logos: [["chainlink.png", "Chainlink CRE"], ["alchemy.png"], ["envio.png"]],
     vo: "After full time, Chainlink CRE reads the official match data and settles every market on Monad, through Alchemy. Envio puts every result in your feed in seconds. No admin, no settle button. You won, collect." },
   { t0: 170, t1: 179, clip: true, title: "AI pundits play too", hot: ["AI"], subs: ["AI agents make calls you can back or fade", "Built on Monad, settled by Chainlink", "Play at play.terrace.social"],
-    vo: "AI pundits play alongside fans. Built on Monad, settled by Chainlink. This is Terrace. Play at play.terrace.social." },
+    vo: "AI pundits play alongside fans: back or fade them too. Built on Monad, settled by Chainlink. This is Terrace. Play at play.terrace.social." },
 ];
 const END = 174.5;
 
@@ -218,7 +221,10 @@ const shotEls = SHOTS.map((sh, n) => {
   $("shots").appendChild(box);
   return { box, num, words, subEls };
 });
-// voice-over subtitles: sentences (long ones split at commas), timed by word count across the shot
+// voice-over subtitles: sentences (long ones split at commas). Every word gets its own time from a
+// reading-pace model (length + a breath at punctuation), stretched to fill the shot, so the highlighted
+// word is the one to be saying.
+const PAUSE = { ",": 0.12, ":": 0.15, ".": 0.22, "?": 0.22, "!": 0.22 };
 const VO = SHOTS.flatMap((sh) => {
   const parts = [];
   for (const sent of sh.vo.split(/(?<=[.?!])\s+/)) {
@@ -229,10 +235,18 @@ const VO = SHOTS.flatMap((sh) => {
     }
     if (cur) parts.push(cur);
   }
-  const words = parts.map((p) => p.split(" ").length), total = words.reduce((a, b) => a + b, 0);
+  const weigh = (w) => 0.17 + 0.042 * Math.max(1, w.replace(/[^A-Za-z0-9]/g, "").length);
+  const lines = parts.map((p) => p.split(" ").map((w) => ({ w, d: weigh(w), gap: PAUSE[w.slice(-1)] || 0 })));
   const a = sh.t0 + 0.25, b = sh.t1 - 0.25;
+  const total = lines.flat().reduce((n, x) => n + x.d + x.gap, 0);
+  const k = (b - a) / total;
   let t = a;
-  return parts.map((text, i) => { const d = ((b - a) * words[i]) / total; const c = { text, t0: t, t1: t + d }; t += d; return c; });
+  return lines.map((ws, i) => {
+    const c = { text: parts[i], t0: t, words: [] };
+    for (const x of ws) { c.words.push({ w: x.w, t0: t, t1: t + x.d * k }); t += (x.d + x.gap) * k; }
+    c.t1 = t;
+    return c;
+  });
 });
 const prog = $("prog");
 const progBars = SHOTS.map((sh) => { const d = document.createElement("div"); d.style.flex = String(sh.t1 - sh.t0); const b = document.createElement("b"); d.appendChild(b); prog.appendChild(d); return b; });
@@ -295,7 +309,15 @@ window.seek = async (t) => {
   const v = VO.find((c) => t >= c.t0 && t < c.t1);
   const voSpan = $("vo").firstElementChild;
   if (v) {
-    if (voSpan.textContent !== v.text) voSpan.textContent = v.text;
+    if (voSpan.dataset.text !== v.text) {
+      voSpan.dataset.text = v.text;
+      voSpan.innerHTML = "";
+      v.spans = v.words.map((w) => { const sp = document.createElement("span"); sp.className = "w"; sp.textContent = w.w; voSpan.append(sp, " "); return sp; });
+    }
+    v.words.forEach((w, i) => {
+      const until = i + 1 < v.words.length ? v.words[i + 1].t0 : w.t1 + 0.2;
+      v.spans[i].className = "w" + (t >= until ? " done" : t >= w.t0 ? " now" : "");
+    });
     const k = Math.min(io((t - v.t0) / 0.15), io((v.t1 - t) / 0.15));
     set($("vo"), { opacity: k, visibility: "visible" });
   } else $("vo").style.visibility = "hidden";
