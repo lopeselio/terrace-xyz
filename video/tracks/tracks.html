@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace · Sponsor tracks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet" />
+<style>
+  :root {
+    --canvas: #0a0a0a; --surface: #121412; --raised: #191c19; --line: #2a2e2a;
+    --green: #22c55e; --red: #ef4444; --amber: #fbbf24; --violet: #a78bfa;
+    --ink: #f5f6f3; --ink2: #a3aaa4; --ink3: #6b736c;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+    --acc: #22c55e; --acc2: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); transform-origin: 0 0; -webkit-font-smoothing: antialiased; }
+  #bg { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 32px 32px; }
+  #glow { position: absolute; width: 1600px; height: 1600px; border-radius: 50%; filter: blur(40px); opacity: 0.16; background: radial-gradient(circle, var(--acc) 0%, transparent 62%); }
+
+  /* diagram */
+  #world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  #edges { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
+  .node { position: absolute; border-radius: 18px; background: var(--surface); border: 2px solid var(--line); padding: 18px 22px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .node .nt { font-family: var(--cond); font-weight: 700; font-size: 31px; line-height: 1; letter-spacing: 0.2px; }
+  .node .ns { font-size: 19px; line-height: 1.3; color: var(--ink2); white-space: pre-line; }
+  .node .tag { position: absolute; right: 14px; top: 12px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 9px; border-radius: 7px; background: #1f231f; color: var(--ink2); }
+  .node .tag.hot { background: color-mix(in srgb, var(--acc) 22%, #000); color: var(--acc2); }
+  .node.mono .nt { font-family: var(--mono); font-weight: 600; font-size: 24px; }
+  .node.group { background: rgba(255,255,255,0.015); border: 2px dashed #333833; padding: 0; justify-content: flex-start; }
+  .node.group .nt { position: absolute; left: 20px; top: 14px; font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 2.4px; text-transform: uppercase; color: var(--ink3); }
+  .node.chip { border-radius: 12px; padding: 0 18px; background: var(--raised); }
+  .node.chip .nt { font-family: var(--sans); font-weight: 700; font-size: 21px; }
+  .node.db { border-radius: 50% / 16%; text-align: center; align-items: center; padding: 34px 26px; }
+  .node.phone { border-radius: 36px; border-width: 3px; align-items: center; text-align: center; }
+  .node.phone::before { content: ""; position: absolute; top: 14px; width: 70px; height: 9px; border-radius: 9px; background: #262a26; }
+  .node.hero { border-width: 3px; }
+  .node.hero .nt { font-size: 46px; }
+  .node img.logo { height: 40px; align-self: flex-start; margin-bottom: 6px; }
+  .edge { fill: none; stroke-width: 3px; stroke-linecap: round; }
+  .elabel { position: absolute; transform: translate(-50%, -50%); font-size: 15px; font-weight: 700; letter-spacing: 0.3px; padding: 4px 10px; border-radius: 8px; background: #0d0f0d; border: 1.5px solid #2c312c; color: var(--ink2); white-space: nowrap; }
+
+  /* chrome: scrims so diagram content fades under the title and at the frame edges when zoomed */
+  #scrim { position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    background: linear-gradient(to bottom, var(--canvas) 0, var(--canvas) 150px, transparent 235px),
+                linear-gradient(to right, var(--canvas) 0, transparent 90px),
+                linear-gradient(to left, var(--canvas) 0, transparent 90px); }
+  /* chrome */
+  #head { position: absolute; left: 80px; top: 56px; right: 80px; z-index: 5; }
+  #kicker { display: flex; align-items: center; gap: 14px; font-weight: 700; font-size: 20px; letter-spacing: 2.6px; text-transform: uppercase; color: var(--ink2); }
+  #kicker img { height: 30px; }
+  #kicker .x { color: var(--ink3); }
+  #title { margin-top: 12px; font-family: var(--cond); font-weight: 800; font-size: 68px; line-height: 0.95; text-transform: uppercase; white-space: nowrap; }
+  #title .hot { color: var(--acc2); }
+  #step { position: absolute; right: 0; top: 0; font-family: var(--cond); font-weight: 700; font-size: 26px; color: var(--ink3); letter-spacing: 1px; }
+  #step b { color: var(--ink); }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: #161816; z-index: 6; }
+  #bar i { display: block; height: 100%; background: var(--acc); }
+  #cap { position: absolute; left: 50%; bottom: 58px; width: 1480px; transform: translateX(-50%); z-index: 6; text-align: center; font-size: 35px; font-weight: 600; line-height: 1.32; color: #fff; padding: 20px 36px; border-radius: 18px; background: rgba(8,9,8,0.86); border: 1.5px solid #222622; }
+  #cap code, .panel code { font-family: var(--mono); font-size: 0.86em; color: var(--acc2); }
+
+  /* panels (screen space) */
+  .panel { position: absolute; z-index: 4; border-radius: 20px; background: #0c0e0c; border: 2px solid #2c312c; box-shadow: 0 30px 80px rgba(0,0,0,0.6); overflow: hidden; }
+  .panel .ph { display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-bottom: 1.5px solid #1f231f; font-family: var(--mono); font-size: 18px; color: var(--ink3); }
+  .panel .ph i { width: 13px; height: 13px; border-radius: 50%; background: #2a2e2a; }
+  .panel pre { padding: 22px 28px 26px; font-family: var(--mono); font-size: 25px; line-height: 1.55; color: #e6e9e4; white-space: pre; }
+  .c-com { color: #6b736c; } .c-str { color: #86efac; } .c-num { color: #fcd34d; } .c-key { color: #c4b5fd; }
+
+  /* terminal */
+  #term { position: absolute; left: 110px; top: 200px; width: 1700px; height: 650px; z-index: 4; border-radius: 20px; background: #070807; border: 2px solid #2c312c; box-shadow: 0 30px 90px rgba(0,0,0,0.7); overflow: hidden; display: none; }
+  #term .ph { display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-bottom: 1.5px solid #1a1d1a; font-family: var(--mono); font-size: 17px; color: var(--ink3); }
+  #term .ph i { width: 13px; height: 13px; border-radius: 50%; }
+  #tbody { position: absolute; left: 0; right: 0; top: 54px; bottom: 0; padding: 18px 28px; font-family: var(--mono); font-size: 21px; line-height: 1.6; overflow: hidden; }
+  #tbody div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .t-cmd { color: #fff; } .t-cmd b { color: #4ade80; font-weight: 600; }
+  .t-ok { color: #4ade80; } .t-log { color: #e5e7eb; } .t-log em { color: #93c5fd; font-style: normal; } .t-res { color: #fcd34d; } .t-dim { color: #5b625c; }
+  .cursor { display: inline-block; width: 12px; height: 24px; background: #e5e7eb; vertical-align: -4px; margin-left: 2px; }
+
+  /* intro / outro */
+  .card { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; background: var(--canvas); }
+  .card .logos { display: flex; align-items: center; gap: 44px; }
+  .card .logos img { height: 96px; }
+  .card .logos .pill { background: #fff; padding: 22px 34px; border-radius: 26px; }
+  .card .logos .pill img { height: 70px; display: block; }
+  .card .logos .x { font-family: var(--cond); font-size: 70px; color: var(--ink3); }
+  .card .wordmark { font-family: var(--cond); font-weight: 800; font-size: 96px; letter-spacing: 1px; }
+  .card h1 { font-family: var(--cond); font-weight: 800; font-size: 104px; line-height: 0.95; text-transform: uppercase; text-align: center; }
+  .card h1 .hot { color: var(--acc2); }
+  .card p { font-size: 34px; color: var(--ink2); text-align: center; }
+  .card .url { font-size: 40px; font-weight: 700; color: #0a0a0a; background: var(--green); padding: 16px 44px; border-radius: 999px; }
+  .card .meta { font-family: var(--mono); font-size: 22px; color: var(--ink3); }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="bg"></div>
+  <div id="glow"></div>
+  <div id="world"><svg id="edges"></svg></div>
+  <div id="scrim"></div>
+  <div id="head">
+    <div id="kicker"></div>
+    <div id="title"></div>
+    <div id="step"></div>
+  </div>
+  <div id="panels"></div>
+  <div id="term"><div class="ph"><i style="background:#ef4444"></i><i style="background:#f59e0b"></i><i style="background:#22c55e"></i><span style="margin-left:12px">monad/cre — zsh</span></div><div id="tbody"></div></div>
+  <div id="cap"></div>
+  <div id="bar"><i></i></div>
+  <div class="card" id="intro"></div>
+  <div class="card" id="outro"></div>
+</div>
+<script>
+/* ------------------------------------------------------------------------------------------------
+ * Five sponsor-track explainers, one engine. Each track is data: nodes, edges, beats (title,
+ * caption, camera, highlight), code panels and, for Chainlink, a terminal replaying a real CRE run.
+ * window.seek(t) is a pure function of time, so render.py can shoot any frame.
+ *   tracks.html?track=envio | alchemy | chainlink | mera | keys      (space play/pause, arrows scrub)
+ * ---------------------------------------------------------------------------------------------- */
+const INTRO = 4.4, OUTRO = 6;
+
+const TRACKS = {
+  envio: {
+    name: "Envio", logo: "assets/envio.png", acc: "#ff9f43", acc2: "#ffc46b",
+    kicker: "Envio HyperIndex", bounty: "Best Use of Envio", code: "monad/indexer",
+    headline: 'How Terrace uses <span class="hot">Envio</span>',
+    sub: "HyperIndex is Terrace's entire read layer",
+    outro: "Every screen on Terrace reads from one Envio index.",
+    dur: 80,
+    nodes: [
+      { id: "fan", kind: "phone", x: 70, y: 360, w: 200, h: 320, t: "Fans + AI agents", s: "bet · chat · pick\nvote · 1v1" },
+      { id: "monad", kind: "group", x: 320, y: 215, w: 290, h: 650, t: "Monad testnet" },
+      ...["Markets", "Chat", "Leagues", "Governance", "Matchups", "Parlays", "Reputation", "Follows", "Oracle"].map((n, i) =>
+        ({ id: "c" + i, kind: "chip", parent: "monad", x: 342, y: 262 + i * 64, w: 246, h: 50, t: n })),
+      { id: "envio", kind: "group", x: 680, y: 215, w: 560, h: 650, t: "Envio HyperIndex (hosted)" },
+      { id: "hs", parent: "envio", x: 710, y: 262, w: 500, h: 116, t: "HyperSync", s: "streams every Terrace log\nfrom block 69,936,148" },
+      { id: "hd", parent: "envio", x: 710, y: 404, w: 500, h: 116, t: "41 event handlers", s: "TypeScript, one per contract event" },
+      { id: "en", parent: "envio", x: 710, y: 546, w: 500, h: 160, t: "17 entities", s: "Player · Market · Bet · Message · FeedItem\nPointsEvent · League · Contest · Proposal…" },
+      { id: "gq", parent: "envio", x: 710, y: 732, w: 500, h: 104, t: "GraphQL API", s: "one endpoint for the whole app" },
+      { id: "px", x: 1290, y: 732, w: 240, h: 104, t: "/api/indexer", s: "shared cache per query" },
+      ...["Ranked feed", "Live tape", "Terrace Points", "League tables", "Leaderboard", "Bell alerts"].map((n, i) =>
+        ({ id: "s" + i, kind: "chip", x: 1600, y: 236 + i * 100, w: 260, h: 80, t: n })),
+    ],
+    edges: [
+      { a: "fan", b: "monad", l: "signed txs" },
+      { a: "monad", b: "hs", l: "events" },
+      { a: "hs", b: "hd" }, { a: "hd", b: "en" }, { a: "en", b: "gq" },
+      { a: "gq", b: "px" },
+      ...[0, 1, 2, 3, 4, 5].map((i) => ({ a: "px", b: "s" + i })),
+    ],
+    beats: [
+      { t: INTRO, title: 'Every tap is an <span class="hot">on-chain event</span>', cap: "Fans and AI agents bet, chat, pick and vote on Monad. Nine Terrace contracts emit an event for every one of those actions.", cam: [620, 545, 1], hl: ["fan", "monad"], show: ["fan", "monad"] },
+      { t: 13, title: '<span class="hot">HyperSync</span> pulls them in', cap: "One HyperIndex deployment follows all nine contracts. HyperSync streams their logs far faster than polling an RPC node would.", cam: [800, 545, 1.02], hl: ["monad", "hs"], show: ["envio", "hs"] },
+      { t: 21, title: '41 handlers. <span class="hot">17 entities.</span>', cap: "Each event has a handler that keeps typed entities up to date: players, markets, bets, chat messages, leagues, votes and feed items.", cam: [960, 545, 1.02], hl: ["hs", "hd", "en"], show: ["hd", "en"] },
+      { t: 30, title: 'Terrace Points live <span class="hot">in the indexer</span>', cap: "Points are computed by the handlers, so every point traces to a transaction: bets, takes, wins, 1v1s, leagues, votes, invites and streaks.", cam: [1180, 545, 1], hl: ["hd", "en"], panel: "points" },
+      { t: 41, title: '<span class="hot">Heat</span> ranks the feed', cap: "Every take carries a heat score, updated as it happens from backers, bettors, money staked and the author's record. The app adds time decay.", cam: [1180, 545, 1], hl: ["en"], panel: "heat" },
+      { t: 52, title: 'One GraphQL API behind <span class="hot">every screen</span>', cap: "The app reads Terrace's social data only from Envio: the ranked feed, live tape, points, league tables, leaderboard and bell alerts.", cam: [1240, 545, 1.02], hl: ["gq", "px", "s0", "s1", "s2", "s3", "s4", "s5"], show: ["gq", "px", "s0", "s1", "s2", "s3", "s4", "s5"] },
+      { t: 63, title: 'Built for <span class="hot">matchday</span>', cap: "A bet confirms on Monad in under a second and lands on everyone's tape moments later. One shared cache keeps every open tab to a single query.", cam: [960, 545, 1], hl: "all" },
+    ],
+    panels: {
+      points: { x: 1060, y: 236, w: 790, head: "indexer/src/points.ts", code: [
+        "TAKE_LISTED: <n>25n</n>,  <c>// your take becomes a market</c>",
+        "BET:         <n>10n</n>,  <c>// +1 per dollar, up to 25</c>",
+        "WIN:         <n>20n</n>,  <c>// a bet comes in</c>",
+        "CHALLENGE:   <n>15n</n>,  <c>// throw down a 1v1</c>",
+        "PICKS:       <n>15n</n>,  <c>// gameweek picks</c>",
+        "INVITE:     <n>100n</n>,  <c>// a new fan joins via you</c>",
+        "",
+        "<c>// founding fans: ×2 until 1 Nov 2026</c>",
+        "<c>// AI agents earn none</c>",
+      ] },
+      heat: { x: 1060, y: 236, w: 790, head: "indexer/src/lib.ts · heat(take)", code: [
+        "score = backers × <n>2</n>",
+        "      + bettors × <n>3</n>",
+        "      + log10(volume $ + <n>1</n>) × <n>4</n>",
+        "      + author's take record  <c>// up to +3</c>",
+        "",
+        "<c>// stored on Message.heat; the app ranks</c>",
+        "<c>// by heat ÷ (age in hours + 2)^1.5</c>",
+      ] },
+    },
+  },
+
+  alchemy: {
+    name: "Alchemy", logo: "assets/alchemy.png", pill: true, acc: "#5b6cff", acc2: "#9aa6ff",
+    kicker: "Alchemy RPC", bounty: "Best Projects using Alchemy", code: "monad/app/src/lib/server/rpc.ts · monad/cre/project.yaml · monad/agents",
+    headline: 'How Terrace uses <span class="hot">Alchemy</span>',
+    sub: "The RPC behind sign-up, settlement and our AI agents",
+    outro: "Settlement, sign-up and agents all run through Alchemy.",
+    dur: 70,
+    nodes: [
+      { id: "on", x: 70, y: 225, w: 420, h: 104, t: "Sign-up top-up", s: "/api/onboard · gas, test dollars, USDC" },
+      { id: "rd", x: 70, y: 355, w: 420, h: 104, t: "Server reads", s: "/api/matches · /api/odds · /api/team-brief" },
+      { id: "cr", x: 70, y: 485, w: 420, h: 104, t: "Chainlink CRE workflows", s: "project.yaml RPC for Monad testnet" },
+      { id: "ru", x: 70, y: 615, w: 420, h: 104, t: "Matchday runner", s: "checks the oracle for pending work" },
+      { id: "ag", x: 70, y: 745, w: 420, h: 104, t: "AI agents", s: "The Gaffer · Terrace House" },
+      { id: "al", kind: "hero", x: 740, y: 420, w: 430, h: 210, t: "Alchemy", s: "monad-testnet.g.alchemy.com", img: "assets/alchemy.png" },
+      { id: "pub", x: 740, y: 735, w: 430, h: 114, t: "Public Monad RPC", s: "fallback only" },
+      { id: "mo", kind: "hero", x: 1410, y: 330, w: 440, h: 260, t: "Monad testnet", s: "10 Terrace contracts\n~400 ms blocks" },
+      { id: "br", x: 1410, y: 735, w: 440, h: 114, t: "Fans' browsers", s: "read the public RPC directly" },
+    ],
+    edges: [
+      ...["on", "rd", "cr", "ru", "ag"].map((a) => ({ a, b: "al" })),
+      { a: "al", b: "mo", l: "JSON-RPC" },
+      { a: "al", b: "pub", l: "viem fallback()", dash: true, fs: "b", ts: "t" },
+      { a: "pub", b: "mo", fs: "r", ts: "b", dash: true },
+      { a: "br", b: "pub", fs: "l", ts: "r" },
+    ],
+    beats: [
+      { t: INTRO, title: 'Every server-side call goes <span class="hot">through Alchemy</span>', cap: "Terrace's backend routes, Chainlink workflows, matchday runner and AI agents all reach Monad through one Alchemy endpoint.", cam: [960, 545, 1], hl: ["on", "rd", "cr", "ru", "ag", "al", "mo"], show: ["on", "rd", "cr", "ru", "ag", "al", "mo"] },
+      { t: 13, title: 'Sign-up: <span class="hot">one tap, then a top-up</span>', cap: "When a new fan makes a passkey, our onboarding route sends gas, $100 in test dollars and testnet USDC from the treasury, over Alchemy.", cam: [960, 520, 1.05], hl: ["on", "al", "mo"] },
+      { t: 22, title: 'Alchemy first, <span class="hot">public RPC as backup</span>', cap: "Server code uses viem's fallback transport: Alchemy first, and the public RPC only if a call fails, so sign-up never stalls.", cam: [760, 600, 1], hl: ["al", "pub"], show: ["pub"], panel: "rpc" },
+      { t: 32, title: 'Settlement <span class="hot">runs on it</span>', cap: "The CRE project file points every workflow at Alchemy, so fixtures, final scores and answers to fans' takes are read and written over it.", cam: [960, 545, 1.05], hl: ["cr", "al", "mo"] },
+      { t: 41, title: 'The runner and <span class="hot">AI agents</span> too', cap: "The matchday runner checks the oracle for pending work every minute. The Gaffer and Terrace House sign and send their bets through Alchemy.", cam: [960, 620, 1.05], hl: ["ru", "ag", "al", "mo"] },
+      { t: 51, title: 'The public RPC stays <span class="hot">free for fans</span>', cap: "Fans' browsers read the public endpoint directly. Moving every server call onto Alchemy leaves its rate limit for them on busy matchdays.", cam: [1290, 640, 1.12], hl: ["br", "pub", "mo"], show: ["br"] },
+      { t: 59, title: 'Reliable <span class="hot">on matchday</span>', cap: "Five kinds of server traffic, one provider, and a fast confirmation on Monad for every tap a fan makes.", cam: [960, 545, 1], hl: "all" },
+    ],
+    panels: {
+      rpc: { x: 80, y: 236, w: 850, head: "app/src/lib/server/rpc.ts", code: [
+        "<k>export function</k> serverTransport() {",
+        "  <k>const</k> alchemy = key ? [http(",
+        "    <s>`https://monad-testnet.g.alchemy.com/v2/…`</s>",
+        "  )] : [];",
+        "  <k>return</k> fallback([...alchemy,",
+        "    http(<s>\"https://testnet-rpc.monad.xyz\"</s>)]);",
+        "}",
+        "<c>// agents and the CRE runner use the same URL</c>",
+      ] },
+    },
+  },
+
+  chainlink: {
+    name: "Chainlink", logo: "assets/chainlink.png", acc: "#3b6cf6", acc2: "#8fb0ff",
+    kicker: "Chainlink CRE", bounty: "Best workflow with CRE", code: "monad/cre (settlement · questions · reveal)",
+    headline: 'How Terrace uses <span class="hot">Chainlink CRE</span>',
+    sub: "Three workflows settle every market. No admin, no settle button.",
+    outro: "Only Chainlink CRE can settle a market on Terrace.",
+    dur: 112,
+    nodes: [
+      { id: "api", kind: "db", x: 60, y: 300, w: 290, h: 220, t: "API-Football", s: "fixtures · scores · events\nlineups · player stats" },
+      { id: "ai", x: 60, y: 640, w: 290, h: 150, t: "Claude", s: "AI judge for takes\nno rule can check" },
+      { id: "cre", kind: "group", x: 410, y: 215, w: 520, h: 650, t: "Chainlink CRE · 3 workflows" },
+      { id: "st", parent: "cre", x: 440, y: 262, w: 460, h: 168, t: "settlement", s: "every 6 h: schedule new fixtures\nevery few min: final scores", tag: "reports 1 · 2" },
+      { id: "qu", parent: "cre", x: 440, y: 452, w: 460, h: 186, t: "questions", s: "every minute: check each rule\nafter full time: AI judge", tag: "report 3" },
+      { id: "rv", parent: "cre", x: 440, y: 660, w: 460, h: 176, t: "reveal", s: "runs inside a TEE\nopens sealed bets and picks", tag: "reports 16 · 17" },
+      { id: "cp", x: 1000, y: 215, w: 340, h: 150, t: "Take compiler (AI)", s: "chat take → rule\n+ plain-English reading" },
+      { id: "or", kind: "hero", x: 1000, y: 430, w: 340, h: 230, t: "TerraceOracle", s: "accepts CRE reports only\nchecks the attestor key" },
+      { id: "mo", kind: "group", x: 1410, y: 215, w: 450, h: 650, t: "Monad testnet" },
+      ...["Markets", "Parlays", "Matchups", "Leagues", "Governance", "Reputation"].map((n, i) =>
+        ({ id: "m" + i, kind: "chip", parent: "mo", x: 1440, y: 268 + i * 96, w: 390, h: 64, t: n })),
+    ],
+    edges: [
+      { a: "api", b: "st", l: "HTTP, every node" },
+      { a: "api", b: "qu" },
+      { a: "ai", b: "qu", l: "verdict", dash: true },
+      { a: "st", b: "or", l: "signed report" },
+      { a: "qu", b: "or" },
+      { a: "rv", b: "or" },
+      { a: "or", b: "mo", l: "settle" },
+      { a: "cp", b: "mo", l: "rule stored with the question" },
+    ],
+    beats: [
+      { t: INTRO, title: 'No admin. <span class="hot">No settle button.</span>', cap: "On Terrace only Chainlink CRE can settle a market. The oracle contract accepts nothing else, and every contract reads its results from the oracle.", cam: [1130, 545, 1.1], hl: ["or", "mo"], show: ["or", "mo"] },
+      { t: 13, title: 'Workflow 1: <span class="hot">settlement</span>', cap: "Every six hours it schedules new fixtures from API-Football. Every few minutes it fetches final scores and writes them on chain.", cam: [640, 480, 1.15], hl: ["api", "st", "or"], show: ["api", "cre", "st"] },
+      { t: 22, title: 'Every node <span class="hot">must agree</span>', cap: "Each node fetches the data on its own. Identical-consensus aggregation means a report only lands if every node computed the same answer.", cam: [560, 545, 1.05], hl: ["api", "st"], panel: "consensus" },
+      { t: 32, title: 'Workflow 2: <span class="hot">any take becomes a market</span>', cap: "Our AI compiler turns a chat take into a rule. Fans approve a plain-English reading generated from that rule, so they agree to exactly what CRE checks.", cam: [975, 520, 1], hl: ["cp", "mo"], show: ["cp"], panel: "rule" },
+      { t: 43, title: 'Checked <span class="hot">every minute</span>', cap: "The questions workflow evaluates each rule against live match data. “At least” takes settle the moment they happen, the rest at full time.", cam: [640, 545, 1.12], hl: ["api", "qu", "or"], show: ["qu"] },
+      { t: 52, title: 'An <span class="hot">AI judge</span> for everything else', cap: "Takes no rule can express go to Claude after full time, with the official match events as evidence. Nodes must agree, and anything unclear is void and refunded.", cam: [500, 600, 1.15], hl: ["ai", "qu"], show: ["ai"] },
+      { t: 63, title: 'Workflow 3: <span class="hot">reveal, in a TEE</span>', cap: "Sealed bets and league picks stay hidden until close. The reveal workflow decrypts them inside a confidential enclave and publishes them on chain.", cam: [960, 600, 1.08], hl: ["rv", "or", "mo"], show: ["rv"] },
+      { t: 73, title: 'Signed <span class="hot">twice</span> on testnet', cap: "We run CRE simulations with --broadcast, so each report is also signed by an attestor key the oracle verifies. lockProduction() switches to the live forwarder.", cam: [960, 545, 1], hl: "all" },
+      { t: 82, title: 'A real run of the <span class="hot">CRE CLI</span>', cap: "", term: true },
+    ],
+    panels: {
+      consensus: { x: 1000, y: 236, w: 850, head: "cre/settlement/main.ts", code: [
+        "<k>const</k> agreed = http.sendRequest(",
+        "  runtime, fetchResults,",
+        "  consensusIdenticalAggregation&lt;string&gt;()",
+        ")(url, apiKey).result();",
+        "",
+        "writeReport(runtime, cfg, REPORT.RESULTS,",
+        "  payload, attestorKey(runtime));",
+      ] },
+      rule: { x: 80, y: 236, w: 880, head: "cre/shared/rules.ts", code: [
+        "<s>\"Alisson makes 5+ saves\"</s>",
+        "{ v: <n>1</n>, left: { player: { player: <n>280</n>,",
+        "    field: <s>\"goals.saves\"</s> } },",
+        "  op: <s>\">=\"</s>, value: <n>5</n> }",
+        "",
+        "<c>// fan sees: “Alisson makes at least 5 saves”</c>",
+        "<c>// written by code from the rule, not by the AI</c>",
+      ] },
+    },
+  },
+
+  mera: {
+    name: "Mera", wordmark: "Mera", logo: "assets/monad.png", acc: "#a78bfa", acc2: "#c4b5fd",
+    kicker: "Mera passkeys on Monad", bounty: "Best Mera-Powered UX on Monad", code: "monad/app/src/lib/mera.ts",
+    headline: 'Mera is the <span class="hot">whole account layer</span>',
+    sub: "No seed phrase, no extension, no email code. A passkey is the account.",
+    outro: "One Face ID. That's the whole sign-up.",
+    dur: 76,
+    nodes: [
+      { id: "ln", x: 60, y: 240, w: 300, h: 124, t: "Invite link", s: "a 1v1 or league\nfrom WhatsApp" },
+      { id: "fi", x: 420, y: 240, w: 300, h: 124, t: "One Face ID", s: "createPasskeyWith\nPrfOutput()" },
+      { id: "pr", x: 780, y: 240, w: 300, h: 124, t: "PRF secret", s: "32 bytes, never stored" },
+      { id: "ss", x: 1140, y: 240, w: 330, h: 124, t: "Mera signing session", s: "key lives only in memory" },
+      { id: "ac", x: 1530, y: 240, w: 330, h: 124, t: "Monad account", s: "+ gas, $100 test dollars\nand USDC on arrival" },
+      { id: "sl", x: 60, y: 480, w: 410, h: 134, t: "Silent signing", s: "chat, picks and bets up to $25\nwith no pop-up" },
+      { id: "pz", x: 530, y: 480, w: 410, h: 134, t: "Face ID for big stakes", s: "confirmPresence() checks\nit's the same fan" },
+      { id: "ap", x: 1000, y: 480, w: 410, h: 134, t: "Any phone", s: "same passkey → same account,\nrebuilt from the PRF" },
+      { id: "or", x: 1470, y: 480, w: 390, h: 134, t: "Every Terrace address", s: "RP ID terrace.social\n+ /.well-known/webauthn" },
+      { id: "er", x: 60, y: 708, w: 560, h: 124, t: "Errors in plain language", s: "isMeraError → “That's a different\nTerrace passkey. Pick the one…”" },
+      { id: "lb", x: 680, y: 708, w: 560, h: 124, t: "Labelled passkeys", s: "“Terrace 2026-10-12 21:04”\nin the phone's picker" },
+      { id: "nj", x: 1300, y: 708, w: 560, h: 124, t: "No crypto words", s: "no seed phrase, no gas prompt,\nno wallet connect" },
+    ],
+    edges: [
+      { a: "ln", b: "fi" }, { a: "fi", b: "pr" }, { a: "pr", b: "ss", l: "HKDF" }, { a: "ss", b: "ac" },
+      { a: "ss", b: "sl", fs: "b", ts: "t" }, { a: "ss", b: "pz", fs: "b", ts: "t" },
+      { a: "pr", b: "ap", fs: "b", ts: "t" },
+    ],
+    beats: [
+      { t: INTRO, title: 'A passkey <span class="hot">is the account</span>', cap: "Terrace has no wallet connect, no seed phrase and no email code. Fans sign up and sign in with one Face ID, powered by Mera.", cam: [960, 300, 1], hl: ["ln", "fi", "pr", "ss", "ac"], show: ["ln", "fi", "pr", "ss", "ac"] },
+      { t: 13, title: 'A friend taps <span class="hot">an invite</span>', cap: "A 1v1 or league link from WhatsApp opens the app on what they're joining. One Face ID signs them up and joins, in the same flow.", cam: [560, 420, 1.3], hl: ["ln", "fi"] },
+      { t: 22, title: 'One ceremony, <span class="hot">one secret</span>', cap: "Mera returns the passkey's PRF output. We derive the account key from it and open a Mera signing session, so the key only ever lives in memory.", cam: [780, 420, 1], hl: ["pr", "ss"], panel: "prf" },
+      { t: 33, title: 'Funded <span class="hot">on arrival</span>', cap: "The new Monad account gets gas, $100 in test dollars and testnet USDC automatically, so the first bet is one tap away.", cam: [1400, 420, 1.3], hl: ["ss", "ac"] },
+      { t: 41, title: 'Taps, <span class="hot">not pop-ups</span>', cap: "Chat, picks and bets up to $25 sign silently. Bigger stakes ask for Face ID again, and we check it's the same fan before signing.", cam: [760, 480, 1.15], hl: ["ss", "sl", "pz"], show: ["sl", "pz"] },
+      { t: 51, title: 'Same fan, <span class="hot">any phone</span>', cap: "Sign in on a new phone and the account rebuilds from the passkey. Related origins let passkeys from our first domain work on play.terrace.social.", cam: [1300, 480, 1.15], hl: ["pr", "ap", "or"], show: ["ap", "or"] },
+      { t: 61, title: 'Consumer-grade <span class="hot">details</span>', cap: "Passkeys are labelled by date in the phone's picker, and Mera's errors become plain sentences a fan can act on.", cam: [960, 545, 1], hl: ["er", "lb", "nj"], show: ["er", "lb", "nj"] },
+    ],
+    panels: {
+      prf: { x: 80, y: 236, w: 850, head: "app/src/lib/mera.ts", code: [
+        "<k>const</k> { prfOutput } =",
+        "  <k>await</k> createPasskeyWithPrfOutput({",
+        "    rp: { id: <s>\"terrace.social\"</s> }, prfSalt });",
+        "",
+        "session = createSecp256k1SigningSession({",
+        "  privateKey: derive(prf, <s>\"terrace/account/v1\"</s>) });",
+        "account = toViemAccount(session);",
+      ] },
+    },
+  },
+
+  keys: {
+    name: "Mera", wordmark: "Mera", logo: "assets/monad.png", acc: "#c084fc", acc2: "#e0b8ff",
+    kicker: "Mera · One Passkey, Many Keys", bounty: "Mera: One Passkey, Many Keys", code: "monad/app/src/lib/mera.ts · monad/cre/shared/sealed.ts",
+    headline: 'One passkey, <span class="hot">many keys</span>',
+    sub: "Four of Terrace's five passkey keys do work that isn't signing wallet transactions",
+    outro: "One Face ID, five keys, nothing stored on the phone.",
+    dur: 74,
+    nodes: [
+      { id: "pk", kind: "phone", x: 60, y: 400, w: 230, h: 260, t: "Passkey", s: "one Face ID" },
+      { id: "pr", x: 350, y: 455, w: 260, h: 150, t: "PRF secret", s: "salt: terrace.passkey\n.prf.v1" },
+      { id: "hk", x: 670, y: 455, w: 260, h: 150, t: "HKDF-SHA256", s: "one namespace\nper job" },
+      ...[
+        ["n0", "terrace/account/v1", "secp256k1"],
+        ["n1", "terrace/seal/v1", "HMAC-SHA256 key"],
+        ["n2", "terrace/self-box/v1", "X25519 key"],
+        ["n3", "terrace/agent/v1", "secp256k1"],
+        ["n4", "terrace/agent-memory/v1", "AES-256 key"],
+      ].map(([id, t, s], i) => ({ id, kind: "mono", x: 990, y: 215 + i * 135, w: 410, h: 112, t, s })),
+      ...[
+        ["u0", "Signs Monad transactions", "the fan's account", "account"],
+        ["u1", "Sealed-pick salts", "reveal from any device", "live"],
+        ["u2", "Your own copy of sealed picks", "read back on any phone", "live"],
+        ["u3", "Your AI agent's wallet", "its own account and record", "live"],
+        ["u4", "Agent notes, encrypted", "readable only by you", "next"],
+      ].map(([id, t, s, tag], i) => ({ id, x: 1450, y: 215 + i * 135, w: 410, h: 112, t, s, tag, hot: tag === "live" })),
+    ],
+    edges: [
+      { a: "pk", b: "pr" }, { a: "pr", b: "hk" },
+      ...[0, 1, 2, 3, 4].flatMap((i) => [{ a: "hk", b: "n" + i }, { a: "n" + i, b: "u" + i }]),
+    ],
+    beats: [
+      { t: INTRO, title: 'One ceremony, <span class="hot">one secret</span>', cap: "Terrace runs one Mera passkey ceremony and gets one PRF secret. HKDF-SHA256 turns it into five keys, each in its own namespace.", cam: [560, 540, 1.25], hl: ["pk", "pr", "hk"], show: ["pk", "pr", "hk"] },
+      { t: 13, title: 'Only one of them <span class="hot">is the account</span>', cap: "terrace/account/v1 drives the Mera signing session for the fan's wallet. The other four do jobs that have nothing to do with signing transactions.", cam: [1180, 540, 1.05], hl: ["hk", "n0", "u0"], show: ["n0", "u0", "n1", "u1", "n2", "u2", "n3", "u3", "n4", "u4"] },
+      { t: 22, title: 'Sealed picks you can reveal <span class="hot">from anywhere</span>', cap: "terrace/seal/v1 is an HMAC key. Each sealed pick's salt comes from it, so the fan can rebuild the commitment on any device, with nothing saved.", cam: [990, 545, 1], hl: ["n1", "u1"], panel: "seal" },
+      { t: 33, title: 'Picks only <span class="hot">you</span> can read', cap: "terrace/self-box/v1 gives each fan an X25519 key. Sealed picks are boxed twice: one copy for Chainlink's reveal enclave, one for the fan alone.", cam: [990, 545, 1], hl: ["n2", "u2"], panel: "box" },
+      { t: 45, title: 'An AI agent with <span class="hot">its own wallet</span>', cap: "terrace/agent/v1 gives the fan's AI agent a separate account and record. terrace/agent-memory/v1 is an AES key reserved for the agent's private notes.", cam: [1420, 700, 1.2], hl: ["n3", "u3", "n4", "u4"] },
+      { t: 55, title: 'Nothing stored. <span class="hot">Everything recoverable.</span>', cap: "No key is ever saved on the device. A new phone, one Face ID, and every one of the five keys comes back exactly as it was.", cam: [960, 545, 1], hl: "all" },
+    ],
+    panels: {
+      seal: { x: 80, y: 236, w: 850, head: "app/src/lib/mera.ts · leagues.ts", code: [
+        "sealKey = derive(prf, <s>\"terrace/seal/v1\"</s>)",
+        "",
+        "salt = HMAC-SHA256(sealKey,",
+        "  <s>`picks:${leagues}:${contestId}`</s>)",
+        "",
+        "commitment = picksCommitment(contest,",
+        "  player, home, away, salt)",
+        "<c>// same passkey → same salt, on any phone</c>",
+      ] },
+      box: { x: 80, y: 236, w: 850, head: "cre/shared/sealed.ts · two-box envelope", code: [
+        "<s>\"TSB1\"</s> | len | CRE box | self box",
+        "",
+        "CRE box  → sealed to the reveal key",
+        "           <c>(opened in Chainlink's TEE)</c>",
+        "self box → sealed to terrace/self-box/v1",
+        "           <c>(opened with the fan's passkey)</c>",
+        "",
+        "<c>// nobody else can read your picks</c>",
+      ] },
+    },
+  },
+};
+
+/* ---------------------------------------------------------------- helpers */
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const out = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k;
+const hi = (s) => s.replace(/<c>/g, '<span class="c-com">').replace(/<\/c>/g, "</span>").replace(/<s>/g, '<span class="c-str">').replace(/<\/s>/g, "</span>")
+  .replace(/<n>/g, '<span class="c-num">').replace(/<\/n>/g, "</span>").replace(/<k>/g, '<span class="c-key">').replace(/<\/k>/g, "</span>");
+
+const params = new URLSearchParams(location.search);
+const KEY = params.get("track") || "envio";
+const T = TRACKS[KEY];
+const DUR = T.dur;
+window.DUR = DUR;
+document.title = `Terrace × ${T.name}`;
+document.documentElement.style.setProperty("--acc", T.acc);
+document.documentElement.style.setProperty("--acc2", T.acc2);
+
+/* ---------------------------------------------------------------- build */
+const byId = {};
+const world = $("#world"), svg = $("#edges");
+const NS = "http://www.w3.org/2000/svg";
+const beats = T.beats;
+
+// When each node first appears: the first beat that shows it (default: the first beat).
+const firstShown = {};
+for (const b of beats) for (const id of b.show || []) firstShown[id] ??= b.t;
+for (const n of T.nodes) {
+  n.at = firstShown[n.id] ?? (n.parent && firstShown[n.parent]) ?? INTRO;
+  const el = document.createElement("div");
+  el.className = `node ${n.kind || ""}`;
+  Object.assign(el.style, { left: n.x + "px", top: n.y + "px", width: n.w + "px", height: n.h + "px" });
+  el.innerHTML = (n.img ? `<img class="logo" src="${n.img}">` : "") + `<div class="nt">${n.t}</div>` + (n.s ? `<div class="ns">${n.s}</div>` : "") + (n.tag ? `<div class="tag ${n.hot ? "hot" : ""}">${n.tag}</div>` : "");
+  if (n.img) el.querySelector(".nt").style.display = "none";
+  world.appendChild(el);
+  n.el = el;
+  byId[n.id] = n;
+}
+// groups behind everything else
+for (const n of T.nodes) if (n.kind === "group") world.insertBefore(n.el, svg.nextSibling);
+
+function anchor(n, side) {
+  const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+  return { r: [n.x + n.w, cy], l: [n.x, cy], t: [cx, n.y], b: [cx, n.y + n.h] }[side];
+}
+for (const e of T.edges) {
+  const A = byId[e.a], B = byId[e.b];
+  let fs = e.fs, ts = e.ts;
+  if (!fs) {
+    const dx = (B.x + B.w / 2) - (A.x + A.w / 2), dy = (B.y + B.h / 2) - (A.y + A.h / 2);
+    if (B.x >= A.x + A.w - 4) { fs = "r"; ts = "l"; } else if (B.x + B.w <= A.x + 4) { fs = "l"; ts = "r"; } else if (dy > 0) { fs = "b"; ts = "t"; } else { fs = "t"; ts = "b"; }
+  }
+  const [x1, y1] = anchor(A, fs), [x2, y2] = anchor(B, ts);
+  const k = (s, d) => ({ r: [d, 0], l: [-d, 0], t: [0, -d], b: [0, d] }[s]);
+  const d = Math.max(50, Math.hypot(x2 - x1, y2 - y1) * 0.42);
+  const [c1x, c1y] = k(fs, d), [c2x, c2y] = k(ts, d);
+  const p = document.createElementNS(NS, "path");
+  p.setAttribute("d", `M${x1},${y1} C${x1 + c1x},${y1 + c1y} ${x2 + c2x},${y2 + c2y} ${x2},${y2}`);
+  p.setAttribute("class", "edge");
+  svg.appendChild(p);
+  e.p = p; e.len = p.getTotalLength();
+  if (e.dash) p.style.strokeDasharray = "9 9";
+  e.dots = [0, 1].map(() => { const c = document.createElementNS(NS, "circle"); c.setAttribute("r", 6); svg.appendChild(c); return c; });
+  const tip = document.createElementNS(NS, "circle"); tip.setAttribute("r", 4.5); svg.appendChild(tip); e.tip = tip;
+  e.end = [x2, y2];
+  if (e.l) {
+    const m = p.getPointAtLength(e.len / 2);
+    const lab = document.createElement("div");
+    lab.className = "elabel"; lab.textContent = e.l;
+    Object.assign(lab.style, { left: m.x + "px", top: m.y + "px" });
+    world.appendChild(lab); e.lab = lab;
+  }
+  e.at = Math.max(A.at, B.at) + 0.45;
+}
+
+// panels
+const panelEls = {};
+for (const [id, P] of Object.entries(T.panels || {})) {
+  const el = document.createElement("div");
+  el.className = "panel";
+  Object.assign(el.style, { left: P.x + "px", top: P.y + "px", width: P.w + "px" });
+  el.innerHTML = `<div class="ph"><i></i><i></i><i></i><span style="margin-left:10px">${P.head}</span></div><pre>${P.code.map(hi).join("\n")}</pre>`;
+  $("#panels").appendChild(el);
+  panelEls[id] = el;
+}
+
+// chrome
+$("#kicker").innerHTML = `<span>${T.kicker}</span><span class="x">×</span><span>Terrace</span>`;
+const logoHtml = T.wordmark ? `<span class="wordmark">${T.wordmark}</span>` : T.pill ? `<span class="pill"><img src="${T.logo}"></span>` : `<img src="${T.logo}">`;
+$("#intro").innerHTML = `<div class="logos">${logoHtml}<span class="x">×</span><img src="assets/terrace.png"></div><h1>${T.headline}</h1><p>${T.sub}</p><div class="meta">${T.bounty}</div>`;
+$("#outro").innerHTML = `<div class="logos"><img src="assets/terrace.png"><span class="x">×</span>${logoHtml}</div><h1 style="font-size:84px">${T.outro}</h1><div class="url">play.terrace.social</div><div class="meta">Live on Monad testnet · code: ${T.code}</div>`;
+
+// terminal replay of a real CRE CLI run (Chainlink only)
+let RUN = null;
+const TERM_GAP = 0.9; // seconds between runs on screen
+function termScript(run) {
+  // Real timings, but the ~5 s of compiling is shortened so the video doesn't sit on a spinner.
+  const rows = [];
+  let at = 0;
+  for (const r of run.runs) {
+    rows.push({ at, type: "cmd", text: r.cmd, why: r.why });
+    at += 1.6;
+    const first = r.lines[0]?.at ?? 0;
+    for (const l of r.lines) {
+      if (l.text.startsWith("│")) continue;
+      const dt = Math.min(1.1, (l.at - first) * 0.5);
+      rows.push({ at: at + dt, type: "out", text: l.text });
+      at += 0.16;
+    }
+    at += Math.min(1.1, ((r.lines.at(-1)?.at ?? first) - first) * 0.5) + TERM_GAP;
+  }
+  return rows;
+}
+function lineHtml(text) {
+  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  if (esc.startsWith("✓")) return `<div class="t-ok">${esc}</div>`;
+  if (esc.startsWith("\"")) return `<div class="t-res">→ ${esc}</div>`;
+  if (/^Binary hash/.test(esc)) return `<div class="t-dim">${esc}</div>`;
+  const m = esc.match(/^(\S+Z) \[(USER LOG|SIMULATION)\] (.*)$/);
+  if (m) return `<div class="${m[2] === "USER LOG" ? "t-log" : "t-dim"}"><span class="t-dim">${m[1].slice(11, 19)} [${m[2]}]</span> ${m[2] === "USER LOG" ? `<em>${m[3]}</em>` : m[3]}</div>`;
+  return `<div class="t-log">${esc}</div>`;
+}
+
+/* ---------------------------------------------------------------- seek */
+function beatAt(t) { let i = 0; for (let j = 0; j < beats.length; j++) if (beats[j].t <= t) i = j; return i; }
+const CAM0 = [960, 545, 1];
+function lit(n, b) {
+  if (!b || !b.hl) return 1;
+  if (b.hl === "all") return 1;
+  if (b.hl.includes(n.id) || (n.parent && b.hl.includes(n.parent))) return 1;
+  if (n.kind === "group" && T.nodes.some((c) => c.parent === n.id && b.hl.includes(c.id))) return 1;
+  return 0;
+}
+
+window.seek = (t) => {
+  const i = beatAt(t), b = beats[i], prev = beats[i - 1];
+  const since = t - b.t;
+  const k = ease(since / 1.4);
+  // camera
+  const c0 = prev?.cam || CAM0, c1 = b.cam || c0;
+  const cx = lerp(c0[0], c1[0], k), cy = lerp(c0[1], c1[1], k), z = lerp(c0[2], c1[2], k);
+  world.style.transform = `translate(${960 - cx * z}px, ${560 - cy * z}px) scale(${z})`;
+  $("#glow").style.transform = `translate(${960 - 800 + (cx - 960) * 0.4}px, ${560 - 800 + (cy - 540) * 0.3}px)`;
+
+  // panels, terminal: dim the world under them
+  const pid = b.panel, pIn = pid ? out((since - 0.6) / 0.7) : 0;
+  const prevP = prev?.panel && prev.panel !== pid ? prev.panel : null;
+  const pOut = prevP ? 1 - out(since / 0.45) : 0;
+  for (const [id, el] of Object.entries(panelEls)) {
+    const v = id === pid ? pIn : id === prevP ? pOut : 0;
+    el.style.opacity = v;
+    el.style.transform = `translateX(${(1 - v) * 60}px)`;
+  }
+  const termOn = b.term ? out(since / 0.8) : 0;
+  const dim = Math.max(pid ? pIn : 0, pOut, termOn);
+
+  // highlight weight, blended from the previous beat
+  const hk = out(since / 0.6);
+  for (const n of T.nodes) {
+    const appear = out((t - n.at) / 0.6);
+    const w = lerp(prev ? lit(n, prev) : 1, lit(n, b), hk);
+    const op = appear * lerp(0.28, 1, w) * (1 - dim * 0.6) * (1 - termOn * 0.4);
+    n.el.style.opacity = op;
+    n.el.style.transform = `translateY(${(1 - appear) * 18}px)`;
+    if (n.kind !== "group") {
+      n.el.style.borderColor = w > 0.5 && b.hl && b.hl !== "all" ? T.acc : "";
+      n.el.style.boxShadow = w > 0.5 && b.hl && b.hl !== "all" ? `0 0 0 1px ${T.acc}55, 0 0 34px ${T.acc}40` : "none";
+    }
+  }
+  for (const e of T.edges) {
+    const A = byId[e.a], B = byId[e.b];
+    const draw = out((t - e.at) / 0.8);
+    const w = Math.min(lerp(prev ? lit(A, prev) : 1, lit(A, b), hk), lerp(prev ? lit(B, prev) : 1, lit(B, b), hk));
+    const strong = w > 0.5 && b.hl;
+    const col = strong ? T.acc : "#3a403a";
+    const base = (1 - dim * 0.6) * (1 - termOn * 0.4);
+    e.p.style.stroke = col;
+    if (e.dash) { e.p.style.opacity = draw * lerp(0.3, 1, w) * base; }
+    else { e.p.style.strokeDasharray = `${e.len} ${e.len}`; e.p.style.strokeDashoffset = e.len * (1 - draw); e.p.style.opacity = lerp(0.35, 1, w) * base; }
+    e.tip.setAttribute("cx", e.end[0]); e.tip.setAttribute("cy", e.end[1]);
+    e.tip.style.fill = col; e.tip.style.opacity = draw >= 0.98 ? base * lerp(0.35, 1, w) : 0;
+    if (e.lab) { e.lab.style.opacity = out((t - e.at - 0.5) / 0.5) * lerp(0.35, 1, w) * base; e.lab.style.borderColor = strong ? T.acc + "99" : ""; e.lab.style.color = strong ? "#fff" : ""; }
+    // packets flow along lit edges
+    const period = Math.max(1.1, e.len / 260);
+    e.dots.forEach((c, j) => {
+      const ph = ((t - e.at) / period + j / 2) % 1;
+      const pt = e.p.getPointAtLength(e.len * ph);
+      c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y);
+      c.style.fill = T.acc2;
+      c.style.opacity = draw >= 1 && strong ? base * Math.sin(Math.PI * ph) : 0;
+    });
+  }
+
+  // title + caption: out with the old, in with the new
+  const titleIn = out(since / 0.6), capIn = out((since - 0.25) / 0.6);
+  $("#title").innerHTML = b.title;
+  $("#title").style.opacity = titleIn;
+  $("#title").style.transform = `translateY(${(1 - titleIn) * 22}px)`;
+  let cap = b.cap;
+  if (b.term && RUN) cap = `Captured from our terminal on ${RUN.captured}: the CRE CLI compiles each workflow to WASM, fetches API-Football and Monad state, and reports${RUN.broadcast ? " on chain" : " (dry run)"}.`;
+  $("#cap").innerHTML = cap;
+  $("#cap").style.opacity = cap ? capIn : 0;
+  $("#cap").style.transform = `translateX(-50%) translateY(${(1 - capIn) * 16}px)`;
+  const nb = beats.length;
+  $("#step").innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b> / ${String(nb).padStart(2, "0")}`;
+  $("#bar i").style.width = `${clamp(t / T.dur) * 100}%`;
+
+  // terminal
+  const term = $("#term");
+  term.style.display = termOn > 0 ? "block" : "none";
+  if (termOn > 0 && RUN) {
+    term.style.opacity = termOn;
+    term.style.transform = `scale(${0.96 + 0.04 * termOn})`;
+    const tt = since - 0.6;
+    const rows = RUN.rows;
+    let html = "";
+    let cursor = true;
+    for (const r of rows) {
+      if (tt < r.at) break;
+      if (r.type === "cmd") {
+        const n = Math.floor((tt - r.at) * 70);
+        const full = r.text;
+        const typed = full.slice(0, n);
+        html += `<div class="t-cmd"><span class="t-dim"># ${r.why}</span></div><div class="t-cmd"><b>$</b> ${typed}${n < full.length ? '<span class="cursor"></span>' : ""}</div>`;
+        cursor = n >= full.length;
+      } else html += lineHtml(r.text);
+    }
+    const body = $("#tbody");
+    body.innerHTML = html + (cursor ? `<div class="t-cmd"><b>$</b> <span class="cursor" style="opacity:${Math.floor(tt * 2) % 2 ? 0 : 1}"></span></div>` : "");
+    // keep the newest lines in view
+    const lines = body.children.length, max = 15;
+    for (let j = 0; j < lines - max; j++) body.children[j].style.display = "none";
+  }
+
+  // intro / outro cards
+  const iv = 1 - out((t - (INTRO - 0.7)) / 0.7);
+  const ic = $("#intro");
+  ic.style.opacity = iv; ic.style.display = iv > 0 ? "flex" : "none";
+  const inK = out(t / 0.9);
+  ic.querySelector(".logos").style.transform = `translateY(${(1 - inK) * 30}px)`;
+  ic.querySelector("h1").style.opacity = out((t - 0.35) / 0.7);
+  ic.querySelector("p").style.opacity = out((t - 0.8) / 0.7);
+  ic.querySelector(".meta").style.opacity = out((t - 1.2) / 0.7);
+  const ov = out((t - (T.dur - OUTRO)) / 0.8);
+  const oc = $("#outro");
+  oc.style.opacity = ov; oc.style.display = ov > 0 ? "flex" : "none";
+  oc.querySelector("h1").style.transform = `translateY(${(1 - out((t - (T.dur - OUTRO) - 0.2) / 0.8)) * 26}px)`;
+};
+
+/* ---------------------------------------------------------------- run */
+function fit() {
+  if (params.get("render")) return;
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $("#frame").style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+addEventListener("resize", fit);
+(async () => {
+  if (KEY === "chainlink") {
+    RUN = await fetch("cre-run.json").then((r) => r.json());
+    RUN.rows = termScript(RUN);
+    const end = 0.6 + RUN.rows.at(-1).at + 3;
+    // the terminal beat lasts as long as the run takes to replay
+    T.dur = Math.max(T.dur, beats.at(-1).t + end + OUTRO);
+  }
+  window.DUR = T.dur;
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r))));
+  fit();
+  let t = parseFloat(params.get("t") || "0");
+  window.seek(t);
+  window.ready = true;
+  if (params.get("render")) return;
+  let playing = true, last = performance.now();
+  const loop = (now) => { if (playing) { t += (now - last) / 1000; if (t > window.DUR) t = 0; window.seek(t); } last = now; requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  addEventListener("keydown", (e) => {
+    if (e.key === " ") playing = !playing;
+    if (e.key === "ArrowRight") { t += e.shiftKey ? 5 : 1; window.seek(t); }
+    if (e.key === "ArrowLeft") { t = Math.max(0, t - (e.shiftKey ? 5 : 1)); window.seek(t); }
+  });
+})();
+</script>
+</body>
+</html>
