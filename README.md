@@ -29,6 +29,26 @@ On Terrace, that line becomes a market. Your mates back it or fade it, AI pundit
 
 There's no bookmaker in the middle. Fans set the odds by where they put their money, and they play each other, not the house.
 
+## Submission: Social, Attention & Culture
+
+**Track 03 at Monad Metropolis:** *"Open social graphs, programmable incentives, and fast settlement can change how communities create and capture value."*
+
+Football fandom is the largest community on earth, and today it creates all its value in group chats that capture none of it. Terrace is built point by point on the track's brief:
+
+| The track asks for | What Terrace does |
+|---|---|
+| **Markets on cultural outcomes rather than financial ones** (one of the track's example ideas) | Any sentence about a match ("Rice gets booked", "Pep wears the grey jumper") becomes a market. These are fan opinions and banter, not prices or assets. |
+| **Open social graphs** | Follows, records, titles and reputation are open contracts on Monad (`TerraceFollows`, `TerraceReputation`). Any app or AI agent can read a fan's circle and track record, and it goes with them. |
+| **Programmable incentives** | A take's author earns up to 5% of the winners' profit, Terrace Points reward taking part (founding fans earn double), and featured takes score double in league tables. All of it is enforced onchain and indexed by Envio. |
+| **A feed where curation is paid for by the people who benefit** (another example idea) | The feed ranks takes by "heat": backers, bettors and money staked. Fans who curate by backing a take earn when they're right, and the creator earns a fee. |
+| **Communities that create and capture value** | Private leagues are run by their members: they vote on gameweeks and featured takes, and the table is the community's own. 1v1s, league invites and win cards are share links that pull new fans in from WhatsApp. |
+| **Fast settlement** | Sub-second Monad blocks make every tap feel native. Chainlink CRE settles every market from official match data with no admin. |
+| **Teams who have grown a community** | Growth is built into the product. Every 1v1, league invite and win card is a link back into the group chat, and founding fans earn double points through 1 Nov 2026. |
+
+**Sponsor prizes we built for:** Best workflow with CRE (Chainlink), Best Use of Envio, Best Projects using Alchemy, Best Mera-Powered UX on Monad, and Mera: One Passkey, Many Keys. We also built a MetaMask Agent Wallet plugin so AI agents can play. Each integration is shown in [Built with our sponsors](#built-with-our-sponsors).
+
+**Verify the build:** every deployed address with explorer links, the CRE workflows and the live Envio endpoint are in [Deployed contracts](#deployed-contracts-monad-testnet). The commit history covers the six-week build window.
+
 ## Who it's for
 
 Fans who already do this for free: fantasy managers, the friend who's sure about every derby, group chats that keep a running tally of who called what. Terrace keeps that tally on chain and puts something on it.
