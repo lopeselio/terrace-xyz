@@ -137,3 +137,25 @@ describe("follows", () => {
     t.expect(f.active).toBe(false);
   });
 });
+
+describe("sign-ups", () => {
+  it("counts a fan's first test-dollar mint as their sign-up and later mints as refills", async (t) => {
+    const indexer = createTestIndexer();
+    const zero = "0x0000000000000000000000000000000000000000";
+    await indexer.process({
+      chains: {
+        10143: {
+          simulate: [
+            { contract: "TerraceUSD", event: "Transfer", params: { from: zero, to: alice, value: 100_000_000n } },
+            { contract: "TerraceUSD", event: "Transfer", params: { from: alice, to: bob, value: 5_000_000n } },
+            { contract: "TerraceUSD", event: "Transfer", params: { from: zero, to: alice, value: 60_000_000n } },
+          ],
+        },
+      },
+    });
+    const a = await indexer.Signup.getOrThrow(alice.toLowerCase());
+    t.expect(a.refills).toBe(1);
+    t.expect(a.minted).toBe(160_000_000n);
+    t.expect(await indexer.Signup.get(bob.toLowerCase())).toBeUndefined();
+  });
+});

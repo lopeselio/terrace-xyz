@@ -31,6 +31,15 @@ type Player {
   following: Int!
 }
 
+# A fan's account, from the onboarding server's first test-dollar mint (every new passkey account gets one,
+# whether or not it ever plays). Later mints are refills when a fan runs low.
+type Signup {
+  id: ID! # address, lowercase
+  at: BigInt! # unix seconds of the first mint
+  refills: Int!
+  minted: BigInt! # test dollars minted in total, 6 decimals
+}
+
 # Who follows whom (TerraceFollows). Inactive once unfollowed.
 type Follow {
   id: ID! # follower-followee

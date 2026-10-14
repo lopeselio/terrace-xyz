@@ -4,7 +4,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 out="$here/../contracts/out"
-for c in TerraceOracle TerraceMarkets TerraceParlays TerraceMatchups TerraceLeagues TerraceGovernance TerraceChat TerraceReputation TerraceFollows; do
+for c in TerraceUSD TerraceOracle TerraceMarkets TerraceParlays TerraceMatchups TerraceLeagues TerraceGovernance TerraceChat TerraceReputation TerraceFollows; do
   python3 -c "import json,sys; json.dump(json.load(open(sys.argv[1]))['abi'], open(sys.argv[2],'w'), indent=1)" \
     "$out/$c.sol/$c.json" "$here/abis/$c.json"
 done

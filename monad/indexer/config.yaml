@@ -4,6 +4,11 @@
 name: terrace-indexer
 description: Chat, takes, markets, leagues and records for Terrace on Monad
 contracts:
+  # test-dollar mints from the onboarding server: a fan's first mint is their sign-up
+  - name: TerraceUSD
+    abi_file_path: ./abis/TerraceUSD.json
+    events:
+      - event: Transfer
   - name: TerraceOracle
     abi_file_path: ./abis/TerraceOracle.json
     events:
@@ -76,6 +81,8 @@ chains:
   - id: 10143 # Monad testnet
     start_block: 69936148
     contracts:
+      - name: TerraceUSD
+        address: "0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe"
       - name: TerraceOracle
         address: "0xca494cB3460b446357a86d656A93aD8b0f2137A3"
       - name: TerraceMarkets
