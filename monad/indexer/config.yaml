@@ -80,6 +80,9 @@ contracts:
 chains:
   - id: 10143 # Monad testnet
     start_block: 69936148
+    # Named explicitly: a hosted deployment once failed to detect HyperSync and sat on RPC at block 0
+    hypersync_config:
+      url: https://10143.hypersync.xyz
     contracts:
       - name: TerraceUSD
         address: "0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe"
