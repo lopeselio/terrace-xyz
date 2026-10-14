@@ -42,6 +42,19 @@ if [ "$(date +%M)" -lt 5 ] || [ ! -f "$STATE.cre" ]; then
 fi
 [ "$(cat "$STATE.cre" 2>/dev/null)" = out ] && add cre-login "The server's Chainlink login has expired: nothing settles until it signs in again."
 
+# Gas: the broadcaster sends every settlement to the chain; the treasury tops up new fans and the agents.
+mon() { # address -> whole MON, or empty if the RPC didn't answer
+  curl -s -m 15 https://testnet-rpc.monad.xyz -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBalance\",\"params\":[\"$1\",\"latest\"]}" |
+    python3 -c 'import sys,json; print(int(json.load(sys.stdin)["result"],16)//10**18)' 2>/dev/null
+}
+low() { # key name address min_mon what_stops
+  local bal; bal=$(mon "$3")
+  [ -n "$bal" ] && [ "$bal" -lt "$4" ] && add "$1" "$2 is down to $bal MON (alert below $4). Top up $3 or $5."
+}
+low gas-broadcaster "The CRE broadcaster" 0x901E8F75cc9F453fD9530b0C5b6763A1343949d7 2 "settlement stops"
+low gas-treasury "The onboarding treasury" 0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718 15 "new fans and the agents stop getting gas"
+
 disk=$(df --output=pcent / | tail -1 | tr -dc 0-9)
 [ "$disk" -ge 85 ] && add disk "Server disk is ${disk}% full."
 
