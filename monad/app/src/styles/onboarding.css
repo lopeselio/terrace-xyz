@@ -39,3 +39,80 @@
 .onb-founding svg { color: var(--amber-ink); }
 .onb-founding b { color: var(--amber-ink); }
 @media (max-height: 700px) { .onb-body, .onb-pop .onb-body { gap: 14px; } .onb-hero { font-size: 38px; } .onb-pt { padding: 8px 14px; } }
+
+/* ── Intro motion: steps slide with your direction, their parts stagger in ── */
+.onb-step.fwd { animation: onbfwd 0.38s var(--ease) both; }
+.onb-step.back { animation: onbback 0.38s var(--ease) both; }
+@keyframes onbfwd { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes onbback { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.onb-step > * { animation: onbup 0.45s var(--ease) both; }
+.onb-step > *:nth-child(2) { animation-delay: 0.07s; }
+.onb-step > *:nth-child(3) { animation-delay: 0.14s; }
+.onb-step > *:nth-child(4) { animation-delay: 0.21s; }
+.onb-step .rowlist > * { animation: onbup 0.4s var(--ease) both; }
+.onb-step .rowlist > *:nth-child(1) { animation-delay: 0.26s; }
+.onb-step .rowlist > *:nth-child(2) { animation-delay: 0.34s; }
+.onb-step .rowlist > *:nth-child(3) { animation-delay: 0.42s; }
+@keyframes onbup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* step 1: a take becomes a market (6 s loop) */
+.illo-take { position: relative; height: 150px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.it-av { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 800; background: #831843; color: #fff; }
+.it-bubble { position: absolute; left: 14px; right: 14px; top: 18px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--raised); border: 1px solid var(--line); animation: itbubble 6s var(--ease) infinite; }
+.it-bubble b { font-size: 11px; color: var(--ink-2); }
+.it-bubble p { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.it-cta { position: absolute; right: 22px; top: 86px; display: flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: var(--r-pill); background: var(--green); color: var(--on-green); font-size: 12px; font-weight: 800; animation: itcta 6s var(--ease) infinite; }
+.it-tap { position: absolute; right: 14px; top: 50%; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5); animation: ittap 6s var(--ease) infinite; }
+.it-market { position: absolute; inset: 12px 14px; display: flex; flex-direction: column; gap: 9px; padding: 11px 12px; border-radius: 14px; background: var(--raised); border: 1px solid var(--green-mid); animation: itmarket 6s var(--ease) infinite; }
+.it-head { display: flex; align-items: center; gap: 8px; }
+.it-head b { flex: 1; font-size: 13px; font-weight: 700; }
+.it-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.it-odds > div { display: flex; flex-direction: column; align-items: center; padding: 5px 0; border-radius: 10px; font-family: var(--cond); font-size: 20px; font-weight: 800; line-height: 1.1; }
+.it-odds small { font-family: var(--font-barlow), sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.6px; }
+.it-back { background: var(--green-deep); color: var(--green-ink); border: 1px solid var(--green-mid); }
+.it-fade { background: var(--red-deep); color: var(--red-ink); border: 1px solid var(--red-mid); }
+.it-fans { display: flex; align-items: center; font-size: 11px; color: var(--ink-3); }
+.it-fans i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--raised); margin-right: -5px; transform: scale(0); animation: itfan 6s var(--ease) infinite; }
+.it-fans i:nth-child(2) { animation-name: itfan2; }
+.it-fans i:nth-child(3) { animation-name: itfan3; }
+.it-fans span { margin-left: 12px; }
+@keyframes itbubble { 0% { opacity: 0; transform: translateY(10px); } 4%, 40% { opacity: 1; transform: none; } 47%, 100% { opacity: 0; transform: translateY(-14px) scale(0.96); } }
+@keyframes itcta { 0%, 12% { opacity: 0; transform: scale(0.8); } 18%, 36% { opacity: 1; transform: none; } 39% { transform: scale(0.93); } 42% { opacity: 1; transform: scale(1.04); } 47%, 100% { opacity: 0; transform: scale(0.9); } }
+@keyframes ittap { 0%, 26% { opacity: 0; transform: translate(26px, 22px); } 33% { opacity: 1; transform: none; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5); } 39% { transform: scale(0.8); box-shadow: 0 0 0 12px rgba(255, 255, 255, 0); } 44%, 100% { opacity: 0; } }
+@keyframes itmarket { 0%, 44% { opacity: 0; transform: translateY(12px) scale(0.97); } 52%, 95% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+@keyframes itfan { 0%, 58% { transform: scale(0); } 63%, 100% { transform: scale(1); } }
+@keyframes itfan2 { 0%, 64% { transform: scale(0); } 69%, 100% { transform: scale(1); } }
+@keyframes itfan3 { 0%, 70% { transform: scale(0); } 75%, 100% { transform: scale(1); } }
+
+/* step 2: the TEST stamp lands once the count finishes */
+.onb-cash { position: relative; }
+.onb-stamp { position: absolute; right: 14px; top: 50%; margin-top: -17px; padding: 4px 10px; border: 2.5px solid var(--amber-ink); border-radius: 8px; color: var(--amber-ink); font-family: var(--cond); font-size: 22px; font-weight: 800; letter-spacing: 2px; transform: rotate(-9deg); animation: onbstamp 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) 1.35s both; }
+@keyframes onbstamp { from { opacity: 0; transform: rotate(-20deg) scale(2.2); } to { opacity: 0.92; transform: rotate(-9deg) scale(1); } }
+
+/* step 3: rows light up as they add to the total */
+.onb-pt { transition: background 0.3s var(--ease), opacity 0.3s var(--ease); opacity: 0.45; }
+.onb-pt.lit { opacity: 1; }
+.onb-pt.now { background: var(--amber-deep); }
+.onb-pt.now b { animation: onbpop2 0.35s var(--ease); }
+@keyframes onbpop2 { 40% { transform: scale(1.25); } }
+.onb-total { opacity: 1; background: var(--raised); font-weight: 700; }
+.onb-total b { font-family: var(--cond); font-size: 22px; transition: color 0.3s; }
+.onb-total b small { font-family: var(--font-barlow), sans-serif; font-size: 11px; color: var(--ink-3); }
+.onb-total b.x2 { animation: onbpop2 0.45s var(--ease); color: var(--amber); }
+.onb-founding { transition: color 0.3s var(--ease); }
+.onb-founding.on { color: var(--ink); }
+
+/* last step: the mark with two soft rings */
+.onb-ready { position: relative; width: 52px; height: 52px; }
+.onb-ready i { position: absolute; inset: 0; border-radius: 14px; border: 2px solid var(--green); opacity: 0; animation: onbring 2.4s var(--ease) infinite; }
+.onb-ready i:last-child { animation-delay: 1.2s; }
+@keyframes onbring { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 0; transform: scale(1.8); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-step, .onb-step > *, .onb-step .rowlist > *, .onb.onb-pop, .onb-ready i { animation: none !important; }
+  .it-bubble, .it-cta, .it-tap { display: none; }
+  .it-market { animation: none; opacity: 1; }
+  .it-fans i { animation: none; transform: none; }
+  .onb-stamp { animation: none; opacity: 0.92; }
+}
+.onb-cash .umeta { flex-basis: 100%; margin-top: -4px; }

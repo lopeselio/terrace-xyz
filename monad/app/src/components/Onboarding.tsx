@@ -25,16 +25,58 @@ const MONEY: Row[] = [
   ["check", "Everything else is real", "Real matches, real odds, settled by Chainlink on Monad"],
 ];
 
-// mirrors indexer/src/points.ts
-const POINTS: [IconName, string, string][] = [
-  ["bolt", "Your first move", "+100"],
-  ["flame", "Post a take in a match chat", "+5"],
-  ["dollar", "Place a bet", "+10 and up"],
-  ["trophy", "A bet comes in", "+20"],
-  ["swords", "Send or accept a 1v1", "+15"],
-  ["users", "Join a private league", "+25"],
-  ["share", "Bring a new fan in", "+100"],
+// mirrors indexer/src/points.ts (a bet is +10 plus up to 25 more for the stake)
+const POINTS: [IconName, string, number, string?][] = [
+  ["bolt", "Your first move", 100],
+  ["flame", "Post a take in a match chat", 5],
+  ["dollar", "Place a bet", 10, "+10 and up"],
+  ["trophy", "A bet comes in", 20],
+  ["swords", "Send or accept a 1v1", 15],
+  ["users", "Join a private league", 25],
+  ["share", "Bring a new fan in", 100],
 ];
+const ALL_ONCE = POINTS.reduce((s, [, , v]) => s + v, 0);
+
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** Counts from 0 to `to` with an ease-out, starting after `delay` ms. */
+function useCountUp(to: number, ms = 1100, delay = 0) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (reducedMotion()) return setV(to);
+    let raf = 0;
+    const t0 = performance.now() + delay;
+    const tick = (now: number) => {
+      const k = Math.min(1, Math.max(0, (now - t0) / ms));
+      setV(Math.round(to * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms, delay]);
+  return v;
+}
+
+/** Step 1's picture: a chat take, the tap, and the market it becomes (loops). */
+function TakeToMarket() {
+  return (
+    <div className="illo-take" aria-hidden>
+      <div className="it-bubble">
+        <span className="it-av">LU</span>
+        <div><b>Loud Ultra</b><p>Haaland scores before half-time.</p></div>
+      </div>
+      <div className="it-cta"><Icon name="flame" size={13} /> Make it a market<i className="it-tap" /></div>
+      <div className="it-market">
+        <div className="it-head"><span className="it-av">LU</span><b>Haaland scores before half-time.</b><span className="badge b-open">MARKET</span></div>
+        <div className="it-odds">
+          <div className="it-back"><small>BACK</small>1/3</div>
+          <div className="it-fade"><small>FADE</small>3/1</div>
+        </div>
+        <div className="it-fans"><i style={{ background: "#1d4ed8" }} /><i style={{ background: "#166534" }} /><i style={{ background: "#a16207" }} /><span>3 mates in · settled by Chainlink</span></div>
+      </div>
+    </div>
+  );
+}
 
 function Rows({ rows }: { rows: Row[] }) {
   return (
@@ -62,7 +104,7 @@ function Logo() {
 function About() {
   return (
     <>
-      <Logo />
+      <TakeToMarket />
       <div>
         <h1 className="onb-hero">Back your<br />take.</h1>
         <p className="onb-sub">Football calls with your mates, turned into markets they can back or fade. No bookmaker in the middle.</p>
@@ -81,12 +123,51 @@ function TestMoney() {
         <h1 className="onb-hero">It&apos;s all<br /><span className="onb-hot">test money.</span></h1>
         <p className="onb-sub">Every dollar you see on Terrace is a test dollar. Play as hard as you like: nothing you do here costs you anything.</p>
       </div>
-      <div className="onb-cash">
-        <span className="badge b-flash">TEST DOLLARS</span>
-        <span className="onb-cash-num">$100</span>
-        <span className="umeta">waiting in your account</span>
-      </div>
+      <Cash />
       <Rows rows={MONEY} />
+    </>
+  );
+}
+
+/** Step 2's picture: $100 counts up, then the TEST stamp lands on it. */
+function Cash() {
+  const v = useCountUp(100, 1000, 250);
+  return (
+    <div className="onb-cash">
+      <span className="badge b-flash">TEST DOLLARS</span>
+      <span className="onb-cash-num">${v}</span>
+      <span className="umeta">waiting in your account</span>
+      <span className="onb-stamp" aria-hidden>TEST</span>
+    </div>
+  );
+}
+
+/** Step 3's picture: each action lights up and adds to a running total, then founding fans double it. */
+function PointsTally() {
+  const [lit, setLit] = useState(0);
+  useEffect(() => {
+    if (reducedMotion()) return setLit(POINTS.length + 1);
+    const t = setInterval(() => setLit((n) => (n > POINTS.length ? n : n + 1)), 420);
+    return () => clearInterval(t);
+  }, []);
+  const total = POINTS.slice(0, Math.min(lit, POINTS.length)).reduce((s, [, , v]) => s + v, 0);
+  const doubled = lit > POINTS.length;
+  return (
+    <>
+      <div className="onb-pts">
+        {POINTS.map(([icon, what, v, label], i) => (
+          <div key={what} className={`onb-pt${i < lit ? " lit" : ""}${i === lit - 1 ? " now" : ""}`}>
+            <Icon name={icon} size={16} />
+            <span>{what}</span>
+            <b>{label ?? `+${v}`}</b>
+          </div>
+        ))}
+        <div className="onb-pt onb-total">
+          <span>Do each once</span>
+          <b className={doubled ? "x2" : ""}>{doubled ? ALL_ONCE * 2 : total}<small> pts</small></b>
+        </div>
+      </div>
+      <div className={`onb-founding${doubled ? " on" : ""}`}><Icon name="crown" size={14} /> Founding fans earn <b>2×</b> on everything until 1 Nov</div>
     </>
   );
 }
@@ -100,16 +181,7 @@ function Points() {
         <h1 className="onb-hero">Play more.<br /><span className="onb-amber">Stack points.</span></h1>
         <p className="onb-sub">Points come from playing, not just winning. They build your record on the leaderboard. They aren&apos;t money.</p>
       </div>
-      <div className="onb-pts">
-        {POINTS.map(([icon, what, pts]) => (
-          <div key={what} className="onb-pt">
-            <Icon name={icon} size={16} />
-            <span>{what}</span>
-            <b>{pts}</b>
-          </div>
-        ))}
-      </div>
-      <div className="onb-founding"><Icon name="crown" size={14} /> Founding fans earn <b>2×</b> on everything until 1 Nov</div>
+      <PointsTally />
     </>
   );
 }
@@ -165,6 +237,7 @@ export function Onboarding() {
   const path = usePathname() ?? "/";
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
+  const [dir, setDir] = useState<"fwd" | "back">("fwd");
   const touch = useRef<number | null>(null);
   useEffect(() => {
     try {
@@ -182,7 +255,11 @@ export function Onboarding() {
     setShow(false);
   }
   const last = step === STEPS.length;
-  const go = (n: number) => setStep(Math.max(0, Math.min(STEPS.length, n)));
+  const go = (n: number) => {
+    const next = Math.max(0, Math.min(STEPS.length, n));
+    setDir(next < step ? "back" : "fwd");
+    setStep(next);
+  };
   const Body = STEPS[step];
   return (
     <div className="onb-overlay" role="dialog" aria-modal aria-label="Welcome to Terrace">
@@ -208,10 +285,10 @@ export function Onboarding() {
             <button className="onb-x" onClick={done} aria-label="Close"><Icon name="close" size={16} /></button>
           </div>
         </div>
-        <div className="onb-body" key={step}>
+        <div className={`onb-body onb-step ${dir}`} key={step}>
           {last ? (
             <>
-              <Logo />
+              <div className="onb-ready"><TerraceMark size={52} /><i /><i /></div>
               <div>
                 <h1 className="onb-hero">You&apos;re<br />ready.</h1>
                 <p className="onb-sub">Create your account with a passkey. Your $100 in test dollars lands straight away.</p>
