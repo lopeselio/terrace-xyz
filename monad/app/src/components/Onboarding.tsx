@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 import { TerraceMark } from "./TerraceMark";
 import { MonadMark } from "./MonadMark";
@@ -7,8 +8,8 @@ import { useAccount } from "@/lib/account";
 import { OldPasskey } from "./OldPasskey";
 import "@/styles/onboarding.css";
 
-// v2: the intro now explains test money and points, so show it again to anyone who skipped the old one
-const FLAG = "terrace.onboarded.v2";
+// "Look around first" hides the intro for this visit only; signing in on this device (terrace.hasPasskey) ends it for good
+const LATER = "terrace.intro.later";
 
 type Row = [IconName, string, string];
 
@@ -158,24 +159,25 @@ function SignInButtons({ busy, error, join, login, onDone }: { busy: boolean; er
 
 const STEPS = [About, TestMoney, Points];
 
-/** First-visit intro: what Terrace is, test money, points, then sign in. Mount once, in the layout. */
+/** Intro popup for anyone not signed in on this device: what Terrace is, test money, points, then sign in. Mount once, in the layout. */
 export function Onboarding() {
   const { status, error, join, login } = useAccount();
+  const path = usePathname() ?? "/";
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
   const touch = useRef<number | null>(null);
   useEffect(() => {
     try {
-      setShow(!localStorage.getItem(FLAG) && localStorage.getItem("terrace.hasPasskey") !== "1");
+      setShow(localStorage.getItem("terrace.hasPasskey") !== "1" && !sessionStorage.getItem(LATER));
     } catch {}
   }, []);
   useEffect(() => {
     if (status === "ready" && show) done();
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!show || status === "ready") return null;
+  if (!show || status === "ready" || path.startsWith("/ops")) return null;
   function done() {
     try {
-      localStorage.setItem(FLAG, "1");
+      sessionStorage.setItem(LATER, "1");
     } catch {}
     setShow(false);
   }
@@ -183,11 +185,10 @@ export function Onboarding() {
   const go = (n: number) => setStep(Math.max(0, Math.min(STEPS.length, n)));
   const Body = STEPS[step];
   return (
-    <div
-      className="onb-overlay"
-      role="dialog"
-      aria-modal
-      aria-label="Welcome to Terrace"
+    <div className="onb-overlay" role="dialog" aria-modal aria-label="Welcome to Terrace">
+      <div className="scrim" onClick={done} />
+      <div
+      className="onb onb-pop"
       onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         if (touch.current === null) return;
@@ -196,14 +197,16 @@ export function Onboarding() {
         if (Math.abs(dx) > 50) go(step + (dx < 0 ? 1 : -1));
       }}
     >
-      <div className="onb">
         <div className="onb-top">
           <div className="onb-dots" aria-label={`Step ${step + 1} of ${STEPS.length + 1}`}>
             {[...STEPS, null].map((_, i) => (
               <button key={i} className={i === step ? "on" : i < step ? "done" : ""} onClick={() => go(i)} aria-label={`Step ${i + 1}`} />
             ))}
           </div>
-          {!last && <button className="textbtn onb-skiptop" onClick={() => go(STEPS.length)}>Skip</button>}
+          <div className="row" style={{ gap: 14 }}>
+            {!last && <button className="textbtn onb-skiptop" onClick={() => go(STEPS.length)}>Skip</button>}
+            <button className="onb-x" onClick={done} aria-label="Close"><Icon name="close" size={16} /></button>
+          </div>
         </div>
         <div className="onb-body" key={step}>
           {last ? (
