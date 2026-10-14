@@ -29,7 +29,15 @@ export async function POST(req: Request) {
   if (!address || !isAddress(address)) return NextResponse.json({ error: "bad address" }, { status: 400 });
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
 
-  const fan = address as Address;
+  try {
+    return await topUp(address as Address, ip);
+  } catch (e) {
+    console.warn(`onboard: ${(e as Error).message}`);
+    return NextResponse.json({ error: "kit_bag" }, { status: 502 });
+  }
+}
+
+async function topUp(fan: Address, ip: string) {
   const [gas, usd, usdc] = await Promise.all([
     serverClient.getBalance({ address: fan }),
     serverClient.readContract({ address: ADDR.usd, abi: erc20Abi, functionName: "balanceOf", args: [fan] }),
@@ -37,7 +45,7 @@ export async function POST(req: Request) {
   ]);
   const needs = { gas: gas < GAS_TOP_UP_BELOW, usd: usd < USD_TARGET / 2n, usdc: usdc === 0n };
   if (!needs.gas && !needs.usd && !needs.usdc) return NextResponse.json({ ok: true, topUp: false });
-  if (!allow(ip)) return NextResponse.json({ error: "slow down" }, { status: 429 });
+  if (!allow(ip)) return NextResponse.json({ error: "kit_bag" }, { status: 429 });
 
   const { account, wallet } = treasury();
   // Number the top-ups ourselves: two back-to-back sends from a fresh serverless instance

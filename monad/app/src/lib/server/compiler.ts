@@ -61,20 +61,35 @@ async function askGemini(text: string, model = process.env.GEMINI_MODEL ?? "gemi
   return out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
 
-/** Gemini by default, with one retry on a lighter model when rate-limited; Claude when configured. */
+/**
+ * Gemini by default, with one retry on a lighter model when rate-limited, then Claude; Claude first
+ * when AI_PROVIDER=anthropic, then Gemini. Throws only when every model is out.
+ */
 async function ask(text: string): Promise<string> {
-  if (process.env.AI_PROVIDER === "anthropic") return askClaude(text);
+  if (process.env.AI_PROVIDER === "anthropic") {
+    try {
+      return await askClaude(text);
+    } catch (e) {
+      if (!process.env.GEMINI_API_KEY) throw e;
+      console.warn(`take compiler: claude ${(e as Error).message}; trying gemini`);
+      return askGemini(text);
+    }
+  }
   try {
     return await askGemini(text);
   } catch (e) {
-    if (!/gemini (404|429|5\d\d)/.test((e as Error).message)) throw e;
-    await new Promise((r) => setTimeout(r, 1200));
-    try {
-      return await askGemini(text, process.env.GEMINI_FALLBACK_MODEL ?? "gemini-flash-latest");
-    } catch (e2) {
-      if (process.env.ANTHROPIC_API_KEY) return askClaude(text);
-      throw e2;
+    let last = e;
+    if (/gemini (404|429|5\d\d)/.test((e as Error).message)) {
+      await new Promise((r) => setTimeout(r, 1200));
+      try {
+        return await askGemini(text, process.env.GEMINI_FALLBACK_MODEL ?? "gemini-flash-latest");
+      } catch (e2) {
+        last = e2;
+      }
     }
+    if (!process.env.ANTHROPIC_API_KEY) throw last;
+    console.warn(`take compiler: ${(last as Error).message}; trying claude`);
+    return askClaude(text);
   }
 }
 
@@ -122,16 +137,26 @@ function jsonReply(raw: string): { rule?: unknown; windowStart?: number | null }
   return {};
 }
 
+/** Why the AI couldn't read a take: "busy" when rate-limited, "offline" for everything else (keys, billing, outages). */
+export type AiTrouble = "busy" | "offline";
+
+function troubleOf(e: unknown): AiTrouble {
+  const m = String((e as Error)?.message ?? e);
+  const status = (e as { status?: number })?.status;
+  return status === 429 || /\b429\b|rate.?limit|overloaded|\b529\b/i.test(m) ? "busy" : "offline";
+}
+
 export type Compiled = {
   rule: Rule | null;
   spec: string; // JSON rule, or "" for the AI judge
   reading: string;
   closeTime: number; // unix seconds: when bets on this take stop
+  ai?: AiTrouble; // set when no model could read the take, so the fan can be told why it went to the judge
 };
 
 export async function compileTake(take: string, fixtureId: number): Promise<Compiled> {
   const [d] = await football<Detail[]>(`/fixtures?id=${fixtureId}`, 15_000);
-  if (!d) throw new Error("unknown match");
+  if (!d) throw new Error("match_data: unknown match");
 
   // Player names: lineups once published, otherwise both squads.
   let players: { id: number; name: string; team: string }[] = [];
@@ -146,9 +171,11 @@ export async function compileTake(take: string, fixtureId: number): Promise<Comp
 
   // If the model is busy or rate-limited, the take still goes ahead: with no rule, the AI judge settles it.
   let raw = "{}";
+  let ai: AiTrouble | undefined;
   try {
     raw = await ask(prompt(take, d, players, new Date().toISOString()));
   } catch (e) {
+    ai = troubleOf(e);
     console.warn(`take compiler: ${(e as Error).message}; falling back to the AI judge`);
   }
   const parsed = jsonReply(raw);
@@ -175,5 +202,6 @@ export async function compileTake(take: string, fixtureId: number): Promise<Comp
     spec: rule ? JSON.stringify(rule) : "",
     reading: rule ? describeRule(rule, names) : "No data rule fits this one: the AI judge will rule on it after full time, using the match report.",
     closeTime,
+    ...(ai && { ai }),
   };
 }
