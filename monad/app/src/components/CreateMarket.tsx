@@ -11,14 +11,13 @@ import { listTake, postMessage, type Money } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
 import "@/styles/create.css";
 import { showError } from "@/lib/errors";
+import { LocalTime } from "./LocalTime";
 
 export type CreateFixture = { id: number; kickoff: number; status: string; league: string; home: { name: string; logo: string }; away: { name: string; logo: string } };
 
 const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE"]);
-const when = (f: CreateFixture) =>
-  LIVE.has(f.status)
-    ? "Live now"
-    : new Date(f.kickoff * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+// Kickoff in the fan's own time zone, filled in by the browser (the server would render UTC).
+const when = (f: CreateFixture) => (LIVE.has(f.status) ? "Live now" : <LocalTime unix={f.kickoff} />);
 
 /**
  * New market (handoff screen-create): say the take, pick the match, the AI writes the settlement rule
