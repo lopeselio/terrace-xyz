@@ -6,6 +6,7 @@ import { MonadMark } from "./MonadMark";
 import { Badge, Sheet, SheetHead, Switch, money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { balanceChanged, useBalance } from "@/lib/useBalance";
+import { callStoppage } from "@/lib/errors";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-6)}`;
 
@@ -29,8 +30,9 @@ export function WalletSheet({ inBets, feesEarned, onClose }: { inBets: number; f
   }
   async function addFunds() {
     setToppingUp(true);
-    await fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address }) }).catch(() => {});
+    const ok = await fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address }) }).then((r) => r.ok, () => false);
     setToppingUp(false);
+    if (!ok) callStoppage(navigator.onLine ? "kit_bag" : "offline", { primary: { label: "Try again", run: addFunds }, secondary: { label: "Not now" } });
     balanceChanged();
   }
 

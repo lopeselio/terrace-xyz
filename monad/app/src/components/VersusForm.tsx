@@ -12,6 +12,7 @@ import { tokenOf, type Money } from "@/lib/play";
 import { challenge } from "@/lib/social";
 import { balanceChanged } from "@/lib/useBalance";
 import "@/styles/versus.css";
+import { showError } from "@/lib/errors";
 
 const STAKES = [1, 5, 10, 25];
 
@@ -51,7 +52,7 @@ export function ChallengeForm({
       balanceChanged();
       onSent({ id, label, side, dollars, opponent });
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }

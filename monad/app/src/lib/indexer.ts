@@ -1,10 +1,16 @@
 "use client";
+import { callStoppage } from "./errors";
 /** Browser-side reads from the Envio indexer, through the read-only /api/indexer proxy. */
 export async function query<T>(q: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch("/api/indexer", { method: "POST", body: JSON.stringify({ query: q, variables }) });
-  const body = (await res.json()) as { data?: T; error?: string };
-  if (!body.data) throw new Error(body.error ?? "indexer unavailable");
-  return body.data;
+  try {
+    const res = await fetch("/api/indexer", { method: "POST", body: JSON.stringify({ query: q, variables }) });
+    const body = (await res.json()) as { data?: T; error?: string };
+    if (!body.data) throw new Error(body.error ?? "indexer unavailable");
+    return body.data;
+  } catch (e) {
+    callStoppage(navigator.onLine ? "data_lag" : "offline_soft");
+    throw e;
+  }
 }
 
 export type RoomMessage = {

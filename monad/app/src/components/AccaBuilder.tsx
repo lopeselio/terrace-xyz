@@ -17,6 +17,7 @@ import { claimAcca, KIND, placeAcca, settleAcca, standardQuestion, type Leg } fr
 import { balanceChanged } from "@/lib/useBalance";
 import { useMatches, type MatchLite } from "@/lib/useMatches";
 import "@/styles/parlay.css";
+import { showError } from "@/lib/errors";
 
 const WEEK = 7 * 86_400;
 const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE"]);
@@ -153,7 +154,7 @@ export function AccaBuilder() {
       balanceChanged();
       loadAccas();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(null);
     }
@@ -355,7 +356,7 @@ function ParlaySheet({
       await onPlace(dollars, currency);
       setPlaced(dollars);
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }

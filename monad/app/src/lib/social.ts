@@ -4,6 +4,7 @@ import type { useAccount } from "./account";
 import { publicClient } from "./chain";
 import { ADDR, matchupsAbi, oracleAbi, parlaysAbi } from "./contracts";
 import { ensureAllowance, toUnits } from "./play";
+import { FanError } from "./errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 
@@ -33,7 +34,7 @@ export async function challenge(send: Send, owner: Address, questionId: bigint, 
       if (ev.eventName === "MatchupCreated") return ev.args.matchupId;
     } catch {}
   }
-  throw new Error("challenge sent, but couldn't read its id");
+  throw new FanError("Challenge sent. Find it under your challenges.");
 }
 
 export async function acceptChallenge(send: Send, owner: Address, matchupId: bigint) {

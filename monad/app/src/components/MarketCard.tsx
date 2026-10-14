@@ -11,6 +11,7 @@ import { fractional, price } from "@/lib/odds";
 import { bet } from "@/lib/play";
 import { KIND } from "@/lib/social";
 import type { MatchLite } from "@/lib/useMatches";
+import { FanError } from "@/lib/errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 
@@ -102,7 +103,7 @@ export function marketPick(m: OpenMarket, match: MatchLite | undefined, side: 1 
     feeBps: m.feeBps,
     note: `How it settles: ${settleLine(m).toLowerCase()}.`,
     place: (dollars) => {
-      if (!owner) throw new Error("Sign in to place it.");
+      if (!owner) throw new FanError("Sign in to place it.");
       return bet(send, owner, BigInt(m.id), m.token as Address, side, dollars);
     },
   };

@@ -108,7 +108,7 @@ export function TeamBrief({ odds, onPick }: { odds: (fixtureId: number, kind: nu
           {p && <FormPills form={n?.isHome ? p.form.home : p.form.away} />}
         </div>
 
-        {failed && <div className="umeta" style={{ marginTop: 12 }}>Couldn&apos;t load the brief right now.</div>}
+        {failed && <div className="umeta" style={{ marginTop: 12 }}>The scouting report isn&apos;t in yet. Check back in a minute.</div>}
         {!brief && !failed && <div className="sk" style={{ height: 120, marginTop: 12 }} />}
         {brief && !n && <div className="umeta" style={{ marginTop: 12 }}>No upcoming match found for {team.name}.</div>}
 

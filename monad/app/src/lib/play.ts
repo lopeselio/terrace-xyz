@@ -3,6 +3,7 @@ import { decodeEventLog, maxUint256, parseUnits, stringToHex, type Address } fro
 import { publicClient } from "./chain";
 import { ADDR, chatAbi, erc20Abi, marketsAbi, YES } from "./contracts";
 import type { useAccount } from "./account";
+import { FanError } from "./errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 
@@ -27,7 +28,7 @@ export async function postMessage(send: Send, roomKind: 0 | 1, roomId: bigint, t
       if (ev.eventName === "MessagePosted") return ev.args.messageId;
     } catch {}
   }
-  throw new Error("posted, but couldn't read the message id");
+  throw new FanError("Your take is in the room. Refresh to see it.");
 }
 
 export function backTake(send: Send, messageId: bigint) {

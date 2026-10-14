@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { createWalletClient, http, type Abi, type Address, type ContractFunctionArgs, type ContractFunctionName, type Hex } from "viem";
 import { chain, publicClient } from "./chain";
 import { confirmPresence, createAccount, friendlyPasskeyError, PROMPT_FREE_LIMIT, sessionLive, signIn, signOut, type Keys } from "./mera";
-import { friendlyError } from "./errors";
+import { friendlyError, FanError } from "./errors";
 
 type Status = "signed-out" | "signing-in" | "ready";
 
@@ -69,7 +69,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const send: Ctx["send"] = useCallback(
     async (call) => {
       let k = keys;
-      if (!k) throw new Error("Sign in to save this.");
+      if (!k) throw new FanError("Sign in to save this.");
       // Tell the activity indicator something is happening (and when it's done).
       window.dispatchEvent(new CustomEvent("terrace-busy", { detail: 1 }));
       try {
@@ -100,7 +100,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         play("done");
         return hash;
       } catch (e) {
-        throw new Error(friendlyError(e));
+        throw e instanceof FanError ? e : new FanError(friendlyError(e));
       }
       } finally {
         window.dispatchEvent(new CustomEvent("terrace-busy", { detail: -1 }));

@@ -14,6 +14,7 @@ import { balanceChanged } from "@/lib/useBalance";
 import { useMatches } from "@/lib/useMatches";
 import { useOpeningLines } from "@/lib/useOdds";
 import "@/styles/versus.css";
+import { showError } from "@/lib/errors";
 
 export type MatchupRow = {
   id: string;
@@ -92,7 +93,7 @@ export function ChallengeList() {
       balanceChanged();
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(null);
     }

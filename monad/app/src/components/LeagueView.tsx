@@ -19,6 +19,7 @@ import {
   leagueCode, ordinal, ownSealedPicks, parseInvite, pendingMarketWins, rememberCode, rememberedCode, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
+import { showError } from "@/lib/errors";
 
 type Match = { id: number; kickoff: number; status: string; home: { name: string; logo: string }; away: { name: string; logo: string }; goals: { home: number | null; away: number | null } };
 type League = Awaited<ReturnType<typeof readLeague>>;
@@ -147,7 +148,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
       await fn();
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(null);
     }

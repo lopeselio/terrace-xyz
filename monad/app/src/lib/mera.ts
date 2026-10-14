@@ -38,6 +38,7 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex, type Hex, type LocalAccount } from "viem";
+import { FanError, friendlyError } from "./errors";
 
 const enc = new TextEncoder();
 /** PRF salt for Terrace's root secret. Stable forever: changing it would give everyone new accounts. */
@@ -129,7 +130,7 @@ export async function confirmPresence(expected: Hex): Promise<Keys> {
   const keys = await signIn(activeCredential ?? undefined);
   if (keys.account.address.toLowerCase() !== expected.toLowerCase()) {
     // Wrong passkey picked: say so, but keep the fan signed in to the account they were using.
-    throw new Error("That's a different Terrace passkey. Pick the one you signed in with and try again.");
+    throw new FanError("That's a different Terrace passkey. Pick the one you signed in with and try again.");
   }
   return keys;
 }
@@ -159,5 +160,5 @@ export function friendlyPasskeyError(e: unknown): string {
     if (e.code === "PRF_UNAVAILABLE") return "This phone's passkeys can't sign in to Terrace yet. Try Safari on iPhone or Chrome on Android.";
     if (e.code === "PASSKEY_OPERATION_FAILED") return "No passkey was used. Try again when you're ready.";
   }
-  return e instanceof Error ? e.message : "Something went wrong with your passkey.";
+  return friendlyError(e);
 }

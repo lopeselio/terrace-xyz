@@ -16,6 +16,7 @@ import { backTake, bet, postMessage } from "@/lib/play";
 import { betOutcome, type BetLike } from "@/lib/outcome";
 import { toggleLeg } from "@/lib/slip";
 import "@/styles/match.css";
+import { showError, FanError } from "@/lib/errors";
 
 type Msg = Omit<RoomMessage, "market"> & {
   market: (NonNullable<RoomMessage["market"]> & { feeBps: number; isFlash: boolean; isSealed: boolean }) | null;
@@ -161,7 +162,7 @@ export function Room({
       await fn();
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(null);
     }
@@ -188,7 +189,7 @@ export function Room({
       feeBps: mk.feeBps,
       note: mk.question.spec ? "Settled from live match data by Chainlink." : "Settled by Chainlink's AI judge after full time. Unclear means refunds.",
       place: (dollars) => {
-        if (!address) throw new Error("Sign in to place it.");
+        if (!address) throw new FanError("Sign in to place it.");
         return bet(send, address, BigInt(mk.id), mk.token as Address, side, dollars);
       },
     });

@@ -25,6 +25,7 @@ import { collect } from "@/lib/play";
 import { balanceChanged, useBalance } from "@/lib/useBalance";
 import { useMatches, type MatchLite } from "@/lib/useMatches";
 import "@/styles/profile.css";
+import { showError, callStoppage } from "@/lib/errors";
 
 type Q = { text: string; kind: number; line: number; answer: number; fixture: { id: string } | null };
 type Player = { points: string; results: number; wins: number; winRateBps: number; streak: number; badge: number; exactScores: number; titles: number; takesListed: number; takesWon: number };
@@ -138,8 +139,9 @@ export function Profile() {
   }
   async function addFunds() {
     setToppingUp(true);
-    await fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address }) }).catch(() => {});
+    const ok = await fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address }) }).then((r) => r.ok, () => false);
     setToppingUp(false);
+    if (!ok) callStoppage(navigator.onLine ? "kit_bag" : "offline", { primary: { label: "Try again", run: addFunds }, secondary: { label: "Not now" } });
     balanceChanged();
   }
   async function collectBet(b: Bet) {
@@ -155,7 +157,7 @@ export function Profile() {
       balanceChanged();
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(null);
     }

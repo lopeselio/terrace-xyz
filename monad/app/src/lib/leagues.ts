@@ -7,6 +7,7 @@ import { ADDR, erc20Abi, governanceAbi, leaguesAbi } from "./contracts";
 import { query } from "./indexer";
 import { sealSalt, type Keys } from "./mera";
 import { tokenOf, toUnits, type Money } from "./play";
+import { FanError } from "./errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 const L = { address: ADDR.leagues, abi: leaguesAbi } as const;
@@ -32,10 +33,10 @@ export async function createLeague(
 export async function joinLeague(send: Send, owner: Address, leagueId: bigint, code: string) {
   const league = await publicClient.readContract({ ...L, functionName: "getLeague", args: [leagueId] });
   // The network drops the contract's reason when a call fails, so check the usual ones first.
-  if (league.members.some((m) => m.toLowerCase() === owner.toLowerCase())) throw new Error("You're already in this league.");
-  if (league.members.length >= league.maxMembers) throw new Error("This league is full.");
+  if (league.members.some((m) => m.toLowerCase() === owner.toLowerCase())) throw new FanError("You're already in this league.");
+  if (league.members.length >= league.maxMembers) throw new FanError("This league is full.");
   if (league.inviteCodeHash !== `0x${"0".repeat(64)}` && keccak256(toBytes(code)) !== league.inviteCodeHash)
-    throw new Error(code ? "That invite code doesn't match. Check it with whoever invited you." : "This league is invite only: enter the code you were sent.");
+    throw new FanError(code ? "That invite code doesn't match. Check it with whoever invited you." : "This league is invite only: enter the code you were sent.");
   if (league.entryFee > 0n) {
     const allowance = await publicClient.readContract({ address: league.token, abi: erc20Abi, functionName: "allowance", args: [owner, ADDR.leagues] });
     if (allowance < league.entryFee) await send({ address: league.token, abi: erc20Abi, functionName: "approve", args: [ADDR.leagues, maxUint256] });

@@ -7,6 +7,7 @@ import { Badge, Seg, Switch } from "./ui";
 import { useAccount } from "@/lib/account";
 import { createLeague, randomCode, rememberCode } from "@/lib/leagues";
 import "@/styles/leagues.css";
+import { showError } from "@/lib/errors";
 
 const SIZES = [10, 20, 50, 100] as const;
 const WEEKS = [1, 4, 8, 38] as const;
@@ -61,7 +62,7 @@ export function CreateLeague() {
       rememberCode(id, code);
       router.push(`/l/${id}?${code ? `code=${code}&` : ""}new=1`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
       setBusy(false);
     }
   }

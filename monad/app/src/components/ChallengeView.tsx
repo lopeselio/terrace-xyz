@@ -13,6 +13,7 @@ import { acceptChallenge, callOffChallenge, expireChallenge, settleChallenge } f
 import { balanceChanged } from "@/lib/useBalance";
 import { useMatches } from "@/lib/useMatches";
 import "@/styles/versus.css";
+import { showError } from "@/lib/errors";
 
 type M = {
   id: string;
@@ -78,7 +79,7 @@ export function ChallengeView({ id }: { id: number }) {
       balanceChanged();
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }

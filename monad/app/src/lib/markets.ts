@@ -6,6 +6,7 @@ import { ADDR, marketsAbi } from "./contracts";
 import { query } from "./indexer";
 import { bet } from "./play";
 import { KIND, standardQuestion } from "./social";
+import { FanError } from "./errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 
@@ -44,7 +45,7 @@ export async function backStandard(send: Send, owner: Address, fixtureId: number
         if (ev.eventName === "MarketCreated") marketId = ev.args.marketId;
       } catch {}
     }
-    if (marketId === null) throw new Error("opened the market, but couldn't read its id");
+    if (marketId === null) throw new FanError("Your market is up. Refresh to see it on the board.");
   }
   return bet(send, owner, marketId, ADDR.usd, side, dollars);
 }

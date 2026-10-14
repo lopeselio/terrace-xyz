@@ -11,6 +11,7 @@ import { collect } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
 import { play } from "@/lib/sound";
 import "@/styles/outcome.css";
+import { showError } from "@/lib/errors";
 
 /*
  * The full-time moment: whenever one of your bets, parlays or 1v1s is decided, a popup says so —
@@ -218,7 +219,7 @@ export function OutcomePopup() {
       balanceChanged();
       next();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }

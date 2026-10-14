@@ -7,6 +7,7 @@ import { Badge, Sheet, SheetHead, money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { fixedReturns, fractional, implied, poolReturns, price } from "@/lib/odds";
 import { balanceChanged, useBalance } from "@/lib/useBalance";
+import { showError } from "@/lib/errors";
 
 export type BetPick = {
   /** "Liverpool v Man City · Match result" */
@@ -56,7 +57,7 @@ export function BetSheet({ pick, onClose, onPlaced }: { pick: BetPick; onClose: 
       setPlaced(dollars);
       onPlaced?.();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }

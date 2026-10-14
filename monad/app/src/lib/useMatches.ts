@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { callStoppage } from "./errors";
 
 export type MatchLite = { id: number; kickoff: number; status: string; league?: string; leagueId?: number; leagueLogo?: string; elapsed?: number | null; home: { name: string; logo: string }; away: { name: string; logo: string }; goals?: { home: number | null; away: number | null } };
 
@@ -10,7 +11,7 @@ export function useMatches() {
     fetch("/api/matches")
       .then((r) => r.json())
       .then((list: MatchLite[]) => setById(new Map(list.map((m) => [m.id, m]))))
-      .catch(() => {});
+      .catch(() => callStoppage(navigator.onLine ? "data_lag" : "offline_soft"));
   }, []);
   return byId;
 }

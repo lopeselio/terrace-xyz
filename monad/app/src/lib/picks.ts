@@ -7,6 +7,7 @@ import { backStandard, standardMarkets, type StdMarket } from "./markets";
 import { fractional, price } from "./odds";
 import { KIND } from "./social";
 import { useOpeningLines, type OpeningLine } from "./useOdds";
+import { FanError } from "./errors";
 
 type Send = ReturnType<typeof useAccount>["send"];
 type Teams = { id: number; home: { name: string }; away: { name: string } };
@@ -71,7 +72,7 @@ export function useMatchPrices(fixtureIds: number[]) {
       neutral: threeWay(kind, side),
       note: "Settled from the final score by Chainlink.",
       place: (dollars) => {
-        if (!owner) throw new Error("Sign in to place it.");
+        if (!owner) throw new FanError("Sign in to place it.");
         return backStandard(send, owner, m.id, kind, side, dollars, s);
       },
     };
