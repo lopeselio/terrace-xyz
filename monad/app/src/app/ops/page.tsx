@@ -23,6 +23,7 @@ const ago = (ts: number | null, now: number) => {
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
   return `${Math.round(s / 86400)}d ago`;
 };
+const pct = (v: number, of: number) => (of ? `${Math.round((v / of) * 100)}%` : "–");
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 const KIND: Record<string, string> = {
@@ -103,6 +104,32 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ke
         </nav>
       </header>
 
+      <h2>Sign-ups</h2>
+      {s.signups && s.funnel ? (
+        <div className="ops-split" style={{ marginTop: 0 }}>
+          <section className="ops-tiles" style={{ alignContent: "start" }}>
+            <Tile label="Accounts created" value={n(s.signups.total)} sub="first $100 in test dollars minted" />
+            <Tile label="New accounts" value={n(s.signups.new24h)} sub={`last 24h · ${n(s.signups.new7d)} in 7 days`} />
+            <Tile label="Signed up, never played" value={n(s.funnel.signedUp - s.funnel.acted)} sub={`${pct(s.funnel.signedUp - s.funnel.acted, s.funnel.signedUp)} of accounts`} />
+            <Tile label="Needed a refill" value={n(s.signups.refilled)} sub="ran below $50 and got topped up" />
+          </section>
+          <section className="ops-card">
+            <h3>From sign-up to regular</h3>
+            <div className="ops-mix">
+              {([["Signed up", s.funnel.signedUp], ["Did something on-chain", s.funnel.acted], ["Placed a bet", s.funnel.bet], ["Came back another day", s.funnel.returned]] as [string, number][]).map(([label, v]) => (
+                <div key={label} className="ops-mix-row ops-funnel" title={`${label}: ${n(v)}`}>
+                  <span>{label}</span>
+                  <i><b style={{ width: `${(v / Math.max(1, s.funnel!.signedUp)) * 100}%` }} /></i>
+                  <em>{n(v)} <small>{pct(v, s.funnel!.signedUp)}</small></em>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : (
+        <p className="ops-note">Sign-ups appear once the indexer with the TerraceUSD mint handler is deployed (push <code>main:envio</code>, then point <code>INDEXER_URL</code> at the new deployment).</p>
+      )}
+
       <h2>Fans</h2>
       <section className="ops-tiles">
         <Tile label="Fans who've played" value={n(fans.total)} sub={`+ ${n(fans.agents)} AI agents`} />
@@ -112,15 +139,19 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ke
       </section>
 
       <section className="ops-charts">
-        <Bars title="New fans per day" rows={s.series} value={(i) => s.series[i].newFans} fmt={n} />
+        {s.signups ? (
+          <Bars title="Sign-ups per day" rows={s.series} value={(i) => s.series[i].signups ?? 0} fmt={n} />
+        ) : (
+          <Bars title="New fans per day" rows={s.series} value={(i) => s.series[i].newFans} fmt={n} />
+        )}
         <Bars title="Active fans per day" rows={s.series} value={(i) => s.series[i].active} fmt={n} />
         <Bars title="Fan bet volume per day" rows={s.series} value={(i) => s.series[i].volume} fmt={(v) => usd(v).replace(/\.00$/, "")} />
       </section>
       <details className="ops-card ops-table-toggle">
         <summary>Show the daily numbers as a table</summary>
         <table className="ops-table">
-          <thead><tr><th>Day (UTC)</th><th>New fans</th><th>Active fans</th><th>Bet volume</th></tr></thead>
-          <tbody>{s.series.slice().reverse().map((r) => <tr key={r.day}><td>{r.label}</td><td>{r.newFans}</td><td>{r.active}</td><td>{usd(r.volume)}</td></tr>)}</tbody>
+          <thead><tr><th>Day (UTC)</th>{s.signups && <th>Sign-ups</th>}<th>New fans</th><th>Active fans</th><th>Bet volume</th></tr></thead>
+          <tbody>{s.series.slice().reverse().map((r) => <tr key={r.day}><td>{r.label}</td>{s.signups && <td>{r.signups}</td>}<td>{r.newFans}</td><td>{r.active}</td><td>{usd(r.volume)}</td></tr>)}</tbody>
         </table>
       </details>
 

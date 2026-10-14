@@ -50,3 +50,8 @@
 @media (max-width: 520px) { .ops-head h1 { font-size: 32px; } .ops-tile-value { font-size: 28px; } .ops-mix-row { grid-template-columns: 112px 1fr 36px; } }
 .app:has(.ops) { max-width: none; }
 .page:has(.ops) { padding-bottom: 0; }
+.ops-note { font-size: 13px; color: var(--ink-3); padding: 12px 16px; border-radius: 14px; border: 1px dashed var(--line); }
+.ops-note code { font-family: ui-monospace, monospace; font-size: 12px; color: var(--ink-2); }
+.ops-funnel { grid-template-columns: 170px 1fr 84px; }
+.ops-funnel small { font-weight: 500; color: var(--ink-3); font-size: 11.5px; }
+@media (max-width: 520px) { .ops-funnel { grid-template-columns: 110px 1fr 70px; } }

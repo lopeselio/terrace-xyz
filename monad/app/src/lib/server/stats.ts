@@ -21,6 +21,7 @@ type Matchup = { challenger: string; opponent: string | null; status: number; st
 type Parlay = { player: string; stake: string; legs: number; status: number };
 type League = { id: string; creator: string; isPrivate: boolean; memberCount: number; ended: boolean };
 type Follow = { follower: string; active: boolean };
+type Signup = { id: string; at: string; refills: number };
 
 async function all<T>(entity: string, fields: string, where = ""): Promise<T[]> {
   const rows: T[] = [];
@@ -61,6 +62,8 @@ async function compute(days: number) {
     all<League>("League", "id creator isPrivate memberCount ended"),
     all<Follow>("Follow", "follower active"),
   ]);
+  // Sign-ups need the indexer version with the TerraceUSD mint handler; older deployments don't have the entity
+  const signups = await all<Signup>("Signup", "id at refills").catch(() => null);
 
   const now = Math.floor(Date.now() / 1000);
   const today = dayOf(now);
@@ -93,7 +96,23 @@ async function compute(days: number) {
   const fanBets = feed.filter((f) => f.kind === "BET" && fan(f.actor) && !isTest(f.market?.question.text));
   const volByDay = new Map<number, number>();
   for (const f of fanBets) volByDay.set(dayOf(+f.timestamp), (volByDay.get(dayOf(+f.timestamp)) ?? 0) + usd(f.amount));
+  // sign-ups: first test-dollar mint per account, AI agents and house wallets left out
+  const humanSignups = signups?.filter((x) => fan(x.id)) ?? null;
+  const signupsByDay = new Map<number, number>();
+  for (const x of humanSignups ?? []) signupsByDay.set(dayOf(+x.at), (signupsByDay.get(dayOf(+x.at)) ?? 0) + 1);
+  const bettorIds = new Set(fanBetsAll().map((f) => f.actor.toLowerCase()));
+  function fanBetsAll() {
+    return feed.filter((f) => f.kind === "BET" && fan(f.actor) && !isTest(f.market?.question.text));
+  }
+  const funnel = humanSignups && {
+    signedUp: humanSignups.length,
+    acted: humanSignups.filter((x) => firstSeen.has(x.id)).length,
+    bet: humanSignups.filter((x) => bettorIds.has(x.id)).length,
+    returned: humanSignups.filter((x) => (daysActive.get(x.id)?.size ?? 0) >= 2).length,
+  };
+
   const series = range.map((d) => ({
+    signups: humanSignups ? signupsByDay.get(d) ?? 0 : null,
     day: d,
     label: new Date(d * DAY * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
     newFans: newFans.get(d) ?? 0,
@@ -122,6 +141,13 @@ async function compute(days: number) {
   return {
     at: now,
     days,
+    signups: humanSignups && {
+      total: humanSignups.length,
+      new24h: humanSignups.filter((x) => +x.at >= now - DAY).length,
+      new7d: humanSignups.filter((x) => +x.at >= now - 7 * DAY).length,
+      refilled: humanSignups.filter((x) => x.refills > 0).length,
+    },
+    funnel,
     fans: {
       total: fanIds.size,
       agents: agents.size,
