@@ -4,12 +4,13 @@ import { useState } from "react";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
-import { compileTake, FeeSlider, StakeChips, TakeReading, type Compiled } from "./TakeSheet";
+import { compileTake, explainCompile, FeeSlider, StakeChips, TakeReading, type Compiled } from "./TakeSheet";
 import { Crest, Empty, Sheet, SheetHead } from "./ui";
 import { useAccount } from "@/lib/account";
 import { listTake, postMessage, type Money } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
 import "@/styles/create.css";
+import { showError } from "@/lib/errors";
 
 export type CreateFixture = { id: number; kickoff: number; status: string; league: string; home: { name: string; logo: string }; away: { name: string; logo: string } };
 
@@ -45,8 +46,10 @@ export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[];
     if (!ready) return;
     setReading(true);
     setError(null);
-    setCompiled(await compileTake(text.trim(), fixture!.id));
+    const c = await compileTake(text.trim(), fixture!.id);
+    setCompiled(c);
     setReading(false);
+    explainCompile(c, read);
   }
 
   async function publish() {
@@ -59,7 +62,7 @@ export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[];
       balanceChanged();
       router.push(`/m/${fixture.id}#take-${messageId}`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
       setBusy(null);
     }
   }
@@ -72,7 +75,7 @@ export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[];
       const messageId = await postMessage(send, 0, BigInt(fixture.id), text.trim());
       router.push(`/m/${fixture.id}#take-${messageId}`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
       setBusy(null);
     }
   }

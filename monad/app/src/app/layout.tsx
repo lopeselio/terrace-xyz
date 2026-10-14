@@ -5,6 +5,7 @@ import { Activity } from "@/components/Activity";
 import { Onboarding } from "@/components/Onboarding";
 import { GameweekPopup } from "@/components/GameweekPopup";
 import { OutcomePopup } from "@/components/OutcomePopup";
+import { StoppagePopup } from "@/components/Stoppage";
 import { PointsToast } from "@/components/PointsToast";
 import { TabBar } from "@/components/TabBar";
 import { Providers } from "./providers";
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <OutcomePopup />
           <GameweekPopup />
           <PointsToast />
+          <StoppagePopup />
         </Providers>
       </body>
     </html>

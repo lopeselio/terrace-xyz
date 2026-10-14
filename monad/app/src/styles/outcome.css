@@ -76,3 +76,22 @@
 @keyframes glow-gold { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 50% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); } }
 :root[data-theme="light"] .outcome.gw .outcome-card { border-color: #fcd34d; background: radial-gradient(120% 70% at 50% 0%, rgba(245, 158, 11, 0.2), #fff 60%); }
 :root[data-theme="light"] .gw-podium { background: rgba(0, 0, 0, 0.03); }
+
+/* Stoppage: Terrace AI or the match data is out. Amber, like the fourth official's board. */
+.outcome.stoppage { z-index: 60; }
+.outcome.stoppage .outcome-card { border-color: #5a3a0c; background: radial-gradient(120% 70% at 50% 0%, rgba(245, 158, 11, 0.16), #111 60%); }
+.outcome.stoppage .outcome-icon { background: var(--amber-deep); border-color: var(--amber); color: var(--amber-ink); animation: shake 0.5s 0.35s both; }
+.outcome.stoppage .outcome-head { color: var(--amber-ink); font-size: 26px; }
+.outcome.stoppage .outcome-sub { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
+:root[data-theme="light"] .outcome.stoppage .outcome-card { border-color: #fcd34d; background: radial-gradient(120% 70% at 50% 0%, rgba(245, 158, 11, 0.16), #fff 60%); }
+@media (prefers-reduced-motion: reduce) { .outcome.stoppage .outcome-icon, .outcome.stoppage .outcome-card { animation: none; } }
+.stoppage-toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 45;
+  bottom: calc(var(--tabbar-h) + 30px + var(--safe-b));
+  display: flex; align-items: center; gap: 6px; max-width: calc(min(100%, 480px) - 32px);
+  padding: 10px 16px; border-radius: var(--r-pill); white-space: nowrap; overflow: hidden;
+  background: var(--raised); border: 1px solid var(--line); color: var(--ink-2); font-size: 13px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); animation: toastin 5s var(--ease) both;
+}
+.stoppage-toast b { color: var(--amber-ink); font-weight: 700; }
+.stoppage-toast span { overflow: hidden; text-overflow: ellipsis; color: var(--ink-3); }

@@ -5,20 +5,34 @@ import { Badge, Sheet, SheetHead } from "./ui";
 import { useAccount } from "@/lib/account";
 import { listTake, type Money } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
+import { callStoppage, STOPPAGES, type StoppageCode, showError } from "@/lib/errors";
 import "@/styles/create.css";
 
-export type Compiled = { spec: string; reading: string; closeTime: number; error?: string };
+/** `ai` is set when no model could read the take (it goes to the AI judge); `stoppage` when it couldn't be read at all. */
+export type Compiled = { spec: string; reading: string; closeTime: number; ai?: "busy" | "offline"; error?: string; stoppage?: StoppageCode };
+
+const failed = (stoppage: StoppageCode): Compiled => ({ spec: "", reading: "", closeTime: 0, stoppage, error: STOPPAGES[stoppage].title });
 
 /** Ask the take compiler for a settlement rule and its plain-English reading. */
 export async function compileTake(text: string, fixtureId: number): Promise<Compiled> {
   try {
     const r = await fetch("/api/compile-take", { method: "POST", body: JSON.stringify({ text, fixtureId }) });
-    const body = (await r.json()) as Compiled & { error?: string };
-    if (!r.ok || body.error) return { spec: "", reading: "", closeTime: 0, error: "Couldn't read that take right now. Try rewording it." };
+    const body = (await r.json().catch(() => ({ error: "server" }))) as Compiled & { error?: string };
+    if (!r.ok || body.error) return failed(body.error && body.error in STOPPAGES ? (body.error as StoppageCode) : "server");
     return body;
   } catch {
-    return { spec: "", reading: "", closeTime: 0, error: "Couldn't read that take right now." };
+    return failed(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "server");
   }
+}
+
+/**
+ * Tell the fan when Terrace AI or the match data let them down, and what they can still do:
+ * try again, or (when the take still compiled for the AI judge) publish it anyway.
+ */
+export function explainCompile(c: Compiled, retry: () => void) {
+  if (c.stoppage) callStoppage(c.stoppage, { primary: { label: "Try again", run: retry }, secondary: { label: "Not now" } });
+  else if (c.ai === "busy") callStoppage("ai_busy", { primary: { label: "Try again", run: retry }, secondary: { label: "Publish it anyway" } });
+  else if (c.ai === "offline") callStoppage("ai_offline", { primary: { label: "Publish it anyway" }, secondary: { label: "Try again", run: retry } });
 }
 
 export const closesLabel = (closeTime: number, kickoff?: number) => {
@@ -41,7 +55,9 @@ export function TakeReading({ compiled, kickoff }: { compiled: Compiled; kickoff
       <div className="umeta">
         {compiled.spec
           ? "Checked against live match data every minute; settles the moment it happens."
-          : "No live-data rule fits this one. If the report doesn't settle it clearly, everyone gets their money back."}
+          : compiled.ai
+            ? "Terrace AI couldn't read it just now, so it isn't checked live. If the report doesn't settle it clearly, everyone gets their money back."
+            : "No live-data rule fits this one. If the report doesn't settle it clearly, everyone gets their money back."}
       </div>
     </div>
   );
@@ -98,7 +114,15 @@ export function TakeSheet({ messageId, fixtureId, text, onDone, onClose }: { mes
 
   useEffect(() => {
     setCompiled(null);
-    compileTake(text, fixtureId).then(setCompiled);
+    let live = true;
+    compileTake(text, fixtureId).then((c) => {
+      if (!live) return;
+      setCompiled(c);
+      explainCompile(c, () => setAttempt((n) => n + 1));
+    });
+    return () => {
+      live = false;
+    };
   }, [text, fixtureId, attempt]);
 
   async function list() {
@@ -110,7 +134,7 @@ export function TakeSheet({ messageId, fixtureId, text, onDone, onClose }: { mes
       balanceChanged();
       onDone();
     } catch (e) {
-      setError((e as Error).message);
+      setError(showError(e));
     } finally {
       setBusy(false);
     }
