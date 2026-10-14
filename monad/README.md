@@ -87,7 +87,7 @@ CRE: production forwarder [`0xF8344CFd5c43616a4366C34E3EEE75af79a74482`](https:/
 [`0xB9F79d863261869B234c481D1f9A7af84AeAd192`](https://testnet.monadvision.com/address/0xB9F79d863261869B234c481D1f9A7af84AeAd192), broadcaster
 [`0x901E8F75cc9F453fD9530b0C5b6763A1343949d7`](https://testnet.monadvision.com/address/0x901E8F75cc9F453fD9530b0C5b6763A1343949d7), attestor `0x34c40bEd79F6d537d9e8C6012D7216766b91c633`.
 
-Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/b9217d9/v1/graphql` (each Envio redeploy gets a new id on the Development plan: update `INDEXER_URL` in Vercel and `app/.env.local`)
+Indexer GraphQL: `https://indexer.dev.hyperindex.xyz/a6c3d6b/v1/graphql` (each Envio redeploy gets a new id on the Development plan: update `INDEXER_URL` in Vercel and `app/.env.local`)
 
 ---
 
