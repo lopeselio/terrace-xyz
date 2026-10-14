@@ -130,8 +130,9 @@ function BalancePill() {
     );
   }
   return (
-    <Link href="/me?wallet=1" className="balpill" aria-label="Available balance">
+    <Link href="/me?wallet=1" className="balpill" aria-label="Available balance in test dollars">
       <Icon name="wallet" size={16} /> {balance ? money(balance.usd) : "…"}
+      <span className="testtag">TEST</span>
     </Link>
   );
 }

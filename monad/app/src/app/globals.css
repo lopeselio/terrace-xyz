@@ -89,6 +89,7 @@ img { display: block; }
   display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: var(--r-pill);
   background: var(--green-deep); border: 1px solid var(--green-mid); color: var(--green-ink); font-weight: 700; font-size: 13px; white-space: nowrap;
 }
+.balpill .testtag { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; padding: 2px 5px; border-radius: 4px; background: var(--amber-deep); color: var(--amber-ink); border: 1px solid #5a3a0c; }
 /* Terrace Points pill: amber, and "supercharged" (a hot yellow-orange glow) while points are on their way */
 .ptspill {
   display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px 0 8px; border-radius: var(--r-pill); flex: none;
