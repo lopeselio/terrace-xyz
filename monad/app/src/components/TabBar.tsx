@@ -14,6 +14,7 @@ const TABS: { href: string; icon: IconName; label: string; match: (p: string) =>
 
 export function TabBar() {
   const path = usePathname() ?? "/";
+  if (path.startsWith("/ops")) return null;
   return (
     <nav className="tabbar" aria-label="Main">
       {TABS.map((t) => (

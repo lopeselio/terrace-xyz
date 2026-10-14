@@ -3,28 +3,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChainlinkMark } from "./ChainlinkMark";
 import { Icon, type IconName } from "./Icon";
+import { fanName, hash } from "@/lib/names";
+
+export { fanName, handle } from "@/lib/names";
 
 /* Terrace Night primitives from the revamp handoff (design-system/handoff/styles.css). */
 
 const AV_COLORS = ["#1d4ed8", "#7c2d12", "#166534", "#4c1d95", "#831843", "#0e7490", "#a16207", "#b91c1c"];
-const ADJ = ["Loud", "Calm", "Golden", "Late", "Wild", "Cool", "Sharp", "Bold", "Lucky", "Steady", "Fierce", "Quiet", "Clinical", "Brave", "Cheeky", "Cold"];
-const NOUN = ["Ultra", "Keeper", "Striker", "Winger", "Gaffer", "Pundit", "Skipper", "Sweeper", "Number 9", "Terrace", "Volley", "Nutmeg", "Rabona", "Chip", "Header", "Libero"];
-
-function hash(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-/** A friendly, stable name for an account: fans never see a hex address. */
-export function fanName(address: string, isAgent = false) {
-  const h = hash(address.toLowerCase());
-  const name = `${ADJ[h % ADJ.length]} ${NOUN[(h >>> 8) % NOUN.length]}`;
-  return isAgent ? `${name} (AI)` : name;
-}
-
-/** @handle form of a fan name: "Golden Rabona" → "golden.rabona". */
-export const handle = (address: string) => fanName(address).toLowerCase().replace(/\s+/g, ".");
 
 /** Monogram on a per-fan colour (no photos). */
 export function Avatar({ seed, name, size = 38 }: { seed: string; name?: string; size?: number }) {

@@ -1,0 +1,52 @@
+/* Private /ops dashboard: a wide desktop layout that still works on a phone */
+.ops { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; color: var(--ink); }
+.ops h2 { font-family: var(--cond); font-size: 15px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3); margin: 28px 0 10px; }
+.ops h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.ops-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ops-head h1 { font-family: var(--cond); font-size: 40px; font-weight: 800; text-transform: uppercase; line-height: 1; }
+.ops-head h1 span { color: var(--green); }
+.ops-head p { color: var(--ink-3); font-size: 12.5px; margin-top: 6px; max-width: 720px; }
+.ops-range { display: flex; gap: 4px; padding: 3px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); }
+.ops-range a { padding: 6px 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.ops-range a.on { background: var(--green-deep); color: var(--green-ink); }
+.ops-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.ops-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, calc(50% - 5px)), 1fr)); gap: 10px; }
+.ops-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.ops-tile-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.ops-tile-value { font-family: var(--cond); font-size: 34px; font-weight: 800; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ops-tile-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.ops-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-top: 10px; }
+.ops-chart figcaption { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+.ops-chart figcaption b { font-family: var(--cond); font-size: 22px; color: var(--ink); }
+.ops-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ops-axis { stroke: var(--line); stroke-width: 1; }
+.ops-grid { stroke: var(--line-hair); stroke-width: 1; stroke-dasharray: 3 4; }
+.ops-tick { fill: var(--ink-3); font-size: 15px; font-family: var(--font-barlow), sans-serif; }
+.ops-bar { fill: var(--green); }
+.ops-hit { fill: transparent; }
+.ops-hit:hover { fill: var(--green-glow); }
+.ops-table-toggle { margin-top: 10px; padding: 10px 16px; }
+.ops-table-toggle summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.ops-table-toggle[open] summary { margin-bottom: 10px; }
+.ops-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ops-table th { text-align: left; font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 10px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ops-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-hair); white-space: nowrap; }
+.ops-table .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.ops-table a { color: var(--green-ink); }
+.ops-scroll { overflow-x: auto; }
+.ops-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px; margin: 28px 0 10px; }
+.ops-mix { display: grid; gap: 9px; }
+.ops-mix-row { display: grid; grid-template-columns: 150px 1fr 44px; align-items: center; gap: 10px; font-size: 13px; }
+.ops-mix-row span { color: var(--ink-2); }
+.ops-mix-row i { height: 10px; border-radius: 0 4px 4px 0; background: var(--raised); overflow: hidden; }
+.ops-mix-row i b { display: block; height: 100%; background: var(--green); border-radius: 0 4px 4px 0; }
+.ops-mix-row em { font-style: normal; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-feed { list-style: none; display: grid; gap: 0; max-height: 360px; overflow-y: auto; }
+.ops-feed li { font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line-hair); display: flex; flex-wrap: wrap; gap: 0 4px; align-items: baseline; }
+.ops-feed .who { font-weight: 700; }
+.ops-feed .what { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
+.ops-feed time { margin-left: auto; color: var(--ink-3); font-size: 11.5px; }
+.ops-error { color: var(--red-ink); }
+@media (max-width: 520px) { .ops-head h1 { font-size: 32px; } .ops-tile-value { font-size: 28px; } .ops-mix-row { grid-template-columns: 112px 1fr 36px; } }
+.app:has(.ops) { max-width: none; }
+.page:has(.ops) { padding-bottom: 0; }
