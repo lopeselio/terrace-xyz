@@ -165,6 +165,19 @@ function cleanTake(raw: string): string | null {
 
 type Match = { id: number; kickoff: number; status: string; home: { name: string }; away: { name: string } };
 
+// A match whose takes keep failing is rested, then dropped, so a bad patch doesn't call the AI every round.
+const REST_MS = 6 * 3_600_000;
+const MAX_TRIES = 3;
+const attempts = new Map<number, { tries: number; until: number }>();
+const failed = (id: number) => {
+  const a = attempts.get(id) ?? { tries: 0, until: 0 };
+  attempts.set(id, { tries: a.tries + 1, until: Date.now() + REST_MS });
+};
+const resting = (id: number) => {
+  const a = attempts.get(id);
+  return !!a && (a.tries >= MAX_TRIES || Date.now() < a.until);
+};
+
 async function postTakes() {
   const matches = (await terrace<Match[]>("/api/matches")).filter((m) => m.status === "NS" && m.kickoff * 1000 > Date.now() + 15 * 60_000);
   const { Message } = await gql<{ Message: { room_id: string }[] }>(`query($me: String!) { Message(where: { author: { _eq: $me } }) { room_id } }`, { me });
@@ -173,27 +186,30 @@ async function postTakes() {
   let listed = 0, tried = 0;
   for (const m of matches) {
     if (listed >= 3 || tried >= 6 || Date.now() < pausedUntil) break;
-    if (done.has(`match-${m.id}`)) continue;
+    if (done.has(`match-${m.id}`) || resting(m.id)) continue;
     tried++;
     const raw = await gemini(
       `You are a sharp, funny football pundit on a fan app. For ${m.home.name} v ${m.away.name} (kickoff ${new Date(m.kickoff * 1000).toISOString()}), ` +
         `search the latest team news and give ONE confident prediction under 12 words that can be checked from match data: ` +
         `a named player scoring (optionally before a minute), total goals, a red card, corners, or the result. ` +
-        `One single condition, never two joined with "and" or "with". Reply with the prediction only.`,
+        `One single condition, never two joined with "and" or "with", and never a winning margin ("by two goals"). Reply with the prediction only.`,
     );
     const take = cleanTake(raw);
     if (!take) {
       log(`skipped ${m.home.name} v ${m.away.name}: no clean prediction${raw ? ` (got "${raw.replace(/\s+/g, " ").slice(0, 80)}")` : ""}`);
+      if (raw) failed(m.id);
       continue;
     }
-    const compile = () => terrace<{ spec: string; reading: string; closeTime: number }>("/api/compile-take", { text: take, fixtureId: m.id });
+    const compile = () => terrace<{ spec: string; reading: string; closeTime: number; ai?: string }>("/api/compile-take", { text: take, fixtureId: m.id });
     let compiled = await compile();
-    if (!compiled.spec) {
-      await Bun.sleep(3000); // the compiler's own Gemini call may just have been busy
+    if (!compiled.spec && compiled.ai === "busy") {
+      await Bun.sleep(3000); // only when the compiler's AI was rate-limited, not when no rule fits
       compiled = await compile();
     }
     if (!compiled.spec) {
-      log(`skipped "${take}": no data rule`);
+      failed(m.id);
+      const a = attempts.get(m.id)!;
+      log(`skipped "${take}": no data rule${compiled.ai ? ` (take reader ${compiled.ai})` : ""}; ${a.tries >= MAX_TRIES ? "giving up on this match" : "resting this match for 6h"}`);
       continue;
     }
     const posted = await call(A.chat, "post", [0, BigInt(m.id), take, 0n]);
