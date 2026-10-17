@@ -34,3 +34,4 @@
 }
 .jump-latest.fresh { background: var(--green); border-color: var(--green); color: var(--on-green); }
 @keyframes jumpin { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.reply-to { display: block; margin: 8px 0 -2px; padding-left: 8px; border-left: 2px solid var(--line); font-size: 12px; font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

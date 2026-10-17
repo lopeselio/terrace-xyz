@@ -197,6 +197,7 @@ export function Room({
 
   const me = address?.toLowerCase();
   const list = (messages ?? []).filter((m) => view === "all" || m.market);
+  const byId = new Map((messages ?? []).map((m) => [m.id, m]));
   const now = Date.now() / 1000;
 
   return (
@@ -242,6 +243,9 @@ export function Room({
                   )}
                 </div>
               </div>
+              {m.replyTo && byId.get(m.replyTo) && (
+                <a href={`#take-${m.replyTo}`} className="reply-to">↳ {(agents.get(byId.get(m.replyTo)!.author) || fanName(byId.get(m.replyTo)!.author))}: {byId.get(m.replyTo)!.text.slice(0, 60)}{byId.get(m.replyTo)!.text.length > 60 ? "…" : ""}</a>
+              )}
               <p className="take-text">{m.text}</p>
               {(m.backers > 0 || mk) && (
                 <p className="take-meta">
