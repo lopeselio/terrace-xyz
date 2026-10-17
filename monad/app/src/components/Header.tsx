@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { NotificationsSheet, useNotifications } from "./Notifications";
 import { PointsSheet } from "./PointsSheet";
+import { StreakPill } from "./StreakSheet";
 import { RollingNumber } from "./RollingNumber";
 import { TerraceMark } from "./TerraceMark";
 import { ThemeButton } from "./ThemeSwitch";
@@ -60,6 +61,7 @@ export function Header({
         {share && <button className="iconbtn" aria-label="Share" onClick={share}><Icon name="share" /></button>}
         <ThemeButton />
         {bell && <Bell />}
+        {!back && <StreakPill />}
         {balance && <PointsPill />}
         {balance && <BalancePill />}
       </div>

@@ -31,12 +31,13 @@ async function load() {
   if (!me) return;
   const who = me;
   try {
-    const d = await query<{ Player_by_pk: { terracePoints: string } | null }>(
-      `query TP($me: String!) { Player_by_pk(id: $me) { terracePoints } }`,
-      { me: who },
-    );
+    // Earned (indexer) minus spent on streak repairs (Azure, via /api/streak).
+    const [d, spent] = await Promise.all([
+      query<{ Player_by_pk: { terracePoints: string } | null }>(`query TP($me: String!) { Player_by_pk(id: $me) { terracePoints } }`, { me: who }),
+      fetch(`/api/streak?who=${who}`).then((r) => (r.ok ? r.json() : { spent: 0 })).then((x: { spent?: number }) => x.spent ?? 0).catch(() => 0),
+    ]);
     if (who !== me) return;
-    const total = Number(d.Player_by_pk?.terracePoints ?? 0);
+    const total = Number(d.Player_by_pk?.terracePoints ?? 0) - spent;
     const grew = state.total !== null && total > state.total;
     set({ total, charging: grew ? false : state.charging });
     if (grew) fastUntil = 0;
@@ -83,6 +84,7 @@ function start() {
   window.addEventListener("terrace-busy", onBusy);
   window.addEventListener("terrace-sent", onSent);
   window.addEventListener("terrace-balance", onChange);
+  window.addEventListener("terrace-streak", load);
   slowTimer = setInterval(() => document.visibilityState === "visible" && load(), 20_000);
 }
 
@@ -90,6 +92,7 @@ function stop() {
   window.removeEventListener("terrace-busy", onBusy);
   window.removeEventListener("terrace-sent", onSent);
   window.removeEventListener("terrace-balance", onChange);
+  window.removeEventListener("terrace-streak", load);
   if (slowTimer) clearInterval(slowTimer);
   if (fastTimer) clearTimeout(fastTimer);
   slowTimer = fastTimer = null;

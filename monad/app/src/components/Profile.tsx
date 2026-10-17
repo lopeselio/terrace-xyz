@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { PointsSheet } from "./PointsSheet";
+import { useStreak } from "./StreakSheet";
 import { RollingNumber } from "./RollingNumber";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { foundingFans } from "@/lib/terracePoints";
@@ -49,6 +50,7 @@ export function Profile() {
   const [p, setP] = useState<Player | null>(null);
   const [pointsOpen, setPointsOpen] = useState(false);
   const live = usePoints();
+  const runs = useStreak();
   const [tp, setTp] = useState<{ terracePoints: string; dayStreak: number; invitesLanded: number } | null>(null);
   const [graph, setGraph] = useState<{ followers: number; following: number } | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
@@ -210,7 +212,7 @@ export function Profile() {
               <div className="umeta">
                 {!tp || tp.terracePoints === "0"
                   ? `Your welcome ${foundingFans() ? 200 : 100} lands with your first bet or take`
-                  : tp.dayStreak ? `${tp.dayStreak}-day run` : "Play today to start a run"}
+                  : runs.state?.current ? `${runs.state.current}-day streak` : "Play today to start a streak"}
                 {tp?.invitesLanded ? ` · ${tp.invitesLanded} fan${tp.invitesLanded > 1 ? "s" : ""} brought in` : ""}
               </div>
             </div>
