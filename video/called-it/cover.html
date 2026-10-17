@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace · Called it · cover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<style>
+  /* Thumbnail / cover for the "Called it" ad. Same tokens as film.html. One still per format.
+     Safe zones: 9:16 keeps the story inside the centre 3:4 (profile grids) and clear of TikTok's right rail;
+     4:5 keeps it inside the 3:4 grid crop; 16:9 reads at X's small card size. */
+  :root {
+    --canvas: #0a0a0a; --surface: #111; --raised: #1a1a1a; --line: #262626;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16;
+    --red: #ef4444; --red-ink: #f87171;
+    --ink: #f9fafb; --ink2: #9ca3af; --ink3: #6b7280;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; }
+  #frame { position: relative; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #glow { position: absolute; inset: 0; background:
+    radial-gradient(ellipse 60% 45% at 50% 68%, rgba(34,197,94,0.22), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 15% 10%, rgba(167,139,250,0.06), transparent 70%); }
+  #grid { position: absolute; inset: 0; opacity: 0.7; background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.2px); background-size: 28px 28px; }
+  .abs { position: absolute; }
+
+  /* hook */
+  .kick { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.95; color: var(--ink); white-space: nowrap; }
+  .kick s { text-decoration: none; color: var(--red-ink); }
+  .hook { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.86; letter-spacing: -2px; color: var(--green); white-space: nowrap; text-shadow: 0 10px 60px rgba(34,197,94,0.35); }
+  .hook b { color: var(--ink); font-weight: 800; }
+
+  /* chat bubbles */
+  .bub { background: var(--raised); border: 2px solid var(--line); border-radius: 22px; padding: 16px 22px; display: flex; gap: 16px; align-items: center; box-shadow: 0 20px 50px rgba(0,0,0,0.55); }
+  .av { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-family: var(--cond); font-weight: 700; font-size: 19px; color: #fff; flex: none; }
+  .name { font-weight: 700; font-size: 17px; color: var(--ink2); }
+  .t { font-weight: 700; font-size: 25px; line-height: 1.2; color: var(--ink); }
+  .take { border-color: rgba(34,197,94,0.9); box-shadow: 0 0 0 7px rgba(34,197,94,0.15), 0 24px 60px rgba(0,0,0,0.6); }
+  .doubt { opacity: 0.8; }
+  .stamp { font-family: var(--cond); font-weight: 800; font-size: 26px; letter-spacing: 1px; color: var(--red-ink); border: 3px solid var(--red-ink); border-radius: 10px; padding: 2px 12px; transform: rotate(-8deg); margin-left: auto; flex: none; }
+
+  /* win card */
+  .win { background: linear-gradient(160deg, #0f3a20 0%, #072615 60%, #05200f 100%); border: 2px solid #1f5133; border-radius: 30px; padding: 30px 34px; box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 120px rgba(34,197,94,0.18); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; text-transform: uppercase; background: var(--green-deep); color: var(--green-ink); border: 1px solid #14532d; }
+  .amt { font-family: var(--cond); font-weight: 800; line-height: 0.9; color: var(--green); margin-top: 14px; }
+  .on { font-weight: 700; font-size: 25px; line-height: 1.25; margin-top: 12px; }
+  .on span { color: var(--green-ink); }
+  .pill { display: inline-flex; align-items: center; gap: 12px; height: 52px; border-radius: 26px; background: #151515; border: 2px solid var(--line); padding: 0 20px; font-family: var(--cond); font-weight: 700; font-size: 26px; white-space: nowrap; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+  .chip { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-family: var(--sans); font-weight: 800; color: #fff; }
+  .goal { display: inline-flex; align-items: center; height: 52px; border-radius: 14px; background: var(--green); color: #04180c; padding: 0 18px; font-family: var(--cond); font-weight: 800; font-size: 28px; text-transform: uppercase; white-space: nowrap; }
+
+  /* brand */
+  .brand { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+  .brand img { width: 64px; height: 64px; border-radius: 16px; }
+  .brand .n { font-family: var(--cond); font-weight: 800; font-size: 40px; text-transform: uppercase; letter-spacing: 1px; }
+  .brand .u { font-weight: 700; font-size: 26px; color: var(--green-ink); }
+  .fine { font-weight: 500; font-size: 18px; color: var(--ink3); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+
+  <div class="abs kick" id="kick">They all <s>faded</s> me.</div>
+  <div class="abs hook" id="hook">Called <b>it.</b></div>
+
+  <div class="abs" id="chat">
+    <div class="bub take" id="b-take"><span class="av" style="background:#831843">LU</span><div><div class="name">Loud Ultra</div><div class="t">Haaland scores before half-time. Guaranteed.</div></div></div>
+    <div class="bub doubt" id="b-d1"><span class="av" style="background:#7c2d12">SK</span><div><div class="name">saoirse.k</div><div class="t">No chance.</div></div><span class="stamp">FADE</span></div>
+    <div class="bub doubt" id="b-d2"><span class="av" style="background:#166534">JB</span><div><div class="name">jamie.b</div><div class="t">Fiver says he doesn't.</div></div><span class="stamp">FADE</span></div>
+  </div>
+
+  <div class="abs" id="match"><span class="pill"><span class="dot"></span><span class="chip" style="background:#c8102e">LIV</span>0 – 1<span class="chip" style="background:#6cabdd">MCI</span><span style="color:var(--ink2)">38'</span></span><span class="goal">⚽ Haaland 38'</span></div>
+
+  <div class="abs win" id="win">
+    <span class="badge">✓ You won</span>
+    <div class="amt" id="amt">+$11.40</div>
+    <div class="on">Called it on <span>Haaland scores before half-time</span></div>
+  </div>
+
+  <div class="abs brand" id="brand"><img src="assets/terrace.png" alt="" /><div><div class="n">Terrace</div><div class="u">play.terrace.social</div></div></div>
+  <div class="abs fine" id="fine">Illustration. Testnet: no real money.</div>
+</div>
+
+<script>
+const F = new URLSearchParams(location.search).get("f") || "9x16";
+const [W, H] = { "16x9": [1920, 1080], "9x16": [1080, 1920], "4x5": [1080, 1350] }[F];
+const $ = (id) => document.getElementById(id);
+const frame = $("frame");
+frame.style.width = W + "px"; frame.style.height = H + "px";
+const set = (id, css) => Object.assign($(id).style, css);
+
+// Per-format placement. x/y are top-left unless noted; "cx" centres horizontally.
+const L = {
+  "9x16": {
+    kick: { y: 290, size: 80, cx: true }, hook: { y: 375, size: 228, cx: true },
+    chat: { x: 80, y: 650, w: 840, gap: 14, tilt: -2 },
+    match: { x: 80, y: 1020 }, win: { x: 80, y: 1096, w: 840, amt: 170 },
+    brand: { x: 80, y: 1480 }, fine: { x: 80, y: 1572 },
+  },
+  "4x5": {
+    kick: { y: 60, size: 72, cx: true }, hook: { y: 130, size: 210, cx: true },
+    chat: { x: 90, y: 360, w: 900, gap: 12, tilt: -2 },
+    match: { x: 90, y: 720 }, win: { x: 90, y: 790, w: 900, amt: 150 },
+    brand: { x: 90, y: 1170 }, fine: { x: 600, y: 1210 },
+  },
+  "16x9": {
+    kick: { x: 110, y: 130, size: 84 }, hook: { x: 104, y: 220, size: 236 },
+    chat: { x: 110, y: 500, w: 820, gap: 12, tilt: -1.5 },
+    match: { x: 1050, y: 150 }, win: { x: 1050, y: 230, w: 760, amt: 190 },
+    brand: { x: 110, y: 880 }, fine: { x: 1050, y: 640 },
+  },
+}[F];
+
+function place() {
+  const k = $("kick"), h = $("hook");
+  k.style.fontSize = L.kick.size + "px"; h.style.fontSize = L.hook.size + "px";
+  set("kick", { left: (L.kick.cx ? (W - k.offsetWidth) / 2 : L.kick.x) + "px", top: L.kick.y + "px" });
+  set("hook", { left: (L.hook.cx ? (W - h.offsetWidth) / 2 : L.hook.x) + "px", top: L.hook.y + "px" });
+
+  set("chat", { left: L.chat.x + "px", top: L.chat.y + "px", width: L.chat.w + "px", display: "flex", flexDirection: "column", gap: L.chat.gap + "px" });
+  if (L.chat.small) for (const b of ["b-d1", "b-d2"]) $(b).style.display = b === "b-d2" ? "none" : "flex";
+  $("b-take").style.transform = `rotate(${L.chat.tilt}deg)`;
+  $("b-d1").style.marginLeft = "60px";
+  $("b-d2").style.marginLeft = "60px";
+
+  set("match", { left: L.match.x + "px", top: L.match.y + "px", display: "flex", gap: "14px" });
+  set("win", { left: L.win.x + "px", top: L.win.y + "px", width: L.win.w + "px" });
+  $("amt").style.fontSize = L.win.amt + "px";
+  set("brand", { left: L.brand.x + "px", top: L.brand.y + "px" });
+  set("fine", { left: L.fine.x + "px", top: L.fine.y + "px" });
+}
+
+(async () => {
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r)))));
+  place();
+  window.ready = true;
+})();
+</script>
+</body>
+</html>
