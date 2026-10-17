@@ -26,6 +26,8 @@ type Ctx = {
     args: ContractFunctionArgs<abi, "nonpayable" | "payable", fn>;
     dollars?: number;
   }) => Promise<Hex>;
+  /** Sign a short plain-text note with the session (no prompt), so our own API knows it's really you. */
+  sign: (message: string) => Promise<Hex>;
 };
 
 const AccountContext = createContext<Ctx | null>(null);
@@ -109,9 +111,22 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     [keys],
   );
 
+  const sign: Ctx["sign"] = useCallback(
+    async (message) => {
+      let k = keys;
+      if (!k) throw new FanError("Sign in first.");
+      if (!sessionLive()) {
+        k = await confirmPresence(k.account.address);
+        setKeys(k);
+      }
+      return k.account.signMessage({ message });
+    },
+    [keys],
+  );
+
   const value = useMemo<Ctx>(
-    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send }),
-    [status, keys, error, join, login, loginFrom, logout, send],
+    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send, sign }),
+    [status, keys, error, join, login, loginFrom, logout, send, sign],
   );
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
