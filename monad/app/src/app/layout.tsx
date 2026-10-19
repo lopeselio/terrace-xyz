@@ -8,6 +8,9 @@ import { OutcomePopup } from "@/components/OutcomePopup";
 import { StoppagePopup } from "@/components/Stoppage";
 import { PointsToast } from "@/components/PointsToast";
 import { TabBar } from "@/components/TabBar";
+import { SideNav } from "@/components/SideNav";
+import { LayoutToggle } from "@/components/LayoutSwitch";
+import { LAYOUT_BOOT } from "@/lib/layout";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -35,12 +38,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${barlow.variable} ${barlowCond.variable}`} suppressHydrationWarning>
       <head>
-        {/* Apply the saved theme before first paint (dark is the default). */}
+        {/* Apply the saved theme and layout before first paint (dark and auto are the defaults). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem("terrace.theme")||"dark";if(t==="system")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t}catch(e){}`,
           }}
         />
+        <script dangerouslySetInnerHTML={{ __html: LAYOUT_BOOT }} />
       </head>
       <body>
         <Providers>
@@ -51,10 +55,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </span>
             <span className="bar"><i /></span>
           </div>
+          <SideNav />
           <div className="app">
             <main className="page">{children}</main>
           </div>
           <TabBar />
+          <LayoutToggle className="layout-float" />
           <Activity />
           <Onboarding />
           <OutcomePopup />

@@ -541,3 +541,81 @@ img { display: block; }
 
 /* push nudge at the top of the bell */
 .push-prompt { display: flex; align-items: center; gap: 11px; margin-top: 14px; padding: 12px; border-radius: var(--r-md); background: var(--green-tint); border: 1px solid var(--green-mid); }
+
+/* ═══ Desktop layout ══════════════════════════════════════════════════════
+   <html data-layout="desktop"> (LayoutSwitch, applied before paint in layout.tsx): the tab bar becomes
+   a sidebar, the column widens, sheets open as centred dialogs. "phone" is everything above.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sidenav, .layout-toggle.layout-float { display: none; }
+.wide-only { display: none; }
+@media (min-width: 768px) { .wide-only { display: block; } }
+
+/* the switch: a pill in the sidebar, floating beside the column in phone view on a computer */
+.layout-toggle {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: var(--r-pill);
+  background: var(--raised); border: 1px solid var(--line); color: var(--ink-2); font-size: 12.5px; font-weight: 700;
+}
+.layout-toggle:hover { color: var(--ink); border-color: var(--ink-5); }
+@media (min-width: 768px) {
+  :root[data-layout="phone"] .layout-toggle.layout-float { display: inline-flex; position: fixed; right: 20px; bottom: 20px; z-index: 13; box-shadow: var(--shadow-card); }
+  /* the phone column reads as a phone on a big screen */
+  :root[data-layout="phone"] .app { border-left: 1px solid var(--line-hair); border-right: 1px solid var(--line-hair); }
+}
+
+:root[data-layout="desktop"] {
+  --side-w: 240px; --col-w: 720px;
+  --shell-left: max(0px, calc((100vw - var(--side-w) - var(--col-w) - 48px) / 2));
+  --col-left: calc(var(--shell-left) + var(--side-w) + 24px);
+  --col-mid: calc(var(--col-left) + var(--col-w) / 2);
+  --gutter: 22px;
+}
+:root[data-layout="desktop"] .tabbar { display: none; }
+:root[data-layout="desktop"] .app { max-width: var(--col-w); margin: 0 0 0 var(--col-left); border-left: 1px solid var(--line-hair); border-right: 1px solid var(--line-hair); }
+:root[data-layout="desktop"] .page { padding-bottom: 48px; }
+:root[data-layout="desktop"] .hdr .logo-word { display: inline; }
+
+.sidenav {
+  position: fixed; top: 0; bottom: 0; left: var(--shell-left); width: var(--side-w); z-index: 12;
+  flex-direction: column; gap: 2px; padding: 18px 14px 16px; overflow-y: auto;
+}
+:root[data-layout="desktop"] .sidenav { display: flex; }
+.sidenav-logo { padding: 6px 10px 18px; }
+.side-link {
+  display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: var(--r-md);
+  color: var(--ink-2); font-size: 15px; font-weight: 600; transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.side-link:hover { background: var(--raised); color: var(--ink); }
+.side-link.on { color: var(--green); background: var(--green-glow); }
+.side-create {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; margin: 10px 0 6px; border-radius: var(--r-pill);
+  background: var(--green); color: var(--on-green); font-weight: 800; font-size: 15px; box-shadow: 0 8px 20px rgba(34, 197, 94, 0.22);
+}
+.side-create:hover { filter: brightness(1.06); }
+.side-label { margin: 14px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-4); }
+.side-label ~ .side-link { height: 40px; font-size: 14px; }
+.side-foot { margin-top: auto; padding-top: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* sheets become dialogs */
+:root[data-layout="desktop"] .sheetwrap { justify-content: center; padding: 24px; }
+:root[data-layout="desktop"] .sheet { max-width: 540px; max-height: min(86dvh, 860px); border-bottom: 1px solid var(--line); border-radius: var(--r-sheet); padding-bottom: 22px; animation: dialogin 0.24s var(--ease) both; }
+:root[data-layout="desktop"] .grabber { visibility: hidden; height: 0; margin-bottom: 10px; }
+@keyframes dialogin { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* bars and toasts float over the column, not the middle of the window */
+:root[data-layout="desktop"] .slipbar,
+:root[data-layout="desktop"] .dock { left: var(--col-mid); width: calc(var(--col-w) - 40px); bottom: 24px; }
+:root[data-layout="desktop"] .busy-pill { left: var(--col-mid); }
+:root[data-layout="desktop"] .points-toast,
+:root[data-layout="desktop"] .stoppage-toast { left: var(--col-mid); bottom: 32px; max-width: calc(var(--col-w) - 40px); }
+
+/* a mouse needs to see that rows scroll sideways */
+:root[data-layout="desktop"] :is(.chiprow, .feat-track, .rooms, .people-row) { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* hover, for pointers that have it */
+@media (hover: hover) {
+  .iconbtn:hover { color: var(--ink); border-color: var(--ink-5); }
+  .card-tap:hover { border-color: var(--ink-5); }
+  .cta:hover:not(:disabled) { filter: brightness(1.06); }
+  .tab:hover { color: var(--ink-2); }
+}
+:root[data-theme="light"] .layout-toggle:hover { border-color: #c5cac2; }

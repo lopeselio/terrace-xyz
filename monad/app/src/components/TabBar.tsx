@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 
 /* Tab bar from the handoff: Home, Markets, raised green Create, Social, Profile. */
-const TABS: { href: string; icon: IconName; label: string; match: (p: string) => boolean }[] = [
+export const TABS: { href: string; icon: IconName; label: string; match: (p: string) => boolean }[] = [
   { href: "/", icon: "home", label: "Home", match: (p) => p === "/" },
   { href: "/markets", icon: "pitch", label: "Markets", match: (p) => /^\/(markets|matches|m\/|flash|swipe)/.test(p) },
   { href: "/take", icon: "plus", label: "Create", match: (p) => p.startsWith("/take") },

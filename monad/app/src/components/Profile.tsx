@@ -8,6 +8,7 @@ import { Icon } from "./Icon";
 import { PointsSheet } from "./PointsSheet";
 import { useStreak } from "./StreakSheet";
 import { RollingNumber } from "./RollingNumber";
+import { LayoutSwitch } from "./LayoutSwitch";
 import { PushSettings } from "./PushSettings";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { foundingFans } from "@/lib/terracePoints";
@@ -351,6 +352,7 @@ export function Profile() {
       <div className="pad" style={{ marginTop: 22 }}>
         <div className="flabel">Appearance</div>
         <ThemeSwitch />
+        <LayoutSwitch />
         <SoundSwitch />
       </div>
 
