@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
-# Terrace on Monad testnet. Addresses come from ../deployments/10143.json (v2).
+# Terrace on Monad testnet. Addresses come from ../deployments/10143.json (v2, plus houseRules for v3 leagues).
 # ABIs are copied from the Foundry build by scripts/abis.sh.
 name: terrace-indexer
 description: Chat, takes, markets, leagues and records for Terrace on Monad
@@ -97,11 +97,20 @@ chains:
       - name: TerraceMatchups
         address: "0xd411fFE50574962e9376c60d72939F6982350E4B"
       - name: TerraceLeagues
-        address: "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6"
+        # v2, and v3 (house rules, ids from 1,000,000)
+        address:
+          - "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6"
+          - "0x5F3671dfb20a8bbC22Cb5CB4Ff502eB21F44c356"
       - name: TerraceGovernance
-        address: "0xe59B32B430633203205af9AeA909d8d3F1875c20"
+        # v2, and v3 (house rules, ids from 1,000,000)
+        address:
+          - "0xe59B32B430633203205af9AeA909d8d3F1875c20"
+          - "0x9f8c4Cd823b4a61224DDA6Ac8073C1E77bAa65c7"
       - name: TerraceChat
-        address: "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
+        # v2, and v3 (house rules, ids from 1,000,000)
+        address:
+          - "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e"
+          - "0x6c6A49E852c4b58e1809fdCe3719A1a2e9b9A1B0"
       - name: TerraceReputation
         address: "0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3"
       - name: TerraceFollows

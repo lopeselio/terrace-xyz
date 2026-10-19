@@ -28,5 +28,16 @@
     "USDC": "0x534b2f3A21130d7a60830c2Df862319e593943A3"
   },
   "onboardingTreasury": "0x7C45b7d13aCBCc0F62fb061EE05Bb2E1a4991718",
-  "creBroadcaster": "0x901E8F75cc9F453fD9530b0C5b6763A1343949d7"
+  "creBroadcaster": "0x901E8F75cc9F453fD9530b0C5b6763A1343949d7",
+  "houseRules": {
+    "deployedAt": "2026-10-19",
+    "startBlock": 72470176,
+    "idBase": 1000000,
+    "revealKind": 18,
+    "contracts": {
+      "TerraceLeagues": "0x5F3671dfb20a8bbC22Cb5CB4Ff502eB21F44c356",
+      "TerraceGovernance": "0x9f8c4Cd823b4a61224DDA6Ac8073C1E77bAa65c7",
+      "TerraceChat": "0x6c6A49E852c4b58e1809fdCe3719A1a2e9b9A1B0"
+    }
+  }
 }

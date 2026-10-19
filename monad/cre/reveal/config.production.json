@@ -7,6 +7,11 @@
       "address": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
       "idBase": 0,
       "kind": 17
+    },
+    {
+      "address": "0x5F3671dfb20a8bbC22Cb5CB4Ff502eB21F44c356",
+      "idBase": 1000000,
+      "kind": 18
     }
   ],
   "scanWindow": 50,
