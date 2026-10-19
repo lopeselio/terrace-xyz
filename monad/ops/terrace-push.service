@@ -1,0 +1,11 @@
+# One push round on play.terrace.social: sends results, challenges and new followers as web push.
+# Installed on the Azure VM next to the runners; PUSH_CRON_KEY lives in ~/terrace/.push.env (chmod 600).
+[Unit]
+Description=Terrace push round
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=terrace
+EnvironmentFile=/home/terrace/terrace/.push.env
+ExecStart=/usr/bin/curl -fsS --max-time 55 -X POST -H "Authorization: Bearer ${PUSH_CRON_KEY}" https://play.terrace.social/api/push/run
