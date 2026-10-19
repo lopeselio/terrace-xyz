@@ -27,3 +27,15 @@ export function betOutcome(b: BetLike): { outcome: Outcome; amount: number; coll
   const gross = (stake * (yes + no)) / winning;
   return { outcome: "won", amount: gross - ((gross - stake) * b.market.feeBps) / 10_000, collected: false };
 }
+
+/**
+ * A standard question's answer from its fixture, as TerraceOracle.outcomeOf works it out (1X2, over
+ * goals, both teams score never get an answer report). Answers: 0 open, 1 yes, 2 no, 3 void.
+ */
+export function standardAnswer(kind: number, line: number, f: { state: number; homeGoals: number; awayGoals: number }) {
+  if (kind === 0 || f.state === 0) return 0;
+  if (f.state === 2) return 3;
+  const h = f.homeGoals, a = f.awayGoals;
+  const yes = kind === 1 ? h > a : kind === 2 ? h === a : kind === 3 ? a > h : kind === 4 ? h + a > line : h > 0 && a > 0;
+  return yes ? 1 : 2;
+}
