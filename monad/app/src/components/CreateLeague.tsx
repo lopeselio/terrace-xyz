@@ -3,9 +3,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
 import { SignIn } from "./SignIn";
+import { RulesEditor, RulesSummary } from "./HouseRules";
 import { Badge, Seg, Switch } from "./ui";
 import { useAccount } from "@/lib/account";
-import { createLeague, randomCode, rememberCode } from "@/lib/leagues";
+import { createLeague, DEFAULT_RULES, randomCode, rememberCode, type Rules } from "@/lib/leagues";
 import "@/styles/leagues.css";
 import { showError } from "@/lib/errors";
 
@@ -13,7 +14,7 @@ const SIZES = [10, 20, 50, 100] as const;
 const WEEKS = [1, 4, 8, 38] as const;
 const FEES = [0, 1, 2, 5] as const;
 
-/** Create a league (screen-league-create.html): name, size, length, entry, who runs it, sealed table. */
+/** Create a league (screen-league-create.html): name, size, length, entry, who runs it, sealed table, house rules. */
 /* "Who runs it", in plain words: what each choice means for the gameweeks. */
 export const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: string; points: string[] }[] = [
   {
@@ -22,9 +23,9 @@ export const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: 
     title: "The group votes",
     lede: "Everyone in the league has a say.",
     points: [
-      "Any member suggests the next gameweek's matches in Votes",
+      "Any member suggests the next gameweek's matches, or new house rules, in Votes",
       "It passes the moment more than half the league votes yes",
-      "Otherwise it closes after 24 hours and the most votes win",
+      "Otherwise it closes after a day (change that in House rules) and the most votes win",
       "Invite your mates before the first vote, or it's just yours",
     ],
   },
@@ -36,6 +37,7 @@ export const RUNS: { id: "me" | "members"; icon: IconName; title: string; lede: 
     points: [
       "You pick each gameweek's matches in Gameweeks",
       "They open for picks straight away, no vote",
+      "You can change the house rules between gameweeks",
       "Members just make their picks and chat",
     ],
   },
@@ -50,6 +52,8 @@ export function CreateLeague() {
   const [entry, setEntry] = useState<(typeof FEES)[number]>(0);
   const [isPrivate, setPrivate] = useState(true);
   const [governed, setGoverned] = useState(true);
+  const [rules, setRules] = useState<Rules>(DEFAULT_RULES);
+  const [editRules, setEditRules] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +62,7 @@ export function CreateLeague() {
     setError(null);
     try {
       const code = isPrivate ? randomCode() : "";
-      const id = await createLeague(send, { name: name.trim(), gameweeks, maxMembers: size, money: "usd", entry, isPrivate, governed, code });
+      const id = await createLeague(send, { name: name.trim(), gameweeks, maxMembers: size, money: "usd", entry, isPrivate, governed, code, rules });
       rememberCode(id, code);
       router.push(`/l/${id}?${code ? `code=${code}&` : ""}new=1`);
     } catch (e) {
@@ -117,6 +121,21 @@ export function CreateLeague() {
           <Switch on={isPrivate} onChange={setPrivate} label="Hide standings until reveal" />
         </div>
       </div>
+
+      <div className="sec-hd" style={{ marginTop: 20, padding: 0 }}>
+        <div className="flabel" style={{ margin: 0 }}>House rules</div>
+        <button type="button" className="btn-out" style={{ marginLeft: "auto" }} onClick={() => setEditRules(!editRules)}>
+          {editRules ? "Done" : "Change"}
+        </button>
+      </div>
+      {editRules ? (
+        <RulesEditor rules={rules} onChange={setRules} governed={governed} isPrivate={isPrivate} />
+      ) : (
+        <div className="card" style={{ padding: "10px 14px" }}>
+          <RulesSummary rules={rules} governed={governed} isPrivate={isPrivate} />
+        </div>
+      )}
+      <div className="umeta" style={{ marginTop: 6 }}>{governed ? "Members can vote to change them later." : "You can change them later; gameweeks already set keep their scoring."}</div>
 
       <div style={{ marginTop: 20 }}>
         {status !== "ready" ? (

@@ -12,7 +12,7 @@ import "@/styles/leagues.css";
  * it is, how long, what it costs and what's due next, then Join or Not now.
  */
 export function LeagueInvite({
-  name, organiser, governed, isPrivate, members, maxMembers, gameweeks, gw, entryFee, next, busy, error, onJoin, onClose,
+  name, organiser, governed, isPrivate, members, maxMembers, gameweeks, gw, entryFee, rules, next, busy, error, onJoin, onClose,
 }: {
   name: string;
   organiser: string;
@@ -23,6 +23,7 @@ export function LeagueInvite({
   gameweeks: number;
   gw: number;
   entryFee: bigint;
+  rules: string[]; // the house rules in plain words
   next?: { label: string; to: number };
   busy: boolean;
   error: string | null;
@@ -67,8 +68,8 @@ export function LeagueInvite({
       <div className="card invite-row">
         <Icon name="trophy" size={16} />
         <div style={{ flex: 1 }}>
-          <div className="uname">How you score</div>
-          <div className="umeta">Exact score 3 pts, right result 1. Market wins on the gameweek&apos;s matches add to the table too.</div>
+          <div className="uname">House rules</div>
+          <div className="umeta">{rules.slice(0, 3).join(". ")}. Market wins on the gameweek&apos;s matches add to the table too.</div>
         </div>
       </div>
 

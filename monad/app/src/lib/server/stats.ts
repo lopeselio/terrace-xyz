@@ -130,7 +130,7 @@ async function compute(days: number) {
   // what fans do, by feed event kind
   const KIND: Record<string, string> = {
     TAKE: "Takes posted", TAKE_LISTED: "Takes made markets", BET: "Bets placed", WIN: "Wins", CHALLENGE: "1v1s sent",
-    CHALLENGE_WON: "1v1s won", TITLE: "League titles", LEAGUE_JOIN: "League joins", PROPOSAL: "League proposals",
+    CHALLENGE_WON: "1v1s won", TITLE: "League titles", LEAGUE_JOIN: "League joins", PROPOSAL: "League proposals", RULES: "House rule changes",
   };
   const mix = new Map<string, number>();
   for (const f of feed) if (fan(f.actor) && KIND[f.kind]) mix.set(KIND[f.kind], (mix.get(KIND[f.kind]) ?? 0) + 1);

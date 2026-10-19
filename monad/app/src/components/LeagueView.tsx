@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { decodeAbiParameters, type Address, type Hex } from "viem";
 import { Header, shareLink } from "./Header";
+import { RulesEditor, RulesSummary, rulesDiff, rulesLines } from "./HouseRules";
 import { Icon } from "./Icon";
 import { Countdown } from "./Countdown";
 import { LeagueInvite } from "./LeagueInvite";
@@ -12,11 +13,12 @@ import { Avatar, Badge, Crest, Empty, Seg, SkeletonCards, fanName, money } from 
 import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { publicClient } from "@/lib/chain";
-import { ADDR, leaguesAbi } from "@/lib/contracts";
+import { isHouseRules, leaguesAt } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import {
-  addGameweek, countMarketWins, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekTable, getPick, hasEntered, joinLeague,
-  leagueCode, ordinal, ownSealedPicks, parseInvite, pendingMarketWins, rememberCode, rememberedCode, proposeFeature, proposeGameweek, submitPicks, table, vote, type MarketWin,
+  addGameweek, countMarketWins, DEFAULT_RULES, endSeason, executeProposal, featuredMarkets, finalizeGameweek, gameweekScoring, gameweekTable, getPick, hasEntered,
+  jokerOf, joinLeague, leagueCode, leagueRules, ordinal, ownSealedPicks, parseInvite, pendingMarketWins, playJoker, proposedRules, proposeRules, rememberCode,
+  rememberedCode, proposeFeature, proposeGameweek, setRules, submitPicks, table, vote, type MarketWin, type Rules,
 } from "@/lib/leagues";
 import "@/styles/leagues.css";
 import { showError } from "@/lib/errors";
@@ -37,11 +39,11 @@ const featuredId = (p: Proposal) => {
   }
 };
 
-const L = { address: ADDR.leagues, abi: leaguesAbi } as const;
 const FINISHED = new Set(["FT", "AET", "PEN"]);
 const ZERO_HASH = `0x${"0".repeat(64)}`;
 
 async function readLeague(id: bigint) {
+  const L = leaguesAt(id);
   const league = await publicClient.readContract({ ...L, functionName: "getLeague", args: [id] });
   const contests = await Promise.all(league.contestIds.map((c) => publicClient.readContract({ ...L, functionName: "getContest", args: [c] })));
   return { ...league, contests };
@@ -76,6 +78,10 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
   const [takes, setTakes] = useState<Take[]>([]);
   const [featured, setFeatured] = useState<Set<string>>(new Set());
   const [wins, setWins] = useState<MarketWin[]>([]);
+  const [rules, setRulesState] = useState<Rules>(DEFAULT_RULES);
+  const [scoring, setScoring] = useState({ exact: 3, result: 1 });
+  const [joker, setJoker] = useState<bigint | null>(null);
+  const [draft, setDraft] = useState<Rules | null>(null); // house rules being edited
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +95,9 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
       const prev = l.contests[n - 2];
       setPrevRows(prev?.finalized ? await gameweekTable(l.contestIds[n - 2], l.members, true) : null);
       if (cur && address) setEntered(await hasEntered(l.contestIds[n - 1], address));
+      setRulesState(await leagueRules(id));
+      if (cur) setScoring(await gameweekScoring(l.contestIds[n - 1]));
+      if (address) setJoker(await jokerOf(id, address));
       pendingMarketWins(id, l.members, l.contests).then(setWins).catch(() => {});
       // Chat takes on this gameweek's matches, plus any take a vote is about, for "Feature a take".
       const props = await query<{ Proposal: Proposal[] }>(`query P($l: String!) { Proposal(where: { league_id: { _eq: $l } }, order_by: { deadline: desc }) { id proposer kind yes no status deadline payload } }`, { l: String(leagueId) });
@@ -216,7 +225,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
     if (open) clocks.push({ key: "lock", label: entered ? "Picks lock" : `Seal your gameweek ${gw} picks`, to: Number(current.lockTime), note: entered ? "You're in. You can still change them." : "Locks at the first kick-off", go: "picks" });
     else if (lastKickoff + FULL_TIME > now) clocks.push({ key: "end", label: `Gameweek ${gw} ends`, to: lastKickoff + FULL_TIME, note: "Around the last final whistle", go: "table" });
   }
-  if (nextVote) clocks.push({ key: "vote", label: nextVote.kind === 0 ? "Vote on the next gameweek" : "Vote on a featured take", to: Number(nextVote.deadline), note: "Voting closes", go: "run" });
+  if (nextVote) clocks.push({ key: "vote", label: ["Vote on the next gameweek", "Vote on a featured take", "Vote on the house rules"][nextVote.kind] ?? "Vote", to: Number(nextVote.deadline), note: "Voting closes", go: "run" });
   const joinNow = () =>
     run("join", async () => {
       await joinLeague(send, address!, id, inviteCode(code));
@@ -224,7 +233,12 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
       setCode(inviteCode(code));
       setShowInvite(false);
     });
-  const winPts = wins.reduce((n, w) => n + (w.featured ? 2 : 1), 0);
+  const winPts = wins.reduce((n, w) => n + w.points, 0);
+  const houseRules = isHouseRules(id);
+  const jokerGw = joker === null ? 0 : league.contestIds.findIndex((c) => c === joker) + 1;
+  const jokerHere = !!current && joker === league.contestIds[gw - 1];
+  const jokerSpent = joker !== null && !jokerHere && jokerGw > 0 && Number(league.contests[jokerGw - 1].lockTime) <= now;
+  const ruleShape = { governed: league.governed, isPrivate: league.isPrivate };
 
   async function share() {
     const c = await shareLink(league!.name, `Join my league "${league!.name}" on Terrace${code ? ` (code ${leagueCode(leagueId, code)})` : ""}.`, invite);
@@ -282,6 +296,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
           gameweeks={league.gameweeks}
           gw={gw}
           entryFee={league.entryFee}
+          rules={rulesLines(rules, ruleShape)}
           next={clocks.find((c) => c.key !== "vote")}
           busy={busy === "join"}
           error={error}
@@ -434,7 +449,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                 <div className="card lg-wins">
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="uname">{wins.length} market win{wins.length > 1 ? "s" : ""} to add · +{winPts} table pts</div>
-                    <div className="umeta">Right calls on finished gameweek matches count 1 point{wins.some((w) => w.featured) ? ", featured takes 2" : ""}. One tap adds everyone&apos;s.</div>
+                    <div className="umeta">Right calls on finished gameweek matches count 1 point{wins.some((w) => w.featured) ? `, featured takes ${rules.featuredPoints}` : ""}. One tap adds everyone&apos;s.</div>
                   </div>
                   <button className="cta cta-sm" disabled={!!busy} onClick={() => run("wins", () => countMarketWins(send, id, wins))}>
                     {busy === "wins" ? "Adding…" : "Add them"}
@@ -476,8 +491,24 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                 </span>
               </div>
               <div className="umeta" style={{ marginTop: -4, marginBottom: 10 }}>
-                Exact score 3 pts, right result 1 pt.{current.sealed_ ? " Picks stay hidden until the final whistle, then Chainlink reveals them, so nobody can copy." : ""}
+                Exact score {scoring.exact} pts, right result {scoring.result ? `${scoring.result} pt${scoring.result > 1 ? "s" : ""}` : "nothing"}.{jokerHere ? " Your joker doubles this gameweek." : ""}{current.sealed_ ? " Picks stay hidden until the final whistle, then Chainlink reveals them, so nobody can copy." : ""}
               </div>
+              {rules.jokers && member && (
+                <div className="card lg-joker">
+                  <Icon name="bolt" size={16} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="uname">{jokerHere ? `Joker on gameweek ${gw}` : jokerSpent ? `Joker played on gameweek ${jokerGw}` : "Your joker"}</div>
+                    <div className="umeta">
+                      {jokerHere ? "Every point you score this gameweek counts double." : jokerSpent ? "One per season. It's been played." : jokerGw ? `It's on gameweek ${jokerGw}. Move it here before kick-off.` : "Double one gameweek this season. Play it before kick-off."}
+                    </div>
+                  </div>
+                  {open && !jokerHere && !jokerSpent && (
+                    <button className="btn-out" disabled={!!busy} onClick={() => run("joker", () => playJoker(send, league.contestIds[gw - 1]))}>
+                      {busy === "joker" ? "Playing…" : jokerGw ? "Move it here" : "Play it"}
+                    </button>
+                  )}
+                </div>
+              )}
               {sealedOwn && (
                 <div className="card lg-own">
                   <Icon name="lock" size={14} />
@@ -595,8 +626,14 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                   <div key={p.id} className="card lg-vote">
                     <div className="row" style={{ alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
-                        <div className="uname">{p.kind === 0 ? "Next gameweek's matches" : "Feature a take"}</div>
+                        <div className="uname">{["Next gameweek's matches", "Feature a take", "Change the house rules"][p.kind] ?? "Proposal"}</div>
                         {p.kind === 1 && <div className="lg-take">“{takeById.get(featuredId(p))?.question.text ?? "A chat take"}”</div>}
+                        {p.kind === 2 && (() => {
+                          const to = proposedRules(p.payload as Hex);
+                          // An open vote shows what it changes; a closed one shows the rules it proposed.
+                          const lines = !to ? [] : p.status === 0 ? rulesDiff(rules, to, ruleShape) : rulesLines(to, ruleShape);
+                          return <ul className="hr-diff">{lines.map((l) => <li key={l}>{l}</li>)}</ul>;
+                        })()}
                         <div className="umeta">Suggested by {name(p.proposer)}{openVote ? ` · closes ${new Date(Number(p.deadline) * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
                       </div>
                       <Badge tone={p.status === 1 ? "won" : p.status === 0 ? "open" : "lost"}>{openVote ? "Voting" : ["Ready to close", "Passed", "Rejected", "Couldn't run"][p.status]}</Badge>
@@ -625,7 +662,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                 <>
                   <div className="sec-hd" style={{ marginTop: 18 }}><h3>Feature a take</h3></div>
                   <div className="umeta" style={{ marginTop: -4, marginBottom: 10 }}>
-                    Pick a chat take on gameweek {gw}&apos;s matches. If the group votes it in, everyone who backs the right side gets <b>2 table points</b> instead of 1.
+                    Pick a chat take on gameweek {gw}&apos;s matches. If the group votes it in, everyone who backs the right side gets <b>{rules.featuredPoints} table points</b> instead of 1.
                   </div>
                   {featurable.length === 0 && featuredTakes.length === 0 && (
                     <div className="card" style={{ padding: 12 }}>
@@ -639,7 +676,7 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
                         <div className="lg-take">“{t.question.text}”</div>
                         <div className="umeta">{matchName(t)}</div>
                       </div>
-                      <Badge tone="flash" icon="bolt">Featured · 2 pts</Badge>
+                      <Badge tone="flash" icon="bolt">Featured · {rules.featuredPoints} pts</Badge>
                     </div>
                   ))}
                   {featurable.map((t) => (
@@ -661,6 +698,38 @@ export function LeagueView({ leagueId, code: codeFromLink, fresh }: { leagueId: 
           ) : (
             <div className="umeta" style={{ marginTop: 12 }}>Run by {creator ? "you" : fanName(league.creator)}. {league.contests.length} of {league.gameweeks} gameweeks set.</div>
           )}
+          <div className="sec-hd" style={{ marginTop: 18 }}>
+            <h3>House rules</h3>
+            {houseRules && member && !league.ended && (league.governed || creator) && (
+              <button type="button" className="btn-out" style={{ marginLeft: "auto" }} onClick={() => setDraft(draft ? null : rules)}>
+                {draft ? "Cancel" : league.governed ? "Suggest a change" : "Change"}
+              </button>
+            )}
+          </div>
+          {draft ? (
+            <>
+              <RulesEditor rules={draft} onChange={setDraft} governed={league.governed} isPrivate={league.isPrivate} />
+              <ul className="hr-diff">{rulesDiff(rules, draft, ruleShape).map((l) => <li key={l}>{l}</li>)}</ul>
+              <button
+                className="cta"
+                style={{ marginTop: 12 }}
+                disabled={!!busy || rulesDiff(rules, draft, ruleShape)[0] === "No change"}
+                onClick={() => run("rules", async () => {
+                  await (league.governed ? proposeRules(send, id, draft) : setRules(send, id, draft));
+                  setDraft(null);
+                })}
+              >
+                {busy === "rules" ? "Sending…" : league.governed ? "Put it to a vote" : "Save the rules"}
+              </button>
+              <div className="umeta" style={{ marginTop: 6 }}>New scoring applies from the next gameweek; gameweeks already set keep theirs.</div>
+            </>
+          ) : (
+            <div className="card" style={{ padding: "10px 14px" }}>
+              <RulesSummary rules={rules} governed={league.governed} isPrivate={league.isPrivate} />
+              {!houseRules && <div className="umeta" style={{ marginTop: 6 }}>This league started before house rules, so it plays the standard ones.</div>}
+            </div>
+          )}
+
           {!member && <div className="umeta" style={{ marginTop: 12 }}>Join the league to have your say.</div>}
         </div>
       )}

@@ -28,7 +28,7 @@ const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 const KIND: Record<string, string> = {
   TAKE: "posted a take", TAKE_LISTED: "made a take a market", BET: "bet", WIN: "won", CHALLENGE: "sent a 1v1",
-  CHALLENGE_WON: "won a 1v1", TITLE: "won a league", LEAGUE_JOIN: "joined a league", PROPOSAL: "proposed", AGENT: "registered as an agent",
+  CHALLENGE_WON: "won a 1v1", TITLE: "won a league", LEAGUE_JOIN: "joined a league", PROPOSAL: "proposed", RULES: "changed house rules", AGENT: "registered as an agent",
 };
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
