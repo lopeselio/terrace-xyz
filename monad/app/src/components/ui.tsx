@@ -6,6 +6,7 @@ import { Icon, type IconName } from "./Icon";
 import { fanName, hash } from "@/lib/names";
 
 export { fanName, handle } from "@/lib/names";
+export { money } from "@/lib/money";
 
 /* Terrace Night primitives from the revamp handoff (design-system/handoff/styles.css). */
 
@@ -206,8 +207,6 @@ export function Tile({ href, icon, children }: { href: string; icon: IconName; c
   );
 }
 
-/** Dollars from 6-decimal units: "$14.22" (two decimals, as the design does money). */
-export const money = (raw: string | number | bigint) => `$${(Number(raw) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Dollars, short: "$10" or "$2.50". */
 export const usd = (raw: string | number | bigint) => {

@@ -4,7 +4,7 @@ import { verifyMessage, type Address, type Hex } from "viem";
 
 /*
  * Azure Table Storage (storage account in the terrace-runners resource group) for the social bits that
- * don't belong on chain: emoji reactions and streak repairs. Writes are signed by the fan's Mera session
+ * don't belong on chain: emoji reactions, streak repairs and push subscriptions. Writes are signed by the fan's Mera session
  * and checked here, so nobody can react or spend points as someone else.
  */
 
@@ -14,13 +14,24 @@ const conn = () => {
   return c;
 };
 
+export type TableName = "reactions" | "streakrepairs" | "pushsubs" | "pushsent";
+
 const clients = new Map<string, TableClient>();
-export function table(name: "reactions" | "streakrepairs") {
+export function table(name: TableName) {
   let c = clients.get(name);
   if (!c) {
     c = TableClient.fromConnectionString(conn(), name);
     clients.set(name, c);
   }
+  return c;
+}
+
+/** The table, created on first use (createTable is a no-op when it already exists). */
+const made = new Map<string, Promise<unknown>>();
+export async function ensureTable(name: TableName) {
+  const c = table(name);
+  if (!made.has(name)) made.set(name, c.createTable().catch(() => made.delete(name)));
+  await made.get(name);
   return c;
 }
 
