@@ -1,7 +1,7 @@
 "use client";
 import { decodeEventLog, maxUint256, parseUnits, stringToHex, type Address } from "viem";
 import { publicClient } from "./chain";
-import { ADDR, chatAbi, erc20Abi, marketsAbi, YES } from "./contracts";
+import { ADDR, chatAbi, chatAt, erc20Abi, marketsAbi, YES } from "./contracts";
 import type { useAccount } from "./account";
 import { FanError } from "./errors";
 
@@ -20,7 +20,8 @@ export async function ensureAllowance(send: Send, owner: Address, token: Address
 
 /** Posts to a room and returns the new message id (read from the receipt, no indexer wait). */
 export async function postMessage(send: Send, roomKind: 0 | 1, roomId: bigint, text: string, replyTo = 0n): Promise<bigint> {
-  const hash = await send({ address: ADDR.chat, abi: chatAbi, functionName: "post", args: [roomKind, roomId, text, replyTo] });
+  // League rooms of house-rules leagues post to their own chat contract; match rooms stay on v2.
+  const hash = await send({ ...chatAt(roomKind === 1 ? roomId : 0n), functionName: "post", args: [roomKind, roomId, text, replyTo] });
   const receipt = await publicClient.getTransactionReceipt({ hash });
   for (const log of receipt.logs) {
     try {
@@ -32,7 +33,7 @@ export async function postMessage(send: Send, roomKind: 0 | 1, roomId: bigint, t
 }
 
 export function backTake(send: Send, messageId: bigint) {
-  return send({ address: ADDR.chat, abi: chatAbi, functionName: "back", args: [messageId] });
+  return send({ ...chatAt(messageId), functionName: "back", args: [messageId] });
 }
 
 export async function listTake(

@@ -17,6 +17,25 @@ export const ADDR = {
   follows: c.TerraceFollows as Address | undefined,
 } as const;
 
+/*
+ * Leagues with house rules (v3) live in their own leagues, governance and chat contracts next to v2.
+ * Their league, contest, proposal and message ids start at HOUSE_BASE, so an id says which contract
+ * it belongs to: v2 leagues keep working where they are, and every new league is made on v3.
+ */
+const v3 = (deployment as { houseRules?: { idBase: number; contracts: Record<string, Address> } }).houseRules;
+export const HOUSE_BASE = BigInt(v3?.idBase ?? 0);
+const onV3 = (id: bigint | number | string) => !!v3 && BigInt(id) >= HOUSE_BASE;
+export const isHouseRules = onV3;
+/** Where new leagues are made. */
+export const NEW_LEAGUES = (v3?.contracts.TerraceLeagues ?? c.TerraceLeagues) as Address;
+
+/** The leagues contract for a league or contest id. */
+export const leaguesAt = (id: bigint | number | string) => ({ address: onV3(id) ? v3!.contracts.TerraceLeagues : ADDR.leagues, abi: leaguesAbi }) as const;
+/** The governance contract for a league or proposal id. */
+export const governanceAt = (id: bigint | number | string) => ({ address: onV3(id) ? v3!.contracts.TerraceGovernance : ADDR.governance, abi: governanceAbi }) as const;
+/** The chat contract for a message id, or for a league room's league id (match rooms stay on v2). */
+export const chatAt = (id: bigint | number | string) => ({ address: onV3(id) ? v3!.contracts.TerraceChat : ADDR.chat, abi: chatAbi }) as const;
+
 export const followsAbi = parseAbi([
   "function follow(address who)",
   "function unfollow(address who)",
@@ -74,7 +93,14 @@ export const matchupsAbi = parseAbi([
 ]);
 
 export const leaguesAbi = parseAbi([
-  "function createLeague(string name, uint16 season, uint8 gameweeks, uint8 maxMembers, address token, uint256 entryFee, bool isPrivate, bool governed, bytes32 inviteCodeHash) returns (uint256)",
+  "struct LeagueRules { uint8 exactPoints; uint8 resultPoints; uint8 featuredPoints; bool sealedPicks; bool jokers; uint32 votingPeriod; uint8 quorumPct; }",
+  "function createLeague(string name, uint16 season, uint8 gameweeks, uint8 maxMembers, address token, uint256 entryFee, bool isPrivate, bool governed, bytes32 inviteCodeHash, LeagueRules rules) returns (uint256)",
+  "function setRules(uint256 leagueId, LeagueRules rules)",
+  "function rulesOf(uint256 leagueId) view returns (LeagueRules)",
+  "function scoringOf(uint256 contestId) view returns ((uint8 exact, uint8 result))",
+  "function playJoker(uint256 contestId)",
+  "function jokerOf(uint256 leagueId, address member) view returns (uint256)",
+  "function featuredPoints(uint256 leagueId, uint256 marketId) view returns (uint8)",
   "function joinLeague(uint256 leagueId, string inviteCode)",
   "function submitPicks(uint256 contestId, uint8[] home, uint8[] away)",
   "function submitSealedPicks(uint256 contestId, bytes32 commitment, bytes ciphertext)",

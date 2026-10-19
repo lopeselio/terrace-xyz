@@ -7,7 +7,7 @@ import { Avatar, fanName } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useAgents } from "@/lib/agents";
 import { publicClient } from "@/lib/chain";
-import { ADDR, leaguesAbi } from "@/lib/contracts";
+import { leaguesAt } from "@/lib/contracts";
 import { query } from "@/lib/indexer";
 import { ordinal } from "@/lib/leagues";
 import { play } from "@/lib/sound";
@@ -22,7 +22,6 @@ type Row = { member: string; points: number };
 type Result = { contestId: string; leagueId: string; league: string; gameweek: number; rows: Row[] };
 type Joined = { league: { id: string; name: string; members: { member: string }[]; contests: { id: string; gameweek: number | null }[] } };
 
-const L = { address: ADDR.leagues, abi: leaguesAbi } as const;
 const POLL_MS = 30_000;
 
 export function GameweekPopup() {
@@ -63,7 +62,7 @@ export function GameweekPopup() {
       const results = await Promise.all(
         fresh.map(async ({ league, c }): Promise<Result> => {
           const scores = await Promise.all(
-            league.members.map((m) => publicClient.readContract({ ...L, functionName: "contestScore", args: [BigInt(c.id), m.member as Address] })),
+            league.members.map((m) => publicClient.readContract({ ...leaguesAt(c.id), functionName: "contestScore", args: [BigInt(c.id), m.member as Address] })),
           );
           const rows = league.members.map((m, i) => ({ member: m.member, points: Number(scores[i]) })).sort((a, b) => b.points - a.points);
           return { contestId: c.id, leagueId: league.id, league: league.name, gameweek: c.gameweek ?? 0, rows };
@@ -128,7 +127,7 @@ export function GameweekPopup() {
           ))}
         </ol>
         {mine && myRank > 3 && <div className="outcome-sub">You finished {ordinal(myRank)} with {mine.points} pts.</div>}
-        {nobody && <div className="outcome-sub">Nobody scored. Exact score is 3 pts, the right result 1.</div>}
+        {nobody && <div className="outcome-sub">Nobody scored. Exact scores and right results score points; the league&apos;s house rules say how many.</div>}
 
         <div className="outcome-actions">
           <Link className="cta" href={`/l/${now.leagueId}`} onClick={next}>
