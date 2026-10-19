@@ -159,3 +159,24 @@ describe("sign-ups", () => {
     t.expect(await indexer.Signup.get(bob.toLowerCase())).toBeUndefined();
   });
 });
+
+describe("standard questions", () => {
+  it("answers 1X2, goals and both-teams-score from the final score, like TerraceOracle.outcomeOf", async (t) => {
+    const indexer = createTestIndexer();
+    const q = (questionId: bigint, kind: bigint, line = 0n) =>
+      ({ contract: "TerraceOracle", event: "QuestionCreated", params: { questionId, fixtureId: 1557432n, kind, line, closeTime: 1792328400n, creator: alice, text: "" } }) as const;
+    await indexer.process({
+      chains: {
+        10143: {
+          simulate: [
+            q(1n, 1n), q(2n, 2n), q(3n, 3n), q(4n, 4n, 2n), q(5n, 5n),
+            { contract: "TerraceOracle", event: "FixtureSettled", params: { fixtureId: 1557432n, state: 1n, homeGoals: 1n, awayGoals: 1n } },
+            q(6n, 4n, 1n), // opened after the result: answered at once
+          ],
+        },
+      },
+    });
+    const answer = async (id: string) => (await indexer.Question.getOrThrow(id)).answer;
+    t.expect([await answer("1"), await answer("2"), await answer("3"), await answer("4"), await answer("5"), await answer("6")]).toEqual([2, 1, 2, 2, 1, 1]);
+  });
+});
