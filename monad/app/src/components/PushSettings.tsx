@@ -145,35 +145,34 @@ export function PushSettings() {
   );
 }
 
-const DISMISS = "terrace.push.later";
-
-/** A nudge at the top of the bell: get these as notifications. Gone once on, blocked or dismissed. */
-export function PushPrompt() {
-  const { state, busy, error, turnOn } = usePush();
-  const [later, setLater] = useState(true);
-  useEffect(() => {
-    try {
-      setLater(localStorage.getItem(DISMISS) === "1");
-    } catch {
-      setLater(false);
-    }
-  }, []);
-  if (later || (state !== "off" && state !== "install")) return null;
-  const dismiss = () => {
-    setLater(true);
-    try {
-      localStorage.setItem(DISMISS, "1");
-    } catch {}
-  };
+/**
+ * Top of the bell, on every screen: the push switch for this device, and once it's on, one chip per
+ * kind. Always there (not a dismissable nudge) so fans can change it without scrolling Profile.
+ */
+export function PushQuick() {
+  const { state, prefs, busy, error, turnOn, setPref, turnOff } = usePush();
+  if (state === "loading") return null;
+  const on = state === "on";
+  const sub = error ?? HINT[state] ?? (on ? "On for this device. Pick what you hear about:" : "Results, challenges and followers, even with Terrace closed.");
   return (
-    <div className="push-prompt">
-      <span className="note-icon" style={{ color: "var(--green)", borderColor: "var(--green)" }}><Icon name="bell" size={18} /></span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span className="uname" style={{ display: "block" }}>Get these as notifications</span>
-        <span className={`umeta${error ? " red" : ""}`} style={{ display: "block" }}>{error ?? (state === "install" ? HINT.install : "Results, challenges and followers, even with Terrace closed.")}</span>
-      </span>
-      {state === "off" && <button className="cta cta-sm" style={{ width: "auto", padding: "0 14px" }} disabled={busy} onClick={turnOn}>Turn on</button>}
-      <button className="iconbtn" aria-label="Not now" onClick={dismiss}><Icon name="close" size={16} /></button>
+    <div className={`push-prompt${on ? " on" : ""}`}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <span className="note-icon" style={{ color: "var(--green)", borderColor: "var(--green)" }}><Icon name="bell" size={18} /></span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span className="uname" style={{ display: "block" }}>Push notifications</span>
+          <span className={`umeta${error ? " red" : ""}`} style={{ display: "block" }}>{sub}</span>
+        </span>
+        {(state === "on" || state === "off") && <Switch on={on} onChange={(v) => !busy && (v ? turnOn() : turnOff())} label="Push notifications on this device" />}
+      </div>
+      {on && (
+        <div className="push-kinds">
+          {PREF_LABELS.map((p) => (
+            <button key={p.key} type="button" className={`chip${prefs[p.key] ? " on" : ""}`} aria-pressed={prefs[p.key]} disabled={busy} onClick={() => setPref(p.key, !prefs[p.key])}>
+              {prefs[p.key] && <Icon name="check" size={14} />} {p.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

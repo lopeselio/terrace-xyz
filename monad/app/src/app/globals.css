@@ -539,25 +539,28 @@ img { display: block; }
 :root[data-theme="light"] .points-toast span { color: #92400e; }
 :root[data-theme="light"] .vs-card.incoming { border-color: #bbf7d0; }
 
-/* push nudge at the top of the bell */
-.push-prompt { display: flex; align-items: center; gap: 11px; margin-top: 14px; padding: 12px; border-radius: var(--r-md); background: var(--green-tint); border: 1px solid var(--green-mid); }
+/* push switch at the top of the bell */
+.push-prompt { margin-top: 14px; padding: 12px; border-radius: var(--r-md); background: var(--raised); border: 1px solid var(--line); }
+.push-prompt.on { background: var(--green-tint); border-color: var(--green-mid); }
+.push-kinds { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; padding-left: 49px; }
+.push-kinds .chip { display: inline-flex; align-items: center; gap: 5px; }
 
 /* ═══ Desktop layout ══════════════════════════════════════════════════════
    <html data-layout="desktop"> (LayoutSwitch, applied before paint in layout.tsx): the tab bar becomes
    a sidebar, the column widens, sheets open as centred dialogs. "phone" is everything above.
    ═════════════════════════════════════════════════════════════════════════ */
-.sidenav, .layout-toggle.layout-float { display: none; }
+.sidenav, .layout-btn { display: none; }
 .wide-only { display: none; }
 @media (min-width: 768px) { .wide-only { display: block; } }
 
-/* the switch: a pill in the sidebar, floating beside the column in phone view on a computer */
+/* the switch: a labelled pill in the sidebar, an icon in the header in phone view on a computer */
 .layout-toggle {
   display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: var(--r-pill);
   background: var(--raised); border: 1px solid var(--line); color: var(--ink-2); font-size: 12.5px; font-weight: 700;
 }
 .layout-toggle:hover { color: var(--ink); border-color: var(--ink-5); }
 @media (min-width: 768px) {
-  :root[data-layout="phone"] .layout-toggle.layout-float { display: inline-flex; position: fixed; right: 20px; bottom: 20px; z-index: 13; box-shadow: var(--shadow-card); }
+  :root[data-layout="phone"] .layout-btn { display: flex; }
   /* the phone column reads as a phone on a big screen */
   :root[data-layout="phone"] .app { border-left: 1px solid var(--line-hair); border-right: 1px solid var(--line-hair); }
 }

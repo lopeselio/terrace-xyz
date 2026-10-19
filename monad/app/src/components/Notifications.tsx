@@ -9,7 +9,7 @@ import { useAgents } from "@/lib/agents";
 import { query } from "@/lib/indexer";
 import { BET_FIELDS, DUEL_FIELDS, buildNotes, type BetN, type DuelN, type FollowN, type Note, type PointN } from "@/lib/notes";
 import { useMatches } from "@/lib/useMatches";
-import { PushPrompt } from "./PushSettings";
+import { PushQuick } from "./PushSettings";
 
 /*
  * The bell: what happened to you. Challenges a mate sent you (with Accept), your 1v1s being taken on
@@ -93,7 +93,7 @@ export function NotificationsSheet({ notes, seenAt, onClose }: { notes: Note[]; 
   return (
     <Sheet onClose={onClose}>
       <SheetHead eyebrow="What's happened" title="Notifications" onClose={onClose} />
-      <PushPrompt />
+      <PushQuick />
       {notes.length === 0 && (
         <div className="empty" style={{ padding: "30px 10px" }}>
           <h4>All quiet</h4>
