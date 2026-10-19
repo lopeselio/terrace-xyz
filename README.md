@@ -301,7 +301,7 @@ Chain ID 10143. The v2 contracts were deployed on 11 Oct 2026, starting at block
 
 ### Envio HyperIndex
 
-- **GraphQL endpoint (public):** `https://indexer.dev.hyperindex.xyz/b9217d9/v1/graphql`
+- **GraphQL endpoint (public):** `https://indexer.dev.hyperindex.xyz/bf51d35/v1/graphql`
 - **Coverage:** 9 contracts and 41 events from block 69936148, indexed into 17 entities: `Player`, `Follow`, `PointsEvent`, `Fixture`, `Question`, `Market`, `Bet`, `Room`, `Message`, `Parlay`, `Matchup`, `League`, `LeagueMember`, `Contest`, `Entry`, `Proposal`, `FeedItem`.
 - **Source:** the hosted deployment builds from the [`envio`](https://github.com/lopeselio/terrace-xyz/tree/envio) branch (`monad/indexer`: [`config.yaml`](monad/indexer/config.yaml), [`schema.graphql`](monad/indexer/schema.graphql), [`src/handlers`](monad/indexer/src/handlers)).
 
