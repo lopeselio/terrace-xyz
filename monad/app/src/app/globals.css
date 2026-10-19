@@ -119,6 +119,8 @@ img { display: block; }
 .hdr-titled .hdr-act { gap: 6px; }
 .hdr-titled .theme-btn, .hdr-titled .balpill .i, .hdr-back .balpill { display: none; }
 .hdr-titled .hdr-title { font-size: 20px; }
+/* the title always keeps room for a word; the pills give way first */
+.hdr-titled .hdr-text { min-width: 92px; }
 .hdr-titled .ptspill { padding: 0 9px 0 7px; }
 .hdr-titled .balpill { padding: 0 10px; }
 /* Phones: on Home the mark alone says Terrace, leaving room for points and balance */

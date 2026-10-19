@@ -63,7 +63,7 @@ export function Header({
         <LayoutButton />
         <ThemeButton />
         {bell && <Bell />}
-        {!back && <StreakPill />}
+        {brand && <StreakPill />}
         {balance && <PointsPill />}
         {balance && <BalancePill />}
       </div>
