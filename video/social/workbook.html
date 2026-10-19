@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terrace Social Workbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d1210; --ink2:#3a423e; --mute:#6b736f; --line:#dcd9d0; --paper:#fbfaf6; --card:#ffffff;
+  --green:#14b86a; --greenbg:#e5f6ec; --violet:#6d4cf5; --violetbg:#eeeafe; --red:#e5484d; --redbg:#fdeceb;
+  --x:#0d1210; --tt:#fe2c55; --ttbg:#ffe8ed; --ig:#c13584; --igbg:#fbe9f3; --amber:#b7791f; --amberbg:#fdf3e1;
+}
+@page{size:A4;margin:14mm 14mm 16mm}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:400 9.6pt/1.45 Barlow,system-ui,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h1,h2,h3,h4{font-family:"Barlow Condensed",sans-serif;margin:0;letter-spacing:.2px;line-height:1.05}
+h2{font-size:26pt;font-weight:800;text-transform:uppercase;margin:0 0 2mm}
+h3{font-size:14pt;font-weight:700;text-transform:uppercase;margin:5mm 0 2mm}
+h4{font-size:11pt;font-weight:700;text-transform:uppercase;margin:3mm 0 1mm}
+p{margin:0 0 2mm}
+.kicker{font:700 8pt "Barlow Condensed";letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:1mm}
+.lede{font-size:11pt;color:var(--ink2);max-width:165mm;margin-bottom:4mm}
+section{page-break-before:always}
+section.first{page-break-before:auto}
+.avoid{break-inside:avoid}
+.mono{font-family:"JetBrains Mono",monospace;font-size:7.6pt}
+.mute{color:var(--mute)}
+small{font-size:8pt}
+ul{margin:0 0 2mm;padding-left:4.5mm} li{margin:.6mm 0}
+table{width:100%;border-collapse:collapse;margin:1mm 0 3mm;font-size:8.6pt}
+th{font:700 7.8pt "Barlow Condensed";letter-spacing:1px;text-transform:uppercase;text-align:left;color:var(--mute);border-bottom:1.4px solid var(--ink);padding:1.4mm 1.6mm}
+td{border-bottom:1px solid var(--line);padding:1.5mm 1.6mm;vertical-align:top}
+tr{break-inside:avoid}
+.chip{display:inline-block;font:700 7pt "Barlow Condensed";letter-spacing:.8px;text-transform:uppercase;padding:.5mm 1.8mm;border-radius:10mm;white-space:nowrap}
+.cx{background:#e9ebea;color:var(--x)} .ctt{background:var(--ttbg);color:var(--tt)} .cig{background:var(--igbg);color:var(--ig)}
+.cg{background:var(--greenbg);color:#0b7a45} .cv{background:var(--violetbg);color:var(--violet)} .ca{background:var(--amberbg);color:var(--amber)} .cr{background:var(--redbg);color:var(--red)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3.5mm}
+.grid2>*,.grid3>*{min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:3mm;padding:3.5mm 4mm;break-inside:avoid}
+.card.dark{background:var(--ink);color:#f3f2ee;border:none}
+.card.dark .mute{color:#a7b0ab}
+.card h4{margin-top:0}
+.big{font:800 22pt "Barlow Condensed";line-height:1}
+.tweet{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--x);border-radius:2mm;padding:2.6mm 3.4mm;margin:0 0 2.6mm;break-inside:avoid;white-space:pre-line}
+.tweet .meta{display:flex;gap:2mm;align-items:center;margin-bottom:1.2mm;white-space:normal}
+.tweet .n{font:700 8pt "Barlow Condensed";color:var(--mute);letter-spacing:1px}
+.tweet .att{font-size:7.8pt;color:var(--mute);margin-top:1.2mm;white-space:normal}
+.tt{border-left-color:var(--tt)} .ig{border-left-color:var(--ig)}
+.post{background:var(--card);border:1px solid var(--line);border-radius:3mm;padding:3.2mm 4mm;margin:0 0 3mm;break-inside:avoid}
+.post .top{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;margin-bottom:1.4mm}
+.post .title{font:700 12pt "Barlow Condensed";text-transform:uppercase}
+.post dl{display:grid;grid-template-columns:24mm 1fr;gap:.8mm 3mm;margin:0}
+.post dt{font:700 7.6pt "Barlow Condensed";letter-spacing:1px;text-transform:uppercase;color:var(--mute);padding-top:.4mm}
+.post dd{margin:0}
+.tags{color:#0b7a45;font-weight:600}
+.check{display:inline-block;width:3.2mm;height:3.2mm;border:1.2px solid var(--ink2);border-radius:.6mm;vertical-align:-.5mm;margin-right:1.6mm}
+.fill td{height:8.5mm}
+.note{background:var(--amberbg);border-radius:2.4mm;padding:2.6mm 3.6mm;font-size:8.8pt;break-inside:avoid;margin:2mm 0 3mm}
+.note b{color:var(--amber)}
+.toc li{margin:1.4mm 0;font-size:10.5pt}
+.cal td{font-size:8pt} .cal td:first-child{white-space:nowrap;font-weight:600}
+.md{background:#f3faf6}
+.hr{height:1px;background:var(--line);margin:3mm 0}
+
+/* cover */
+.cover{height:265mm;background:var(--ink);color:#f3f2ee;border-radius:4mm;padding:16mm 14mm;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.cover .brand{font:800 13pt "Barlow Condensed";letter-spacing:3px;color:var(--green)}
+.cover h1{font-size:62pt;font-weight:800;text-transform:uppercase;line-height:.9;margin:auto 0 5mm}
+.cover h1 em{font-style:normal;color:var(--green)}
+.cover .sub{font-size:13pt;color:#c9cfcb;max-width:140mm}
+.cover .row{display:flex;gap:2.4mm;margin-top:8mm;flex-wrap:wrap}
+.cover .foot{margin-top:10mm;font-size:9pt;color:#8d9792;display:flex;justify-content:space-between}
+.pitchlines{position:absolute;right:-30mm;top:-20mm;width:150mm;height:150mm;border:1.4px solid #1e2a24;border-radius:50%}
+.pitchlines:after{content:"";position:absolute;inset:30mm;border:1.4px solid #1e2a24;border-radius:50%}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="pitchlines"></div>
+  <div class="brand">TERRACE</div>
+  <h1>Social<br>posting<br><em>workbook</em></h1>
+  <div class="sub">What to post, where and when, for every Terrace video we've made: the ad, the demo, the pitch and the five sponsor films. TikTok and X lead. Instagram follows.</div>
+  <div class="row">
+    <span class="chip ctt">TikTok · lead</span><span class="chip cx" style="background:#2a332f;color:#fff">X · lead</span><span class="chip cig">Instagram · support</span>
+  </div>
+  <div class="foot"><span>play.terrace.social · terrace.social</span><span>Plan window: Wed 14 Oct to Sun 8 Nov 2026</span></div>
+</div>
+
+<!-- CONTENTS -->
+<section>
+  <div class="kicker">Start here</div>
+  <h2>How to use this workbook</h2>
+  <p class="lede">Read pages 2 to 4 once. After that it's a daily tool: open the calendar, find today, copy the post, tick it off and log the numbers.</p>
+  <div class="grid2">
+    <div>
+      <ol class="toc">
+        <li><b>The strategy on one page</b>: goals, platform roles, pillars</li>
+        <li><b>Asset library</b>: every finished video and its formats</li>
+        <li><b>Clip cut list</b>: 22 short clips from the long videos, with timestamps</li>
+        <li><b>Cadence and timing</b>: how often, what time, matchday rhythm</li>
+        <li><b>4-week calendar</b>: day by day across all three platforms</li>
+        <li><b>X playbook</b>: launch thread, 30 ready tweets, sponsor posts, replies</li>
+        <li><b>TikTok playbook</b>: 16 post scripts with hooks, captions and hashtags</li>
+        <li><b>Instagram playbook</b>: Reels, carousels, Stories, bio</li>
+        <li><b>Recurring series</b>: formats that run every matchday</li>
+        <li><b>Hashtag bank</b></li>
+        <li><b>Rules and guardrails</b>: platform policy, music, claims</li>
+        <li><b>Tracker</b>: log sheets and weekly review</li>
+      </ol>
+    </div>
+    <div class="card dark">
+      <h4 style="color:var(--green)">The one-line plan</h4>
+      <p style="font-size:11pt">Post the 30-second ad everywhere on day one, then cut the demo into 22 bite-sized clips and post them around real matchdays. The goal is to turn football arguments into sign-ups at <b>play.terrace.social</b> before the founding-fan 2× points window closes on <b>1 November</b>.</p>
+      <div class="hr" style="background:#2a332f"></div>
+      <p class="mute" style="margin:0">Fill in the blanks marked <span class="mono" style="color:#fff">[ ]</span> as you go: handles, links and numbers. Handles marked <b style="color:#fff">verify</b> need checking before you tag anyone.</p>
+    </div>
+  </div>
+
+  <h3>Before your first post</h3>
+  <table>
+    <tr><th style="width:8mm"></th><th>Task</th><th>Notes</th></tr>
+    <tr><td><span class="check"></span></td><td>Lock the handle <b>@[terrace…]</b> on X, TikTok and Instagram</td><td>Use the same handle on all three. Profile photo = Terrace mark on dark.</td></tr>
+    <tr><td><span class="check"></span></td><td>Bio + link on every profile</td><td>See the bio lines on the Instagram page. Link to <b>play.terrace.social</b>; add UTM tags if you use a link page.</td></tr>
+    <tr><td><span class="check"></span></td><td>Switch TikTok and Instagram to <b>Business</b> or <b>Creator</b> accounts</td><td>This unlocks analytics and post scheduling.</td></tr>
+    <tr><td><span class="check"></span></td><td>Export the vertical clips (see the cut list)</td><td>Most source videos are 16:9. Only the ad already exists in 9:16 and 4:5.</td></tr>
+    <tr><td><span class="check"></span></td><td>Pin one post on each profile</td><td>X: the launch thread. TikTok: the 9:16 ad. IG: the ad Reel, plus a carousel pinned beside it.</td></tr>
+    <tr><td><span class="check"></span></td><td>Make two burner accounts and have them join from your post links</td><td>This tests that the link in each bio opens sign-up on a phone.</td></tr>
+  </table>
+</section>
+
+<!-- STRATEGY -->
+<section>
+  <div class="kicker">01 · Strategy</div>
+  <h2>The strategy on one page</h2>
+  <p class="lede">Terrace turns the argument in your group chat into a game. So the content should feel like football banter first and like a product second. Show the take, the mates, the full-time whistle and the "called it" moment, then show the app.</p>
+
+  <div class="grid3">
+    <div class="card"><div class="kicker">Goal 1</div><div class="big">Sign-ups</div><p class="mute">Fans who open play.terrace.social and make a passkey account. This is the number that matters.</p></div>
+    <div class="card"><div class="kicker">Goal 2</div><div class="big">Builder cred</div><p class="mute">Monad, Chainlink, Envio, Alchemy and Mera communities see Terrace as the reference consumer app. This feeds judging and partnerships.</p></div>
+    <div class="card"><div class="kicker">Goal 3</div><div class="big">Takes</div><p class="mute">Fans post takes on the app. Every take is a market, and every market is the next post.</p></div>
+  </div>
+
+  <h3>Platform roles</h3>
+  <table>
+    <tr><th style="width:24mm">Platform</th><th style="width:44mm">Job</th><th>Audience</th><th style="width:44mm">Lead formats</th></tr>
+    <tr><td><span class="chip ctt">TikTok</span></td><td><b>Reach.</b> Find football fans who've never heard of crypto.</td><td>Football TikTok, FPL players, group-chat banter crowd, founder/startup TikTok</td><td>9:16 clips of 7 to 25 s, founder face-cam, comment replies, matchday takes</td></tr>
+    <tr><td><span class="chip cx">X</span></td><td><b>Credibility and community.</b> Builders, Monad and ecosystem accounts, judges, football Twitter.</td><td>Monad community, Chainlink / Envio / Alchemy / Mera ecosystems, CT, football Twitter</td><td>Threads, native 16:9 video, sponsor films, quote tweets, live matchday tweets</td></tr>
+    <tr><td><span class="chip cig">Instagram</span></td><td><b>Proof and shareability.</b> Where a curious friend checks you're real.</td><td>Friends of users, football meme pages, design crowd</td><td>Reels (cross-posted TikToks), carousels, Stories with polls on matchday</td></tr>
+  </table>
+
+  <h3>Five content pillars</h3>
+  <table>
+    <tr><th style="width:36mm">Pillar</th><th>What it looks like</th><th style="width:22mm">Share</th><th style="width:36mm">Videos to use</th></tr>
+    <tr><td><b>1. Called it</b></td><td>The emotional core: a take, the mates who doubted it, the full-time win. Every result on Terrace is a story.</td><td>30%</td><td>Ad, demo 0:52–1:15, real screen recordings</td></tr>
+    <tr><td><b>2. How it plays</b></td><td>One feature per clip: swipe, 1v1 dare, parlays, private leagues, AI pundits. Show it, don't explain it.</td><td>25%</td><td>Demo shots 1–14</td></tr>
+    <tr><td><b>3. Matchday live</b></td><td>Before kick-off: "drop your take". At full time: what settled and who won. Ties posts to real fixtures.</td><td>20%</td><td>Fresh screen recordings + demo clips</td></tr>
+    <tr><td><b>4. Founder / build</b></td><td>Elio on camera: why a footballer and gamer built this, how it was built in a hackathon, what's next.</td><td>15%</td><td>Pitch (face-cam), demo (face-cam)</td></tr>
+    <tr><td><b>5. Under the hood</b></td><td>How Chainlink settles, how Envio ranks the feed, passkeys with Mera, Alchemy RPC. Mostly for X.</td><td>10%</td><td>The 5 sponsor films, demo 2:35–2:50</td></tr>
+  </table>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>Voice</h4>
+      <ul>
+        <li>Talk like a fan in a group chat, not a fintech. Use "back it", "fade it", "called it", "your mates".</li>
+        <li>On TikTok and IG, put no crypto words in the first line. Monad and Chainlink come later, as trust signals.</li>
+        <li>On X, the tech is the story, so name the sponsors.</li>
+        <li>Stay short and sure of yourself. Not hypey. One emoji at most per post.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Every post needs</h4>
+      <ul>
+        <li>A <b>hook</b> in the first second: on-screen text, a face or a goal.</li>
+        <li><b>One idea</b>. One feature, one take or one result.</li>
+        <li><b>A next step</b>: comment your take, follow, or try it at play.terrace.social.</li>
+        <li>The <b>testnet / free-to-play</b> line wherever money appears on screen (see Rules).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ASSETS -->
+<section>
+  <div class="kicker">02 · Asset library</div>
+  <h2>What we have</h2>
+  <p class="lede">Eight finished films. Files are under <span class="mono">video/*/out/</span>. Only the ad is ready for vertical feeds as it is. Everything else gets cut into clips (next page).</p>
+  <table>
+    <tr><th>Video</th><th style="width:16mm">Length</th><th style="width:22mm">Formats</th><th>Best file</th><th style="width:40mm">Where it goes</th></tr>
+    <tr><td><b>Ad: "Called it"</b><br><small class="mute">Group chat → Haaland take → mates fade → LIV 0–1 MCI → payout. Music drop on the win.</small></td><td>0:30</td><td>9:16, 4:5, 16:9</td><td class="mono">called-it/out/Terrace-Called-it-9x16.mp4<br>…-4x5.mp4 · …-16x9.mp4</td><td><span class="chip ctt">TT</span> <span class="chip cig">Reel</span> <span class="chip cx">X</span> pinned everywhere</td></tr>
+    <tr><td><b>Demo: full product tour</b><br><small class="mute">14 shots: passkey → matchday → takes → follow/copy → swipe → 1v1 → parlays → leagues → Chainlink → AI pundits</small></td><td>2:59</td><td>16:9</td><td class="mono">demo/out/Terrace-Demo-Elio.mp4 (face-cam + VO)<br>…-karaoke-music.mp4 (captions)</td><td><span class="chip cx">X</span> native, YouTube; <b>source for 14 clips</b></td></tr>
+    <tr><td><b>Pitch: the 2-minute story</b><br><small class="mute">Ahmed's call vanishes in the scroll → any take becomes a market → stack → founder close</small></td><td>1:57</td><td>16:9</td><td class="mono">pitch/out/Terrace-Pitch-Elio.mp4</td><td><span class="chip cx">X</span>, LinkedIn, IG feed; <b>source for 5 clips</b></td></tr>
+    <tr><td><b>Terrace × Chainlink CRE</b><br><small class="mute">Three workflows settle every market. No admin, no settle button.</small></td><td>1:52</td><td>16:9</td><td class="mono">tracks/out/Terrace-x-Chainlink-CRE.mp4</td><td><span class="chip cx">X</span> tag @chainlink</td></tr>
+    <tr><td><b>Terrace × Envio</b><br><small class="mute">HyperIndex powers the feed, the tables and the points.</small></td><td>1:20</td><td>16:9</td><td class="mono">tracks/out/Terrace-x-Envio.mp4</td><td><span class="chip cx">X</span> tag @envio_indexer <span class="chip ca">verify</span></td></tr>
+    <tr><td><b>Terrace × Mera UX</b><br><small class="mute">No seed phrase, no extension, no email code. A passkey is the account.</small></td><td>1:16</td><td>16:9</td><td class="mono">tracks/out/Terrace-x-Mera-UX.mp4</td><td><span class="chip cx">X</span> tag Mera <span class="chip ca">verify handle</span></td></tr>
+    <tr><td><b>Terrace × Mera Many Keys</b><br><small class="mute">One passkey, four of Terrace's derived keys.</small></td><td>1:14</td><td>16:9</td><td class="mono">tracks/out/Terrace-x-Mera-Many-Keys.mp4</td><td><span class="chip cx">X</span> reply under the Mera UX post</td></tr>
+    <tr><td><b>Terrace × Alchemy</b><br><small class="mute">The RPC behind sign-up, settlement and our AI agents.</small></td><td>1:10</td><td>16:9</td><td class="mono">tracks/out/Terrace-x-Alchemy.mp4</td><td><span class="chip cx">X</span> tag @Alchemy</td></tr>
+  </table>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>Still images you can pull</h4>
+      <ul>
+        <li>The 13 pitch slides: carousels and X images</li>
+        <li>The dark app screenshots in <span class="mono">demo/screens/</span>: carousels and quote cards</li>
+        <li>Frames from the ad, such as "Called it on Haaland…" and "Collect $11.40": thumbnails</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Gaps to fill (capture on matchdays)</h4>
+      <ul>
+        <li>Fresh <b>phone screen recordings</b> of real takes on real fixtures. These give the "Matchday live" pillar fresh footage every week.</li>
+        <li><b>Short face-cam selfies</b> (5–15 s) from Elio, for hooks and replies.</li>
+        <li><b>Group-chat reactions</b> from real friends (with permission).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CUT LIST -->
+<section>
+  <div class="kicker">03 · Clip cut list</div>
+  <h2>22 clips from what we have</h2>
+  <p class="lede">Each row is one post. Timestamps are from the source file. Clips marked 9:16 need a vertical export. Use the stacked layout below for speed, or ask for native vertical renders of the demo shots.</p>
+  <table>
+    <tr><th style="width:9mm">#</th><th style="width:30mm">Source · in–out</th><th>On-screen hook (first second)</th><th style="width:13mm">Len</th><th style="width:30mm">Platforms</th></tr>
+    <tr><td><b>A1</b></td><td>Ad · full</td><td>"POV: you called it in the group chat"</td><td>30 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>A2</b></td><td>Ad · 0:00–0:21</td><td>"Haaland before half-time. Guaranteed." (ends on payout)</td><td>21 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>D1</b></td><td>Demo · 0:08–0:22</td><td>"No seed phrase. No email code. Just Face ID."</td><td>14 s</td><td><span class="chip ctt">TT</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D2</b></td><td>Demo · 0:22–0:38</td><td>"Every match, every league, one feed"</td><td>16 s</td><td><span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D3</b></td><td>Demo · 0:38–0:52</td><td>"Back a price in two taps"</td><td>14 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>D4</b></td><td>Demo · 0:52–1:03</td><td>"Type your take. It becomes a market."</td><td>12 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D5</b></td><td>Demo · 1:03–1:15</td><td>"Your mate keeps calling it? Copy him."</td><td>12 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>D6</b></td><td>Demo · 1:15–1:25</td><td>"An AI house seeds every new market"</td><td>10 s</td><td><span class="chip cx">X</span></td></tr>
+    <tr><td><b>D7</b></td><td>Demo · 1:25–1:35</td><td>"Swipe right to back. Left to fade."</td><td>10 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D8</b></td><td>Demo · 1:35–1:54</td><td>"Dare your mate. Send a link."</td><td>19 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>D9</b></td><td>Demo · 1:54–2:01</td><td>"Four legs. One slip. Your mates watch it land."</td><td>7 s</td><td><span class="chip ctt">TT</span></td></tr>
+    <tr><td><b>D10</b></td><td>Demo · 2:01–2:25</td><td>"A league where nobody can copy your picks"</td><td>24 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D11</b></td><td>Demo · 2:25–2:35</td><td>"Your record. Every call, forever."</td><td>10 s</td><td><span class="chip cig">IG</span></td></tr>
+    <tr><td><b>D12</b></td><td>Demo · 2:35–2:50</td><td>"No admin. No settle button. Chainlink checks the result."</td><td>15 s</td><td><span class="chip cx">X</span> <span class="chip ctt">TT</span></td></tr>
+    <tr><td><b>D13</b></td><td>Demo · 2:50–2:59</td><td>"The AI pundit faded my take"</td><td>9 s</td><td><span class="chip ctt">TT</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>D14</b></td><td>Demo · 0:52–1:15</td><td>"From group chat take to a market in 20 seconds" (D4+D5)</td><td>23 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>P1</b></td><td>Pitch · 0:05–0:15</td><td>"Your mate was right. Nobody remembers."</td><td>10 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>P2</b></td><td>Pitch · 0:15–0:36</td><td>"3.5 billion fans. The chat has no game."</td><td>21 s</td><td><span class="chip cx">X</span> <span class="chip cig">IG</span></td></tr>
+    <tr><td><b>P3</b></td><td>Pitch · 0:35–0:49</td><td>"Any take becomes a market"</td><td>14 s</td><td><span class="chip ctt">TT</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>P4</b></td><td>Pitch · 1:10–1:22</td><td>"Fantasy has friends. Sportsbooks have stakes. Crypto is open."</td><td>12 s</td><td><span class="chip cx">X</span></td></tr>
+    <tr><td><b>P5</b></td><td>Pitch · 1:36–1:57</td><td>"I'm a footballer and a gamer. So I built this." (face-cam)</td><td>21 s</td><td><span class="chip ctt">TT</span> <span class="chip cig">IG</span> <span class="chip cx">X</span></td></tr>
+    <tr><td><b>S★</b></td><td>Each sponsor film · first 15 s</td><td>Its own headline, e.g. "How Terrace uses Chainlink"</td><td>15 s</td><td><span class="chip cx">X</span> teaser → full film in reply</td></tr>
+  </table>
+
+  <div class="grid2">
+    <div class="card avoid">
+      <h4>Quick vertical export (stacked layout)</h4>
+      <p class="mute">The 16:9 clip sits in the middle, on a blurred copy of itself, so the hook text has room on top. Add the text in CapCut or TikTok's editor.</p>
+      <div class="mono" style="white-space:pre-wrap;word-break:break-all;background:#f1efe8;padding:2mm;border-radius:1.5mm">ffmpeg -ss 52 -to 63 -i demo/out/Terrace-Demo-karaoke-music.mp4 \
+ -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30[bg];[0:v]scale=1080:-2[fg];[bg][fg]overlay=0:(H-h)/2" \
+ -c:a aac -b:a 160k -r 30 out/D4-9x16.mp4</div>
+    </div>
+    <div class="card avoid">
+      <h4>Which version to cut from</h4>
+      <ul>
+        <li><b>TikTok / Reels:</b> cut from <span class="mono">…-karaoke-silent.mp4</span>, then add a trending sound in-app at low volume. Or cut from <span class="mono">-Elio.mp4</span> when the voice-over carries it.</li>
+        <li><b>X:</b> cut from <span class="mono">-Elio.mp4</span> (voice + face-cam). Burned-in captions help, because most people watch muted.</li>
+        <li>The demo's phone is on the right of the frame. For a tighter vertical crop, centre on the phone (x ≈ 1100–1700) and keep the left-hand title as on-screen text.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CADENCE -->
+<section>
+  <div class="kicker">04 · Cadence and timing</div>
+  <h2>How often, and when</h2>
+  <p class="lede">Football runs on a weekly clock: matchday on the weekend, the Champions League midweek, quiet days in between. Post to that rhythm, not a flat schedule.</p>
+
+  <div class="grid3">
+    <div class="card"><span class="chip ctt">TikTok</span><div class="big" style="margin-top:2mm">1–2 / day</div><p class="mute">Volume wins. Two a day on matchdays, one on other days. Reply to comments with videos.</p></div>
+    <div class="card"><span class="chip cx">X</span><div class="big" style="margin-top:2mm">3–5 / day</div><p class="mute">1 video or thread, 2–3 single tweets, and 10+ replies in Monad and football threads. Live-tweet matchdays.</p></div>
+    <div class="card"><span class="chip cig">Instagram</span><div class="big" style="margin-top:2mm">4 Reels + 2 carousels / wk</div><p class="mute">Cross-post the best TikToks (without the watermark). Stories daily on matchdays.</p></div>
+  </div>
+
+  <h3>Best posting windows</h3>
+  <table>
+    <tr><th>Platform</th><th>Window (UK)</th><th>Window (IST)</th><th>Why</th></tr>
+    <tr><td><span class="chip ctt">TikTok</span></td><td>12:00–14:00 and 19:00–22:00</td><td>16:30–18:30 and 23:30–02:30</td><td>The UK and EU football audience. Use TikTok's scheduler for the late slots.</td></tr>
+    <tr><td><span class="chip cx">X</span></td><td>13:00–17:00</td><td>17:30–21:30</td><td>EU afternoon overlaps the US morning, when CT and builders are online. Easy hours from India.</td></tr>
+    <tr><td><span class="chip cig">Instagram</span></td><td>12:00–13:00 and 18:00–20:00</td><td>16:30–17:30 and 22:30–00:30</td><td>Lunch scroll and evening scroll.</td></tr>
+  </table>
+  <p class="mute"><small>The IST column uses UK summer time (until Sun 25 Oct, when IST = UK + 4:30). After the clocks go back, IST = UK + 5:30, so add an hour to each IST time.</small></p>
+
+  <h3>The matchday loop</h3>
+  <table>
+    <tr><th style="width:30mm">When</th><th>Post</th><th style="width:54mm">Where</th></tr>
+    <tr class="md"><td><b>Day before</b></td><td>"Tomorrow's biggest take?" A question post that collects comments to turn into markets</td><td><span class="chip cx">X</span> <span class="chip cig">Story poll</span></td></tr>
+    <tr class="md"><td><b>KO − 2 h</b></td><td>A feature clip tied to the match (D4 take → market, D8 dare), with the fixture in the caption</td><td><span class="chip ctt">TT</span> <span class="chip cx">X</span></td></tr>
+    <tr class="md"><td><b>KO − 30 min</b></td><td>"Markets are open on [fixture]". Screenshot of the live take with a link</td><td><span class="chip cx">X</span> <span class="chip cig">Story</span></td></tr>
+    <tr class="md"><td><b>Live</b></td><td>Quote-tweet big moments: "That goal just settled 3 takes on Terrace"</td><td><span class="chip cx">X</span></td></tr>
+    <tr class="md"><td><b>FT + 15 min</b></td><td>"Called it / Cooked": the best winning and losing takes, from a screen recording</td><td><span class="chip ctt">TT</span> <span class="chip cx">X</span> <span class="chip cig">Reel</span></td></tr>
+    <tr class="md"><td><b>Next morning</b></td><td>Leaderboard / points recap carousel</td><td><span class="chip cig">Carousel</span> <span class="chip cx">X</span></td></tr>
+  </table>
+  <div class="note"><b>Check fixtures first.</b> The calendar assumes league football on weekends and the Champions League / Europa League on Tue–Thu. Swap the actual big fixture of each day into the <span class="mono">[fixture]</span> slots.</div>
+</section>
+
+<!-- CALENDAR -->
+<section>
+  <div class="kicker">05 · Calendar</div>
+  <h2>Weeks 1–2: launch</h2>
+  <p class="lede">Codes refer to the clip cut list (A, D, P, S) and to the tweet (T), TikTok (TT) and Instagram (IG) scripts that follow. Green rows are matchdays.</p>
+  <table class="cal">
+    <tr><th style="width:19mm">Day</th><th>X</th><th>TikTok</th><th>Instagram</th><th style="width:10mm">Done</th></tr>
+    <tr><td>Wed 14 Oct</td><td><b>Launch thread T1</b> + A1 (16:9), pin it</td><td><b>TT1</b> A1 ad, pin it</td><td><b>IG-R1</b> A1 (4:5) + <b>IG-C1</b> carousel, pin both</td><td><span class="check"></span></td></tr>
+    <tr><td>Thu 15</td><td>Pitch film (full) + T5; tag @monad</td><td><b>TT2</b> P5 founder</td><td>Story: "Built this in a hackathon"</td><td><span class="check"></span></td></tr>
+    <tr><td>Fri 16</td><td>S: Chainlink film + T20; T2 "Friday take?"</td><td><b>TT3</b> D4 take → market</td><td><b>IG-R2</b> D14</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sat 17</td><td>Matchday loop; T7 before KO; live QTs</td><td><b>TT4</b> D7 swipe · <b>TT14</b> Called it/Cooked</td><td>Story poll + IG-R3 Called it/Cooked</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sun 18</td><td>Matchday loop; T11</td><td><b>TT5</b> D8 dare</td><td><b>IG-C2</b> "How it settles"</td><td><span class="check"></span></td></tr>
+    <tr><td>Mon 19</td><td>Weekend recap thread T4; S: Envio film + T21</td><td><b>TT6</b> P1 "Your mate was right"</td><td>Points recap Story</td><td><span class="check"></span></td></tr>
+    <tr><td>Tue 20</td><td>T15 build-in-public; UCL take post</td><td><b>TT7</b> D1 passkey</td><td><b>IG-R4</b> D8 dare</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Wed 21</td><td>UCL matchday loop (one match)</td><td><b>TT8</b> D10 sealed league</td><td>Story poll</td><td><span class="check"></span></td></tr>
+    <tr><td>Thu 22</td><td>S: Mera UX + Many Keys (reply) + T22</td><td><b>TT9</b> D13 AI pundit</td><td><b>IG-C3</b> "5 ways to play"</td><td><span class="check"></span></td></tr>
+    <tr><td>Fri 23</td><td>T9 "points 2× till 1 Nov"; poll T3</td><td><b>TT10</b> founder Q&amp;A reply</td><td><b>IG-R5</b> D7 swipe</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sat 24</td><td>Matchday loop</td><td><b>TT14</b> Called it/Cooked · <b>TT11</b> D9 parlay</td><td>IG-R6 Called it/Cooked + Stories</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sun 25</td><td>Matchday loop; S: Alchemy film + T23</td><td><b>TT15</b> Take of the day result</td><td><b>IG-C4</b> weekend leaderboard</td><td><span class="check"></span></td></tr>
+  </table>
+
+  <h3>Weeks 3–4: the 2× points push, then a steady rhythm</h3>
+  <table class="cal">
+    <tr><th style="width:19mm">Day</th><th>X</th><th>TikTok</th><th>Instagram</th><th style="width:10mm">Done</th></tr>
+    <tr><td>Mon 26</td><td>Full demo (Elio) + T6; recap T4</td><td><b>TT12</b> D12 Chainlink</td><td>Story: "6 days of 2× left"</td><td><span class="check"></span></td></tr>
+    <tr><td>Tue 27</td><td>P4 + T13 "only Terrace has all three"</td><td><b>TT13</b> D5 copy your mate</td><td><b>IG-R7</b> P5 founder</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Wed 28</td><td>Midweek matchday loop</td><td><b>TT16</b> "rate my app" duet bait</td><td>Story poll</td><td><span class="check"></span></td></tr>
+    <tr><td>Thu 29</td><td>T17 lessons from building; D6 house clip</td><td>TT1 remix: A2 with a trending sound</td><td><b>IG-C5</b> founder story</td><td><span class="check"></span></td></tr>
+    <tr><td>Fri 30</td><td>T10 "last weekend of 2×"</td><td>TT6 remix with a new hook</td><td><b>IG-R8</b> D10 sealed league</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sat 31</td><td>Matchday loop, push 2× ending</td><td>TT14 + TT4 remix</td><td>Called it/Cooked Reel + Stories</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sun 1 Nov</td><td>"Founding-fan 2× ends tonight" T10b</td><td>TT15 Take of the day</td><td>Story countdown sticker</td><td><span class="check"></span></td></tr>
+    <tr><td>Mon 2 – Sun 8</td><td colspan="3">Keep the steady rhythm: the matchday loop + one feature clip a day, re-using the clips that did best in weeks 1–3 with new hooks. Post a "month one" numbers thread on X (T18).</td><td><span class="check"></span></td></tr>
+  </table>
+  <div class="note"><b>Re-use the winners.</b> On TikTok, a clip that beat your median views can be reposted 7–10 days later with a new hook line and a different sound. That's nearly a free post.</div>
+</section>
+
+<!-- X -->
+<section>
+  <div class="kicker">06 · X playbook</div>
+  <h2>X: the launch thread</h2>
+  <p class="lede">Post it on day one with the ad attached to tweet 1, and pin it. Reply to every quote tweet in the first two hours.</p>
+
+  <div class="tweet"><div class="meta"><span class="n">T1 · 1/9</span><span class="chip cx">attach A1 16:9</span></div>Every football group chat has someone who called it.
+
+Nobody remembers. Nothing happens.
+
+So we built Terrace: any take becomes a market your mates can back or fade. Settled at full time by @chainlink. On @monad.
+
+Free to play now 👇</div>
+  <div class="tweet"><div class="meta"><span class="n">2/9</span><span class="chip cx">attach D4</span></div>You type a take: "Haaland scores before half-time."
+
+AI turns it into a clear rule. Your mates back it or fade it. The take is now a market.</div>
+  <div class="tweet"><div class="meta"><span class="n">3/9</span><span class="chip cx">attach D12</span></div>At full time, Chainlink CRE checks the official match data and settles it.
+
+No admin. No settle button. Nobody marks their own homework.</div>
+  <div class="tweet"><div class="meta"><span class="n">4/9</span><span class="chip cx">attach D1</span></div>Sign-up is Face ID. That's it.
+
+No seed phrase, no extension, no email code. A passkey is the account, thanks to Mera.</div>
+  <div class="tweet"><div class="meta"><span class="n">5/9</span><span class="chip cx">attach D7</span></div>Around the takes, there's a whole matchday:
+→ swipe to back or fade
+→ 1v1 dares sent by link
+→ parlays
+→ private leagues with sealed picks
+→ AI pundits who play too</div>
+  <div class="tweet"><div class="meta"><span class="n">6/9</span><span class="chip cx">attach D5</span></div>It's social first. Follow the mate who keeps calling it, copy their call in one tap, and the bell pulls you back in when someone dares you.</div>
+  <div class="tweet"><div class="meta"><span class="n">7/9</span><span class="chip cx">image: stack slide</span></div>The stack:
+@monad: every tap feels instant
+@chainlink CRE: settlement and sealed picks
+@envio_indexer: the feed, tables and points
+@Alchemy: RPC
+Mera: passkey accounts
+Claude: rule writing and the AI judge</div>
+  <div class="tweet"><div class="meta"><span class="n">8/9</span></div>Founding fans earn 2× Terrace Points until 1 November.
+
+It runs on testnet, so the money is test money and the bragging rights are real.</div>
+  <div class="tweet"><div class="meta"><span class="n">9/9</span><span class="chip cx">link</span></div>Put your take on the table → play.terrace.social
+
+Built for Monad Metropolis. Full 3-min demo below ↓</div>
+  <div class="note"><b>Tagging:</b> check every handle before posting (<span class="mono">@monad</span>, <span class="mono">@chainlink</span>, <span class="mono">@envio_indexer</span>, <span class="mono">@Alchemy</span>, Mera's handle, the hackathon's handle and official hashtag). Tag at most 3–4 accounts per tweet so it doesn't read as spam.</div>
+</section>
+
+<section>
+  <div class="kicker">06 · X playbook</div>
+  <h2>Tweet bank</h2>
+  <p class="lede">Single tweets, ready to post. Rotate through them alongside the calendar. Each one is under 280 characters.</p>
+
+  <h4>Product and banter</h4>
+  <div class="tweet"><div class="meta"><span class="n">T2</span><span class="chip cx">question</span></div>Friday question: what's your take for this weekend that nobody in your group chat believes?
+
+Best reply becomes a live market on Terrace tomorrow.</div>
+  <div class="tweet"><div class="meta"><span class="n">T3</span><span class="chip cx">poll</span></div>Who's the worst person in your group chat?
+
+○ Always calls it, never lets you forget
+○ Always wrong, always loud
+○ Changes their take after kick-off
+○ Only says "😂"</div>
+  <div class="tweet"><div class="meta"><span class="n">T4</span><span class="chip cx">weekly recap</span></div>Weekend on Terrace:
+[ ] takes posted
+[ ] markets settled by Chainlink
+[ ] 1v1 dares sent
+Best call: "[take]" by [fan], backed at [odds]
+
+Every one settled with no admin.</div>
+  <div class="tweet"><div class="meta"><span class="n">T5</span><span class="chip cx">attach pitch film</span></div>Ahmed told his group chat City wouldn't keep a clean sheet.
+
+City lost 2–0. Ahmed was right, and his call vanished into the scroll.
+
+2 minutes on why we built Terrace ↓</div>
+  <div class="tweet"><div class="meta"><span class="n">T6</span><span class="chip cx">attach demo Elio</span></div>3 minutes, the whole app: sign up with Face ID, back a price, turn a take into a market, dare a mate, join a sealed league, watch Chainlink settle it.
+
+No crypto knowledge needed. That was the brief.</div>
+  <div class="tweet"><div class="meta"><span class="n">T7</span><span class="chip cx">pre-KO</span></div>[Home] v [Away] kicks off in 2 hours.
+
+Markets are open on Terrace. The spiciest take so far: "[take]".
+
+Back it or fade it → play.terrace.social</div>
+  <div class="tweet"><div class="meta"><span class="n">T8</span><span class="chip cx">live QT</span></div>That goal just settled [n] takes on Terrace.
+
+Somebody's group chat is very quiet right now.</div>
+  <div class="tweet"><div class="meta"><span class="n">T9</span><span class="chip cx">urgency</span></div>Founding fans earn 2× Terrace Points until 1 November.
+
+Join before then and every call you make counts double, for good.</div>
+  <div class="tweet"><div class="meta"><span class="n">T10</span><span class="chip cx">urgency</span></div>Last weekend of founding-fan 2× points.
+
+Make your calls count double → play.terrace.social
+<span class="mute">(T10b, Sun 1 Nov: "2× ends tonight. Last call.")</span></div>
+  <div class="tweet"><div class="meta"><span class="n">T11</span><span class="chip cx">attach D8</span></div>Your mate says Arsenal win at the weekend. You say they don't.
+
+Send him a 1v1 dare by link. Winner takes the pot and the bragging rights.</div>
+  <div class="tweet"><div class="meta"><span class="n">T12</span><span class="chip cx">attach D10</span></div>The problem with mini-leagues: someone always copies your picks.
+
+Terrace leagues seal every pick until full time. Chainlink reveals the table. Nobody copies.</div>
+  <div class="tweet"><div class="meta"><span class="n">T13</span><span class="chip cx">attach P4</span></div>Fantasy has friends.
+Sportsbooks have stakes.
+Crypto is open.
+
+Only Terrace has all three.</div>
+  <div class="tweet"><div class="meta"><span class="n">T14</span><span class="chip cx">attach D13</span></div>Our AI pundit "The Gaffer" posts his own takes and backs them.
+
+He faded mine last week. He was wrong. I'm not over it.</div>
+</section>
+
+<section>
+  <div class="kicker">06 · X playbook</div>
+  <h2>Builder, founder and sponsor tweets</h2>
+
+  <h4>Build in public</h4>
+  <div class="tweet"><div class="meta"><span class="n">T15</span></div>Building a consumer app on a chain, rule 1: the fan should never see the chain.
+
+On Terrace there's no wallet pop-up, no gas prompt, no seed phrase. Monad is in the trust badge, not in the flow.</div>
+  <div class="tweet"><div class="meta"><span class="n">T16</span><span class="chip cx">attach D12</span></div>How a take settles on Terrace:
+1. AI compiles "Haaland scores first half" into a JSON rule
+2. The fan sees it in plain English before backing
+3. At full time, Chainlink CRE evaluates the rule against match events
+4. If no rule fits, an AI judge rules with evidence
+5. If nothing can decide it: refund</div>
+  <div class="tweet"><div class="meta"><span class="n">T17</span></div>Things I learned building Terrace for Monad Metropolis:
+– passkeys remove more friction than any UI polish
+– "fade" is a better word than "bet against"
+– one-sided markets feel dead, so seed them
+– fans want to follow people, not markets</div>
+  <div class="tweet"><div class="meta"><span class="n">T18</span><span class="chip cx">month one</span></div>Terrace, month one:
+[ ] fans · [ ] takes · [ ] markets settled · [ ] leagues
+[ ] fixtures across [ ] leagues settled by Chainlink with no admin
+
+What's next: a liquidity vault, in-play trading, then mainnet.</div>
+  <div class="tweet"><div class="meta"><span class="n">T19</span><span class="chip cx">attach P5</span></div>I'm a footballer, a lifelong fan and a gamer. I co-founded IntoTheVerse Games straight out of university.
+
+Terrace is the game I wanted on every matchday: the beautiful game, with your friends, where being right finally counts.</div>
+
+  <h4>Sponsor films (one per post, full film attached)</h4>
+  <div class="tweet"><div class="meta"><span class="n">T20</span><span class="chip cx">Chainlink CRE film</span></div>Every market on Terrace is settled by @chainlink CRE. There's no admin and no settle button.
+
+Three workflows: fixtures, results and questions. Sealed picks are revealed at full time inside a confidential workflow.
+
+How it works, in 2 min ↓</div>
+  <div class="tweet"><div class="meta"><span class="n">T21</span><span class="chip cx">Envio film</span></div>The Terrace feed, the league tables and Terrace Points are all indexed by @envio_indexer HyperIndex.
+
+Every back, fade, follow and dare on Monad shows up in the feed in seconds ↓</div>
+  <div class="tweet"><div class="meta"><span class="n">T22</span><span class="chip cx">Mera UX film</span></div>No seed phrase. No extension. No email code.
+
+On Terrace, a passkey is the account, built on Mera. Face ID in, play in seconds ↓
+<span class="mute">(Reply with the Many Keys film: "One passkey, four derived keys. Here's how.")</span></div>
+  <div class="tweet"><div class="meta"><span class="n">T23</span><span class="chip cx">Alchemy film</span></div>@Alchemy is the RPC behind Terrace: sign-up, settlement and our AI agents all go through it.
+
+Here's where it sits in the stack ↓</div>
+
+  <h4>Reply templates</h4>
+  <table>
+    <tr><th style="width:40mm">When someone says…</th><th>Reply</th></tr>
+    <tr><td>"Is this gambling?"</td><td>It's free to play on testnet with test money. Points and bragging rights are what you win today.</td></tr>
+    <tr><td>"Who decides the result?"</td><td>Nobody on our side. Chainlink checks the official match data and settles it, and there's no settle button.</td></tr>
+    <tr><td>Posts a take</td><td>That's a market. [Screenshot of it live] Who's fading?</td></tr>
+    <tr><td>"Do I need a wallet?"</td><td>Just Face ID. The passkey is the account.</td></tr>
+  </table>
+</section>
+
+<!-- TIKTOK -->
+<section>
+  <div class="kicker">07 · TikTok playbook</div>
+  <h2>TikTok: how we win there</h2>
+  <p class="lede">TikTok shows your video to strangers first, so the first second decides everything. Lead with a football feeling (a face, a goal, a cheeky line) and let the app show up as the punchline.</p>
+  <div class="grid3">
+    <div class="card"><h4>Hook rules</h4><ul><li>Big text on screen in frame 1, kept inside the safe zone (away from the right rail and bottom caption)</li><li>Start mid-action, never on a logo</li><li>Use POV, "my mate…" and "tell me you…" framings</li></ul></div>
+    <div class="card"><h4>Edit rules</h4><ul><li>7–25 s. Loopable endings do well.</li><li>Trending sound at 5–15% under the voice, or as the only audio</li><li>Captions always on</li><li>Cut every 1.5–3 s</li></ul></div>
+    <div class="card"><h4>Growth moves</h4><ul><li>Reply to comments with a video ("Your take is now a market")</li><li>Stitch big football takes from creators</li><li>Post 3–5 hashtags, not 30</li><li>Comment on football creators' videos within an hour of them posting</li></ul></div>
+  </div>
+
+  <h3>Post scripts</h3>
+  <div class="post"><div class="top"><span class="title">TT1 · POV: you called it</span><span class="chip ctt">A1 · 30 s · pin</span></div><dl>
+    <dt>Hook</dt><dd>"POV: you told the group chat Haaland scores before half-time"</dd>
+    <dt>Edit</dt><dd>The ad as it is (9:16). It already has its music drop on the payout.</dd>
+    <dt>Caption</dt><dd>they all faded me 😌 free to play at play.terrace.social (link in bio)</dd>
+    <dt>Hashtags</dt><dd class="tags">#footballtiktok #haaland #groupchat #premierleague #calledit</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT2 · I built the app my group chat needed</span><span class="chip ctt">P5 · 21 s</span></div><dl>
+    <dt>Hook</dt><dd>"I'm a footballer and a gamer, so I built this"</dd>
+    <dt>Edit</dt><dd>Founder face-cam clip. Cut to 2–3 quick app shots (D4, D7, D8) over the voice.</dd>
+    <dt>Caption</dt><dd>built it in a hackathon. any take becomes a market your mates can back or fade</dd>
+    <dt>Hashtags</dt><dd class="tags">#buildinpublic #startup #football #founder #techtok</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT3 · Group chat take → market</span><span class="chip ctt">D4 · 12 s</span></div><dl>
+    <dt>Hook</dt><dd>"Your mate's take is now a market"</dd>
+    <dt>Edit</dt><dd>Open on the typed take, then the plain-English rule, then the first back. End on "Make it a market".</dd>
+    <dt>Caption</dt><dd>put your money where your mouth is (test money, chill)</dd>
+    <dt>Hashtags</dt><dd class="tags">#footballbanter #groupchat #footballtiktok #fpl</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT4 · Tinder for football takes</span><span class="chip ctt">D7 · 10 s</span></div><dl>
+    <dt>Hook</dt><dd>"Tinder, but for football takes"</dd>
+    <dt>Edit</dt><dd>Swipe shots, cut to the beat. End on a back / fade.</dd>
+    <dt>Caption</dt><dd>right = back it. left = fade it. which way are you swiping on this one?</dd>
+    <dt>Hashtags</dt><dd class="tags">#football #footballtiktok #matchday #app</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT5 · Dare your mate</span><span class="chip ctt">D8 · 19 s</span></div><dl>
+    <dt>Hook</dt><dd>"When your mate won't stop chatting about his team"</dd>
+    <dt>Edit</dt><dd>Text bubble ("Arsenal win easy") → create a 1v1 → send the link → "Accepted".</dd>
+    <dt>Caption</dt><dd>send this to the mate who needs humbling</dd>
+    <dt>Hashtags</dt><dd class="tags">#footballbanter #arsenal #premierleague #mates</dd></dl></div>
+</section>
+
+<section>
+  <div class="kicker">07 · TikTok playbook</div>
+  <h2>TikTok post scripts, continued</h2>
+  <div class="post"><div class="top"><span class="title">TT6 · Your mate was right</span><span class="chip ctt">P1 · 10 s</span></div><dl>
+    <dt>Hook</dt><dd>"Your mate was right. Nobody remembers."</dd>
+    <dt>Edit</dt><dd>The pitch's Ahmed story with karaoke captions. Loop it back to the start.</dd>
+    <dt>Caption</dt><dd>tag the mate who's always right and never lets you forget</dd>
+    <dt>Hashtags</dt><dd class="tags">#footballfans #groupchat #mancity #footballtiktok</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT7 · Sign-up speedrun</span><span class="chip ctt">D1 · 14 s</span></div><dl>
+    <dt>Hook</dt><dd>"Signing up for a football app in 5 seconds"</dd>
+    <dt>Edit</dt><dd>Add a stopwatch overlay. Face ID, then you're in.</dd>
+    <dt>Caption</dt><dd>no email. no password. no code. just your face</dd>
+    <dt>Hashtags</dt><dd class="tags">#techtok #app #football #ux</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT8 · The league nobody can copy</span><span class="chip ctt">D10 · 24 s</span></div><dl>
+    <dt>Hook</dt><dd>"There's always one mate who copies your picks"</dd>
+    <dt>Edit</dt><dd>Sealed picks (violet lock) → full time → table revealed.</dd>
+    <dt>Caption</dt><dd>picks stay sealed until full time. start a league with your lot</dd>
+    <dt>Hashtags</dt><dd class="tags">#fpl #fantasyfootball #minileague #football</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT9 · The AI pundit faded me</span><span class="chip ctt">D13 · 9 s</span></div><dl>
+    <dt>Hook</dt><dd>"An AI just bet against my take"</dd>
+    <dt>Edit</dt><dd>The Gaffer's fade appears, then cut to the result.</dd>
+    <dt>Caption</dt><dd>the AI pundit plays too. who wins, you or the Gaffer?</dd>
+    <dt>Hashtags</dt><dd class="tags">#ai #football #footballtiktok #pundit</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT10 · Founder answers comments</span><span class="chip ctt">face-cam · 15–30 s</span></div><dl>
+    <dt>Hook</dt><dd>Reply-to-comment sticker showing "is this gambling??" or "how does it know who won"</dd>
+    <dt>Edit</dt><dd>Elio answers to camera in one take, with green screen over D12 for the Chainlink answer.</dd>
+    <dt>Caption</dt><dd>answering the most asked question 👇</dd>
+    <dt>Hashtags</dt><dd class="tags">#buildinpublic #founder #football #startup</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT11 · The 4-leg slip</span><span class="chip ctt">D9 · 7 s</span></div><dl>
+    <dt>Hook</dt><dd>"The parlay your mates watch land live"</dd>
+    <dt>Edit</dt><dd>Short and loopable. Add a "?" sticker for the last leg.</dd>
+    <dt>Caption</dt><dd>would you add a 5th leg?</dd>
+    <dt>Hashtags</dt><dd class="tags">#football #matchday #acca #footballtiktok</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT12 · Who decides who won?</span><span class="chip ctt">D12 · 15 s</span></div><dl>
+    <dt>Hook</dt><dd>"No admin. No settle button. So who decides?"</dd>
+    <dt>Edit</dt><dd>The settled badge, then "Chainlink checked the official data" on screen.</dd>
+    <dt>Caption</dt><dd>nobody marks their own homework here</dd>
+    <dt>Hashtags</dt><dd class="tags">#techtok #football #chainlink #web3</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT13 · Copy the mate who keeps calling it</span><span class="chip ctt">D5 · 12 s</span></div><dl>
+    <dt>Hook</dt><dd>"When your mate is 9 for 10 this season"</dd>
+    <dt>Edit</dt><dd>Profile record → Follow → Copy the call.</dd>
+    <dt>Caption</dt><dd>if you can't beat him, copy him</dd>
+    <dt>Hashtags</dt><dd class="tags">#footballbanter #football #mates #fpl</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT16 · Rate my app</span><span class="chip ctt">D2 + D7 · 15 s</span></div><dl>
+    <dt>Hook</dt><dd>"Rate my football app's UI out of 10, be honest"</dd>
+    <dt>Edit</dt><dd>A fast tour of the best-looking screens, ending on a "?/10" text card.</dd>
+    <dt>Caption</dt><dd>roast it, i can take it</dd>
+    <dt>Hashtags</dt><dd class="tags">#uidesign #appdesign #buildinpublic #football</dd></dl></div>
+  <p class="mute">TT14 and TT15 are recurring series. They're on the Series page.</p>
+</section>
+
+<!-- INSTAGRAM -->
+<section>
+  <div class="kicker">08 · Instagram playbook</div>
+  <h2>Instagram: proof and shareability</h2>
+  <p class="lede">Use Reels for reach, carousels for saves and shares, and Stories to keep fans coming back on matchdays. Upload the clean file rather than the TikTok download, because Instagram ranks watermarked reposts lower.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>Bio</h4>
+      <p><b>Terrace</b> · your group chat takes, settled ⚽<br>Back it. Fade it. Called it.<br>Free to play · founding fans earn 2× till 1 Nov<br>↓ play.terrace.social</p>
+      <p class="mute"><small>Highlights: How it works · Called it · Leagues · Built on</small></p>
+    </div>
+    <div class="card">
+      <h4>Reels plan</h4>
+      <table style="margin:0">
+        <tr><td><b>IG-R1</b></td><td>A1 ad in 4:5 (pinned)</td></tr>
+        <tr><td><b>IG-R2</b></td><td>D14 take → market</td></tr>
+        <tr><td><b>IG-R3/R6</b></td><td>Called it / Cooked (weekly)</td></tr>
+        <tr><td><b>IG-R4</b></td><td>D8 dare your mate</td></tr>
+        <tr><td><b>IG-R5</b></td><td>D7 swipe</td></tr>
+        <tr><td><b>IG-R7</b></td><td>P5 founder</td></tr>
+        <tr><td><b>IG-R8</b></td><td>D10 sealed league</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>Carousels (slide by slide)</h3>
+  <div class="post"><div class="top"><span class="title">IG-C1 · Your group chat, but it counts</span><span class="chip cig">7 slides · pin</span></div><dl>
+    <dt>Slides</dt><dd>1 "Your mate called it. Nobody remembers." · 2 Type your take (screenshot) · 3 AI writes the rule in plain English · 4 Mates back or fade · 5 Full time: settled · 6 "Called it." win screen · 7 "Free to play · play.terrace.social"</dd>
+    <dt>Caption</dt><dd>Every football group chat has someone who called it. Now it counts. Save this for Saturday.</dd>
+    <dt>Hashtags</dt><dd class="tags">#football #premierleague #footballfans #groupchat #matchday</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">IG-C2 · How a take settles</span><span class="chip cig">6 slides</span></div><dl>
+    <dt>Slides</dt><dd>1 "Who decides who won?" · 2 Your take → a rule · 3 Locked at kick-off · 4 Chainlink checks the official data · 5 Winners paid, losers learn · 6 "No admin. No settle button."</dd>
+    <dt>Hashtags</dt><dd class="tags">#football #howitworks #app #chainlink</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">IG-C3 · 5 ways to play a matchday</span><span class="chip cig">7 slides</span></div><dl>
+    <dt>Slides</dt><dd>Cover · Swipe · Takes · 1v1 dares · Parlays · Sealed leagues · "Which one are you trying first?"</dd>
+    <dt>Hashtags</dt><dd class="tags">#football #fpl #matchday #footballfans</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">IG-C4 · Weekend leaderboard</span><span class="chip cig">5 slides · weekly</span></div><dl>
+    <dt>Slides</dt><dd>Top 3 fans by points · Best call of the weekend · Worst take (with consent, funny) · Biggest dare · "Your name here next week"</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">IG-C5 · Why I built Terrace</span><span class="chip cig">6 slides · founder</span></div><dl>
+    <dt>Slides</dt><dd>Elio photo + "Footballer. Fan. Gamer." · Ahmed's story · Fantasy / sportsbooks / crypto each miss something · Only Terrace has all three · Built in a hackathon on Monad · "Join as a founding fan"</dd></dl></div>
+
+  <h3>Matchday Stories</h3>
+  <table>
+    <tr><th style="width:28mm">Time</th><th>Story frame</th><th style="width:34mm">Sticker</th></tr>
+    <tr><td>Morning</td><td>"Today's big one: [fixture]"</td><td>Poll: Home / Draw / Away</td></tr>
+    <tr><td>KO − 1 h</td><td>Screenshot of the top take</td><td>Slider: "how confident?"</td></tr>
+    <tr><td>Half-time</td><td>"Takes still alive: [n]"</td><td>Quiz: "Next goal before 70'?"</td></tr>
+    <tr><td>FT</td><td>Called it screenshot</td><td>Link sticker → play.terrace.social</td></tr>
+  </table>
+</section>
+
+<!-- SERIES -->
+<section>
+  <div class="kicker">09 · Recurring series</div>
+  <h2>Formats that run every week</h2>
+  <p class="lede">Series give people a reason to follow: they know what's coming next week. Each one runs on fresh footage from the app, so matchdays keep supplying new content.</p>
+
+  <div class="post"><div class="top"><span class="title">TT14 · Called it / Cooked</span><span class="chip ctt">TT</span> <span class="chip cig">Reel</span> <span class="chip cx">X</span></div><dl>
+    <dt>When</dt><dd>After every matchday, FT + 15 min to the next morning</dd>
+    <dt>Format</dt><dd>Split screen. Left: "CALLED IT" (green) with the best take that landed and how many faded it. Right: "COOKED" (red) with the boldest take that missed. End with "drop yours for next week".</dd>
+    <dt>Footage</dt><dd>A screen recording of the settled market + the OutcomePopup</dd>
+    <dt>Hashtags</dt><dd class="tags">#calledit #footballtiktok #premierleague #matchday</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">TT15 · Take of the day</span><span class="chip ctt">TT</span> <span class="chip cx">X</span></div><dl>
+    <dt>When</dt><dd>Matchday morning, with the result after full time</dd>
+    <dt>Format</dt><dd>"Comment your take for today". Pick one, reply with a video showing it become a market on Terrace, and tag the commenter. Follow up after full time with the result.</dd>
+    <dt>Why</dt><dd>Comments boost reach, the commenter shares it, and it shows the core feature with a real fan.</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">Me vs The Gaffer</span><span class="chip ctt">TT</span> <span class="chip cx">X</span></div><dl>
+    <dt>When</dt><dd>Weekly</dd>
+    <dt>Format</dt><dd>Elio picks 3 takes and the AI pundit picks 3. Show both slips, then a running season scoreboard.</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">Build log</span><span class="chip cx">X</span> <span class="chip ctt">TT</span></div><dl>
+    <dt>When</dt><dd>Twice a week</dd>
+    <dt>Format</dt><dd>One thing shipped, one thing learned, one number. On X, a screenshot. On TikTok, a 15 s face-cam.</dd></dl></div>
+  <div class="post"><div class="top"><span class="title">Group chat screenshots</span><span class="chip cig">Carousel</span> <span class="chip ctt">TT</span></div><dl>
+    <dt>When</dt><dd>Weekly, from fan submissions</dd>
+    <dt>Format</dt><dd>Real (anonymised) group-chat takes next to the market they became. Ask for permission and blur names.</dd></dl></div>
+</section>
+
+<!-- HASHTAGS -->
+<section>
+  <div class="kicker">10 · Hashtag bank</div>
+  <h2>Hashtags</h2>
+  <p class="lede">Use 3–5 on TikTok, 5–8 on Instagram, and 0–2 on X. Mix one broad tag, two niche ones and one topical one (a team, player or fixture). Check each topical tag on the day: player and fixture tags change every week.</p>
+  <div class="grid3">
+    <div class="card"><span class="chip ctt">TikTok</span>
+      <h4 style="margin-top:2mm">Broad</h4><p class="tags">#football #footballtiktok #soccer #premierleague #epl</p>
+      <h4>Niche</h4><p class="tags">#footballbanter #groupchat #fpl #fantasyfootball #minileague #matchday #calledit #footballfans</p>
+      <h4>Founder / tech</h4><p class="tags">#buildinpublic #startup #founder #techtok #uidesign #appdesign #ai</p>
+      <h4>Topical (swap in)</h4><p class="tags">#[team] #[player] #ucl #championsleague #elclasico #derby</p>
+    </div>
+    <div class="card"><span class="chip cx">X</span>
+      <h4 style="margin-top:2mm">Use sparingly</h4><p class="tags">#Monad #Chainlink #BuildInPublic</p>
+      <h4>Event</h4><p class="tags">The official Monad Metropolis tag <span class="chip ca">verify</span></p>
+      <h4>Football (live tweets)</h4><p class="tags">The fixture tag used by the clubs, e.g. #LIVMCI</p>
+      <p class="mute">On X, tagging the right accounts does more than hashtags. Mention, don't hashtag.</p>
+    </div>
+    <div class="card"><span class="chip cig">Instagram</span>
+      <h4 style="margin-top:2mm">Football</h4><p class="tags">#football #premierleague #footballfans #footballmemes #matchday #fpl #soccerlife</p>
+      <h4>Product / design</h4><p class="tags">#appdesign #uiux #productdesign #startup #buildinpublic</p>
+      <h4>Topical</h4><p class="tags">#[team] #[player] #[league]</p>
+    </div>
+  </div>
+  <div class="note"><b>Avoid on TikTok and Instagram:</b> #betting, #gambling, #sportsbetting, #crypto, #nft, #airdrop, #giveaway. They put a post in front of the wrong audience and can trigger reduced reach or a policy review. Keep crypto tags on X.</div>
+</section>
+
+<!-- RULES -->
+<section>
+  <div class="kicker">11 · Rules and guardrails</div>
+  <h2>Stay out of trouble</h2>
+  <div class="grid2">
+    <div class="card">
+      <h4>Money on screen</h4>
+      <ul>
+        <li>Terrace runs on <b>testnet with test money</b>. Say "free to play" or "test money" in the caption of any post that shows dollar amounts. The ad already carries "Illustration. Testnet: no real money."</li>
+        <li>Never say "win money", "earn", "profit" or "guaranteed". Talk about points, bragging rights and calling it.</li>
+        <li>Don't promise future rewards for points.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Platform policy</h4>
+      <ul>
+        <li>TikTok and Instagram restrict gambling and financial-product promotion, and paid ads are much stricter than organic posts. Before boosting any post, read the current ad policy and lead with the social game.</li>
+        <li>Don't pay creators without a clear #ad disclosure.</li>
+        <li>Under-18s: never target or feature them.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Music</h4>
+      <ul>
+        <li>The ad and demo bed use Mixkit track #190. Check its licence before using it in posts, and don't use it in any paid boost without checking.</li>
+        <li>For reach on TikTok and Reels, post the silent cut and add a sound from the in-app library. Business accounts can only use the commercial library.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Football IP and people</h4>
+      <ul>
+        <li>Club crests, broadcast footage and match clips are copyrighted. Use our own app footage only.</li>
+        <li>Player names in a take are fine. Don't use player photos.</li>
+        <li>Don't show a real fan's name or chat without their OK.</li>
+        <li>Don't imply the clubs, leagues or sponsors endorse Terrace. "Built with Chainlink" is fine; "partnered with" isn't, unless that's true.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Pre-post checklist</h3>
+  <table>
+    <tr><td style="width:8mm"><span class="check"></span></td><td>Hook readable in the first second, inside the safe zone</td><td style="width:8mm"><span class="check"></span></td><td>Captions on</td></tr>
+    <tr><td><span class="check"></span></td><td>"Free to play / test money" wherever $ appears</td><td><span class="check"></span></td><td>Handles verified before tagging</td></tr>
+    <tr><td><span class="check"></span></td><td>Link in bio / tweet works on a phone</td><td><span class="check"></span></td><td>No other platform's watermark</td></tr>
+    <tr><td><span class="check"></span></td><td>3–5 hashtags (TT), 5–8 (IG), 0–2 (X)</td><td><span class="check"></span></td><td>Logged in the tracker</td></tr>
+  </table>
+</section>
+
+<!-- TRACKER -->
+<section>
+  <div class="kicker">12 · Tracker</div>
+  <h2>Post log</h2>
+  <p class="lede">Log every post. After a week you'll know which hook, clip and time slot works. Write numbers 48 hours after posting.</p>
+  <table class="fill">
+    <tr><th style="width:16mm">Date</th><th style="width:12mm">Plat.</th><th style="width:14mm">Code</th><th>Hook used</th><th style="width:15mm">Views</th><th style="width:14mm">Likes</th><th style="width:16mm">Shares / saves</th><th style="width:14mm">Clicks</th><th style="width:14mm">Sign-ups</th></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <p class="mute"><small>Clicks and sign-ups: tag each bio and post link with <span class="mono">?utm_source=tiktok&amp;utm_campaign=[code]</span> so you can see which post brought each fan.</small></p>
+</section>
+
+<section>
+  <div class="kicker">12 · Tracker</div>
+  <h2>Weekly review</h2>
+  <p class="lede">Fifteen minutes every Monday. Do more of what worked and drop what didn't.</p>
+  <table class="fill">
+    <tr><th style="width:30mm">Week</th><th>Week 1 · 14–18 Oct</th><th>Week 2 · 19–25 Oct</th><th>Week 3 · 26 Oct–1 Nov</th><th>Week 4 · 2–8 Nov</th></tr>
+    <tr><td>Followers TT / X / IG</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Total views</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Sign-ups from social</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Takes created on Terrace</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Best post (code)</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Best hook line</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Best time slot</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Worst post, and why</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Repost next week</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Try next week</td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>What "good" looks like for a new account</h3>
+  <table>
+    <tr><th>Signal</th><th>Healthy</th><th>Act on it</th></tr>
+    <tr><td>TikTok average watch time</td><td>&gt; 50% of the clip's length</td><td>If it's lower, the hook is wrong. Rewrite the first-second text and repost.</td></tr>
+    <tr><td>TikTok views on posts 1–10</td><td>A few hundred each, with one breakout</td><td>Find the breakout's format and make three more like it.</td></tr>
+    <tr><td>X: replies to the launch thread</td><td>Ecosystem accounts quote it</td><td>Reply to every quote within 2 h, and DM sponsor devrel with the film.</td></tr>
+    <tr><td>IG: saves / shares per carousel</td><td>Saves &gt; likes ÷ 10</td><td>Turn more explainers into carousels.</td></tr>
+    <tr><td>Click → sign-up</td><td>&gt; 20%</td><td>If it's lower, check the first screen on mobile and the Face ID prompt.</td></tr>
+  </table>
+
+  <div class="card dark" style="margin-top:4mm">
+    <h4 style="color:var(--green)">Notes</h4>
+    <div style="height:46mm"></div>
+  </div>
+</section>
+
+</body>
+</html>
