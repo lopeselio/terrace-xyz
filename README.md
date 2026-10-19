@@ -357,10 +357,10 @@ cd monad/indexer && pnpm test             # handlers and points
 
 ## What's next
 
-- Production CRE on Monad mainnet with a hosted DON.
-- Push notifications for results, challenges and followers.
-- More sports, starting with the ones fans already argue about in group chats.
-- Fan-run leagues with their own house rules, voted on by members.
+- [ ] Production CRE on Monad mainnet with a hosted DON.
+- [x] Push notifications for results, challenges and followers.
+- [ ] More sports, starting with the ones fans already argue about in group chats.
+- [ ] Fan-run leagues with their own house rules, voted on by members.
 
 ---
 
