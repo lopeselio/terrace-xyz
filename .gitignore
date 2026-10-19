@@ -67,3 +67,6 @@ monad/video-files/
 video/*/out/
 video/pitch/pitch.html
 *.MOV
+
+# Python env for the pitch captions
+video/pitch/.venv/
