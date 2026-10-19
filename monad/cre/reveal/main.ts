@@ -6,7 +6,9 @@
  *
  *   Markets  After a sealed market closes, open every sealed bet and report (bettor, side, salt).
  *   Picks    When a sealed contest opens for reveal (at kickoff, or once the whole gameweek is
- *            played for private leagues), open every entry and report the picks.
+ *            played for private leagues), open every entry and report the picks. Every leagues
+ *            deployment is scanned (v2, and v3 with house rules), each with its own id base and
+ *            report kind.
  *
  * The contracts check each reveal against its commitment, so the workflow can't change
  * anyone's pick; at worst a bad reveal refunds the bet or zeroes the entry.
@@ -28,7 +30,7 @@ const configSchema = z.object({
   schedule: z.string(),
   useTee: z.boolean(),
   marketsAddress: z.string(),
-  leaguesAddress: z.string(),
+  leagues: z.array(z.object({ address: z.string(), idBase: z.number(), kind: z.number() })), // e.g. v2: { idBase: 0, kind: 17 }
   scanWindow: z.number(), // how many of the newest markets / contests to keep checking
   scanPerRun: z.number(), // checked per run, rotating through the window
   turnSeconds: z.number(), // match the schedule, so each run gets a fresh slice
@@ -50,8 +52,8 @@ const READS_PER_RUN = 15;
 type Budget = { left: number; reads: number };
 const spend = (budget: Budget, n = 1) => (budget.reads >= n ? ((budget.reads -= n), true) : false);
 
-/** The slice of the scan window this run covers: markets and contests take turns, a new slice each turn. */
-function slice(dons: Runtime<Config>, count: bigint, lane: number, lanes: number) {
+/** The slice of the scan window this run covers: markets and each leagues deployment take turns, a new slice each turn. */
+function slice(dons: Runtime<Config>, count: bigint, lane: number, lanes: number, base = 0n) {
   const cfg = dons.config;
   const first = count > BigInt(cfg.scanWindow) ? count - BigInt(cfg.scanWindow) : 0n;
   const span = Number(count - first);
@@ -61,7 +63,7 @@ function slice(dons: Runtime<Config>, count: bigint, lane: number, lanes: number
   const k = Math.floor(turn / lanes) % chunks;
   const top = count - 1n - BigInt(k * cfg.scanPerRun);
   const bottom = top - BigInt(cfg.scanPerRun) + 1n;
-  return { top, bottom: bottom < first ? first : bottom };
+  return { top: base + top, bottom: base + (bottom < first ? first : bottom) };
 }
 
 function revealMarkets(dons: Runtime<Config>, secrets: Secrets, budget: Budget) {
@@ -70,7 +72,7 @@ function revealMarkets(dons: Runtime<Config>, secrets: Secrets, budget: Budget) 
   const now = nowSeconds(dons as Runtime<unknown>);
   if (!spend(budget)) return;
   const count = read(dons as Runtime<unknown>, evm, cfg.marketsAddress, MARKETS_ABI, "marketCount");
-  const range = slice(dons, count, 0, 2);
+  const range = slice(dons, count, 0, 1 + cfg.leagues.length);
   if (!range) return;
 
   for (let id = range.top; id >= range.bottom && budget.left > 0; id--) {
@@ -103,22 +105,23 @@ function revealMarkets(dons: Runtime<Config>, secrets: Secrets, budget: Budget) 
   }
 }
 
-function revealPicks(dons: Runtime<Config>, secrets: Secrets, budget: Budget) {
+function revealPicks(dons: Runtime<Config>, secrets: Secrets, budget: Budget, lane: number) {
   const cfg = dons.config;
+  const league = cfg.leagues[lane - 1];
   const evm = evmClient(cfg);
   const now = nowSeconds(dons as Runtime<unknown>);
   if (!spend(budget)) return;
-  const count = read(dons as Runtime<unknown>, evm, cfg.leaguesAddress, LEAGUES_ABI, "contestCount");
-  const range = slice(dons, count, 1, 2);
+  const count = read(dons as Runtime<unknown>, evm, league.address, LEAGUES_ABI, "contestCount");
+  const range = slice(dons, count, lane, 1 + cfg.leagues.length, BigInt(league.idBase));
   if (!range) return;
 
   for (let id = range.top; id >= range.bottom && budget.left > 0; id--) {
     if (!spend(budget)) return;
-    if (!read(dons as Runtime<unknown>, evm, cfg.leaguesAddress, LEAGUES_ABI, "revealOpen", [id])) continue;
+    if (!read(dons as Runtime<unknown>, evm, league.address, LEAGUES_ABI, "revealOpen", [id])) continue;
     if (!spend(budget)) return;
-    if (now > read(dons as Runtime<unknown>, evm, cfg.leaguesAddress, LEAGUES_ABI, "revealDeadline", [id])) continue;
+    if (now > read(dons as Runtime<unknown>, evm, league.address, LEAGUES_ABI, "revealDeadline", [id])) continue;
     if (!spend(budget)) return;
-    const all = read(dons as Runtime<unknown>, evm, cfg.leaguesAddress, LEAGUES_ABI, "unrevealedPlayers", [id]);
+    const all = read(dons as Runtime<unknown>, evm, league.address, LEAGUES_ABI, "unrevealedPlayers", [id]);
     const players = all.slice(0, budget.reads);
     if (players.length === 0) continue;
     spend(budget, players.length);
@@ -127,7 +130,7 @@ function revealPicks(dons: Runtime<Config>, secrets: Secrets, budget: Budget) {
     const away: number[][] = [];
     const salts: Hex[] = [];
     for (const player of players) {
-      const sealed = read(dons as Runtime<unknown>, evm, cfg.leaguesAddress, LEAGUES_ABI, "sealedPicks", [id, player]);
+      const sealed = read(dons as Runtime<unknown>, evm, league.address, LEAGUES_ABI, "sealedPicks", [id, player]);
       const picks = open<SealedPicks>(secrets.revealKey, sealed);
       const valid =
         picks &&
@@ -145,7 +148,7 @@ function revealPicks(dons: Runtime<Config>, secrets: Secrets, budget: Budget) {
       [{ type: "uint256" }, { type: "address[]" }, { type: "uint8[][]" }, { type: "uint8[][]" }, { type: "bytes32[]" }],
       [id, players as Address[], home, away, salts],
     );
-    const status = writeReport(dons as Runtime<unknown>, cfg, REPORT.REVEAL_PICKS, payload, secrets.attestorKey);
+    const status = writeReport(dons as Runtime<unknown>, cfg, league.kind, payload, secrets.attestorKey);
     dons.log(`contest ${id}: revealed ${players.length} sealed entr(ies); tx ${status}`);
     budget.left--;
   }
@@ -154,7 +157,7 @@ function revealPicks(dons: Runtime<Config>, secrets: Secrets, budget: Budget) {
 function run(dons: Runtime<Config>, secrets: Secrets): string {
   const budget: Budget = { left: dons.config.maxReportsPerRun, reads: READS_PER_RUN };
   revealMarkets(dons, secrets, budget);
-  revealPicks(dons, secrets, budget);
+  for (let lane = 1; lane <= dons.config.leagues.length; lane++) revealPicks(dons, secrets, budget, lane);
   return `${dons.config.maxReportsPerRun - budget.left} reveal report(s)`;
 }
 

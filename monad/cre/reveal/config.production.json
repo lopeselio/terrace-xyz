@@ -2,7 +2,13 @@
   "schedule": "0 */2 * * * *",
   "useTee": true,
   "marketsAddress": "0xCa6a892e302582eE34a2cfe3a57c7e97A2868773",
-  "leaguesAddress": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
+  "leagues": [
+    {
+      "address": "0x4Df3ADf78A7Cb3B4F38ef0f0e8d450b69CdBB5a6",
+      "idBase": 0,
+      "kind": 17
+    }
+  ],
   "scanWindow": 50,
   "scanPerRun": 6,
   "turnSeconds": 120,

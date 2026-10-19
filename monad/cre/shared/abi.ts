@@ -33,7 +33,7 @@ export const REPORT = {
   RESULTS: 2,
   ANSWERS: 3,
   REVEAL_BETS: 16,
-  REVEAL_PICKS: 17,
+  REVEAL_PICKS: 17, // v2 leagues; each leagues deployment has its own kind (reveal config)
 } as const;
 
 /** Answer codes shared with the contracts. */
