@@ -9,7 +9,6 @@ import { StoppagePopup } from "@/components/Stoppage";
 import { PointsToast } from "@/components/PointsToast";
 import { TabBar } from "@/components/TabBar";
 import { SideNav } from "@/components/SideNav";
-import { LayoutToggle } from "@/components/LayoutSwitch";
 import { LAYOUT_BOOT } from "@/lib/layout";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -60,7 +59,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="page">{children}</main>
           </div>
           <TabBar />
-          <LayoutToggle className="layout-float" />
           <Activity />
           <Onboarding />
           <OutcomePopup />

@@ -68,14 +68,24 @@ export function LayoutSwitch() {
   );
 }
 
-/** One tap to the other layout: in the desktop sidebar, and floating beside the phone column. */
-export function LayoutToggle({ className = "" }: { className?: string }) {
+/** One tap to the other layout, labelled: in the desktop sidebar. */
+export function LayoutToggle() {
   const { layout, pick } = useLayout();
   const to = layout === "desktop" ? "phone" : "desktop";
   return (
-    <button className={`layout-toggle ${className}`} onClick={() => pick(to)} aria-label={`Switch to ${to} view`} title={`Switch to ${to} view`}>
+    <button className="layout-toggle" onClick={() => pick(to)} aria-label={`Switch to ${to} view`} title={`Switch to ${to} view`}>
       <Icon name={to === "desktop" ? "monitor" : "phone"} size={17} />
       <span>{to === "desktop" ? "Desktop view" : "Phone view"}</span>
+    </button>
+  );
+}
+
+/** Header icon (phone view on a wide screen): one tap to the desktop layout. The sidebar has the way back. */
+export function LayoutButton() {
+  const { pick } = useLayout();
+  return (
+    <button className="iconbtn layout-btn" aria-label="Switch to desktop view" title="Desktop view" onClick={() => pick("desktop")}>
+      <Icon name="monitor" />
     </button>
   );
 }

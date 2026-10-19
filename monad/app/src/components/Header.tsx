@@ -8,6 +8,7 @@ import { PointsSheet } from "./PointsSheet";
 import { StreakPill } from "./StreakSheet";
 import { RollingNumber } from "./RollingNumber";
 import { TerraceMark } from "./TerraceMark";
+import { LayoutButton } from "./LayoutSwitch";
 import { ThemeButton } from "./ThemeSwitch";
 import { money } from "./ui";
 import { useAccount } from "@/lib/account";
@@ -59,6 +60,7 @@ export function Header({
         {children}
         {search && <Link href="/markets" className="iconbtn" aria-label="Search markets"><Icon name="search" /></Link>}
         {share && <button className="iconbtn" aria-label="Share" onClick={share}><Icon name="share" /></button>}
+        <LayoutButton />
         <ThemeButton />
         {bell && <Bell />}
         {!back && <StreakPill />}
