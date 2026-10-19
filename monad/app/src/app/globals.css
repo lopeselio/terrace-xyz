@@ -538,3 +538,6 @@ img { display: block; }
 :root[data-theme="light"] .points-toast { border-color: #fcd34d; box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14); }
 :root[data-theme="light"] .points-toast span { color: #92400e; }
 :root[data-theme="light"] .vs-card.incoming { border-color: #bbf7d0; }
+
+/* push nudge at the top of the bell */
+.push-prompt { display: flex; align-items: center; gap: 11px; margin-top: 14px; padding: 12px; border-radius: var(--r-md); background: var(--green-tint); border: 1px solid var(--green-mid); }

@@ -8,6 +8,7 @@ import { Icon } from "./Icon";
 import { PointsSheet } from "./PointsSheet";
 import { useStreak } from "./StreakSheet";
 import { RollingNumber } from "./RollingNumber";
+import { PushSettings } from "./PushSettings";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { foundingFans } from "@/lib/terracePoints";
 import { usePoints } from "@/lib/usePoints";
@@ -342,6 +343,10 @@ export function Profile() {
           )}
         </div>
         <div style={{ height: 20 }} />
+      </div>
+      <div className="pad" style={{ marginTop: 22 }}>
+        <div className="flabel">Notifications</div>
+        <PushSettings />
       </div>
       <div className="pad" style={{ marginTop: 22 }}>
         <div className="flabel">Appearance</div>
