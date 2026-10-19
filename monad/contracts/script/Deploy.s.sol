@@ -36,9 +36,9 @@ contract Deploy is Script {
         TerraceMarkets markets = new TerraceMarkets(oracle, rep);
         TerraceParlays parlays = new TerraceParlays(oracle, rep);
         TerraceMatchups matchups = new TerraceMatchups(oracle, rep);
-        TerraceLeagues leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)));
-        TerraceGovernance gov = new TerraceGovernance(ITerraceLeaguesGov(address(leagues)));
-        TerraceChat chat = new TerraceChat(ITerraceLeaguesMembership(address(leagues)));
+        TerraceLeagues leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)), 0, 17);
+        TerraceGovernance gov = new TerraceGovernance(ITerraceLeaguesGov(address(leagues)), 0);
+        TerraceChat chat = new TerraceChat(ITerraceLeaguesMembership(address(leagues)), 0);
 
         leagues.setGovernance(address(gov));
         oracle.setSettlementToken(address(usd), true);

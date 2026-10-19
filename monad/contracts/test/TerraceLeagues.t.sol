@@ -6,6 +6,7 @@ import {TerraceMarkets} from "../src/TerraceMarkets.sol";
 import {TerraceReputation} from "../src/TerraceReputation.sol";
 import {Answer} from "../src/interfaces/ITerraceOracle.sol";
 import {TerraceHarness} from "./utils/TerraceHarness.sol";
+import {LeagueRules} from "../src/interfaces/LeagueRules.sol";
 
 contract TerraceLeaguesTest is TerraceHarness {
     TerraceLeagues leagues;
@@ -15,7 +16,7 @@ contract TerraceLeaguesTest is TerraceHarness {
     function setUp() public {
         _deployCore();
         markets = new TerraceMarkets(oracle, rep);
-        leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)));
+        leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)), 0, 17);
         rep.setWriter(address(markets), true);
         rep.setWriter(address(leagues), true);
         oracle.setReportHandler(leagues.REPORT_REVEAL_PICKS(), address(leagues));
@@ -159,8 +160,9 @@ contract TerraceLeaguesTest is TerraceHarness {
     // --- leagues ---------------------------------------------------------
 
     function _league(bool isPrivate) internal returns (uint256 leagueId) {
+        LeagueRules memory rules = leagues.defaultRules();
         vm.prank(alice);
-        leagueId = leagues.createLeague("Sunday League", 2026, 1, 10, usd, 20e6, isPrivate, false, keccak256("terrace"));
+        leagueId = leagues.createLeague("Sunday League", 2026, 1, 10, usd, 20e6, isPrivate, false, keccak256("terrace"), rules);
         address[3] memory ps = [alice, bob, carol];
         for (uint256 i; i < 3; ++i) {
             vm.prank(ps[i]);

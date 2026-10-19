@@ -21,7 +21,7 @@ contract TerraceChatTest is Test {
 
     function setUp() public {
         leagues = new FakeLeagues();
-        chat = new TerraceChat(leagues);
+        chat = new TerraceChat(leagues, 0);
         leagues.add(1, alice);
         leagues.add(1, bob);
     }

@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Answer, ITerraceOracle, ITerraceReportHandler} from "./interfaces/ITerraceOracle.sol";
 import {TerraceReputation} from "./TerraceReputation.sol";
+import {LeagueRules} from "./interfaces/LeagueRules.sol";
 
 interface ITerraceMarketsView {
     function questionOf(uint256 marketId) external view returns (uint256);
@@ -31,10 +32,22 @@ interface ITerraceMarketsView {
 ///             - Sealed contests open at kickoff, so nobody can copy your picks.
 ///             - Private leagues keep picks sealed until the whole gameweek has been played,
 ///               so the table stays hidden until the gameweek ends.
+///
+///  House rules Each league sets its own scoring, featured-take points, sealed picks, jokers
+///             (double one gameweek a season) and voting rules. The creator changes them in a
+///             creator-run league; members vote on changes in a governed one. A change never
+///             rewrites the past: gameweeks already added keep the scoring they were added with.
+///
+///  Ids        League, contest and proposal ids start at `idBase`, so a later deployment's ids
+///             never collide with an earlier one's in the indexer or the app.
 contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint8 public constant REPORT_REVEAL_PICKS = 17; // (uint256 contestId, address[] players, uint8[][] home, uint8[][] away, bytes32[] salts)
+    /// @notice Oracle report kind for sealed-pick reveals: (uint256 contestId, address[] players, uint8[][] home, uint8[][] away, bytes32[] salts).
+    ///         Each deployment gets its own kind, so the oracle can route reveals to more than one.
+    uint8 public immutable REPORT_REVEAL_PICKS;
+    /// @notice First league id is idBase + 1, first contest id is idBase.
+    uint256 public immutable idBase;
 
     uint256 public constant MAX_ENTRANTS = 200;
     uint256 public constant MAX_FIXTURES_PER_CONTEST = 20;
@@ -98,7 +111,26 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => mapping(address => bool))) public marketWinCounted;
     /// @notice Takes a league voted to count towards its table: featuredMarket[leagueId][marketId]
     mapping(uint256 => mapping(uint256 => bool)) public featuredMarket;
-    uint256 public constant FEATURED_TAKE_POINTS = 2;
+    /// @notice Points a winning bet on a featured take scored, fixed when it was featured.
+    mapping(uint256 => mapping(uint256 => uint8)) public featuredPoints;
+
+    uint8 public constant DEFAULT_EXACT_POINTS = 3;
+    uint8 public constant DEFAULT_RESULT_POINTS = 1;
+    uint8 public constant DEFAULT_FEATURED_POINTS = 2;
+    uint8 public constant MAX_POINTS = 10;
+    uint32 public constant MIN_VOTING_PERIOD = 1 hours;
+    uint32 public constant MAX_VOTING_PERIOD = 7 days;
+
+    struct Scoring {
+        uint8 exact;
+        uint8 result;
+    }
+
+    mapping(uint256 => LeagueRules) private _rules;
+    /// @dev A gameweek's scoring, fixed when it was added. Unset (standalone contests) = the defaults.
+    mapping(uint256 => Scoring) private _scoring;
+    /// @notice The gameweek a member doubled this season: jokerOf[leagueId][member] = contestId + 1 (0 = not played).
+    mapping(uint256 => mapping(address => uint256)) public jokerOf;
 
     event ContestCreated(uint256 indexed contestId, address indexed creator, uint256 indexed leagueId, uint256 prizePool, uint256 entryFee, uint64 lockTime, bool sealed_);
     event PicksSubmitted(uint256 indexed contestId, address indexed player);
@@ -111,6 +143,8 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     event MarketWinCounted(uint256 indexed leagueId, uint256 indexed marketId, address indexed member, uint256 seasonScore);
     event TakeFeatured(uint256 indexed leagueId, uint256 indexed marketId);
     event GovernanceSet(address governance);
+    event RulesSet(uint256 indexed leagueId, LeagueRules rules);
+    event JokerPlayed(uint256 indexed leagueId, uint256 indexed contestId, address indexed member);
     event SeasonEnded(uint256 indexed leagueId, address[] champions, uint256 topScore, uint256 prizePerChampion);
 
     error BadInput();
@@ -137,9 +171,16 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     error AlreadyCounted();
     error DidNotWin();
     error NotGovernance();
+    error NoJokers();
+    error JokerUsed();
 
-    constructor(ITerraceOracle oracle_, TerraceReputation reputation_, ITerraceMarketsView markets_) {
+    /// @param idBase_ 0 for the first deployment; later ones start their ids above every earlier id
+    /// @param revealKind_ oracle report kind routed here (17 for the first deployment, 16 is sealed bets)
+    constructor(ITerraceOracle oracle_, TerraceReputation reputation_, ITerraceMarketsView markets_, uint256 idBase_, uint8 revealKind_) {
+        if (revealKind_ < 17) revert BadInput();
         oracle = oracle_;
+        idBase = idBase_;
+        REPORT_REVEAL_PICKS = revealKind_;
         reputation = reputation_;
         markets = markets_;
         _deployer = msg.sender;
@@ -172,7 +213,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     /// @param home predicted home goals, in the same order as the contest's fixtureIds
     /// @param away predicted away goals, in the same order as the contest's fixtureIds
     function submitPicks(uint256 contestId, uint8[] calldata home, uint8[] calldata away) external nonReentrant {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         if (c.sealed_) revert SealedContest();
         uint256 n = c.fixtureIds.length;
         if (home.length != n || away.length != n) revert BadInput();
@@ -186,7 +227,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice Sealed entry. You can re-seal until the first kickoff.
     function submitSealedPicks(uint256 contestId, bytes32 commitment, bytes calldata ciphertext) external nonReentrant {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         if (!c.sealed_) revert NotSealed();
         if (commitment == bytes32(0) || ciphertext.length == 0) revert BadInput();
         bool first = !hasEntered[contestId][msg.sender];
@@ -227,7 +268,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice Score everyone, pay the prize and update records once every match is done.
     function finalizeContest(uint256 contestId) external nonReentrant {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         if (c.finalized) revert AlreadyFinalized();
 
         uint256 nFix = c.fixtureIds.length;
@@ -251,7 +292,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
             contestScore[contestId][player] = s;
             if (s > top) top = s;
             if (made > 0) reputation.recordPredictions(player, made, correct, exact);
-            if (c.leagueId != 0) seasonScore[c.leagueId][player] += s;
+            if (c.leagueId != 0) seasonScore[c.leagueId][player] += jokerOf[c.leagueId][player] == contestId + 1 ? s * 2 : s;
         }
 
         address[] memory winners = _winners(c.entrants, scores, top);
@@ -278,7 +319,8 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         uint256 entryFee,
         bool isPrivate,
         bool governed,
-        bytes32 inviteCodeHash
+        bytes32 inviteCodeHash,
+        LeagueRules calldata rules
     ) external returns (uint256 leagueId) {
         uint256 len = bytes(name).length;
         if (len == 0 || len > MAX_NAME_BYTES) revert BadInput();
@@ -296,8 +338,18 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         l.isPrivate = isPrivate;
         l.entryFee = uint128(entryFee);
         l.inviteCodeHash = inviteCodeHash;
-        leagueId = _leagues.length;
+        leagueId = idBase + _leagues.length;
         emit LeagueCreated(leagueId, msg.sender, name, season, gameweeks, entryFee, isPrivate);
+        _setRules(leagueId, rules);
+    }
+
+    /// @notice Change the house rules: the creator in a creator-run league, a passed member vote
+    ///         (through TerraceGovernance) in a governed one.
+    function setRules(uint256 leagueId, LeagueRules calldata rules) external {
+        League storage l = _league(leagueId);
+        if (msg.sender != governance && (l.governed || msg.sender != l.creator)) revert NotLeagueCreator();
+        if (l.ended) revert LeagueEnded();
+        _setRules(leagueId, rules);
     }
 
     function joinLeague(uint256 leagueId, string calldata inviteCode) external nonReentrant {
@@ -324,7 +376,9 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (l.ended) revert LeagueEnded();
         if (l.contestIds.length >= l.gameweeks) revert TooManyGameweeks();
 
-        contestId = _newContest(fixtureIds, leagueId, IERC20(address(0)), 0, 0, l.isPrivate);
+        LeagueRules storage r = _rules[leagueId];
+        contestId = _newContest(fixtureIds, leagueId, IERC20(address(0)), 0, 0, l.isPrivate || r.sealedPicks);
+        _scoring[contestId] = Scoring({exact: r.exactPoints, result: r.resultPoints});
         l.contestIds.push(contestId);
         emit GameweekAdded(leagueId, uint8(l.contestIds.length), contestId);
     }
@@ -334,18 +388,19 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (msg.sender != governance) revert NotGovernance();
         _league(leagueId);
         featuredMarket[leagueId][marketId] = true;
+        featuredPoints[leagueId][marketId] = _rules[leagueId].featuredPoints;
         emit TakeFeatured(leagueId, marketId);
     }
 
     /// @notice Count a member's winning market bet towards the season table. Anyone can call it.
     ///         Bets on one of a finished gameweek's matches score 1 point;
-    ///         featured takes score FEATURED_TAKE_POINTS once the gameweek they belong to is done.
+    ///         featured takes score the league's featured points once the gameweek they belong to is done.
     function countMarketWin(uint256 leagueId, uint8 gameweek, uint256 marketId, address member) external {
         League storage l = _league(leagueId);
         if (l.ended) revert LeagueEnded();
         if (!isMember[leagueId][member]) revert NotMember();
         if (gameweek == 0 || gameweek > l.contestIds.length) revert NotThisGameweek();
-        Contest storage c = _contests[l.contestIds[gameweek - 1]];
+        Contest storage c = _contest(l.contestIds[gameweek - 1]);
         // Waiting for the gameweek to finish keeps private tables hidden until then.
         if (!c.finalized) revert NotReady();
         if (marketWinCounted[leagueId][marketId][member]) revert AlreadyCounted();
@@ -358,8 +413,22 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (!markets.backedWinner(marketId, member)) revert DidNotWin();
 
         marketWinCounted[leagueId][marketId][member] = true;
-        seasonScore[leagueId][member] += featured ? FEATURED_TAKE_POINTS : 1;
+        seasonScore[leagueId][member] += featured ? featuredPoints[leagueId][marketId] : 1;
         emit MarketWinCounted(leagueId, marketId, member, seasonScore[leagueId][member]);
+    }
+
+    /// @notice Double your points for one gameweek this season, in leagues that play jokers.
+    ///         You can move it to another gameweek until the one it's on kicks off.
+    function playJoker(uint256 contestId) external {
+        Contest storage c = _contest(contestId);
+        uint256 leagueId = c.leagueId;
+        if (leagueId == 0 || !_rules[leagueId].jokers) revert NoJokers();
+        if (!isMember[leagueId][msg.sender]) revert NotMember();
+        if (block.timestamp >= c.lockTime) revert ContestLocked();
+        uint256 current = jokerOf[leagueId][msg.sender];
+        if (current != 0 && block.timestamp >= _contest(current - 1).lockTime) revert JokerUsed();
+        jokerOf[leagueId][msg.sender] = contestId + 1;
+        emit JokerPlayed(leagueId, contestId, msg.sender);
     }
 
     /// @notice Pay the season prize once every planned gameweek is finished.
@@ -368,7 +437,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (l.ended) revert LeagueEnded();
         if (l.contestIds.length < l.gameweeks) revert NotReady();
         for (uint256 i; i < l.contestIds.length; ++i) {
-            if (!_contests[l.contestIds[i]].finalized) revert NotReady();
+            if (!_contest(l.contestIds[i]).finalized) revert NotReady();
         }
         l.ended = true;
 
@@ -407,11 +476,34 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
     }
 
     function getContest(uint256 contestId) external view returns (Contest memory) {
-        return _contests[contestId];
+        return _contest(contestId);
     }
 
     function getPick(uint256 contestId, address player, uint256 fixtureId) external view returns (Pick memory) {
         return _picks[contestId][player][fixtureId];
+    }
+
+    function rulesOf(uint256 leagueId) external view returns (LeagueRules memory) {
+        _league(leagueId);
+        return _rules[leagueId];
+    }
+
+    /// @notice Points for an exact score and for the right result in this contest.
+    function scoringOf(uint256 contestId) public view returns (Scoring memory sc) {
+        sc = _scoring[contestId];
+        if (sc.exact == 0) sc = Scoring({exact: DEFAULT_EXACT_POINTS, result: DEFAULT_RESULT_POINTS});
+    }
+
+    function defaultRules() public pure returns (LeagueRules memory) {
+        return LeagueRules({
+            exactPoints: DEFAULT_EXACT_POINTS,
+            resultPoints: DEFAULT_RESULT_POINTS,
+            featuredPoints: DEFAULT_FEATURED_POINTS,
+            sealedPicks: false,
+            jokers: false,
+            votingPeriod: 1 days,
+            quorumPct: 33
+        });
     }
 
     function memberCount(uint256 leagueId) external view returns (uint256) {
@@ -428,20 +520,20 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice Live score for tables; counts only matches already played.
     function currentScore(uint256 contestId, address player) external view returns (uint256 s) {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         for (uint256 i; i < c.fixtureIds.length; ++i) {
             (uint8 state, uint8 h, uint8 a) = oracle.fixtureResult(c.fixtureIds[i]);
             if (state != Answer.FIXTURE_FINAL) continue;
-            (uint256 pts,,) = _points(_picks[contestId][player][c.fixtureIds[i]], h, a);
+            (uint256 pts,,) = _points(_picks[contestId][player][c.fixtureIds[i]], h, a, scoringOf(contestId));
             s += pts;
         }
     }
 
     /// @notice Sealed contests open at kickoff; private-league gameweeks once every match is played.
     function revealOpen(uint256 contestId) public view returns (bool) {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         if (!c.sealed_) return false;
-        if (c.leagueId == 0 || !_leagues[c.leagueId - 1].isPrivate) return block.timestamp >= c.lockTime;
+        if (c.leagueId == 0 || !_league(c.leagueId).isPrivate) return block.timestamp >= c.lockTime;
         for (uint256 i; i < c.fixtureIds.length; ++i) {
             (uint8 state,,) = oracle.fixtureResult(c.fixtureIds[i]);
             if (state == Answer.FIXTURE_PENDING) return false;
@@ -451,7 +543,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice After this, unrevealed picks score nothing and the contest can be finalized.
     function revealDeadline(uint256 contestId) public view returns (uint256) {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         uint64 last;
         for (uint256 i; i < c.fixtureIds.length; ++i) {
             uint64 k = oracle.fixtureKickoff(c.fixtureIds[i]);
@@ -462,7 +554,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
 
     /// @notice Sealed entries the CRE reveal workflow still has to open.
     function unrevealedPlayers(uint256 contestId) external view returns (address[] memory out) {
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         address[] memory buf = new address[](c.entrants.length);
         uint256 n;
         for (uint256 i; i < c.entrants.length; ++i) {
@@ -494,7 +586,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         }
         if (lock <= block.timestamp) revert ContestLocked();
 
-        contestId = _contests.length;
+        contestId = idBase + _contests.length;
         Contest storage c = _contests.push();
         c.creator = msg.sender;
         c.token = token;
@@ -522,7 +614,7 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (commitment == bytes32(0)) return; // nothing sealed, or already opened
         if (block.timestamp > revealDeadline(contestId)) return;
 
-        Contest storage c = _contests[contestId];
+        Contest storage c = _contest(contestId);
         bool valid = home.length == c.fixtureIds.length && away.length == c.fixtureIds.length
             && picksCommitment(contestId, player, home, away, salt) == commitment;
         delete pickCommitment[contestId][player];
@@ -543,11 +635,12 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         uint8[] memory hg,
         uint8[] memory ag
     ) internal view returns (uint256 total, uint32 made, uint32 correct, uint32 exact) {
+        Scoring memory sc = scoringOf(contestId);
         for (uint256 i; i < fixtureIds.length; ++i) {
             if (states[i] != Answer.FIXTURE_FINAL) continue; // called-off matches don't count
             Pick memory p = _picks[contestId][player][fixtureIds[i]];
             if (!p.set) continue;
-            (uint256 pts, bool isCorrect, bool isExact) = _points(p, hg[i], ag[i]);
+            (uint256 pts, bool isCorrect, bool isExact) = _points(p, hg[i], ag[i], sc);
             total += pts;
             made += 1;
             if (isCorrect) correct += 1;
@@ -555,11 +648,15 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         }
     }
 
-    function _points(Pick memory p, uint8 h, uint8 a) internal pure returns (uint256 pts, bool correctResult, bool exact) {
+    function _points(Pick memory p, uint8 h, uint8 a, Scoring memory sc)
+        internal
+        pure
+        returns (uint256 pts, bool correctResult, bool exact)
+    {
         if (!p.set) return (0, false, false);
         exact = p.home == h && p.away == a;
         correctResult = _sign(p.home, p.away) == _sign(h, a);
-        pts = exact ? 3 : (correctResult ? 1 : 0);
+        pts = exact ? sc.exact : (correctResult ? sc.result : 0);
     }
 
     function _sign(uint8 h, uint8 a) internal pure returns (int8) {
@@ -605,9 +702,23 @@ contract TerraceLeagues is ITerraceReportHandler, ReentrancyGuard {
         if (amount > 0 && !oracle.isSettlementToken(address(token))) revert BadInput();
     }
 
+    function _setRules(uint256 leagueId, LeagueRules calldata r) internal {
+        if (r.exactPoints == 0 || r.exactPoints > MAX_POINTS || r.resultPoints > r.exactPoints) revert BadInput();
+        if (r.featuredPoints == 0 || r.featuredPoints > MAX_POINTS) revert BadInput();
+        if (r.votingPeriod < MIN_VOTING_PERIOD || r.votingPeriod > MAX_VOTING_PERIOD) revert BadInput();
+        if (r.quorumPct == 0 || r.quorumPct > 100) revert BadInput();
+        _rules[leagueId] = r;
+        emit RulesSet(leagueId, r);
+    }
+
+    function _contest(uint256 contestId) internal view returns (Contest storage) {
+        if (contestId < idBase || contestId >= idBase + _contests.length) revert BadInput();
+        return _contests[contestId - idBase];
+    }
+
     function _league(uint256 leagueId) internal view returns (League storage) {
-        if (leagueId == 0 || leagueId > _leagues.length) revert UnknownLeague();
-        return _leagues[leagueId - 1];
+        if (leagueId <= idBase || leagueId > idBase + _leagues.length) revert UnknownLeague();
+        return _leagues[leagueId - idBase - 1];
     }
 
     function _contains(uint256[] storage list, uint256 value) internal view returns (bool) {

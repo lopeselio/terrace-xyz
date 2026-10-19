@@ -7,6 +7,7 @@ import {TerraceGovernance, ITerraceLeaguesGov} from "../src/TerraceGovernance.so
 import {Answer} from "../src/interfaces/ITerraceOracle.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TerraceHarness} from "./utils/TerraceHarness.sol";
+import {LeagueRules} from "../src/interfaces/LeagueRules.sol";
 
 contract TerraceGovernanceTest is TerraceHarness {
     TerraceLeagues leagues;
@@ -18,8 +19,8 @@ contract TerraceGovernanceTest is TerraceHarness {
     function setUp() public {
         _deployCore();
         markets = new TerraceMarkets(oracle, rep);
-        leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)));
-        gov = new TerraceGovernance(ITerraceLeaguesGov(address(leagues)));
+        leagues = new TerraceLeagues(oracle, rep, ITerraceMarketsView(address(markets)), 0, 17);
+        gov = new TerraceGovernance(ITerraceLeaguesGov(address(leagues)), 0);
         leagues.setGovernance(address(gov));
         rep.setWriter(address(markets), true);
         rep.setWriter(address(leagues), true);
@@ -27,8 +28,9 @@ contract TerraceGovernanceTest is TerraceHarness {
         both.push(ARS_CHE);
         both.push(LIV_MCI);
 
+        LeagueRules memory rules = leagues.defaultRules();
         vm.prank(alice);
-        league = leagues.createLeague("The Kop End", 2026, 1, 10, IERC20(address(0)), 0, false, true, bytes32(0));
+        league = leagues.createLeague("The Kop End", 2026, 1, 10, IERC20(address(0)), 0, false, true, bytes32(0), rules);
         address[3] memory ps = [alice, bob, carol];
         for (uint256 i; i < 3; ++i) {
             vm.prank(ps[i]);
@@ -78,7 +80,7 @@ contract TerraceGovernanceTest is TerraceHarness {
         vm.expectRevert(TerraceGovernance.StillVoting.selector);
         gov.execute(id);
 
-        vm.warp(block.timestamp + gov.VOTING_PERIOD() + 1);
+        vm.warp(block.timestamp + 1 days + 1);
         gov.execute(id);
         assertEq(uint8(gov.getProposal(id).status), uint8(TerraceGovernance.Status.Rejected));
         assertEq(leagues.getLeague(league).contestIds.length, 0);

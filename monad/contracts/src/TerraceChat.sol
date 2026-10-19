@@ -30,6 +30,8 @@ contract TerraceChat {
     }
 
     ITerraceLeaguesMembership public immutable leagues;
+    /// @notice Message ids start at idBase + 1, so a later deployment's ids never collide with an earlier one's.
+    uint256 public immutable idBase;
     Message[] private _messages; // id = index + 1
     mapping(uint256 => mapping(address => bool)) public hasBacked;
 
@@ -43,8 +45,9 @@ contract TerraceChat {
     error UnknownMessage();
     error AlreadyBacked();
 
-    constructor(ITerraceLeaguesMembership leagues_) {
+    constructor(ITerraceLeaguesMembership leagues_, uint256 idBase_) {
         leagues = leagues_;
+        idBase = idBase_;
     }
 
     /// @param replyTo message id this replies to (0 = none); must be in the same room
@@ -58,7 +61,7 @@ contract TerraceChat {
         }
 
         _messages.push(Message({author: msg.sender, roomKind: roomKind, postedAt: uint64(block.timestamp), backers: 0, roomId: roomId}));
-        messageId = _messages.length;
+        messageId = idBase + _messages.length;
         emit MessagePosted(messageId, roomKind, roomId, msg.sender, replyTo, text);
     }
 
@@ -86,7 +89,7 @@ contract TerraceChat {
     }
 
     function _message(uint256 messageId) internal view returns (Message storage) {
-        if (messageId == 0 || messageId > _messages.length) revert UnknownMessage();
-        return _messages[messageId - 1];
+        if (messageId <= idBase || messageId > idBase + _messages.length) revert UnknownMessage();
+        return _messages[messageId - idBase - 1];
     }
 }
