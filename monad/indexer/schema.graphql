@@ -167,6 +167,14 @@ type League {
   isPrivate: Boolean!
   memberCount: Int!
   ended: Boolean!
+  # House rules (v3 leagues; v2 leagues keep the defaults: 3 / 1 / 2, no jokers, 1 day, 33%)
+  exactPoints: Int!
+  resultPoints: Int!
+  featuredPoints: Int!
+  sealedPicks: Boolean!
+  jokers: Boolean!
+  votingPeriod: Int!
+  quorumPct: Int!
   members: [LeagueMember!]! @derivedFrom(field: "league")
   contests: [Contest!]! @derivedFrom(field: "league")
   proposals: [Proposal!]! @derivedFrom(field: "league")
@@ -178,6 +186,7 @@ type LeagueMember {
   member: String!
   seasonScore: Int!
   joinedAt: BigInt!
+  jokerContest: Contest # the gameweek this member doubled, if any
 }
 
 type Contest {
@@ -210,7 +219,7 @@ type Proposal {
   id: ID!
   league: League!
   proposer: String!
-  kind: Int! # 0 gameweek, 1 feature take
+  kind: Int! # 0 gameweek, 1 feature take, 2 house rules
   payload: String!
   deadline: BigInt!
   yes: Int!
@@ -220,7 +229,7 @@ type Proposal {
 
 type FeedItem {
   id: ID! # txHash-logIndex
-  kind: String! # TAKE, TAKE_LISTED, BET, WIN, CHALLENGE, CHALLENGE_WON, TITLE, LEAGUE_JOIN, PROPOSAL, AGENT
+  kind: String! # TAKE, TAKE_LISTED, BET, WIN, CHALLENGE, CHALLENGE_WON, TITLE, LEAGUE_JOIN, PROPOSAL, RULES, AGENT
   actor: String!
   room: Room
   message: Message

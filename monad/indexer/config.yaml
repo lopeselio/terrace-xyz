@@ -53,6 +53,8 @@ contracts:
       - event: GameweekAdded
       - event: MarketWinCounted
       - event: TakeFeatured
+      - event: RulesSet
+      - event: JokerPlayed
       - event: SeasonEnded
   - name: TerraceGovernance
     abi_file_path: ./abis/TerraceGovernance.json

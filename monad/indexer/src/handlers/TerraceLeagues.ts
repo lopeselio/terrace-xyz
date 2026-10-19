@@ -14,6 +14,13 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueCreated" }, async ({
     isPrivate: p.isPrivate,
     memberCount: 0,
     ended: false,
+    exactPoints: 3,
+    resultPoints: 1,
+    featuredPoints: 2,
+    sealedPicks: false,
+    jokers: false,
+    votingPeriod: 86_400,
+    quorumPct: 33,
   });
   await award(context, event, p.creator, "LEAGUE_CREATED");
 });
@@ -29,6 +36,7 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "LeagueJoined" }, async ({ 
     member: id(p.member),
     seasonScore: 0,
     joinedAt: BigInt(event.block.timestamp),
+    jokerContest_id: undefined,
   });
   feed(context, event, { kind: "LEAGUE_JOIN", actor: p.member, league_id: league.id, text: league.name });
   if (id(p.member) === league.creator) return; // creating a league already earns its points
@@ -99,6 +107,30 @@ indexer.onEvent({ contract: "TerraceLeagues", event: "MarketWinCounted" }, async
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "TakeFeatured" }, async ({ event, context }) => {
   feed(context, event, { kind: "FEATURED", actor: "governance", league_id: id(event.params.leagueId), market_id: id(event.params.marketId) });
+});
+
+// v3: set at creation (right after LeagueCreated) and on every change.
+indexer.onEvent({ contract: "TerraceLeagues", event: "RulesSet" }, async ({ event, context }) => {
+  const league = await context.League.get(id(event.params.leagueId));
+  if (!league) return;
+  const { exactPoints, resultPoints, featuredPoints, sealedPicks, jokers, votingPeriod, quorumPct } = event.params.rules;
+  const atCreation = league.memberCount === 0; // createLeague sets the rules before anyone has joined
+  context.League.set({
+    ...league,
+    exactPoints: Number(exactPoints),
+    resultPoints: Number(resultPoints),
+    featuredPoints: Number(featuredPoints),
+    sealedPicks,
+    jokers,
+    votingPeriod: Number(votingPeriod),
+    quorumPct: Number(quorumPct),
+  });
+  if (!atCreation) feed(context, event, { kind: "RULES", actor: league.creator, league_id: league.id, text: league.name });
+});
+
+indexer.onEvent({ contract: "TerraceLeagues", event: "JokerPlayed" }, async ({ event, context }) => {
+  const m = await context.LeagueMember.get(`${id(event.params.leagueId)}-${id(event.params.member)}`);
+  if (m) context.LeagueMember.set({ ...m, jokerContest_id: id(event.params.contestId) });
 });
 
 indexer.onEvent({ contract: "TerraceLeagues", event: "SeasonEnded" }, async ({ event, context }) => {

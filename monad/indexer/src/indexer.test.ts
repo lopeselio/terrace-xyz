@@ -180,3 +180,37 @@ describe("standard questions", () => {
     t.expect([await answer("1"), await answer("2"), await answer("3"), await answer("4"), await answer("5"), await answer("6")]).toEqual([2, 1, 2, 2, 1, 1]);
   });
 });
+
+describe("house rules", () => {
+  it("a v3 league records its rules, rule changes and jokers", async (t) => {
+    const indexer = createTestIndexer();
+    const rules = { exactPoints: 5n, resultPoints: 2n, featuredPoints: 3n, sealedPicks: true, jokers: true, votingPeriod: 10_800n, quorumPct: 50n };
+    await indexer.process({
+      chains: {
+        10143: {
+          simulate: [
+            { contract: "TerraceLeagues", event: "LeagueCreated", params: { leagueId: 1_000_001n, creator: alice, name: "House Rules FC", season: 2026n, gameweeks: 2n, entryFee: 0n, isPrivate: false } },
+            { contract: "TerraceLeagues", event: "RulesSet", params: { leagueId: 1_000_001n, rules } },
+            { contract: "TerraceLeagues", event: "LeagueJoined", params: { leagueId: 1_000_001n, member: bob } },
+            { contract: "TerraceLeagues", event: "ContestCreated", params: { contestId: 1_000_000n, creator: alice, leagueId: 1_000_001n, prizePool: 0n, entryFee: 0n, lockTime: 1791732600n, sealed_: true } },
+            { contract: "TerraceLeagues", event: "JokerPlayed", params: { leagueId: 1_000_001n, contestId: 1_000_000n, member: bob } },
+            { contract: "TerraceLeagues", event: "RulesSet", params: { leagueId: 1_000_001n, rules: { ...rules, exactPoints: 4n } } },
+          ],
+        },
+      },
+    });
+
+    const league = await indexer.League.getOrThrow("1000001");
+    t.expect(league.exactPoints).toBe(4);
+    t.expect(league.resultPoints).toBe(2);
+    t.expect(league.jokers).toBe(true);
+    t.expect(league.votingPeriod).toBe(10_800);
+
+    const member = await indexer.LeagueMember.getOrThrow(`1000001-${bob.toLowerCase()}`);
+    t.expect(member.jokerContest_id).toBe("1000000");
+
+    // The rules set at creation don't make a feed item; the change after members joined does.
+    const items = await indexer.FeedItem.getAll();
+    t.expect(items.filter((i) => i.kind === "RULES").length).toBe(1);
+  });
+});

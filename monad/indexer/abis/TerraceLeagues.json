@@ -16,19 +16,55 @@
     "name": "markets_",
     "type": "address",
     "internalType": "contract ITerraceMarketsView"
+   },
+   {
+    "name": "idBase_",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "revealKind_",
+    "type": "uint8",
+    "internalType": "uint8"
    }
   ],
   "stateMutability": "nonpayable"
  },
  {
   "type": "function",
-  "name": "FEATURED_TAKE_POINTS",
+  "name": "DEFAULT_EXACT_POINTS",
   "inputs": [],
   "outputs": [
    {
     "name": "",
-    "type": "uint256",
-    "internalType": "uint256"
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "DEFAULT_FEATURED_POINTS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "DEFAULT_RESULT_POINTS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
    }
   ],
   "stateMutability": "view"
@@ -68,6 +104,45 @@
     "name": "",
     "type": "uint256",
     "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MAX_POINTS",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MAX_VOTING_PERIOD",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint32",
+    "internalType": "uint32"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "MIN_VOTING_PERIOD",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint32",
+    "internalType": "uint32"
    }
   ],
   "stateMutability": "view"
@@ -274,6 +349,48 @@
     "name": "inviteCodeHash",
     "type": "bytes32",
     "internalType": "bytes32"
+   },
+   {
+    "name": "rules",
+    "type": "tuple",
+    "internalType": "struct LeagueRules",
+    "components": [
+     {
+      "name": "exactPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "resultPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "featuredPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "sealedPicks",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "jokers",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "votingPeriod",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "quorumPct",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
    }
   ],
   "outputs": [
@@ -308,6 +425,56 @@
    }
   ],
   "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "defaultRules",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct LeagueRules",
+    "components": [
+     {
+      "name": "exactPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "resultPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "featuredPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "sealedPicks",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "jokers",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "votingPeriod",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "quorumPct",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "pure"
  },
  {
   "type": "function",
@@ -360,6 +527,30 @@
     "name": "",
     "type": "bool",
     "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "featuredPoints",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint8",
+    "internalType": "uint8"
    }
   ],
   "stateMutability": "view"
@@ -647,6 +838,19 @@
  },
  {
   "type": "function",
+  "name": "idBase",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
   "name": "isMember",
   "inputs": [
    {
@@ -686,6 +890,30 @@
   ],
   "outputs": [],
   "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "jokerOf",
+  "inputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
  },
  {
   "type": "function",
@@ -839,6 +1067,19 @@
  },
  {
   "type": "function",
+  "name": "playJoker",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
   "name": "reputation",
   "inputs": [],
   "outputs": [
@@ -918,6 +1159,93 @@
  },
  {
   "type": "function",
+  "name": "rulesOf",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct LeagueRules",
+    "components": [
+     {
+      "name": "exactPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "resultPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "featuredPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "sealedPicks",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "jokers",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "votingPeriod",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "quorumPct",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "scoringOf",
+  "inputs": [
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "sc",
+    "type": "tuple",
+    "internalType": "struct TerraceLeagues.Scoring",
+    "components": [
+     {
+      "name": "exact",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "result",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
   "name": "sealedPicks",
   "inputs": [
    {
@@ -972,6 +1300,61 @@
     "name": "governance_",
     "type": "address",
     "internalType": "address"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "setRules",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "rules",
+    "type": "tuple",
+    "internalType": "struct LeagueRules",
+    "components": [
+     {
+      "name": "exactPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "resultPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "featuredPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "sealedPicks",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "jokers",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "votingPeriod",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "quorumPct",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
    }
   ],
   "outputs": [],
@@ -1162,6 +1545,31 @@
  },
  {
   "type": "event",
+  "name": "JokerPlayed",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "contestId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "member",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
   "name": "LeagueCreated",
   "inputs": [
    {
@@ -1305,6 +1713,62 @@
  },
  {
   "type": "event",
+  "name": "RulesSet",
+  "inputs": [
+   {
+    "name": "leagueId",
+    "type": "uint256",
+    "indexed": true,
+    "internalType": "uint256"
+   },
+   {
+    "name": "rules",
+    "type": "tuple",
+    "indexed": false,
+    "internalType": "struct LeagueRules",
+    "components": [
+     {
+      "name": "exactPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "resultPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "featuredPoints",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "sealedPicks",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "jokers",
+      "type": "bool",
+      "internalType": "bool"
+     },
+     {
+      "name": "votingPeriod",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
+      "name": "quorumPct",
+      "type": "uint8",
+      "internalType": "uint8"
+     }
+    ]
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
   "name": "SealedPicksSubmitted",
   "inputs": [
    {
@@ -1426,12 +1890,22 @@
  },
  {
   "type": "error",
+  "name": "JokerUsed",
+  "inputs": []
+ },
+ {
+  "type": "error",
   "name": "LeagueEnded",
   "inputs": []
  },
  {
   "type": "error",
   "name": "LeagueFull",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NoJokers",
   "inputs": []
  },
  {

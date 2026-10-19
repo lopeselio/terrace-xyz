@@ -15,7 +15,7 @@ indexer.onEvent({ contract: "TerraceGovernance", event: "Proposed" }, async ({ e
     no: 0,
     status: 0,
   });
-  feed(context, event, { kind: "PROPOSAL", actor: p.proposer, league_id: id(p.leagueId), text: Number(p.kind) === 0 ? "gameweek" : "feature take" });
+  feed(context, event, { kind: "PROPOSAL", actor: p.proposer, league_id: id(p.leagueId), text: ["gameweek", "feature take", "house rules"][Number(p.kind)] ?? "proposal" });
   await award(context, event, p.proposer, "PROPOSAL");
 });
 
