@@ -70,3 +70,7 @@ video/pitch/pitch.html
 
 # Python env for the pitch captions (a symlink to called-it's)
 video/pitch/.venv
+
+# pitch clip builder: fetched fonts and generated clips
+video/social/fonts/
+video/social/pitch-clips/
