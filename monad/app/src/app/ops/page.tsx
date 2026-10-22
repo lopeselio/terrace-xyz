@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStats } from "@/lib/server/stats";
+import { getTxCount } from "@/lib/server/txcount";
 import { fanName } from "@/lib/names";
+import { TxCounter } from "@/components/TxCounter";
 import "@/styles/ops.css";
 
 /*
@@ -83,6 +85,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ke
   if (!process.env.OPS_KEY || key !== process.env.OPS_KEY) notFound();
   const days = RANGES.includes(Number(d)) ? Number(d) : 14;
   let s;
+  const txs = getTxCount().catch(() => null); // HyperSync, in parallel with the indexer
   try {
     s = await getStats(days);
   } catch (e) {
@@ -103,6 +106,9 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ke
           ))}
         </nav>
       </header>
+
+      <h2>On-chain · live</h2>
+      <TxCounter opsKey={key!} initial={await txs} />
 
       <h2>Sign-ups</h2>
       {s.signups && s.funnel ? (
