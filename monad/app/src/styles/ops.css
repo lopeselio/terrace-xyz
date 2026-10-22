@@ -64,3 +64,7 @@
 @keyframes ops-pulse { 0% { box-shadow: 0 0 0 0 var(--green-glow); } 100% { box-shadow: 0 0 0 8px transparent; } }
 @media (prefers-reduced-motion: reduce) { .ops-dot { animation: none; } }
 @media (max-width: 520px) { .ops-live-value { font-size: 52px; } }
+.ops-dot.still { animation: none; }
+.ops-live-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-hair); font-size: 11.5px; color: var(--ink-3); }
+.ops-live-foot button { padding: 6px 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--raised); color: var(--ink); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.ops-live-foot button:disabled { opacity: 0.6; cursor: default; }

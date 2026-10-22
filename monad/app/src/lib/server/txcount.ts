@@ -33,8 +33,16 @@ const state = {
   height: 0,
 };
 let running: Promise<void> | null = null;
-let synced = 0;
-const FRESH = 10_000; // HyperSync rate-limits, so read new blocks at most this often however many tabs poll
+let synced = 0; // when the count last caught up with the chain
+let retryAt = 0;
+/*
+ * HyperSync rate-limits, so the count catches up at most every TXCOUNT_REFRESH_HOURS (6 by default)
+ * however many tabs poll; "Count now" on /ops may force it, but not more than once a minute.
+ * After a failed catch-up it tries again in 5 minutes and shows the last count meanwhile.
+ */
+const FRESH = Number(process.env.TXCOUNT_REFRESH_HOURS ?? 6) * 3_600_000;
+const FORCE_GAP = 60_000;
+const RETRY = 5 * 60_000;
 
 async function page(from: number, retries = 2): Promise<Page> {
   const res = await fetch(HYPERSYNC, {
@@ -92,11 +100,12 @@ async function catchUp() {
   }
 }
 
-export type TxCount = { total: number; last24h: number; senders: number; block: number; at: number; contracts: { name: string; address: string; txs: number }[] };
+export type TxCount = { total: number; last24h: number; senders: number; block: number; at: number; next: number; contracts: { name: string; address: string; txs: number }[] };
 
-export async function getTxCount(): Promise<TxCount> {
+export async function getTxCount(force = false): Promise<TxCount> {
   if (!process.env.ENVIO_API_TOKEN) throw new Error("ENVIO_API_TOKEN isn't set");
-  if (Date.now() - synced > FRESH) {
+  const age = Date.now() - synced;
+  if ((age > FRESH || (force && age > FORCE_GAP)) && Date.now() >= retryAt) {
     running ??= catchUp()
       .then(() => void (synced = Date.now()))
       .finally(() => (running = null));
@@ -104,7 +113,7 @@ export async function getTxCount(): Promise<TxCount> {
       await running;
     } catch (e) {
       if (!state.total) throw e; // nothing to show yet; otherwise keep the last count until it answers
-      synced = Date.now();
+      retryAt = Date.now() + RETRY;
     }
   }
   const now = Math.floor(Date.now() / 1000);
@@ -113,7 +122,8 @@ export async function getTxCount(): Promise<TxCount> {
     last24h: state.times.filter((t) => t >= now - DAY).length,
     senders: state.senders.size,
     block: state.height,
-    at: now,
+    at: Math.floor(synced / 1000),
+    next: Math.floor((synced + FRESH) / 1000),
     contracts: CONTRACTS.map(([address, name]) => ({ name, address, txs: state.perContract.get(address) ?? 0 })).sort((a, b) => b.txs - a.txs),
   };
 }

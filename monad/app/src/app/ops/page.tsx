@@ -107,7 +107,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ke
         </nav>
       </header>
 
-      <h2>On-chain · live</h2>
+      <h2>On-chain</h2>
       <TxCounter opsKey={key!} initial={await txs} />
 
       <h2>Sign-ups</h2>

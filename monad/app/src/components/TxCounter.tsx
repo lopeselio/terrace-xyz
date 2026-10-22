@@ -1,48 +1,63 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RollingNumber } from "./RollingNumber";
 import type { TxCount } from "@/lib/server/txcount";
 
 /*
- * Transactions across every Terrace contract, live: polls /api/ops/txs every 10 seconds and rolls
- * the number up as new ones land. Shows which contracts they hit underneath.
+ * Transactions across every Terrace contract. The server recounts from HyperSync every few hours
+ * (it rate-limits); this re-reads the server's count every 5 minutes and rolls the number up when
+ * it moves. "Count now" asks for a recount, which the server allows at most once a minute.
  */
-const EVERY = 10_000;
+const EVERY = 5 * 60_000;
 const n = (v: number) => v.toLocaleString("en-GB");
+const ago = (s: number) => (s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`);
+const until = (s: number) => (s <= 60 ? "any minute" : s < 5400 ? `in ${Math.round(s / 60)}m` : `in ${Math.round(s / 3600)}h`);
 
 export function TxCounter({ opsKey, initial }: { opsKey: string; initial: TxCount | null }) {
   const [c, setC] = useState(initial);
   const [since] = useState(initial?.total ?? null);
   const [down, setDown] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  const load = useCallback(async (fresh = false) => {
+    try {
+      const res = await fetch(`/api/ops/txs?key=${encodeURIComponent(opsKey)}${fresh ? "&fresh" : ""}`, { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      setC((await res.json()) as TxCount);
+      setDown(false);
+    } catch {
+      setDown(true);
+    }
+    setNow(Math.floor(Date.now() / 1000));
+  }, [opsKey]);
 
   useEffect(() => {
-    let stop = false;
-    const tick = async () => {
-      if (document.hidden) return;
-      try {
-        const res = await fetch(`/api/ops/txs?key=${encodeURIComponent(opsKey)}`, { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const next = (await res.json()) as TxCount;
-        if (!stop) { setC(next); setDown(false); }
-      } catch {
-        if (!stop) setDown(true);
-      }
-    };
-    if (!initial) tick();
-    const id = setInterval(tick, EVERY);
-    return () => { stop = true; clearInterval(id); };
-  }, [opsKey, initial]);
+    if (!initial) load();
+    const id = setInterval(() => !document.hidden && load(), EVERY);
+    return () => clearInterval(id);
+  }, [initial, load]);
 
-  if (!c) return <p className="ops-note">Counting transactions{down ? ": HyperSync isn't answering, retrying…" : "…"}</p>;
+  const recount = async () => {
+    setBusy(true);
+    await load(true);
+    setBusy(false);
+  };
+
+  if (!c) return <p className="ops-note">Counting transactions{down ? ": HyperSync isn't answering, retrying in a few minutes" : "…"}</p>;
   const fresh = since === null ? 0 : c.total - since;
   const max = Math.max(1, ...c.contracts.map((x) => x.txs));
   return (
     <div className="ops-split" style={{ marginTop: 0 }}>
       <section className="ops-card ops-live">
-        <div className="ops-tile-label"><i className={down ? "ops-dot off" : "ops-dot"} aria-hidden /> Transactions across all Terrace contracts</div>
+        <div className="ops-tile-label"><i className={busy ? "ops-dot" : down ? "ops-dot off" : "ops-dot still"} aria-hidden /> Transactions across all Terrace contracts</div>
         <div className="ops-live-value"><RollingNumber value={c.total} format={n} /></div>
         <div className="ops-tile-sub">
           {n(c.last24h)} in the last 24h · {n(c.senders)} sending addresses · {fresh > 0 ? `+${n(fresh)} since you opened this · ` : ""}block {n(c.block)}
+        </div>
+        <div className="ops-live-foot">
+          <span>Counted {ago(now - c.at)} · next recount {until(c.next - now)}{down ? " · couldn't reach the server" : ""}</span>
+          <button type="button" onClick={recount} disabled={busy}>{busy ? "Counting…" : "Count now"}</button>
         </div>
       </section>
       <section className="ops-card">
