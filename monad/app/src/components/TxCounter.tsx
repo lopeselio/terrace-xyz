@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { getAddress } from "viem";
 import { RollingNumber } from "./RollingNumber";
 import type { TxCount } from "@/lib/server/txcount";
 
 /*
- * Transactions across every Terrace contract. The server recounts from HyperSync every few hours
- * (it rate-limits); this re-reads the server's count every 5 minutes and rolls the number up when
+ * Transactions across every Terrace contract, then each contract's address and count. The server
+ * recounts from HyperSync every few hours (it rate-limits); this re-reads the server's count every 5 minutes and rolls the number up when
  * it moves. "Count now" asks for a recount, which the server allows at most once a minute.
  */
 const EVERY = 5 * 60_000;
@@ -62,16 +63,20 @@ export function TxCounter({ opsKey, initial }: { opsKey: string; initial: TxCoun
       </section>
       <section className="ops-card">
         <h3>By contract</h3>
-        <div className="ops-mix">
-          {c.contracts.filter((x) => x.txs > 0).map((x) => (
-            <div key={x.address} className="ops-mix-row ops-funnel" title={`${x.name} ${x.address}: ${n(x.txs)}`}>
-              <span>
-                <a href={`https://testnet.monadexplorer.com/address/${x.address}`} target="_blank" rel="noreferrer">{x.name.replace(/^Terrace/, "")}</a>
-              </span>
-              <i><b style={{ width: `${(x.txs / max) * 100}%` }} /></i>
-              <em>{n(x.txs)}</em>
-            </div>
-          ))}
+        <div className="ops-scroll">
+          <table className="ops-table ops-contracts">
+            <thead><tr><th>Contract</th><th>Address</th><th>Txs</th><th aria-hidden /></tr></thead>
+            <tbody>
+              {c.contracts.map((x) => (
+                <tr key={x.address}>
+                  <td>{x.name.replace(/^Terrace/, "")}</td>
+                  <td className="mono"><a href={`https://testnet.monadexplorer.com/address/${x.address}`} target="_blank" rel="noreferrer">{getAddress(x.address)}</a></td>
+                  <td>{n(x.txs)}</td>
+                  <td className="bar"><i><b style={{ width: `${(x.txs / max) * 100}%` }} /></i></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
         <p className="ops-tile-sub" style={{ marginTop: 10 }}>A transaction counts once in the total, and once for each contract it touches.</p>
       </section>
