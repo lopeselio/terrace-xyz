@@ -85,11 +85,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       setStatus("ready");
       // Gas and starting dollars for new fans; a no-op for anyone already topped up.
       fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address: k.account.address }) }).catch(() => {});
-      if (via === "passkey") {
-        try {
-          localStorage.setItem("terrace.hasPasskey", "1"); // only a UI hint; nothing secret
-        } catch {}
-      }
+      try {
+        // Only UI hints, nothing secret: the intro is done here, and whether to offer the passkey first.
+        localStorage.setItem("terrace.signedInHere", "1");
+        if (via === "passkey") localStorage.setItem("terrace.hasPasskey", "1");
+      } catch {}
       return k;
     } catch (e) {
       setError(friendlyPasskeyError(e));

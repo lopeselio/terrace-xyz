@@ -9,7 +9,7 @@ import { EmailSignIn } from "./EmailSignIn";
 import { OldPasskey } from "./OldPasskey";
 import "@/styles/onboarding.css";
 
-// "Look around first" hides the intro for this visit only; signing in on this device (terrace.hasPasskey) ends it for good
+// "Look around first" hides the intro for this visit only; signing in on this device, any way, ends it for good
 const LATER = "terrace.intro.later";
 
 type Row = [IconName, string, string];
@@ -243,7 +243,8 @@ export function Onboarding() {
   const touch = useRef<number | null>(null);
   useEffect(() => {
     try {
-      setShow(localStorage.getItem("terrace.hasPasskey") !== "1" && !sessionStorage.getItem(LATER));
+      const before = localStorage.getItem("terrace.hasPasskey") === "1" || localStorage.getItem("terrace.signedInHere") === "1";
+      setShow(!before && !sessionStorage.getItem(LATER));
     } catch {}
   }, []);
   useEffect(() => {
