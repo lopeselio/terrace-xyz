@@ -29,6 +29,8 @@ import { balanceChanged, useBalance } from "@/lib/useBalance";
 import { useMatches, type MatchLite } from "@/lib/useMatches";
 import "@/styles/profile.css";
 import { showError, callStoppage } from "@/lib/errors";
+import { emailSignInEnabled } from "@/lib/email";
+import { SignInMethods } from "./EmailSignIn";
 
 type Q = { text: string; kind: number; line: number; answer: number; fixture: { id: string } | null };
 type Player = { points: string; results: number; wins: number; winRateBps: number; streak: number; badge: number; exactScores: number; titles: number; takesListed: number; takesWon: number };
@@ -43,7 +45,7 @@ const TIERS = ["Casual", "Sharp", "Legend"];
 
 /** Profile (screen-profile.html): record, balance, Play tiles, and every bet you've got going. */
 export function Profile() {
-  const { status, address, keys, send, logout } = useAccount();
+  const { status, address, keys, send, logout, method } = useAccount();
   const router = useRouter();
   const params = useSearchParams();
   const matches = useMatches();
@@ -349,6 +351,12 @@ export function Profile() {
         <div className="flabel">Notifications</div>
         <PushSettings />
       </div>
+      {emailSignInEnabled() && method && (
+        <div className="pad" style={{ marginTop: 22 }}>
+          <div className="flabel">Ways to sign in</div>
+          <SignInMethods />
+        </div>
+      )}
       <div className="pad" style={{ marginTop: 22 }}>
         <div className="flabel">Appearance</div>
         <ThemeSwitch />
@@ -360,7 +368,7 @@ export function Profile() {
         <button className="cta cta-ghost cta-sm" onClick={() => { logout(); router.replace("/"); }}>
           <Icon name="logout" size={16} /> Sign out
         </button>
-        <div className="umeta" style={{ textAlign: "center", marginTop: 8 }}>Your passkey brings everything back when you sign in again, on any device.</div>
+        <div className="umeta" style={{ textAlign: "center", marginTop: 8 }}>{method === "email" ? "Your email brings everything back when you sign in again, on any device." : "Your passkey brings everything back when you sign in again, on any device."}</div>
       </div>
 
       {walletOpen && <WalletSheet inBets={inBets} feesEarned={created.length ? fees : null} onClose={() => router.replace("/me", { scroll: false })} />}

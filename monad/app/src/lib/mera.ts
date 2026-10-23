@@ -2,15 +2,18 @@
 /**
  * Mera is Terrace's whole account layer: no seed phrase, no extension, no email code.
  *
- * One passkey ceremony gives one 32-byte PRF output. Everything a fan needs is derived from
- * it with HKDF-SHA256, each in its own namespace, so nothing is ever stored on the device
- * and it all comes back on a fresh phone from the passkey alone:
+ * Everything a fan needs is derived from one 32-byte root with HKDF-SHA256, each in its own
+ * namespace, so nothing is ever stored on the device. For a passkey fan the root is the passkey's
+ * PRF output, so it all comes back on a fresh phone from the passkey alone:
  *
  *   terrace/account/v1       secp256k1 key behind the player's Monad account (signing session)
  *   terrace/seal/v1          HMAC key for sealed-pick salts, so a sealed bet can be revealed from any device
  *   terrace/self-box/v1      X25519 key for the fan's own encrypted copy of their sealed picks
  *   terrace/agent/v1         secp256k1 key for the fan's AI agent (its own wallet, its own record)
  *   terrace/agent-memory/v1  AES key for the agent's notes, readable by nobody else
+ *
+ * Another sign-in (an email, or a second passkey) can open the same account: TerraceVault keeps the
+ * root encrypted under it on Monad (see vault.ts).
  *
  * Signing happens through a Mera signing session (the key lives only in memory), so picks,
  * chat and small bets need no prompt. Bigger stakes ask for the passkey again (see `confirmPresence`).
@@ -37,8 +40,10 @@ import { x25519 } from "@noble/curves/ed25519";
 import { hkdf } from "@noble/hashes/hkdf";
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha256";
-import { bytesToHex, type Hex, type LocalAccount } from "viem";
+import { bytesToHex, type Address, type Hex, type LocalAccount } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { FanError, friendlyError } from "./errors";
+import { readEntry, unwrapRoot, wrapRoot } from "./vault";
 
 const enc = new TextEncoder();
 /** PRF salt for Terrace's root secret. Stable forever: changing it would give everyone new accounts. */
@@ -61,6 +66,10 @@ export type Keys = {
 let session: Secp256k1SigningSession | null = null;
 let agentSession: Secp256k1SigningSession | null = null;
 let lastUsed = 0;
+// The open account's root, kept in memory only so it can be wrapped for another sign-in.
+let root: Uint8Array | null = null;
+// How to get the root again for a re-confirm: the same passkey, or the same email sign-in.
+let reunlock: (() => Promise<Uint8Array>) | null = null;
 
 // Passkeys belong to a site. On terrace.social (and app.terrace.social) they belong to the parent
 // domain, so one passkey works on every Terrace address there; elsewhere, to the current host.
@@ -81,21 +90,65 @@ function secpKey(seed: Uint8Array): Uint8Array {
   return k;
 }
 
-function fromPrf(prf: Uint8Array): Keys {
+function fromRoot(r: Uint8Array): Keys {
   session?.end();
   agentSession?.end();
-  session = createSecp256k1SigningSession({ privateKey: secpKey(derive(prf, "terrace/account/v1")) });
-  agentSession = createSecp256k1SigningSession({ privateKey: secpKey(derive(prf, "terrace/agent/v1")) });
-  const selfBoxPrivate = derive(prf, "terrace/self-box/v1");
+  root = r;
+  session = createSecp256k1SigningSession({ privateKey: secpKey(derive(r, "terrace/account/v1")) });
+  agentSession = createSecp256k1SigningSession({ privateKey: secpKey(derive(r, "terrace/agent/v1")) });
+  const selfBoxPrivate = derive(r, "terrace/self-box/v1");
   lastUsed = Date.now();
   return {
     account: toViemAccount(session),
     agentAccount: toViemAccount(agentSession),
-    sealKey: derive(prf, "terrace/seal/v1"),
+    sealKey: derive(r, "terrace/seal/v1"),
     selfBoxPrivate,
     selfBoxPublic: bytesToHex(x25519.getPublicKey(selfBoxPrivate)),
-    memoryKey: derive(prf, "terrace/agent-memory/v1"),
+    memoryKey: derive(r, "terrace/agent-memory/v1"),
   };
+}
+
+/** Open an account from its root; `again` fetches the root once more when a big stake needs a re-confirm. */
+export function openRoot(r: Uint8Array, again: () => Promise<Uint8Array>): Keys {
+  reunlock = again;
+  return fromRoot(r);
+}
+
+/** A brand-new root, for a fan who starts with email instead of a passkey. */
+export const newRoot = () => crypto.getRandomValues(new Uint8Array(32));
+
+/** The open account's root, encrypted for another sign-in (see vault.ts). */
+export function wrapOpenRoot(wrapKey: Uint8Array, account: Address): Hex {
+  if (!root) throw new FanError("Sign in first.");
+  return wrapRoot(root, wrapKey, account);
+}
+
+/** A passkey as a vault unlocker: its own signing key and wrap key, both from its PRF. */
+function passkeyUnlocker(prf: Uint8Array) {
+  return { signer: privateKeyToAccount(bytesToHex(secpKey(derive(prf, "terrace/vault-unlock/v1")))), wrapKey: derive(prf, "terrace/vault-wrap/v1") };
+}
+
+/** A passkey's root: its PRF, unless it was added to an account that started elsewhere (then the vault has it). */
+async function rootFromPasskey(prf: Uint8Array): Promise<Uint8Array> {
+  const { signer, wrapKey } = passkeyUnlocker(prf);
+  const entry = await readEntry(signer.address);
+  return entry ? unwrapRoot(entry.wrapped, wrapKey, entry.account) : prf;
+}
+
+async function passkeyAgain(): Promise<Uint8Array> {
+  const { prfOutput } = await getPasskeyPrfOutput({ rpId: activeRpId ?? rpId(), prfSalt: PRF_SALT, credential: activeCredential ?? undefined });
+  return rootFromPasskey(prfOutput);
+}
+
+/** Make a passkey for an account that started with email; the caller links it in the vault. */
+export async function createPasskeyUnlocker() {
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const { prfOutput } = await createPasskeyWithPrfOutput({
+    rp: { id: rpId(), name: "Terrace" },
+    user: { name: `Terrace ${stamp}`, displayName: "Terrace" },
+    prfSalt: PRF_SALT,
+  });
+  return passkeyUnlocker(prfOutput);
 }
 
 /** New fan: one passkey ceremony creates the passkey and the account behind it. */
@@ -109,7 +162,7 @@ export async function createAccount(): Promise<Keys> {
   });
   activeCredential = { credentialId, transports };
   activeRpId = rpId();
-  return fromPrf(prfOutput);
+  return openRoot(prfOutput, passkeyAgain);
 }
 
 /** Returning fan, any device: the phone offers their Terrace passkey; everything rebuilds from it. */
@@ -119,15 +172,16 @@ export async function signIn(credential?: PasskeyCredentialMetadata, home?: stri
   const { prfOutput, credentialId } = await getPasskeyPrfOutput({ rpId: rp, prfSalt: PRF_SALT, credential });
   activeCredential = { credentialId, transports: credential?.transports };
   activeRpId = rp;
-  return fromPrf(prfOutput);
+  return openRoot(await rootFromPasskey(prfOutput), passkeyAgain);
 }
 
 /**
- * For actions above the prompt-free limit: ask for the passkey again and check it's the same fan.
- * Also renews an idle session.
+ * For actions above the prompt-free limit: unlock again the way the fan signed in (passkey or email)
+ * and check it's the same fan. Also renews an idle session.
  */
 export async function confirmPresence(expected: Hex): Promise<Keys> {
-  const keys = await signIn(activeCredential ?? undefined);
+  if (!reunlock) throw new FanError("Sign in first.");
+  const keys = fromRoot(await reunlock());
   if (keys.account.address.toLowerCase() !== expected.toLowerCase()) {
     // Wrong passkey picked: say so, but keep the fan signed in to the account they were using.
     throw new FanError("That's a different Terrace passkey. Pick the one you signed in with and try again.");
@@ -146,6 +200,9 @@ export function signOut() {
   session?.end(); // zeroes the key copy
   agentSession?.end();
   session = agentSession = null;
+  root?.fill(0);
+  root = null;
+  reunlock = null;
   activeCredential = null;
   activeRpId = null;
 }

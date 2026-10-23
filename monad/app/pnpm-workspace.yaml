@@ -1,0 +1,7 @@
+# Install scripts stay off: these only build optional native speed-ups (or phone home), and the
+# pure-JS fallbacks are enough for a browser app.
+allowBuilds:
+  '@reown/appkit': false
+  bufferutil: false
+  keccak: false
+  utf-8-validate: false

@@ -3,10 +3,39 @@ import { play } from "./sound";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createWalletClient, http, type Abi, type Address, type ContractFunctionArgs, type ContractFunctionName, type Hex } from "viem";
 import { chain, publicClient } from "./chain";
-import { confirmPresence, createAccount, friendlyPasskeyError, PROMPT_FREE_LIMIT, sessionLive, signIn, signOut, type Keys } from "./mera";
+import { ADDR } from "./contracts";
+import { emailBridge, hasEmailBridge } from "./email";
+import { confirmPresence, createAccount, createPasskeyUnlocker, friendlyPasskeyError, newRoot, openRoot, PROMPT_FREE_LIMIT, sessionLive, signIn, signOut, wrapOpenRoot, type Keys } from "./mera";
 import { friendlyError, FanError } from "./errors";
+import { KIND, linkTypedData, readEntry, signInsOf, unwrapRoot, vaultAbi, WRAP_MESSAGE, wrapKeyFromSignature } from "./vault";
 
 type Status = "signed-out" | "signing-in" | "ready";
+type Method = "passkey" | "email";
+type Call = { address: Address; abi: Abi; functionName: string; args: readonly unknown[]; dollars?: number };
+
+/** The email sign-in as a vault unlocker. `check` signs twice to be sure the wrap key comes out the same every time. */
+async function emailUnlocker(check = false) {
+  const b = emailBridge();
+  const address = await b.wallet();
+  const signature = await b.signMessage(WRAP_MESSAGE);
+  if (check && (await b.signMessage(WRAP_MESSAGE)) !== signature) {
+    throw new FanError("This email sign-in can't hold a Terrace key on this device. Keep using Face ID.");
+  }
+  return { address, wrapKey: wrapKeyFromSignature(signature) };
+}
+
+/** The root an email sign-in unlocks, or null if this email hasn't been linked to an account yet. */
+async function rootFromEmail(): Promise<{ root: Uint8Array; account: Address } | null> {
+  const { address, wrapKey } = await emailUnlocker();
+  const entry = await readEntry(address);
+  return entry ? { root: unwrapRoot(entry.wrapped, wrapKey, entry.account), account: entry.account } : null;
+}
+
+async function emailAgain(): Promise<Uint8Array> {
+  const found = await rootFromEmail();
+  if (!found) throw new FanError("That email isn't linked to a Terrace account any more.");
+  return found.root;
+}
 
 type Ctx = {
   status: Status;
@@ -28,6 +57,14 @@ type Ctx = {
   }) => Promise<Hex>;
   /** Sign a short plain-text note with the session (no prompt), so our own API knows it's really you. */
   sign: (message: string) => Promise<Hex>;
+  /** How this session signed in. */
+  method: Method | null;
+  /** After the email code is accepted: open that email's account, or start a new one. */
+  loginEmail: () => Promise<Keys | null>;
+  /** Let the email that just passed its code open this account too. */
+  linkEmail: () => Promise<void>;
+  /** Add a Face ID passkey to an account that started with email. */
+  addPasskey: () => Promise<void>;
 };
 
 const AccountContext = createContext<Ctx | null>(null);
@@ -36,18 +73,22 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [keys, setKeys] = useState<Keys | null>(null);
   const [status, setStatus] = useState<Status>("signed-out");
   const [error, setError] = useState<string | null>(null);
+  const [method, setMethod] = useState<Method | null>(null);
 
-  const finish = useCallback(async (run: () => Promise<Keys>) => {
+  const finish = useCallback(async (run: () => Promise<Keys>, via: Method = "passkey") => {
     setStatus("signing-in");
     setError(null);
     try {
       const k = await run();
       setKeys(k);
+      setMethod(via);
       setStatus("ready");
       // Gas and starting dollars for new fans; a no-op for anyone already topped up.
       fetch("/api/onboard", { method: "POST", body: JSON.stringify({ address: k.account.address }) }).catch(() => {});
       try {
-        localStorage.setItem("terrace.hasPasskey", "1"); // only a UI hint; nothing secret
+        // Only UI hints, nothing secret: the intro is done here, and whether to offer the passkey first.
+        localStorage.setItem("terrace.signedInHere", "1");
+        if (via === "passkey") localStorage.setItem("terrace.hasPasskey", "1");
       } catch {}
       return k;
     } catch (e) {
@@ -62,16 +103,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const loginFrom = useCallback((home: string) => finish(() => signIn(undefined, home)), [finish]);
   const logout = useCallback(() => {
     signOut();
+    if (hasEmailBridge()) emailBridge().logout().catch(() => {});
     setKeys(null);
+    setMethod(null);
     setStatus("signed-out");
   }, []);
 
   useEffect(() => () => signOut(), []);
 
-  const send: Ctx["send"] = useCallback(
-    async (call) => {
-      let k = keys;
-      if (!k) throw new FanError("Sign in to save this.");
+  const sendWith = useCallback(async (start: Keys, call: Call): Promise<Hex> => {
+      let k = start;
       // Tell the activity indicator something is happening (and when it's done).
       window.dispatchEvent(new CustomEvent("terrace-busy", { detail: 1 }));
       try {
@@ -102,14 +143,90 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         play("done");
         return hash;
       } catch (e) {
-        throw e instanceof FanError ? e : new FanError(friendlyError(e));
+        if (process.env.NODE_ENV !== "production") console.error("[send]", call.functionName, e);
+        throw e instanceof FanError ? e : new FanError(friendlyError(e) + (process.env.NODE_ENV !== "production" && e instanceof Error ? ` (${e.message.slice(0, 200)})` : ""));
       }
       } finally {
         window.dispatchEvent(new CustomEvent("terrace-busy", { detail: -1 }));
       }
+  }, []);
+
+  const send: Ctx["send"] = useCallback(
+    async (call) => {
+      if (!keys) throw new FanError("Sign in to save this.");
+      return sendWith(keys, call as Call);
     },
-    [keys],
+    [keys, sendWith],
   );
+
+  /**
+   * Store this account's root in the vault under `unlocker`, which signs the Link to agree. From a
+   * passkey session we also note the account has a passkey, which the vault can't otherwise see.
+   */
+  const linkUnlocker = useCallback(
+    async (
+      k: Keys,
+      unlocker: Address,
+      kind: number,
+      fromPasskey: boolean,
+      wrapKey: Uint8Array,
+      signLink: (data: Awaited<ReturnType<typeof linkTypedData>>) => Promise<Hex>,
+    ) => {
+      const me = k.account.address;
+      const wrapped = wrapOpenRoot(wrapKey, me);
+      const unlockerSig = await signLink(await linkTypedData(unlocker, me, wrapped));
+      await sendWith(k, { address: ADDR.vault!, abi: vaultAbi, functionName: "link", args: [unlocker, kind, wrapped, unlockerSig, fromPasskey] });
+      window.dispatchEvent(new Event("terrace-signins")); // Profile refreshes its list
+    },
+    [sendWith],
+  );
+
+  const loginEmail = useCallback(
+    () =>
+      finish(async () => {
+        const found = await rootFromEmail();
+        if (found) {
+          const k = openRoot(found.root, emailAgain);
+          if (k.account.address.toLowerCase() !== found.account.toLowerCase()) throw new FanError("That email's Terrace key didn't match. Try again.");
+          return k;
+        }
+        // A new fan starting with email: a fresh root, linked to this email before they can play,
+        // because the vault is the only place this account can come back from.
+        const { address, wrapKey } = await emailUnlocker(true);
+        const k = openRoot(newRoot(), emailAgain);
+        await linkUnlocker(k, address, KIND.email, false, wrapKey, (data) => emailBridge().signTypedData(data));
+        return k;
+      }, "email"),
+    [finish, linkUnlocker],
+  );
+
+  const linkEmail = useCallback(async () => {
+    if (!keys) throw new FanError("Sign in first.");
+    const { address, wrapKey } = await emailUnlocker(true);
+    const entry = await readEntry(address);
+    if (entry && entry.account.toLowerCase() === keys.account.address.toLowerCase()) return; // already linked
+    if (entry) {
+      // The email opens another account. Move it here (the vault allows that once the email signs), unless
+      // that would strand an account that's been used and has no other way in.
+      const [sent, other] = await Promise.all([publicClient.getTransactionCount({ address: entry.account }), signInsOf(entry.account)]);
+      const unused = sent <= 1; // an email sign-up's only transaction is its own vault link
+      if (!unused && !other.passkey && other.emails.length <= 1) {
+        throw new FanError("That email opens another Terrace account with bets on it. Sign in with that email to keep using it.");
+      }
+    }
+    await linkUnlocker(keys, address, KIND.email, method === "passkey", wrapKey, (data) => emailBridge().signTypedData(data));
+  }, [keys, method, linkUnlocker]);
+
+  const addPasskey = useCallback(async () => {
+    if (!keys) throw new FanError("Sign in first.");
+    try {
+      const { signer, wrapKey } = await createPasskeyUnlocker();
+      await linkUnlocker(keys, signer.address, KIND.passkey, false, wrapKey, (data) => signer.signTypedData(data));
+      localStorage.setItem("terrace.hasPasskey", "1");
+    } catch (e) {
+      throw e instanceof FanError ? e : new FanError(friendlyPasskeyError(e));
+    }
+  }, [keys, linkUnlocker]);
 
   const sign: Ctx["sign"] = useCallback(
     async (message) => {
@@ -125,8 +242,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<Ctx>(
-    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send, sign }),
-    [status, keys, error, join, login, loginFrom, logout, send, sign],
+    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey }),
+    [status, keys, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey],
   );
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

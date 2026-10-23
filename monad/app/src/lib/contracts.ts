@@ -15,6 +15,7 @@ export const ADDR = {
   governance: c.TerraceGovernance,
   chat: c.TerraceChat,
   follows: c.TerraceFollows as Address | undefined,
+  vault: c.TerraceVault as Address | undefined,
 } as const;
 
 /*

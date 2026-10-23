@@ -5,10 +5,11 @@ import { Icon, type IconName } from "./Icon";
 import { TerraceMark } from "./TerraceMark";
 import { MonadMark } from "./MonadMark";
 import { useAccount } from "@/lib/account";
+import { EmailSignIn } from "./EmailSignIn";
 import { OldPasskey } from "./OldPasskey";
 import "@/styles/onboarding.css";
 
-// "Look around first" hides the intro for this visit only; signing in on this device (terrace.hasPasskey) ends it for good
+// "Look around first" hides the intro for this visit only; signing in on this device, any way, ends it for good
 const LATER = "terrace.intro.later";
 
 type Row = [IconName, string, string];
@@ -217,6 +218,7 @@ function SignInButtons({ busy, error, join, login, onDone }: { busy: boolean; er
         I already have an account
       </button>
       <OldPasskey />
+      <EmailSignIn onDone={onDone} />
       <div className="umeta" style={{ textAlign: "center", marginTop: 10 }}>
         <Icon name="shield" size={12} /> Face ID or fingerprint. No passwords, nothing to install.
       </div>
@@ -241,7 +243,8 @@ export function Onboarding() {
   const touch = useRef<number | null>(null);
   useEffect(() => {
     try {
-      setShow(localStorage.getItem("terrace.hasPasskey") !== "1" && !sessionStorage.getItem(LATER));
+      const before = localStorage.getItem("terrace.hasPasskey") === "1" || localStorage.getItem("terrace.signedInHere") === "1";
+      setShow(!before && !sessionStorage.getItem(LATER));
     } catch {}
   }, []);
   useEffect(() => {
