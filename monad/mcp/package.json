@@ -1,0 +1,46 @@
+{
+  "name": "terrace-mcp",
+  "version": "0.1.0",
+  "description": "Terrace for Claude and any MCP client: turn a take into a 1v1 bet, send the link, and let Chainlink settle it on Monad.",
+  "keywords": [
+    "mcp",
+    "claude",
+    "monad",
+    "prediction-markets",
+    "football",
+    "chainlink"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "terrace-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "viem": "^2.57.10",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lopeselio/terrace-xyz.git",
+    "directory": "monad/mcp"
+  },
+  "homepage": "https://play.terrace.social"
+}
