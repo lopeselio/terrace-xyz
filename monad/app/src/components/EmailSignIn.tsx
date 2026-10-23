@@ -110,6 +110,9 @@ export function EmailSignIn({ onDone }: { onDone?: () => void }) {
   }
   return (
     <div style={{ marginTop: 12 }}>
+      <div className="umeta" style={{ textAlign: "center", marginBottom: 8 }}>
+        New here? This makes your account. Already play with Face ID? Sign in with Face ID, then add your email in Profile.
+      </div>
       <EmailCode cta="Continue" onVerified={async () => { if (await loginEmail()) onDone?.(); }} />
     </div>
   );
