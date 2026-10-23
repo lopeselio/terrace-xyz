@@ -1,4 +1,5 @@
 import "server-only";
+import deployment from "@deployments/10143.json";
 import { gql } from "./indexer";
 
 /*
@@ -8,6 +9,17 @@ import { gql } from "./indexer";
  */
 
 const TUSD = "0xa20ad4dbca268d2b8935a8ab67f352c2ece1e2fe";
+
+/**
+ * Accounts that aren't fans even though they aren't registered agents: Terrace's own server wallets
+ * (CRE broadcaster, onboarding treasury, deployer), plus any test accounts listed in OPS_EXCLUDE
+ * (comma-separated addresses), so trying things out doesn't count as growth.
+ */
+const NOT_FANS = new Set(
+  [deployment.creBroadcaster, deployment.onboardingTreasury, deployment.deployer, ...(process.env.OPS_EXCLUDE ?? "").split(",")]
+    .map((a) => (a ?? "").trim().toLowerCase())
+    .filter((a) => /^0x[0-9a-f]{40}$/.test(a)),
+);
 const DAY = 86_400;
 const PAGE = 1000;
 
@@ -68,8 +80,8 @@ async function compute(days: number) {
   const now = Math.floor(Date.now() / 1000);
   const today = dayOf(now);
   const agents = new Set(players.filter((p) => p.isAgent).map((p) => p.id));
-  const fan = (a: string | null | undefined) => !!a && !agents.has(a.toLowerCase());
-  const fans = players.filter((p) => !p.isAgent);
+  const fan = (a: string | null | undefined) => !!a && !agents.has(a.toLowerCase()) && !NOT_FANS.has(a.toLowerCase());
+  const fans = players.filter((p) => fan(p.id));
 
   // activity: any on-chain action we can date (feed events, chat messages, points lines)
   const acts: [string, number][] = [
