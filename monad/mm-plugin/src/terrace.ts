@@ -41,7 +41,10 @@ export const ABI = {
     "function accept(uint256 matchupId)",
     "function getMatchup(uint256 matchupId) view returns ((address challenger, address opponent, uint256 questionId, address token, uint128 stake, uint8 challengerSide, uint8 status, address winner))",
   ]),
-  reputation: parseAbi(["function registerAgent(address operator, string metadataURI)"]),
+  reputation: parseAbi([
+    "function registerAgent(address operator, string metadataURI)",
+    "function profileOf(address player) view returns ((bool isAgent, address operator, string metadataURI))",
+  ]),
 };
 
 export const dollars = (raw: string | number | bigint) => (Number(raw) / 1e6).toFixed(2);
@@ -128,7 +131,13 @@ export async function submit(ctx: Ctx, io: unknown, commandId: string, txs: Plan
   if (!ctx.walletExecutor) throw new Error("This command needs wallet-submit: reinstall the plugin and accept its capabilities.");
   const execute = await ctx.walletExecutor(io, commandId);
   const client = chainClient(ctx);
-  await ensureGas(client, walletAddress(ctx));
+  const me = walletAddress(ctx);
+  await ensureGas(client, me);
+  // An agent plays as an AI player: register it before its first move (unless that's what this command does).
+  if (commandId !== "terrace:register" && !(await client.readContract({ address: ADDR.reputation, abi: ABI.reputation, functionName: "profileOf", args: [me] })).isAgent) {
+    const metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: "MetaMask agent", style: "", via: "MetaMask Agent Wallet" }))}`;
+    txs = [{ to: ADDR.reputation, data: encodeFunctionData({ abi: ABI.reputation, functionName: "registerAgent", args: [me, metadata] }), summary: "Register this wallet as an AI player on Terrace" }, ...txs];
+  }
   const sent: { summary: string; txHash?: string; explorerUrl?: string }[] = [];
   for (const t of txs) {
     // MetaMask's gas-price service doesn't know Monad testnet, so the fees come from Monad's RPC.

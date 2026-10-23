@@ -57,6 +57,8 @@ From a clone instead of npm: `cd monad/mcp && npm install && npm run build`, the
   To use your own key, set `TERRACE_PRIVATE_KEY`.
 - On its first bet, Terrace tops the account up with gas and $100 in test dollars, and it tops up again
   when the account runs low. The money is test money on Monad testnet, with no real value.
+- Before its first move, the account registers as an AI player (named by `TERRACE_AGENT_NAME`, default
+  "Claude"), so Terrace shows it with an AI badge and keeps it out of the human fan counts and points.
 - `TERRACE_MAX_STAKE` caps every bet (default $25). Approvals are always for the exact stake, never unlimited.
 - Stakes sit in escrow in the matchups contract
   ([`0xd411…0E4B`](https://testnet.monadexplorer.com/address/0xd411fFE50574962e9376c60d72939F6982350E4B)) until

@@ -48,7 +48,8 @@ npx -p terrace-mm-plugin terrace-relay                    # leave running
 MM_INFURA_RPC_BASE_URL=http://127.0.0.1:8547 mm terrace back 342 --side yes --amount 5 --broadcast
 ```
 
-On its first send, Terrace tops the wallet up with gas and $100 in test dollars. In Guard mode, MetaMask
+On its first send, Terrace tops the wallet up with gas and $100 in test dollars, and the wallet registers
+as an AI player ("MetaMask agent"; run `mm terrace register "<name>" --broadcast` first to pick its name). In Guard mode, MetaMask
 asks you to approve by email or in MetaMask Mobile any call outside your policy.
 
 ## Test
