@@ -86,7 +86,7 @@ tr{break-inside:avoid}
     <h1>Feature<br><em>drop</em><br>calendar</h1>
     <p class="sub">What we shipped after Monad Metropolis, turned into posts for X, TikTok and Instagram. It runs from today to the end of the founding-fan 2× window and slots in alongside the matchday loop in the Social Workbook.</p>
     <div class="row">
-      <span class="chip cf">🔥 Streaks</span><span class="chip cg">The new Feed</span><span class="chip cv">Comments</span><span class="chip ca">Reactions</span><span class="chip cf">🔔 Notifications</span><span class="chip ctt">TikTok</span><span class="chip cig">Instagram</span><span class="chip cx">X</span>
+      <span class="chip cf">🔥 Streaks</span><span class="chip cg">The new Feed</span><span class="chip cv">Comments</span><span class="chip ca">Reactions</span><span class="chip cf">🔔 Notifications</span><span class="chip cv">🃏 House rules</span><span class="chip cg">🤖 Claude plays</span><span class="chip ctt">TikTok</span><span class="chip cig">Instagram</span><span class="chip cx">X</span>
     </div>
     <div class="foot"><span>play.terrace.social</span><span>Sat 17 Oct → Sun 1 Nov 2026</span></div>
   </div>
@@ -95,7 +95,7 @@ tr{break-inside:avoid}
 <section>
   <div class="kicker">01 · What's new</div>
   <h2>Only what fans will feel</h2>
-  <p class="lede">Eleven things shipped between Wed 14 and Mon 19 October that a fan can see and use. The ops, error-handling and AI-fallback work stays off social. Each feature gets a code used throughout this calendar.</p>
+  <p class="lede">Fourteen things shipped between Wed 14 and Fri 23 October that a fan or a builder can see and use, plus one about to go live (F15). The ops, error-handling and AI-fallback work stays off social. Each feature gets a code used throughout this calendar.</p>
 
   <div class="grid2">
     <div class="card"><div class="feat"><span class="ico">📰</span><div><h4>F1 · The new Feed</h4>Takes show up as posts, each with the crowd on it: % backing vs fading, faces of who's in, and Back / Fade buttons. "For you" ranks the hottest takes; "Following" shows your mates' takes and what they backed.<br><span class="mute">Shipped Sat 17 · Social tab</span></div></div></div>
@@ -109,6 +109,10 @@ tr{break-inside:avoid}
     <div class="card"><div class="feat"><span class="ico">🔔</span><div><h4>F9 · Notifications</h4>Your phone buzzes when a bet settles, when a mate sends you a 1v1, and when someone follows you. Turn it on from the bell at the top of any screen, then pick Results, Challenges or Followers.<br><span class="mute">Shipped Mon 19 · tap the 🔔</span></div></div></div>
     <div class="card"><div class="feat"><span class="ico">🖥️</span><div><h4>F10 · Terrace on your laptop</h4>A proper desktop layout with a sidebar, so you can follow the match rooms from your desk. Phones stay exactly as they are; switch between Phone and Desktop view any time.<br><span class="mute">Shipped Mon 19 · opens automatically on a computer</span></div></div></div>
     <div class="card"><div class="feat"><span class="ico">📲</span><div><h4>F11 · Group-chat share card</h4>Shared links now unfurl as a mates' match chat: one message is the take, with friends backing and fading it underneath. It shows what Terrace is in one look, without any odds.<br><span class="mute">Shipped Mon 19 · WhatsApp, X, iMessage</span></div></div></div>
+    <div class="card"><div class="feat"><span class="ico">🃏</span><div><h4>F12 · House rules for leagues</h4>Whoever makes a league sets its rules: 2, 3 or 5 points for an exact score, whether the right result scores, what a featured take is worth, sealed picks, and jokers that double one gameweek a season. Members can change the rules between gameweeks by vote.<br><span class="mute">Shipped Mon 19 · Leagues → New league</span></div></div></div>
+    <div class="card"><div class="feat"><span class="ico">🤖</span><div><h4>F13 · Your Claude vs your mate's Claude</h4>Tell Claude your take ("Haaland scores before the hour"). It shows the rule it settles by, then sends a 1v1 link. Your mate's Claude reads the link and takes the other side. Chainlink settles it at full time.<br><span class="mute">Shipped Fri 23 · <span class="mono">npx terrace-mcp</span>, on npm</span></div></div></div>
+    <div class="card"><div class="feat"><span class="ico">⏱️</span><div><h4>F14 · Late kick-offs wait</h4>A match pushed back on the day used to void and refund. Now bets wait for the real result. Only matches that are actually called off are voided, and if no result comes within 3 days everyone gets their stake back.<br><span class="mute">Shipped Fri 23 · settlement</span></div></div></div>
+    <div class="card"><div class="feat"><span class="ico">🦊</span><div><h4>F15 · Terrace for MetaMask agents</h4>A MetaMask Agent Wallet plugin: <span class="mono">mm terrace takes</span>, <span class="mono">value</span>, <span class="mono">back</span>, <span class="mono">collect</span>. An agent finds the lonely side of a take, backs it and collects when it wins, with every bet going through the wallet's own policy.<br><span class="chip ca">Not live yet</span> <span class="mute">Post only once <span class="mono">mm plugins install terrace-mm-plugin</span> works</span></div></div></div>
   </div>
 
   <h3>The angle for each platform</h3>
@@ -116,7 +120,7 @@ tr{break-inside:avoid}
     <tr><th style="width:18%">Platform</th><th>Lead with</th><th style="width:34%">Formats this fortnight</th></tr>
     <tr><td><span class="chip ctt">TikTok</span></td><td>Streaks (F6, F7) and reactions (F3). Both are instantly understood, a bit competitive, and very "my mates". The 🤡 reaction is a meme on its own.</td><td>Reels from screen recordings, a 7-day streak challenge, photo-mode posters</td></tr>
     <tr><td><span class="chip cig">Instagram</span></td><td>Explainers people save and send: how the Feed works, how streaks and repairs work, what each emoji means.</td><td>4 carousels, 4 Reels (cross-posts), Story polls and emoji sliders on matchdays</td></tr>
-    <tr><td><span class="chip cx">X</span></td><td>"Shipped since the hackathon" momentum for builders, then feature-by-feature posts for fans with a clip each.</td><td>One thread, 10 single posts, live match-room screenshots</td></tr>
+    <tr><td><span class="chip cx">X</span></td><td>"Shipped since the hackathon" momentum for builders, then feature-by-feature posts for fans with a clip each. X is the home for the builder features (F13, F15): AI people and developers are there, not on TikTok.</td><td>One thread, 15 single posts, live match-room screenshots, one terminal clip</td></tr>
   </table>
 
   <div class="note"><b>Rules carry over from the Social Workbook.</b> No crypto words in the first line on TikTok or Instagram. "Free to play · test money" wherever a $ sign is on screen. Points: say "no cash value" when you talk about spending them. No #betting, #gambling or #crypto tags on TikTok or Instagram. "Like Duolingo, but for football takes" is fine as a hook line; never use their owl, logo, colours or sounds.</div>
@@ -133,6 +137,9 @@ tr{break-inside:avoid}
     <tr><td>P2</td><td>"Don't break the flame": a big flame number over the October calendar</td><td>4:5 + 9:16</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
     <tr><td>P3</td><td>"React to every take": six emojis, each with a one-line meaning</td><td>4:5 + 9:16</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
     <tr><td>P4</td><td>"Missed a day? Buy it back": the repair card, 150 points a day</td><td>4:5 + 9:16</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
+    <tr><td>P5</td><td>"Your league. Your rules.": the house-rules card (exact score 5 pts, jokers on, sealed picks)</td><td>4:5 + 16:9</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
+    <tr><td>P6</td><td>"Your Claude vs your mate's Claude": two chat bubbles from the MCP README, the 1v1 link between them</td><td>16:9 (X)</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
+    <tr><td>C5</td><td>Carousel: "House rules in 5 slides"</td><td>4:5 × 5</td><td>Rendered + S9</td><td><span class="chip cg">Can make now</span></td></tr>
     <tr><td>C1</td><td>Carousel: "The new Feed in 6 slides"</td><td>4:5 × 6</td><td>Rendered + screenshots</td><td><span class="chip cg">Can make now</span></td></tr>
     <tr><td>C2</td><td>Carousel: "How streaks work" (and how to repair one)</td><td>4:5 × 6</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
     <tr><td>C3</td><td>Carousel: "The Terrace emoji guide"</td><td>4:5 × 7</td><td>Rendered</td><td><span class="chip cg">Can make now</span></td></tr>
@@ -144,6 +151,8 @@ tr{break-inside:avoid}
     <tr><td>R5</td><td>Reel: "Missed a day? Buy it back" (repair)</td><td>9:16, 10–12 s</td><td>S6</td><td><span class="chip ca">Needs a real break</span></td></tr>
     <tr><td>R6</td><td>Founder face-cam: "5 things we shipped since the hackathon"</td><td>9:16, 25–35 s</td><td>Elio selfie + S1–S5 cutaways</td><td><span class="chip ca">Needs recording</span></td></tr>
     <tr><td>R7</td><td>Reel: match rooms on matchday, then share a take to the group chat</td><td>9:16, 12–15 s</td><td>S7</td><td><span class="chip ca">Needs recording (matchday)</span></td></tr>
+    <tr><td>R8</td><td>Reel: "We changed the rules of our league" (house rules → play a joker)</td><td>9:16, 12–15 s</td><td>S9</td><td><span class="chip ca">Needs recording</span></td></tr>
+    <tr><td>R9</td><td>Clip: two Claude windows bet each other on a take, then the link opens in the app</td><td>16:9, 30–40 s</td><td>S10</td><td><span class="chip ca">Needs recording</span></td></tr>
   </table>
 
   <h3>Audio</h3>
@@ -174,7 +183,7 @@ tr{break-inside:avoid}
 <section>
   <div class="kicker">03 · Shot list</div>
   <h2>What to screen-record</h2>
-  <p class="lede">Record on the iPhone, in dark mode, with play.terrace.social added to the home screen so there's no browser bar. Turn on Do Not Disturb. Hold each final frame for 2 seconds. Send them over and I'll cut R1–R7.</p>
+  <p class="lede">Record on the iPhone, in dark mode, with play.terrace.social added to the home screen so there's no browser bar. Turn on Do Not Disturb. Hold each final frame for 2 seconds. S10 is on the Mac. Send them over and I'll cut R1–R9.</p>
   <table>
     <tr><th style="width:7%">#</th><th>Record this</th><th style="width:30%">Used in</th></tr>
     <tr><td>S1</td><td>Open the Social tab and scroll the For you feed slowly for 6 s. Stop on a take with lots of faces in the crowd bar.</td><td>R1, R6, C1, X thread</td></tr>
@@ -185,6 +194,8 @@ tr{break-inside:avoid}
     <tr><td>S6</td><td><b>Only after a real missed day:</b> open the calendar showing the dashed missed days, tap the repair button, and show the flames join back up.</td><td>R5, C2</td></tr>
     <tr><td>S7</td><td>On a matchday: tap a live match room in the top row, post a take, then Share it to WhatsApp so the link card shows in the chat.</td><td>R7, X</td></tr>
     <tr><td>S8</td><td>In a private tab or on a fresh phone: the new intro from the first screen through the $100 stamp, then Join.</td><td>C4, X</td></tr>
+    <tr><td>S9</td><td>Leagues → New league → open House rules: tap exact score to 5 pts, switch Jokers on, create it. Then in the league, play the joker on the next gameweek.</td><td>R8, C5, P5</td></tr>
+    <tr><td>S10</td><td><b>On the Mac</b>, two Claude windows side by side, both with terrace-mcp. Left: "bet my mate $5 that [player] scores tonight" → the rule → "yes" → the link. Right: paste the link → "accept". Then open the link on the phone to show the 1v1 in the app. Use a big terminal font.</td><td>R9, TF13</td></tr>
     <tr><td>Face</td><td>Elio, to camera, 25–35 s: "We submitted to Monad Metropolis on Tuesday. Since then we've shipped five things…" One take, daylight, phone at eye level.</td><td>R6</td></tr>
   </table>
   <div class="note"><b>Real people on screen:</b> blur names on other fans' takes and comments unless you have their OK, or use AI pundits and your own test accounts.</div>
@@ -193,24 +204,24 @@ tr{break-inside:avoid}
 <section>
   <div class="kicker">04 · Calendar</div>
   <h2>Sat 17 Oct → Sun 1 Nov</h2>
-  <p class="lede">One feature beat per day, tied to that day's real fixtures (section 08), layered on top of the Social Workbook's matchday loop (keep running that too). Green rows are matchdays. The highlighted row is today, which uses only the posters, so it can go out without recordings.</p>
+  <p class="lede">One feature beat per day, tied to that day's real fixtures (section 08), layered on top of the Social Workbook's matchday loop (keep running that too). Green rows are matchdays. The highlighted row is today (Fri 23). The new features F12–F15 slot into the days that are left, mostly with posters, so they can go out before any recordings arrive.</p>
   <table class="cal">
     <tr><th style="width:12%">Day</th><th>X</th><th>TikTok</th><th>Instagram</th><th style="width:5%">Done</th></tr>
-    <tr class="md today"><td>Sat 17<br><span class="mute">today</span></td><td>TF1 "The Feed is live" + P1 · pre-KO: Brentford v Liverpool, Real Betis v Barcelona</td><td>Photo-mode carousel P1→P4 "4 new things on Terrace", trending sound</td><td>Story: P1 + link sticker · post P1 (4:5)</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sat 17</td><td>TF1 "The Feed is live" + P1 · pre-KO: Brentford v Liverpool, Real Betis v Barcelona</td><td>Photo-mode carousel P1→P4 "4 new things on Terrace", trending sound</td><td>Story: P1 + link sticker · post P1 (4:5)</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Sun 18</td><td>TF2 thread "Shipped since Monad Metropolis" · ★ Leeds v Man Utd</td><td>R1 Feed tour</td><td>C1 "The new Feed in 6 slides"</td><td><span class="check"></span></td></tr>
     <tr><td>Mon 19</td><td>TF3 streaks + R2</td><td>R2 "POV: day 6 of your streak and it's Monday"</td><td>Reel R2 · Story "What's your streak?" slider</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Tue 20</td><td>TF4 "React to this take" on ★ PSG v Barcelona</td><td>R3 "Rating my mates' takes with emojis"</td><td>Story: emoji slider on a PSG v Barcelona take</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Wed 21</td><td>TF5 comments + R4 · ★ Bayern v Arsenal</td><td>R4 comment war</td><td>C3 "The Terrace emoji guide"</td><td><span class="check"></span></td></tr>
     <tr><td>Thu 22</td><td>TF6 streak repair + P4</td><td>P4 photo mode: "Missed a day? Buy it back"</td><td>C2 "How streaks work"</td><td><span class="check"></span></td></tr>
-    <tr><td>Fri 23</td><td>TF7 "Fans to follow this weekend" (profiles) · F10 "Terrace on your laptop" screenshot</td><td>R6 founder: "5 things since the hackathon"</td><td>Reel R1 (Feed tour)</td><td><span class="check"></span></td></tr>
+    <tr class="today"><td>Fri 23<br><span class="mute">today</span></td><td>TF7 "Fans to follow this weekend" (profiles) · F10 "Terrace on your laptop" screenshot · TF11 "Your Claude vs your mate's Claude" + P6</td><td>R6 founder: "5 things since the hackathon"</td><td>Reel R1 (Feed tour)</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Sat 24</td><td>★ Chelsea v Tottenham · Villa v City, Arsenal v Everton, Napoli v Roma rooms</td><td>R7 match rooms → share to the group chat</td><td>Stories from a live match room + emoji slider</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Sun 25</td><td>TF8 recap · ★ El Clásico (KO 01:30 IST Mon)</td><td>Clásico: "Rate these takes" pre-KO, then Called it / Cooked with 🤡 counts</td><td>C4 "Start in 10 seconds"</td><td><span class="check"></span></td></tr>
-    <tr><td>Mon 26</td><td>TF9 "7-day streak challenge starts today"</td><td>Challenge kick-off: "Keep the flame for 7 days. Day 1."</td><td>Story: Day 1/7 countdown sticker</td><td><span class="check"></span></td></tr>
-    <tr><td>Tue 27</td><td>F11 share cards: "Your takes look good in the group chat" (the new mates' chat card)</td><td>R2 remix, new hook: "Day 2/7"</td><td>Reel R7</td><td><span class="check"></span></td></tr>
-    <tr class="md"><td>Wed 28</td><td>Best comments of the week (screenshots, names blurred)</td><td>"Comment your take, I'll post it on Terrace" (reply-with-video bait)</td><td>P3 poster</td><td><span class="check"></span></td></tr>
-    <tr><td>Thu 29</td><td>Streak day 4 check-in: "Who's still alive?" · F9 "Turn on 🔔 so your result finds you"</td><td>R3 remix with a new sound</td><td>Story: "Still on fire?" yes/no poll</td><td><span class="check"></span></td></tr>
-    <tr><td>Fri 30</td><td>TF10 "Last weekend of 2×: don't break the flame"</td><td>R5 repair (if S6 recorded) or P2 photo mode</td><td>Reel R2 · P2 in Stories</td><td><span class="check"></span></td></tr>
-    <tr class="md"><td>Sat 31</td><td>Matchday loop with live room screenshots</td><td>Called it / Cooked + 🔥 reaction counts</td><td>Stories all day, emoji sliders</td><td><span class="check"></span></td></tr>
+    <tr><td>Mon 26</td><td>TF9 "7-day streak challenge starts today" · TF12 house rules + P5: "start a league for the new gameweek"</td><td>Challenge kick-off: "Keep the flame for 7 days. Day 1."</td><td>Story: Day 1/7 countdown sticker</td><td><span class="check"></span></td></tr>
+    <tr><td>Tue 27</td><td>F11 share cards: "Your takes look good in the group chat" (the new mates' chat card)</td><td>R2 remix, new hook: "Day 2/7"</td><td>Reel R7 · C5 "House rules in 5 slides"</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Wed 28</td><td>Best comments of the week (screenshots, names blurred) · TF13 two Claudes + R9</td><td>"Comment your take, I'll post it on Terrace" (reply-with-video bait)</td><td>P3 poster</td><td><span class="check"></span></td></tr>
+    <tr><td>Thu 29</td><td>Streak day 4 check-in: "Who's still alive?" · F9 "Turn on 🔔 so your result finds you"</td><td>R8 "We changed the rules of our league" (or R3 remix if S9 isn't in)</td><td>Story: "Still on fire?" yes/no poll</td><td><span class="check"></span></td></tr>
+    <tr><td>Fri 30</td><td>TF10 "Last weekend of 2×: don't break the flame" · TF14 MetaMask plugin, <b>only if it's live on npm</b></td><td>R5 repair (if S6 recorded) or P2 photo mode</td><td>Reel R2 · P2 in Stories</td><td><span class="check"></span></td></tr>
+    <tr class="md"><td>Sat 31</td><td>Matchday loop with live room screenshots · TF15 "Kick-off delayed? Your bet waits"</td><td>Called it / Cooked + 🔥 reaction counts</td><td>Stories all day, emoji sliders</td><td><span class="check"></span></td></tr>
     <tr class="md"><td>Sun 1 Nov</td><td>"2× ends tonight · day 7 of the challenge"</td><td>Challenge finale: "Day 7. Who made it?"</td><td>Carousel: longest streaks + top reacted takes</td><td><span class="check"></span></td></tr>
   </table>
   <div class="note"><b>Times:</b> keep the Social Workbook's windows. Before Sun 25 Oct, UK 12:00–14:00 and 19:00–22:00 is IST 16:30–18:30 and 23:30–02:30. From Sun 25 Oct the UK clocks go back, so add an hour to the IST times.</div>
@@ -304,6 +315,36 @@ The last week of founding-fan 2× points, too.</div>
   <div class="tweet"><div class="meta"><span class="chip cx">TF10</span><span class="n">FRI 30 · ATTACH P2</span></div>Last weekend of founding-fan 2× points.
 
 Don't break the flame now 🔥 → play.terrace.social</div>
+
+  <div class="tweet"><div class="meta"><span class="chip cx">TF11</span><span class="n">FRI 23 · ATTACH P6</span></div>Your Claude can now bet your mate's Claude.
+
+Tell it your take. It shows the rule it settles by and sends a 1v1 link. Your mate's Claude accepts. Chainlink settles it at full time.
+
+Test money, free:
+claude mcp add terrace -- npx -y terrace-mcp</div>
+
+  <div class="tweet"><div class="meta"><span class="chip cx">TF12</span><span class="n">MON 26 · ATTACH P5</span></div>Leagues on Terrace now play by your house rules.
+
+How much an exact score is worth. Whether the right result scores. Jokers to double a gameweek. Sealed picks. Change any of it later by vote.
+
+New gameweek, new league → play.terrace.social</div>
+
+  <div class="tweet"><div class="meta"><span class="chip cx">TF13</span><span class="n">WED 28 · ATTACH R9</span></div>Two Claudes, one football take, $5 each in test money.
+
+One posted the take as a 1v1. The other read the link and took the other side. Neither of us touched the app.
+
+Chainlink settles it from the match data at full time.</div>
+
+  <div class="tweet"><div class="meta"><span class="chip cx">TF14</span><span class="n">FRI 30 · ONLY ONCE IT'S ON NPM · ATTACH TERMINAL SCREENSHOT</span></div>Terrace is now a MetaMask Agent Wallet plugin.
+
+mm plugins install terrace-mm-plugin
+mm terrace value
+
+Your agent finds the lonely side of a take, backs it, and collects when it wins. Every bet goes through your wallet's own policy.</div>
+
+  <div class="tweet"><div class="meta"><span class="chip cx">TF15</span><span class="n">SAT 31 · NO ATTACHMENT</span></div>Kick-off pushed back on the day? Your Terrace bet now waits for the real result instead of being refunded.
+
+Only matches that are actually called off get voided. No result within 3 days and everyone gets their stake back.</div>
 </section>
 
 <section>
@@ -359,6 +400,20 @@ Don't break the flame now 🔥 → play.terrace.social</div>
     <dt>Audio</dt><dd>Stadium chant or a phonk edit beat</dd>
     <dt>Caption</dt><dd>drop it in the group chat and let them fade you</dd>
     <dt>Tags</dt><dd class="tags">#matchday #footballtiktok #groupchat #[team]</dd></dl></div>
+
+  <div class="post"><div class="top"><span class="title">R8 · We changed the rules of our league</span><span><span class="chip ctt">TikTok</span> <span class="chip cig">Reel</span> 12–15 s</span></div><dl>
+    <dt>Hook</dt><dd>"Our league, our rules"</dd>
+    <dt>Beats</dt><dd>S9: open House rules → exact score jumps to 5 pts on the beat → Jokers on → Create. Cut to the league: play the joker → "Joker played on gameweek [n]" holds as the beat drops.</dd>
+    <dt>Audio</dt><dd>A build-and-drop edit beat; the drop lands on the joker</dd>
+    <dt>Caption</dt><dd>exact score is worth 5 in our league. what are your house rules? free to play, link in bio</dd>
+    <dt>Tags</dt><dd class="tags">#fpl #footballtiktok #groupchat #mates #football</dd></dl></div>
+
+  <div class="post"><div class="top"><span class="title">R9 · Two Claudes, one take</span><span><span class="chip cx">X only</span> 30–40 s, 16:9</span></div><dl>
+    <dt>Hook</dt><dd>On-screen text: "I told my Claude to bet my mate's Claude"</dd>
+    <dt>Beats</dt><dd>S10: left window types the take → the rule appears → "yes" → the link. Right window pastes it → "You're on". Cut to the phone: the 1v1 in the app.</dd>
+    <dt>Audio</dt><dd>None, or a quiet lo-fi bed. Subtitles burned in, because most of X watches muted</dd>
+    <dt>Caption</dt><dd>TF13</dd>
+    <dt>Not for TikTok</dt><dd>A terminal means nothing to the TikTok audience, so it stays on X</dd></dl></div>
 </section>
 
 <section>
@@ -414,15 +469,28 @@ Don't break the flame now 🔥 → play.terrace.social</div>
       </ol>
       <p><b>Caption:</b> No email, no password, no card. Just your face and your football opinions.</p>
       <p class="tags">#football #app #footballfans #fpl #premierleague</p></div>
+
+    <div class="post"><div class="top"><span class="title">C5 · House rules in 5 slides</span><span class="chip cig">Tue 27</span></div>
+      <ol class="slides">
+        <li>"Your league. Your rules."</li>
+        <li>Exact score: 2, 3 or 5 points. Right result: nothing, 1 or 2.</li>
+        <li>Jokers: double one gameweek a season. Play it before kick-off.</li>
+        <li>Sealed picks: nobody sees yours until kick-off.</li>
+        <li>Don't like a rule? Vote to change it between gameweeks. "play.terrace.social · free to play"</li>
+      </ol>
+      <p><b>Caption:</b> Send this to whoever runs your league and make them earn it.</p>
+      <p class="tags">#fpl #football #footballfans #mates #premierleague</p></div>
   </div>
 
-  <h3>Posters (P1–P4)</h3>
+  <h3>Posters (P1–P6)</h3>
   <table>
     <tr><th style="width:8%">Code</th><th>Headline</th><th>Visual</th><th style="width:22%">Used</th></tr>
     <tr><td>P1</td><td>"Your takes. Your mates. One feed."</td><td>A post card: take text, crowd bar, 🔥 12 😂 4 🤡 2, "💬 9"</td><td>Sat 17 everywhere</td></tr>
     <tr><td>P2</td><td>"Don't break the flame."</td><td>Huge flame + a number, October calendar with a joined-up run</td><td>Mon 26, Fri 30</td></tr>
     <tr><td>P3</td><td>"React to every take."</td><td>The six emojis large, one line each</td><td>Sat 17 photo mode, Wed 28</td></tr>
     <tr><td>P4</td><td>"Missed a day? Buy it back."</td><td>Calendar with dashed days turning ice-blue, the "⚡ 300" button</td><td>Thu 22</td></tr>
+    <tr><td>P5</td><td>"Your league. Your rules."</td><td>The house-rules sheet: exact score 5 pts, right result 1, Jokers on, Sealed picks on</td><td>Mon 26 X, C5 cover</td></tr>
+    <tr><td>P6</td><td>"Your Claude vs your mate's Claude."</td><td>Two chat columns, the take and "You're on", the play.terrace.social/c/[id] link between them</td><td>Fri 23 X</td></tr>
   </table>
   <div class="note"><b>Posters show sample data.</b> Mark them "Illustration" in small type (like the ad), or use real numbers from the app on the day.</div>
 </section>
@@ -437,7 +505,7 @@ Don't break the flame now 🔥 → play.terrace.social</div>
   <h3>The week at a glance</h3>
   <table class="cal">
     <tr><th style="width:11%">Day</th><th>Headline games (UK · IST)</th><th style="width:30%">Match of the day</th></tr>
-    <tr class="md today"><td>Sat 17<br><span class="mute">today</span></td><td>Everton v Chelsea 12:30 · 17:00 · Brentford v Liverpool 15:00 · 19:30 · Man City v Ipswich 15:00 · 19:30 · Strasbourg v PSG 16:15 · 20:45 · Bologna v Inter 17:00 · 21:30 · Real Betis v Barcelona 17:30 · 22:00 · Bayern v RB Leipzig 17:30 · 22:00</td><td><b>Real Betis v Barcelona</b> (global) and <b>Brentford v Liverpool</b> (UK)</td></tr>
+    <tr class="md"><td>Sat 17</td><td>Everton v Chelsea 12:30 · 17:00 · Brentford v Liverpool 15:00 · 19:30 · Man City v Ipswich 15:00 · 19:30 · Strasbourg v PSG 16:15 · 20:45 · Bologna v Inter 17:00 · 21:30 · Real Betis v Barcelona 17:30 · 22:00 · Bayern v RB Leipzig 17:30 · 22:00</td><td><b>Real Betis v Barcelona</b> (global) and <b>Brentford v Liverpool</b> (UK)</td></tr>
     <tr class="md"><td>Sun 18</td><td>Leeds v Man Utd 14:00 · 18:30 · Forest v Arsenal 16:30 · 21:00 · Milan v Atalanta 17:00 · 21:30 · Juventus v Lazio 19:45 · 00:15 · Real Madrid v Sevilla 20:00 · 00:30</td><td><b>Leeds v Man Utd</b> ★</td></tr>
     <tr><td>Mon 19</td><td>Tottenham v Coventry 20:00 · 00:30</td><td>Weekend recap day</td></tr>
     <tr class="md"><td>Tue 20 <span class="chip cv">UCL</span></td><td>PSG v Barcelona 20:00 · 00:30 · Liverpool v Villarreal 20:00 · Man City v AEK Athens 20:00 · Stuttgart v Atlético 20:00 · Napoli v Bodø/Glimt 20:00 · Sabah v Dortmund 17:45 · 22:15</td><td><b>PSG v Barcelona</b> ★</td></tr>
@@ -521,6 +589,9 @@ Don't break the flame now 🔥 → play.terrace.social</div>
     <tr><td>Streak repairs</td><td>Azure streakrepairs table</td><td>Some, but not most: repairs should rescue, not replace playing</td></tr>
     <tr><td>Follows</td><td>Followers on fan profiles</td><td>Every active fan follows 3+ fans</td></tr>
     <tr><td>Click → sign-up from social</td><td>UTM tags + /ops funnel</td><td>&gt; 20%</td></tr>
+    <tr><td>Leagues with house rules</td><td>v3 leagues in the indexer (ids from 1,000,000)</td><td>Most new leagues change at least one rule</td></tr>
+    <tr><td>Claude installs</td><td>Weekly downloads on npmjs.com/package/terrace-mcp</td><td>Climbing after TF11 and TF13</td></tr>
+    <tr><td>Claude-made 1v1s</td><td>Challenges in the indexer from accounts first funded by the MCP top-up</td><td>A few accepted 1v1s by Sun 1 Nov</td></tr>
   </table>
 </section>
 
