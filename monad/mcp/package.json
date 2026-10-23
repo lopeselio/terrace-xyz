@@ -17,7 +17,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.10.0"
@@ -39,8 +40,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lopeselio/terrace-xyz.git",
-    "directory": "monad/mcp"
+    "url": "git+https://github.com/lopeselio/terrace-mcp.git"
   },
-  "homepage": "https://play.terrace.social"
+  "homepage": "https://play.terrace.social",
+  "bugs": {
+    "url": "https://github.com/lopeselio/terrace-mcp/issues"
+  }
 }

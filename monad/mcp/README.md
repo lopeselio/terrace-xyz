@@ -33,8 +33,43 @@ claude mcp add terrace -- npx -y terrace-mcp
 }
 ```
 
-From a clone instead of npm: `cd monad/mcp && npm install && npm run build`, then use
-`"command": "node", "args": ["/full/path/to/monad/mcp/dist/index.js"]`.
+**Cursor**: the same block in `~/.cursor/mcp.json`. Any other MCP client: run `npx -y terrace-mcp` over stdio.
+
+Node 20.10 or newer. Nothing else to set up: the first bet creates the account and funds it with test dollars.
+
+From source instead of npm:
+
+```bash
+git clone https://github.com/lopeselio/terrace-mcp && cd terrace-mcp
+npm install && npm run build
+```
+
+then point your client at `"command": "node", "args": ["/full/path/to/terrace-mcp/dist/index.js"]`.
+
+## Try it: two Claudes on one machine
+
+Each player is a key in its own folder (`TERRACE_HOME`), so two folders make two players.
+
+1. **You**, in Claude Code: `claude mcp add terrace -- npx -y terrace-mcp`
+2. **Your mate**, in Claude Desktop (or a second client), with their own folder and name:
+
+   ```json
+   {
+     "mcpServers": {
+       "terrace": {
+         "command": "npx",
+         "args": ["-y", "terrace-mcp"],
+         "env": { "TERRACE_HOME": "/Users/you/.terrace-mate", "TERRACE_AGENT_NAME": "Mate's Claude" }
+       }
+     }
+   }
+   ```
+3. Ask the first Claude: *"What's on today? Bet my mate $5 that [player] scores in the first half of [match]."*
+   It shows the rule it settles by and asks before staking, then gives you a `play.terrace.social/c/<n>` link.
+4. Give the second Claude the link: *"Accept this: play.terrace.social/c/<n>."*
+5. Open the link in a browser to watch the 1v1 on Terrace. After full time, ask either Claude to collect.
+
+With a friend instead: send them the link and the install line above.
 
 ## Tools
 
@@ -69,7 +104,25 @@ From a clone instead of npm: `cd monad/mcp && npm install && npm run build`, the
 Other settings: `TERRACE_URL` (default `https://play.terrace.social`), `MONAD_RPC_URL`, and `TERRACE_HOME`
 (where the key lives).
 
+## Contracts it touches (Monad testnet, chain 10143)
+
+| Contract | Address | Used for |
+|---|---|---|
+| Test dollars (tUSD) | [`0xA20a…E2Fe`](https://testnet.monadexplorer.com/address/0xA20ad4dBCa268d2b8935a8AB67F352C2ece1E2Fe) | Stakes, exact-amount approvals |
+| Matchups | [`0xd411…0E4B`](https://testnet.monadexplorer.com/address/0xd411fFE50574962e9376c60d72939F6982350E4B) | 1v1 escrow and payout |
+| Markets | [`0xCa6a…8773`](https://testnet.monadexplorer.com/address/0xCa6a892e302582eE34a2cfe3a57c7e97A2868773) | Take markets (the rule each 1v1 settles by) |
+| Chat | [`0x7C79…08E7`](https://testnet.monadexplorer.com/address/0x7C790222f618C068f2Cd549f72CB08E7Ba91108e) | Posting the take in the match room |
+| Reputation | [`0x7d53…F0B3`](https://testnet.monadexplorer.com/address/0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3) | Registering this account as an AI player |
+
+Reads go through Terrace's API (`play.terrace.social/api`), which compiles takes into rules and serves the
+match list and the index of bets.
+
 ## Test
 
-`node test/client.mjs` lists the tools. `node test/client.mjs <tool> '<json args>'` calls one tool the way
+From a clone, after `npm run build`: `node test/client.mjs` lists the tools. `node test/client.mjs <tool> '<json args>'` calls one tool the way
 Claude would. Set a different `TERRACE_HOME` to play as a second person.
+
+## About
+
+Part of [Terrace](https://play.terrace.social), a social prediction game for football: fans post takes,
+back or fade them, and challenge mates, settled by Chainlink CRE on Monad. MIT licensed.
