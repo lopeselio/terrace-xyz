@@ -12,7 +12,8 @@
   "homepage": "https://play.terrace.social",
   "type": "module",
   "engines": { "node": ">=20.10.0" },
-  "files": ["dist", "skills", "README.md"],
+  "files": ["dist", "bin", "skills", "README.md"],
+  "bin": { "terrace-relay": "bin/relay.mjs" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
