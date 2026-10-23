@@ -94,7 +94,7 @@ export type Ctx = {
 };
 type WalletRecord = { id?: string; name?: string; address?: string; namespace?: string };
 type WalletState = { byokWallets?: WalletRecord[]; remoteWallets?: WalletRecord[]; selectedWallet?: { ref?: { id?: string; address?: string; name?: string }; namespace?: string } };
-type Executor = (request: unknown, opts?: { waitForReceipt?: boolean }) => Promise<{ status?: string; txHash?: string; explorerUrl?: string; failureDescription?: string }>;
+type Executor = (request: unknown, opts?: { waitForReceipt?: boolean }) => Promise<{ status?: string; hash?: string; failureDescription?: string }>;
 
 const isEvm = (r: WalletRecord) => (r.namespace === undefined || r.namespace === "evm") && /^0x[0-9a-fA-F]{40}$/.test(r.address ?? "");
 
@@ -141,7 +141,7 @@ export async function submit(ctx: Ctx, io: unknown, commandId: string, txs: Plan
     if (result.status && /DENIED|EXPIRED|FAILED/.test(result.status)) {
       throw new Error(`${t.summary}: the wallet reported ${result.status}${result.failureDescription ? ` (${result.failureDescription})` : ""}`);
     }
-    sent.push({ summary: t.summary, txHash: result.txHash, explorerUrl: result.explorerUrl });
+    sent.push({ summary: t.summary, txHash: result.hash, explorerUrl: result.hash ? `https://testnet.monadexplorer.com/tx/${result.hash}` : undefined });
   }
   return { broadcast: true, sent };
 }
