@@ -1,4 +1,4 @@
-import { InputFieldType, PluginCommand, schemaToArgs, schemaToFlags } from "@metamask/agent-wallet/plugin";
+import { InputFieldType, PluginCommand, schemaToArgs, schemaToFlags } from "../../sdk.js";
 import { dollars, gql, OPEN_TAKES, payoutMultiple, type TakeMarket } from "../../terrace.js";
 
 const inputs = {

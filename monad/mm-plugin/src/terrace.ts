@@ -6,7 +6,7 @@
  * executor (`ctx.walletExecutor`), so MetaMask's signing, policy and MFA always decide: this
  * plugin never touches a key. Write commands are dry runs unless `--broadcast` is given.
  */
-import { createPublicClient, encodeFunctionData, http, parseAbi, parseUnits, type Address, type Hex, type PublicClient } from "viem";
+import { createPublicClient, encodeFunctionData, http, parseAbi, parseEther, parseUnits, type Address, type Hex, type PublicClient } from "viem";
 import { monadTestnet } from "viem/chains";
 
 export const CHAIN_ID = 10143;
@@ -94,7 +94,7 @@ export type Ctx = {
 };
 type WalletRecord = { id?: string; name?: string; address?: string; namespace?: string };
 type WalletState = { byokWallets?: WalletRecord[]; remoteWallets?: WalletRecord[]; selectedWallet?: { ref?: { id?: string; address?: string; name?: string }; namespace?: string } };
-type Executor = (request: unknown, opts?: { waitForReceipt?: boolean }) => Promise<{ status?: string; txHash?: string; explorerUrl?: string; failureDescription?: string }>;
+type Executor = (request: unknown, opts?: { waitForReceipt?: boolean }) => Promise<{ status?: string; hash?: string; failureDescription?: string }>;
 
 const isEvm = (r: WalletRecord) => (r.namespace === undefined || r.namespace === "evm") && /^0x[0-9a-fA-F]{40}$/.test(r.address ?? "");
 
@@ -110,9 +110,8 @@ export function walletAddress(ctx: Ctx): Address {
   return address as Address;
 }
 
-/** Monad reads: the wallet's RPC client when available, otherwise MONAD_RPC_URL or the public RPC. */
-export function chainClient(ctx: Ctx): PublicClient {
-  if (ctx.publicClient && !process.env.MONAD_RPC_URL) return ctx.publicClient(CHAIN_ID);
+/** Monad reads go straight to Monad (MONAD_RPC_URL or the public RPC): MetaMask's RPC proxy rejects chain 10143. */
+export function chainClient(_ctx: Ctx): PublicClient {
   return createPublicClient({ chain: monadTestnet, transport: http(process.env.MONAD_RPC_URL ?? "https://testnet-rpc.monad.xyz") }) as PublicClient;
 }
 
@@ -128,18 +127,32 @@ export async function submit(ctx: Ctx, io: unknown, commandId: string, txs: Plan
   }
   if (!ctx.walletExecutor) throw new Error("This command needs wallet-submit: reinstall the plugin and accept its capabilities.");
   const execute = await ctx.walletExecutor(io, commandId);
+  const client = chainClient(ctx);
+  await ensureGas(client, walletAddress(ctx));
   const sent: { summary: string; txHash?: string; explorerUrl?: string }[] = [];
   for (const t of txs) {
+    // MetaMask's gas-price service doesn't know Monad testnet, so the fees come from Monad's RPC.
+    const fees = await client.estimateFeesPerGas();
+    const transaction = { to: t.to, data: t.data, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas };
     const result = await execute(
-      { kind: "transaction", chainId: CHAIN_ID, transaction: { to: t.to, data: t.data }, intent: { summary: t.summary, action: "call", details: { app: "Terrace" } } },
+      { kind: "transaction", chainId: CHAIN_ID, transaction, intent: { summary: t.summary, action: "call", details: { app: "Terrace" } } },
       { waitForReceipt: true },
     );
     if (result.status && /DENIED|EXPIRED|FAILED/.test(result.status)) {
       throw new Error(`${t.summary}: the wallet reported ${result.status}${result.failureDescription ? ` (${result.failureDescription})` : ""}`);
     }
-    sent.push({ summary: t.summary, txHash: result.txHash, explorerUrl: result.explorerUrl });
+    sent.push({ summary: t.summary, txHash: result.hash, explorerUrl: result.hash ? `https://testnet.monadexplorer.com/tx/${result.hash}` : undefined });
   }
   return { broadcast: true, sent };
+}
+
+const GAS_LOW = parseEther("0.15");
+
+/** A new Agent Wallet has no MON: ask Terrace's onboarding for gas (and test dollars) when it runs low. */
+async function ensureGas(client: PublicClient, address: Address) {
+  if ((await client.getBalance({ address })) >= GAS_LOW) return;
+  await api("/api/onboard", { address }).catch(() => undefined);
+  if ((await client.getBalance({ address })) === 0n) throw new Error("This wallet has no MON for gas, and Terrace couldn't top it up just now. Try again in a minute.");
 }
 
 /** An exact-amount approval when the allowance falls short (never unlimited from an agent). */

@@ -33,8 +33,23 @@ mm plugins link .                        # local development
 # or, once published:  mm plugins install terrace-mm-plugin
 ```
 
-Plugins need Agent Wallet ≥ 6.2. Accept the capabilities it asks for (`wallet-read`, `wallet-submit`)
-on first run. Monad testnet is chain 10143.
+Plugins need Agent Wallet ≥ 6.2 and the plugin beta (`mm config set experimentalPlugins true`).
+Accept the capabilities it asks for (`wallet-read`, `wallet-submit`) on install. Monad testnet is chain 10143.
+Install it with `mm plugins install`: `mm plugins link` only grants read commands, so a linked copy can't send.
+
+## Sending on Monad testnet
+
+MetaMask's RPC proxy answers `Invalid chainId` for Monad testnet, so the wallet can't build a
+transaction there yet. Until it does, run the bundled relay in another tab and point `mm` at it for
+write commands. It sends chain 10143 to Monad's RPC and passes every other chain to MetaMask unchanged.
+
+```bash
+npx -p terrace-mm-plugin terrace-relay                    # leave running
+MM_INFURA_RPC_BASE_URL=http://127.0.0.1:8547 mm terrace back 342 --side yes --amount 5 --broadcast
+```
+
+On its first send, Terrace tops the wallet up with gas and $100 in test dollars. In Guard mode, MetaMask
+asks you to approve by email or in MetaMask Mobile any call outside your policy.
 
 ## Test
 

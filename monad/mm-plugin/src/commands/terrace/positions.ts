@@ -1,4 +1,4 @@
-import { PluginCommand } from "@metamask/agent-wallet/plugin";
+import { PluginCommand } from "../../sdk.js";
 import { ctxOf, dollars, gql, walletAddress } from "../../terrace.js";
 
 type Bet = { stake: string; side: number; result: number | null; payout: string | null; market: { id: string; question: { answer: number; text: string } } };

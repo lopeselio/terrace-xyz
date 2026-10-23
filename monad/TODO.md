@@ -23,11 +23,13 @@ Stop with Ctrl+C after full time. Missed a match? Run the workflows by hand afte
       (each new fan or agent gets 0.5 MON). Add testnet USDC from https://faucet.circle.com too.
 - [x] **Keep the CRE broadcaster funded:** `0x901E8F75cc9F453fD9530b0C5b6763A1343949d7` (~3 MON is plenty for a few days).
       Now watched: the server watchdog (`ops/watchdog.sh`) alerts your phone below 2 MON (treasury below 15).
-- [ ] **Try the MetaMask plugin with a real Agent Wallet:** `mm init`, then
-      `cd monad/mm-plugin && pnpm build && mm plugins link .`, then `mm terrace takes`.
-      If Monad testnet (10143) isn't in `mm chains list`, add it as a custom EVM chain.
-- [ ] **Publish the plugin to npm** (needs your npm login): `cd monad/mm-plugin && npm publish`,
+- [x] **Try the MetaMask plugin with a real Agent Wallet:** done 23 Oct with a Guard-mode server wallet:
+      faucet claim and a $5 back on market 342, approved by email. Sends need the bundled relay
+      (`terrace-relay`), because MetaMask's RPC proxy rejects Monad testnet; see the plugin README.
+- [ ] **Publish the plugin to npm** (needs your security key): `cd monad/mm-plugin && npm publish --auth-type=web`,
       so anyone can `mm plugins install terrace-mm-plugin`.
+- [ ] **Tell MetaMask** their RPC proxy answers `Invalid chainId` for 10143, though their server-wallet
+      network list includes Monad Testnet. Drop the relay from the README once they fix it.
 - [x] **Play a full loop on two phones:** take → market → back and fade, a 1v1 link, an acca, a private league
       with sealed picks and a vote. Note anything that confuses a non-crypto fan and fix it.
 - [x] **Record demo videos:**

@@ -12,13 +12,17 @@ async function run(name, values) {
   const out = await Cmd.prototype.execute.call(cmd, io(values));
   console.log(`\n# mm terrace ${name}`);
   console.log(JSON.stringify(out, (_, v) => (typeof v === "string" && v.startsWith("0x") && v.length > 80 ? v.slice(0, 18) + "…" : v), 2).slice(0, 900));
+  return out;
 }
 
-await run("matches", {});
-await run("takes", {});
+// Bet on whatever is open right now, so the test never points at a finished match.
+const { matches } = await run("matches", {});
+const { takes } = await run("takes", {});
+const upcoming = matches.find((m) => !m.state.startsWith("LIVE"));
+if (!takes.length || !upcoming) throw new Error("No open take or upcoming match to test against.");
 await run("value", { min: "1.2", stake: "5" });
 await run("positions", {});
-await run("back", { market: "0", side: "no", amount: "5" });
-await run("take", { text: "There will be at least 2 red cards", match: "1557424", amount: "2" });
+await run("back", { market: String(takes[0].market), side: "no", amount: "5" });
+await run("take", { text: "There will be at least 2 red cards", match: String(upcoming.match), amount: "2" });
 await run("collect", {});
 await run("register", { name: "The Gaffer", style: "Fades the crowd at long odds" });

@@ -1,4 +1,4 @@
-import { PluginCommand } from "@metamask/agent-wallet/plugin";
+import { PluginCommand } from "../../sdk.js";
 import { api, type Match } from "../../terrace.js";
 
 const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE"]);
