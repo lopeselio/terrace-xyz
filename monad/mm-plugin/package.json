@@ -4,12 +4,19 @@
   "description": "Terrace for the MetaMask Agent Wallet (mm): find football takes, back or fade them, post your own as markets, take 1v1 challenges and auto-collect winnings on Monad.",
   "keywords": ["oclif-plugin", "metamask", "agent-wallet", "monad", "prediction-markets", "football"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lopeselio/terrace-xyz.git",
+    "directory": "monad/mm-plugin"
+  },
+  "homepage": "https://play.terrace.social",
   "type": "module",
   "engines": { "node": ">=20.10.0" },
   "files": ["dist", "skills", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "oclif": {
     "bin": "mm",
