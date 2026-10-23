@@ -33,6 +33,7 @@ export const ADDR = {
   markets: "0xCa6a892e302582eE34a2cfe3a57c7e97A2868773",
   matchups: "0xd411fFE50574962e9376c60d72939F6982350E4B",
   chat: "0x7C790222f618C068f2Cd549f72CB08E7Ba91108e",
+  reputation: "0x7d53b1C9EaD4274dA03318c6599c7831d727F0B3",
 } as const satisfies Record<string, Address>;
 
 const ERRORS = [
@@ -68,6 +69,11 @@ export const ABI = {
   chat: parseAbi([
     "function post(uint8 roomKind, uint256 roomId, string text, uint256 replyTo) returns (uint256)",
     "event MessagePosted(uint256 indexed messageId, uint8 indexed roomKind, uint256 indexed roomId, address author, uint256 replyTo, string text)",
+    ...ERRORS,
+  ]),
+  reputation: parseAbi([
+    "function registerAgent(address operator, string metadataURI)",
+    "function profileOf(address player) view returns ((bool isAgent, address operator, string metadataURI))",
     ...ERRORS,
   ]),
   matchups: parseAbi([
@@ -151,12 +157,31 @@ const GAS_LOW = parseEther("0.15");
 /** Ask Terrace's onboarding to top the account up (gas and test dollars) when it runs low. */
 export async function ensureFunds(stake = 0n) {
   const [gas, usd] = await Promise.all([chain.getBalance({ address: account.address }), chain.readContract({ address: ADDR.usd, abi: ABI.erc20, functionName: "balanceOf", args: [account.address] })]);
-  if (gas >= GAS_LOW && usd >= stake) return;
-  await api("/api/onboard", { address: account.address }).catch(() => undefined);
-  if (usd < stake) {
-    const now = await chain.readContract({ address: ADDR.usd, abi: ABI.erc20, functionName: "balanceOf", args: [account.address] });
-    if (now < stake) throw new Error(`Not enough test dollars for a ${dollars(stake)} stake (you have ${dollars(now)}). Terrace tops accounts up to $100; try a smaller stake or collect winnings first.`);
+  if (gas < GAS_LOW || usd < stake) {
+    await api("/api/onboard", { address: account.address }).catch(() => undefined);
+    if (usd < stake) {
+      const now = await chain.readContract({ address: ADDR.usd, abi: ABI.erc20, functionName: "balanceOf", args: [account.address] });
+      if (now < stake) throw new Error(`Not enough test dollars for a ${dollars(stake)} stake (you have ${dollars(now)}). Terrace tops accounts up to $100; try a smaller stake or collect winnings first.`);
+    }
   }
+  await ensureRegistered();
+}
+
+let registered = false;
+
+/**
+ * Register this account as an AI player before its first move, so Terrace labels it (violet AI badge)
+ * and keeps it out of the human fan counts and the Terrace Points leaderboard. Once per account.
+ */
+async function ensureRegistered() {
+  if (registered) return;
+  const profile = await chain.readContract({ address: ADDR.reputation, abi: ABI.reputation, functionName: "profileOf", args: [account.address] });
+  if (!profile.isAgent) {
+    const name = process.env.TERRACE_AGENT_NAME ?? "Claude";
+    const metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name, style: "", via: "Claude via terrace-mcp" }))}`;
+    await send({ address: ADDR.reputation, abi: ABI.reputation, functionName: "registerAgent", args: [account.address, metadata] });
+  }
+  registered = true;
 }
 
 export function checkStake(amount: number): bigint {
@@ -179,12 +204,29 @@ const PLAIN: Record<string, string> = {
   BadInput: "Terrace rejected that (bad input).",
 };
 
+/**
+ * The public RPC sometimes turns down a just-funded account's transaction as "insufficient balance"
+ * while the same transaction goes through elsewhere; it clears up, so wait and try again.
+ */
+async function writeWithRetry(request: unknown) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await wallet.writeContract(request as never);
+    } catch (e) {
+      const stale = e instanceof BaseError && /insufficient balance/i.test(e.details ?? "");
+      if (!stale) throw e;
+      if (attempt >= 4) throw new Error("The Monad RPC says this account has no gas yet, though Terrace topped it up. Try again in a minute, or set MONAD_RPC_URL to another Monad testnet RPC.");
+      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+    }
+  }
+}
+
 /** Simulate first so a revert comes back as a plain sentence, then send and wait (about a second on Monad). */
 export async function send<const A extends Abi>(call: { address: Address; abi: A; functionName: string; args: readonly unknown[] }) {
   try {
     // viem's generics can't follow a generic ABI through here; the call shape is checked at each call site's ABI
     const { request } = await chain.simulateContract({ ...(call as object), account } as never);
-    const hash = await wallet.writeContract(request as never);
+    const hash = await writeWithRetry(request);
     const receipt = await chain.waitForTransactionReceipt({ hash });
     if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted.`);
     return receipt;
