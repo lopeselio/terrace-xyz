@@ -110,9 +110,8 @@ export function walletAddress(ctx: Ctx): Address {
   return address as Address;
 }
 
-/** Monad reads: the wallet's RPC client when available, otherwise MONAD_RPC_URL or the public RPC. */
-export function chainClient(ctx: Ctx): PublicClient {
-  if (ctx.publicClient && !process.env.MONAD_RPC_URL) return ctx.publicClient(CHAIN_ID);
+/** Monad reads go straight to Monad (MONAD_RPC_URL or the public RPC): MetaMask's RPC proxy rejects chain 10143. */
+export function chainClient(_ctx: Ctx): PublicClient {
   return createPublicClient({ chain: monadTestnet, transport: http(process.env.MONAD_RPC_URL ?? "https://testnet-rpc.monad.xyz") }) as PublicClient;
 }
 
