@@ -11,7 +11,9 @@ function EmailCode({ cta, onVerified }: { cta: string; onVerified: () => Promise
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forgot, setForgot] = useState(false);
   const remembered = (() => {
+    if (forgot) return null;
     try {
       return emailBridge().email();
     } catch {
@@ -25,7 +27,10 @@ function EmailCode({ cta, onVerified }: { cta: string; onVerified: () => Promise
     try {
       await task();
     } catch (e) {
-      setError(friendlyError(e));
+      console.error("[email sign-in]", e);
+      // In development, show what actually failed under the friendly line.
+      const detail = process.env.NODE_ENV !== "production" && e instanceof Error ? ` (${e.message.slice(0, 200)})` : "";
+      setError(friendlyError(e) + detail);
     } finally {
       setBusy(false);
     }
@@ -37,6 +42,14 @@ function EmailCode({ cta, onVerified }: { cta: string; onVerified: () => Promise
         <button className="cta cta-ghost cta-sm" disabled={busy} onClick={() => run(onVerified)}>
           {busy ? "Opening…" : `${cta} as ${remembered}`}
         </button>
+        <button
+          className="textbtn"
+          style={{ display: "block", margin: "8px auto 0", fontSize: 12.5 }}
+          disabled={busy}
+          onClick={() => run(async () => { await emailBridge().logout(); setForgot(true); })}
+        >
+          Not you? Use another email
+        </button>
         {error && <p className="error" style={{ textAlign: "center", marginTop: 8 }}>{error}</p>}
       </div>
     );
@@ -46,15 +59,28 @@ function EmailCode({ cta, onVerified }: { cta: string; onVerified: () => Promise
     <div>
       {step === "email" ? (
         <form onSubmit={(e) => { e.preventDefault(); run(async () => { await emailBridge().sendCode(email.trim()); setStep("code"); }); }}>
-          <input type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label className="field">
+            <input type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+          </label>
           <button className="cta cta-ghost cta-sm" style={{ marginTop: 8 }} disabled={busy || !email.includes("@")}>
             {busy ? "Sending…" : "Send me a code"}
           </button>
         </form>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); run(async () => { await emailBridge().loginWithCode(code.trim()); await onVerified(); }); }}>
-          <div className="umeta" style={{ marginBottom: 6 }}>We sent a code to {email}.</div>
-          <input autoComplete="one-time-code" inputMode="numeric" placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} />
+          <div className="umeta" style={{ marginBottom: 8, textAlign: "center" }}>We sent a 6-digit code to <b>{email}</b>.</div>
+          <label className="field">
+            <input
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              style={{ textAlign: "center", letterSpacing: "0.4em", fontSize: 20, fontWeight: 700 }}
+              autoFocus
+            />
+          </label>
           <button className="cta cta-ghost cta-sm" style={{ marginTop: 8 }} disabled={busy || code.trim().length < 6}>
             {busy ? "Opening your account…" : cta}
           </button>

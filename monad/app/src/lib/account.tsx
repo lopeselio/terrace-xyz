@@ -143,7 +143,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         play("done");
         return hash;
       } catch (e) {
-        throw e instanceof FanError ? e : new FanError(friendlyError(e));
+        if (process.env.NODE_ENV !== "production") console.error("[send]", call.functionName, e);
+        throw e instanceof FanError ? e : new FanError(friendlyError(e) + (process.env.NODE_ENV !== "production" && e instanceof Error ? ` (${e.message.slice(0, 200)})` : ""));
       }
       } finally {
         window.dispatchEvent(new CustomEvent("terrace-busy", { detail: -1 }));
