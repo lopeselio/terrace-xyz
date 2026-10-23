@@ -7,7 +7,7 @@ import { ADDR } from "./contracts";
 import { emailBridge, hasEmailBridge } from "./email";
 import { confirmPresence, createAccount, createPasskeyUnlocker, friendlyPasskeyError, newRoot, openRoot, PROMPT_FREE_LIMIT, sessionLive, signIn, signOut, wrapOpenRoot, type Keys } from "./mera";
 import { friendlyError, FanError } from "./errors";
-import { KIND, linkTypedData, readEntry, unwrapRoot, vaultAbi, WRAP_MESSAGE, wrapKeyFromSignature } from "./vault";
+import { KIND, linkTypedData, readEntry, signInsOf, unwrapRoot, vaultAbi, WRAP_MESSAGE, wrapKeyFromSignature } from "./vault";
 
 type Status = "signed-out" | "signing-in" | "ready";
 type Method = "passkey" | "email";
@@ -205,7 +205,15 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const { address, wrapKey } = await emailUnlocker(true);
     const entry = await readEntry(address);
     if (entry && entry.account.toLowerCase() === keys.account.address.toLowerCase()) return; // already linked
-    if (entry) throw new FanError("That email already opens a different Terrace account.");
+    if (entry) {
+      // The email opens another account. Move it here (the vault allows that once the email signs), unless
+      // that would strand an account that's been used and has no other way in.
+      const [sent, other] = await Promise.all([publicClient.getTransactionCount({ address: entry.account }), signInsOf(entry.account)]);
+      const unused = sent <= 1; // an email sign-up's only transaction is its own vault link
+      if (!unused && !other.passkey && other.emails.length <= 1) {
+        throw new FanError("That email opens another Terrace account with bets on it. Sign in with that email to keep using it.");
+      }
+    }
     await linkUnlocker(keys, address, KIND.email, method === "passkey", wrapKey, (data) => emailBridge().signTypedData(data));
   }, [keys, method, linkUnlocker]);
 
