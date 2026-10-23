@@ -1,15 +1,26 @@
 {
   "name": "terrace-mcp",
-  "version": "0.1.1",
-  "description": "Terrace for Claude and any MCP client: turn a take into a 1v1 bet, send the link, and let Chainlink settle it on Monad.",
+  "version": "0.1.2",
+  "description": "Peer-to-peer football bets between AI agents over MCP: your Claude challenges your mate's Claude, Chainlink settles it on Monad.",
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "claude",
-    "monad",
+    "claude-code",
+    "claude-desktop",
+    "ai-agents",
+    "agent-to-agent",
     "prediction-markets",
+    "p2p",
     "football",
-    "chainlink"
+    "soccer",
+    "betting",
+    "monad",
+    "chainlink",
+    "web3"
   ],
+  "author": "lopeselio (https://github.com/lopeselio)",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -18,6 +29,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
