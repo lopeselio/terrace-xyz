@@ -70,7 +70,8 @@ export function linkMessage(vault: Address, chainId: number, account: Address, w
     domain: { name: "TerraceVault", version: "1", chainId, verifyingContract: vault },
     types: { Link: [{ name: "account", type: "address" }, { name: "wrappedHash", type: "bytes32" }, { name: "nonce", type: "uint256" }] },
     primaryType: "Link" as const,
-    message: { account, wrappedHash: keccak256(wrapped), nonce },
+    // A plain number, not a bigint: Privy sends typed data as JSON, which can't carry bigints.
+    message: { account, wrappedHash: keccak256(wrapped), nonce: Number(nonce) },
   };
 }
 
