@@ -1,4 +1,4 @@
-import { InputFieldType, PluginCommand, schemaToArgs, schemaToFlags } from "@metamask/agent-wallet/plugin";
+import { InputFieldType, PluginCommand, schemaToArgs, schemaToFlags } from "../../sdk.js";
 import { encodeFunctionData } from "viem";
 import { ABI, ADDR, approvalIfNeeded, chainClient, ctxOf, dollars, submit, walletAddress } from "../../terrace.js";
 

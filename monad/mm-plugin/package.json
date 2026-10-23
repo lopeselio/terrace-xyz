@@ -44,6 +44,7 @@
     ]
   },
   "peerDependencies": { "@metamask/agent-wallet": ">=6.2.0" },
+  "peerDependenciesMeta": { "@metamask/agent-wallet": { "optional": true } },
   "dependencies": { "viem": "^2.37.0" },
   "devDependencies": {
     "@metamask/agent-wallet": "7.1.0",
