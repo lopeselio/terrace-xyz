@@ -6,7 +6,7 @@
  * executor (`ctx.walletExecutor`), so MetaMask's signing, policy and MFA always decide: this
  * plugin never touches a key. Write commands are dry runs unless `--broadcast` is given.
  */
-import { createPublicClient, encodeFunctionData, http, parseAbi, parseEther, parseUnits, toHex, type Address, type Hex, type PublicClient } from "viem";
+import { createPublicClient, encodeFunctionData, http, parseAbi, parseEther, parseUnits, type Address, type Hex, type PublicClient } from "viem";
 import { monadTestnet } from "viem/chains";
 
 export const CHAIN_ID = 10143;
@@ -133,7 +133,7 @@ export async function submit(ctx: Ctx, io: unknown, commandId: string, txs: Plan
   for (const t of txs) {
     // MetaMask's gas-price service doesn't know Monad testnet, so the fees come from Monad's RPC.
     const fees = await client.estimateFeesPerGas();
-    const transaction = { to: t.to, data: t.data, maxFeePerGas: toHex(fees.maxFeePerGas), maxPriorityFeePerGas: toHex(fees.maxPriorityFeePerGas) };
+    const transaction = { to: t.to, data: t.data, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas };
     const result = await execute(
       { kind: "transaction", chainId: CHAIN_ID, transaction, intent: { summary: t.summary, action: "call", details: { app: "Terrace" } } },
       { waitForReceipt: true },
