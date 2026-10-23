@@ -53,10 +53,13 @@ const onchainDigest = await pub.readContract({ address: vault, abi, functionName
 check("app's EIP-712 Link hashes like the contract's", hashTypedData(typed) === onchainDigest);
 
 const unlockerSig = await unlocker.signTypedData(typed);
-const linkHash = await wallet.writeContract({ address: vault, abi, functionName: "link", args: [unlocker.address, wrapped, unlockerSig] });
+const linkHash = await wallet.writeContract({ address: vault, abi, functionName: "link", args: [unlocker.address, 1, wrapped, unlockerSig, true] });
 check("link() succeeds", (await pub.waitForTransactionReceipt({ hash: linkHash })).status === "success");
 const [account, stored] = await pub.readContract({ address: vault, abi, functionName: "entryOf", args: [unlocker.address] });
 check("entryOf points at the fan's account", account === fan.address);
+const [list, kinds] = await pub.readContract({ address: vault, abi, functionName: "unlockersOf", args: [fan.address] });
+check("unlockersOf lists the email sign-in", list.length === 1 && list[0] === unlocker.address && kinds[0] === 1);
+check("ownPasskey is recorded", await pub.readContract({ address: vault, abi, functionName: "ownPasskey", args: [fan.address] }));
 check("the stored blob opens to the same root", same(unwrapRoot(stored, wrapKeyFromSignature(await unlocker.signMessage({ message: WRAP_MESSAGE })), account), root));
 
 console.log(failed ? `\n${failed} failed` : "\nall good");

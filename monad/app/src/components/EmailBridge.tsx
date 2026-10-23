@@ -68,6 +68,7 @@ function Bridge() {
         }
         throw new Error("Privy didn't load the email wallet in time.");
       },
+      walletNow: () => embedded() ?? null,
       signMessage: async (message) => (await live.current.signMessage({ message }, { ...silent, address: embedded() })).signature as Hex,
       signTypedData: async (data: TypedData) =>
         (await live.current.signTypedData(data as never, { ...silent, address: embedded() })).signature as Hex,

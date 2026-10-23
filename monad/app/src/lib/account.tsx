@@ -7,7 +7,7 @@ import { ADDR } from "./contracts";
 import { emailBridge, hasEmailBridge } from "./email";
 import { confirmPresence, createAccount, createPasskeyUnlocker, friendlyPasskeyError, newRoot, openRoot, PROMPT_FREE_LIMIT, sessionLive, signIn, signOut, wrapOpenRoot, type Keys } from "./mera";
 import { friendlyError, FanError } from "./errors";
-import { linkTypedData, readEntry, unwrapRoot, vaultAbi, WRAP_MESSAGE, wrapKeyFromSignature } from "./vault";
+import { KIND, linkTypedData, readEntry, unwrapRoot, vaultAbi, WRAP_MESSAGE, wrapKeyFromSignature } from "./vault";
 
 type Status = "signed-out" | "signing-in" | "ready";
 type Method = "passkey" | "email";
@@ -159,13 +159,24 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     [keys, sendWith],
   );
 
-  /** Store this account's root in the vault under `unlocker`, which signs the Link to agree. */
+  /**
+   * Store this account's root in the vault under `unlocker`, which signs the Link to agree. From a
+   * passkey session we also note the account has a passkey, which the vault can't otherwise see.
+   */
   const linkUnlocker = useCallback(
-    async (k: Keys, unlocker: Address, wrapKey: Uint8Array, signLink: (data: Awaited<ReturnType<typeof linkTypedData>>) => Promise<Hex>) => {
+    async (
+      k: Keys,
+      unlocker: Address,
+      kind: number,
+      fromPasskey: boolean,
+      wrapKey: Uint8Array,
+      signLink: (data: Awaited<ReturnType<typeof linkTypedData>>) => Promise<Hex>,
+    ) => {
       const me = k.account.address;
       const wrapped = wrapOpenRoot(wrapKey, me);
       const unlockerSig = await signLink(await linkTypedData(unlocker, me, wrapped));
-      await sendWith(k, { address: ADDR.vault!, abi: vaultAbi, functionName: "link", args: [unlocker, wrapped, unlockerSig] });
+      await sendWith(k, { address: ADDR.vault!, abi: vaultAbi, functionName: "link", args: [unlocker, kind, wrapped, unlockerSig, fromPasskey] });
+      window.dispatchEvent(new Event("terrace-signins")); // Profile refreshes its list
     },
     [sendWith],
   );
@@ -183,7 +194,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         // because the vault is the only place this account can come back from.
         const { address, wrapKey } = await emailUnlocker(true);
         const k = openRoot(newRoot(), emailAgain);
-        await linkUnlocker(k, address, wrapKey, (data) => emailBridge().signTypedData(data));
+        await linkUnlocker(k, address, KIND.email, false, wrapKey, (data) => emailBridge().signTypedData(data));
         return k;
       }, "email"),
     [finish, linkUnlocker],
@@ -195,14 +206,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const entry = await readEntry(address);
     if (entry && entry.account.toLowerCase() === keys.account.address.toLowerCase()) return; // already linked
     if (entry) throw new FanError("That email already opens a different Terrace account.");
-    await linkUnlocker(keys, address, wrapKey, (data) => emailBridge().signTypedData(data));
-  }, [keys, linkUnlocker]);
+    await linkUnlocker(keys, address, KIND.email, method === "passkey", wrapKey, (data) => emailBridge().signTypedData(data));
+  }, [keys, method, linkUnlocker]);
 
   const addPasskey = useCallback(async () => {
     if (!keys) throw new FanError("Sign in first.");
     try {
       const { signer, wrapKey } = await createPasskeyUnlocker();
-      await linkUnlocker(keys, signer.address, wrapKey, (data) => signer.signTypedData(data));
+      await linkUnlocker(keys, signer.address, KIND.passkey, false, wrapKey, (data) => signer.signTypedData(data));
       localStorage.setItem("terrace.hasPasskey", "1");
     } catch (e) {
       throw e instanceof FanError ? e : new FanError(friendlyPasskeyError(e));

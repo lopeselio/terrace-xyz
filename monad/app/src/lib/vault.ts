@@ -20,11 +20,16 @@ import { publicClient } from "./chain";
 import { ADDR } from "./contracts";
 
 export const vaultAbi = parseAbi([
-  "function link(address unlocker, bytes wrapped, bytes unlockerSig)",
+  "function link(address unlocker, uint8 kind, bytes wrapped, bytes unlockerSig, bool senderHasPasskey)",
   "function unlink(address unlocker)",
   "function entryOf(address unlocker) view returns (address account, bytes wrapped)",
+  "function unlockersOf(address account) view returns (address[] list, uint8[] kinds)",
+  "function ownPasskey(address account) view returns (bool)",
   "function nonces(address unlocker) view returns (uint256)",
 ]);
+
+/** What an unlocker is (TerraceVault.EMAIL / PASSKEY). */
+export const KIND = { email: 1, passkey: 2 } as const;
 
 /** What an email sign-in's wallet signs to make its wrap key. Never changes: a new text means a new key. */
 export const WRAP_MESSAGE =
@@ -62,6 +67,16 @@ export async function readEntry(unlocker: Address): Promise<VaultEntry | null> {
   if (!ADDR.vault) return null;
   const [account, wrapped] = await publicClient.readContract({ address: ADDR.vault, abi: vaultAbi, functionName: "entryOf", args: [unlocker] });
   return /^0x0{40}$/i.test(account) ? null : { account, wrapped };
+}
+
+/** Which ways in an account has: its own passkey or a linked one, and the email sign-ins that open it. */
+export async function signInsOf(account: Address): Promise<{ passkey: boolean; emails: Address[] }> {
+  if (!ADDR.vault) return { passkey: false, emails: [] };
+  const [[list, kinds], own] = await Promise.all([
+    publicClient.readContract({ address: ADDR.vault, abi: vaultAbi, functionName: "unlockersOf", args: [account] }),
+    publicClient.readContract({ address: ADDR.vault, abi: vaultAbi, functionName: "ownPasskey", args: [account] }),
+  ]);
+  return { passkey: own || kinds.includes(KIND.passkey), emails: list.filter((_, i) => kinds[i] === KIND.email) };
 }
 
 /** The EIP-712 Link an unlocker signs so `account` may store `wrapped` under it (TerraceVault.link). */

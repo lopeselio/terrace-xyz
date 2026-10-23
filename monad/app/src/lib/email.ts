@@ -24,6 +24,8 @@ export type EmailBridge = {
   loginWithCode: (code: string) => Promise<void>;
   /** The embedded wallet's address, waiting for Privy to create it after a first login. */
   wallet: () => Promise<Address>;
+  /** The embedded wallet's address if it's already loaded; never creates one. */
+  walletNow: () => Address | null;
   signMessage: (message: string) => Promise<Hex>;
   signTypedData: (data: TypedData) => Promise<Hex>;
   logout: () => Promise<void>;

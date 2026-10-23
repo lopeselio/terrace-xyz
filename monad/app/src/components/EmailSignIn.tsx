@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { Address } from "viem";
 import { useAccount } from "@/lib/account";
 import { emailBridge, emailSignInEnabled } from "@/lib/email";
 import { friendlyError } from "@/lib/errors";
+import { signInsOf } from "@/lib/vault";
 
 /** Email, then the six-digit code Privy sends, then `onVerified`. Skips straight on if Privy remembers this device. */
 function EmailCode({ cta, onVerified }: { cta: string; onVerified: () => Promise<unknown> }) {
@@ -113,52 +115,82 @@ export function EmailSignIn({ onDone }: { onDone?: () => void }) {
   );
 }
 
-/** Profile: add the other way in, so either one opens this account on any device. */
+/** Profile: which ways in this account has (from the vault, not just this session), and adding the other one. */
 export function SignInMethods() {
-  const { method, linkEmail, addPasskey } = useAccount();
-  const [open, setOpen] = useState(false);
-  const [done, setDone] = useState(false);
+  const { method, address, linkEmail, addPasskey } = useAccount();
+  const [ins, setIns] = useState<{ passkey: boolean; emails: Address[] } | null>(null);
+  const [addingEmail, setAddingEmail] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    if (address) signInsOf(address).then(setIns).catch(() => {});
+  }, [address]);
+  useEffect(() => {
+    load();
+    window.addEventListener("terrace-signins", load);
+    return () => window.removeEventListener("terrace-signins", load);
+  }, [load]);
+
   if (!emailSignInEnabled() || !method) return null;
 
-  if (done) {
-    return <div className="umeta">{method === "passkey" ? "Done: your email opens this account too." : "Done: Face ID opens this account too."}</div>;
+  const hasPasskey = method === "passkey" || Boolean(ins?.passkey);
+  const hasEmail = method === "email" || Boolean(ins?.emails.length);
+  // The address itself never goes on-chain; show it when this browser's Privy session is the linked one.
+  const shownEmail = (() => {
+    try {
+      const b = emailBridge();
+      const mine = method === "email" || ins?.emails.some((e) => e.toLowerCase() === b.walletNow()?.toLowerCase());
+      return mine ? b.email() : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  async function addFaceId() {
+    setBusy(true);
+    setError(null);
+    try {
+      await addPasskey();
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (method === "email") {
-    return (
-      <div>
-        <button
-          className="cta cta-ghost cta-sm"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              await addPasskey();
-              setDone(true);
-            } catch (e) {
-              setError(friendlyError(e));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {busy ? "Adding Face ID…" : "Add Face ID"}
-        </button>
-        <div className="umeta" style={{ marginTop: 6 }}>Sign in with one tap next time, no code.</div>
-        {error && <p className="error" style={{ marginTop: 8 }}>{error}</p>}
+  return (
+    <div className="card" style={{ padding: "4px 14px" }}>
+      <div className="kv">
+        <div>
+          <div className="v">Face ID or fingerprint</div>
+          <div className="umeta">{hasPasskey ? "One tap on any phone or laptop with your passkey." : "Sign in with one tap next time, no code."}</div>
+        </div>
+        {hasPasskey ? (
+          <span className="umeta green">On</span>
+        ) : (
+          <button className="chip" disabled={busy || !ins} onClick={addFaceId}>{busy ? "Adding…" : "Add"}</button>
+        )}
       </div>
-    );
-  }
-
-  return open ? (
-    <EmailCode cta="Link this email" onVerified={async () => { await linkEmail(); setDone(true); }} />
-  ) : (
-    <div>
-      <button className="cta cta-ghost cta-sm" onClick={() => setOpen(true)}>Add email sign-in</button>
-      <div className="umeta" style={{ marginTop: 6 }}>For a laptop or phone without your passkey.</div>
+      <div className="kv">
+        <div style={{ minWidth: 0 }}>
+          <div className="v">Email</div>
+          <div className="umeta" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            {hasEmail ? shownEmail ?? "A code to your email opens this account." : "For a laptop or phone without your passkey."}
+          </div>
+        </div>
+        {hasEmail ? (
+          <span className="umeta green">On</span>
+        ) : (
+          !addingEmail && <button className="chip" disabled={!ins} onClick={() => setAddingEmail(true)}>Add</button>
+        )}
+      </div>
+      {addingEmail && !hasEmail && (
+        <div style={{ padding: "4px 0 12px" }}>
+          <EmailCode cta="Link this email" onVerified={async () => { await linkEmail(); setAddingEmail(false); }} />
+        </div>
+      )}
+      {error && <p className="error" style={{ margin: "0 0 10px" }}>{error}</p>}
     </div>
   );
 }
