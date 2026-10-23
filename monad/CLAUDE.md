@@ -31,8 +31,10 @@ tables, plus real stakes, all with a consumer-first UX.
 - Football language only: picks, points, challenges, table, record. Never show "wallet", "gas",
   "transaction", "onchain", "token", addresses or hashes in the main flow (advanced settings only).
 - Play before sign-in: visitors make picks first; one passkey prompt (Mera) only to save.
-- Mera is the entire account layer: no seed phrase, no extension, no email/OTP. Identity must
-  rebuild from the passkey alone on a fresh device (the judges' "stateless test").
+- Two equal ways in, no seed phrase, no extension: a Mera passkey, or an email code (Privy). Either
+  one alone is a full account, and a fan can link the other in Profile so both open the same
+  account (TerraceVault, see app/src/lib/vault.ts). A passkey account still rebuilds from the
+  passkey alone on a fresh device.
 - No signing pop-ups, no pending spinners: Mera signing sessions, gas topped up by the
   onboarding server, optimistic "Locked in".
 - Errors in plain language (see `friendlyError` in `app/src/lib/terrace.ts`).
