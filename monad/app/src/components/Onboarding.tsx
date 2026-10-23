@@ -5,6 +5,7 @@ import { Icon, type IconName } from "./Icon";
 import { TerraceMark } from "./TerraceMark";
 import { MonadMark } from "./MonadMark";
 import { useAccount } from "@/lib/account";
+import { EmailSignIn } from "./EmailSignIn";
 import { OldPasskey } from "./OldPasskey";
 import "@/styles/onboarding.css";
 
@@ -217,6 +218,7 @@ function SignInButtons({ busy, error, join, login, onDone }: { busy: boolean; er
         I already have an account
       </button>
       <OldPasskey />
+      <EmailSignIn onDone={onDone} />
       <div className="umeta" style={{ textAlign: "center", marginTop: 10 }}>
         <Icon name="shield" size={12} /> Face ID or fingerprint. No passwords, nothing to install.
       </div>
