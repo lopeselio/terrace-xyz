@@ -9,6 +9,7 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createRequire } from "node:module";
 import { decodeEventLog, formatEther, stringToHex, zeroAddress, type Address, type TransactionReceipt } from "viem";
 import { z } from "zod";
 import {
@@ -16,8 +17,11 @@ import {
   dollars, ensureFunds, fixtureName, gql, matchLink, matches, send,
 } from "./terrace.js";
 
+// The published package.json sits next to dist/, so the server reports the version actually installed.
+const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
+
 const server = new McpServer(
-  { name: "terrace", version: "0.1.0" },
+  { name: "terrace", version },
   {
     instructions:
       "Terrace is a social prediction game for football on Monad testnet, played with free test dollars. " +
