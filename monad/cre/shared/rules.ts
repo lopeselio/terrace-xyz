@@ -57,7 +57,10 @@ export type FixtureDetail = {
 };
 
 const FINISHED = new Set(["FT", "AET", "PEN"]);
-const CALLED_OFF = new Set(["PST", "CANC", "ABD", "AWD", "WO"]);
+const CALLED_OFF = new Set(["CANC", "AWD", "WO"]);
+// Postponed or abandoned can still end in a result (a kickoff pushed back on the day shows as PST),
+// so they wait; the oracle voids the question itself if nothing comes within 3 days.
+const ON_HOLD = new Set(["PST", "ABD"]);
 const NOT_STARTED = new Set(["NS", "TBD"]);
 const OPS = new Set([">=", ">", "==", "<=", "<"]);
 
@@ -90,6 +93,7 @@ const compare = (a: number, op: Op, b: number) =>
 export function evaluate(rule: Rule, f: FixtureDetail): Verdict {
   const status = f.fixture.status.short;
   if (CALLED_OFF.has(status)) return "VOID";
+  if (ON_HOLD.has(status)) return "PENDING";
   if (NOT_STARTED.has(status) && !("lineup" in rule.left)) return "PENDING";
 
   const finished = FINISHED.has(status);

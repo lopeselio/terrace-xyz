@@ -49,7 +49,13 @@ type ApiFixture = {
 };
 
 const FINISHED = new Set(["FT", "AET", "PEN"]);
-const CALLED_OFF = new Set(["PST", "CANC", "ABD", "AWD", "WO"]);
+/*
+ * Only statuses that can't turn into a result. Postponed (PST) and abandoned (ABD) matches wait:
+ * API-Football marks a match PST when kickoff is pushed back on the day, and it can still be played
+ * (Al-Nassr v Neftchi was voided at 14 minutes that way, then finished 3-1). If no result comes, the
+ * oracle voids the match itself 3 days after kickoff, so everyone still gets refunded.
+ */
+const CALLED_OFF = new Set(["CANC", "AWD", "WO"]);
 
 const getFixtures = (send: HTTPSendRequester, url: string, apiKey: string): ApiFixture[] => {
   const res = send.sendRequest({ url, method: "GET", multiHeaders: authHeaders(apiKey) }).result();

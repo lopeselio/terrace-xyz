@@ -60,9 +60,11 @@ describe("rules settle from match data", () => {
     expect(evaluate(rule({ left: { score: { side: "home", period: "halftime" } }, op: ">=", value: 1 }), full)).toBe("NO");
   });
 
-  test("called-off matches void, unplayed ones wait", () => {
+  test("called-off matches void; unplayed, postponed and abandoned ones wait", () => {
     const r = rule({ left: { events: { type: "Goal" } }, op: ">=", value: 1 });
-    expect(evaluate(r, at("PST", 0))).toBe("VOID");
+    expect(evaluate(r, at("CANC", 0))).toBe("VOID");
+    expect(evaluate(r, at("PST", 0))).toBe("PENDING");
+    expect(evaluate(r, at("ABD", 0))).toBe("PENDING");
     expect(evaluate(r, { ...at("NS", 0), events: [] })).toBe("PENDING");
   });
 
