@@ -101,6 +101,10 @@
   .node.sm .t { font-size: 21px; }
   .node.sm .s { font-size: 15.5px; margin-top: 3px; }
   .tag { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.6px; text-transform: uppercase; background: var(--green-deep); color: var(--green-ink); border: 1px solid var(--green-mid); }
+  .logo-i { height: 28px; width: auto; display: block; }
+  .mon { width: 22px; height: 22px; border-radius: 6px; vertical-align: -5px; margin-right: 6px; }
+  .brands { display: inline-flex; align-items: center; gap: 30px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brands .b { display: inline-flex; align-items: center; gap: 12px; }
   .elbl { position: absolute; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; transform: translate(-50%, -100%); padding-bottom: 8px; }
 </style>
 </head>
@@ -280,6 +284,8 @@ const key = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke=
 const mail = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`;
 const lock = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
 const vault = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5V7M15.5 12H17"/></svg>`;
+const privy = `<img class="logo-i" src="assets/privy-mark.png" />`;
+const monad = `<img class="mon" src="assets/monad.png" />`;
 const tick = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
 
 function diagram(t) {
@@ -299,28 +305,28 @@ function diagram(t) {
     out.push(`<div class="elbl" style="left:715px;top:206px;opacity:${prog(t, T.faceOk + 2, 0.3)}">HKDF</div>`);
   } else if (scene === "b") {
     add(node(t, T.b[0] + 0.5, 0, 20, 290, "acc", `${key} Root key`, "from your Face ID"));
-    add(node(t, T.codeView + 0.2, 0, 280, 290, "pv", `${mail} Privy email wallet`, "signs one fixed message"));
+    add(node(t, T.codeView + 0.2, 0, 280, 290, "pv", `${privy} Privy email wallet`, "signs one fixed message"));
     e(T.codeView + 0.7, 290, 82, 380, 200, "", G);
     e(T.codeView + 0.9, 290, 342, 380, 240, "wrap key", V, [345, 400]);
     add(node(t, T.tapLink, 380, 158, 280, "", `${lock} Sealed root`, "AES-GCM, bound to your account"));
     e(T.tapLink + 0.5, 660, 220, 740, 220, "", G);
-    add(node(t, T.linked - 0.2, 740, 158, 280, "", `${vault} TerraceVault`, "on Monad: this email ↦ your account", t >= T.linked + 0.3 ? ` <span class="tag" style="opacity:${prog(t, T.linked + 0.3, 0.3)}">Linked</span>` : ""));
+    add(node(t, T.linked - 0.2, 740, 158, 280, "", `${vault} TerraceVault`, `${monad}on Monad: email ↦ your account`, t >= T.linked + 0.3 ? ` <span class="tag" style="opacity:${prog(t, T.linked + 0.3, 0.3)}">Linked</span>` : ""));
     out.push(`<div class="elbl" style="left:700px;top:206px;opacity:${prog(t, T.tapLink + 0.8, 0.3)}">EIP-712</div>`);
   } else if (scene === "c") {
-    add(node(t, T.cCode + 0.1, 0, 20, 300, "pv", `${mail} Privy email wallet`, "same email, same signature"));
-    add(node(t, T.cTapGo + 0.1, 0, 280, 300, "", `${vault} TerraceVault`, "hands back the sealed root"));
+    add(node(t, T.cCode + 0.1, 0, 20, 300, "pv", `${privy} Privy email wallet`, "same email, same signature"));
+    add(node(t, T.cTapGo + 0.1, 0, 280, 300, "", `${vault} TerraceVault`, `${monad}on Monad: hands back the sealed root`));
     e(T.cTapGo + 0.5, 300, 82, 390, 200, "wrap key", V, [345, 72]);
     e(T.cTapGo + 0.7, 300, 342, 390, 240, "", "#52525b");
     add(node(t, T.cTapGo + 0.9, 390, 158, 270, "acc", `${key} Root key`, "opened on this device"));
     e(T.cOpen - 0.2, 660, 220, 740, 220, "", G);
-    add(node(t, T.cOpen + 0.1, 740, 158, 280, "acc", `${tick} Same account`, ACCT));
+    add(node(t, T.cOpen + 0.1, 740, 158, 280, "acc", `${tick} Same account`, `${monad}${ACCT}`));
   } else if (scene === "d") {
     const a = T.d[0];
     add(node(t, a + 0.3, 0, 120, 270, "", `${face} Face ID`, "Mera passkey", ` <span class="tag">On</span>`));
-    add(node(t, a + 0.5, 750, 120, 270, "pv", `${mail} Email`, "code from Privy", ` <span class="tag">On</span>`));
+    add(node(t, a + 0.5, 750, 120, 270, "pv", `${privy} Email`, "code from Privy", ` <span class="tag">On</span>`));
     e(a + 0.9, 270, 182, 375, 182, "", G);
     e(a + 1.0, 750, 182, 645, 182, "", V);
-    add(node(t, a + 1.3, 375, 120, 270, "acc", `${key} One root key`, "one account"));
+    add(node(t, a + 1.3, 375, 120, 270, "acc", `${key} One root key`, `${monad}one account on Monad`));
     out.push(`<div style="position:absolute;left:0;width:1020px;top:300px;display:flex;justify-content:center;gap:12px">${["Picks", "Points", "AI agent", "Sealed picks"].map((s, i) => {
       const p = spring(prog(t, a + 1.9 + i * 0.15, 0.5));
       return `<div class="chip" style="height:42px;font-size:17px;opacity:${cl(prog(t, a + 1.9 + i * 0.15, 0.3))};transform:translateY(${(1 - p) * 14}px)">${s}</div>`;
@@ -389,7 +395,7 @@ window.seek = (t) => {
     <span class="ln big" style="font-size:132px;margin-top:34px;${st(e1)}">Face ID or email.</span>
     <span class="ln big green" style="font-size:132px;${st(e2)}">Same account.</span>
     <div style="margin-top:44px;${st(e3)}"><span id="url">play.terrace.social</span></div>
-    <div class="lead" style="font-size:24px;margin-top:30px;${st(e4)}">Passkeys by Mera · Email by Privy · On Monad</div>` : "";
+    <div style="margin-top:40px;${st(e4)}"><span class="brands"><span class="b">Passkeys by Mera</span><span class="b">Email by <img src="assets/privy-wordmark.png" style="height:34px" /></span><span class="b">On <img src="assets/monad.png" style="height:42px;border-radius:10px" /><b style="color:var(--ink);font-family:var(--cond);font-size:32px;letter-spacing:1px">MONAD</b></span></span></div>` : "";
 };
 
 document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {})))).then(() => {
