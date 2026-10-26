@@ -37,7 +37,7 @@ def open_page(p, fmt, port, scale=1.0):
     w, h = SIZES[fmt]
     browser = p.chromium.launch(args=["--force-color-profile=srgb", "--font-render-hinting=none", "--disable-threaded-animation"])
     page = browser.new_page(viewport={"width": w, "height": h}, device_scale_factor=scale)
-    page.goto(f"http://127.0.0.1:{port}/film.html?render=1")
+    page.goto(f"http://127.0.0.1:{port}/film.html?render=1&f={fmt}")
     page.wait_for_function("window.ready === true", timeout=60_000)
     return browser, page
 

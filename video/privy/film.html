@@ -33,7 +33,8 @@
   #url { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
 
   /* phone */
-  #phone { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; z-index: 5; }
+  #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
+  #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; z-index: 5; }
   #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
   #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
   #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
@@ -106,6 +107,22 @@
   .brands { display: inline-flex; align-items: center; gap: 30px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
   .brands .b { display: inline-flex; align-items: center; gap: 12px; }
   .elbl { position: absolute; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; transform: translate(-50%, -100%); padding-bottom: 8px; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  body.v #phonewrap { left: 377px; top: 470px; transform: scale(0.74); }
+  body.v #devpill { left: 377px; width: 326px; top: 416px; }
+  body.v #cap { left: 64px; top: 200px; width: 952px; }
+  body.v .ctitle { font-size: 76px; }
+  body.v .csub { font-size: 28px; margin-top: 14px; }
+  body.v .buls { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  body.v .bul { font-size: 24px; margin-top: 10px; }
+  body.v #dia { left: 52px; top: 1170px; transform: scale(0.92); transform-origin: 0 0; }
+  body.v .node .t { font-size: 28px; }
+  body.v .node .s { font-size: 19.5px; }
+  body.v .node.sm .t { font-size: 23px; }
+  body.v .node.sm .s { font-size: 17px; }
+  body.v .elbl { font-size: 17px; }
+  body.v .brands { flex-direction: column; gap: 18px; }
+  body.v .lead { padding: 0 80px; }
 </style>
 </head>
 <body>
@@ -114,7 +131,7 @@
   <div id="grid"></div>
   <div id="title"></div>
   <div id="devpill"></div>
-  <div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div><div id="face"></div></div></div>
+  <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div><div id="face"></div></div></div></div>
   <div id="cap"></div>
   <div id="dia"></div>
   <div id="end"></div>
@@ -123,6 +140,8 @@
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
 const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, d) => cl((t - a) / d);
 const eo = (x) => 1 - Math.pow(1 - x, 3);
@@ -349,7 +368,7 @@ function captions(t) {
   const L = (i, html, cls) => `<div class="${cls}" style="${st(life(t, c.at + i * 0.22, c.end))}">${html}</div>`;
   let h = L(0, c.step, "step") + L(1, c.title, "ctitle");
   if (c.sub) h += L(2, c.sub, "csub");
-  if (c.bullets) c.bullets.forEach((b, i) => (h += L(2.5 + i * 1.6, `<i></i>${b}`, "bul")));
+  if (c.bullets) h += `<div class="buls">${c.bullets.map((b, i) => L(2.5 + i * 1.6, `<i></i>${b}`, "bul")).join("")}</div>`;
   $("cap").innerHTML = h;
 }
 
@@ -363,9 +382,10 @@ window.seek = (t) => {
   const ti = life(t, 0.2, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
   const t2 = life(t, 0.75, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
   const t3 = life(t, 1.6, T.titleOut, { d: 0.7, dy: 20, out: 0.5 });
-  $("title").style.top = "310px";
-  $("title").innerHTML = t < T.titleOut ? `<span class="ln big" style="font-size:170px;${st(ti)}">Two ways in.</span>
-    <span class="ln big green" style="font-size:170px;${st(t2)}">One account.</span>
+  const TS = VERT ? 124 : 170;
+  $("title").style.top = VERT ? "660px" : "310px";
+  $("title").innerHTML = t < T.titleOut ? `<span class="ln big" style="font-size:${TS}px;${st(ti)}">Two ways in.</span>
+    <span class="ln big green" style="font-size:${TS}px;${st(t2)}">One account.</span>
     <span class="ln lead" style="font-size:36px;margin-top:34px;${st(t3)}">Face ID or an email code. Same picks, same points.</span>` : "";
 
   // phone
@@ -390,10 +410,10 @@ window.seek = (t) => {
   const e1 = life(t, T.end + 0.3, 99, { d: 0.7, dy: 30 }), e2 = life(t, T.end + 0.6, 99, { d: 0.7, dy: 30 });
   const e3 = life(t, T.end + 1.2, 99, { d: 0.6, dy: 16 }), e4 = life(t, T.end + 1.6, 99, { d: 0.6, dy: 12 });
   const fadeAll = 1 - prog(t, T.dur - 0.6, 0.6);
-  $("end").style.cssText = `top:250px;opacity:${fadeAll}`;
+  $("end").style.cssText = `top:${VERT ? 560 : 250}px;opacity:${fadeAll}`;
   $("end").innerHTML = t >= T.end ? `<img src="assets/terrace.png" style="width:110px;height:110px;border-radius:26px;${st(e1)}" />
-    <span class="ln big" style="font-size:132px;margin-top:34px;${st(e1)}">Face ID or email.</span>
-    <span class="ln big green" style="font-size:132px;${st(e2)}">Same account.</span>
+    <span class="ln big" style="font-size:${VERT ? 112 : 132}px;margin-top:34px;${st(e1)}">Face ID or email.</span>
+    <span class="ln big green" style="font-size:${VERT ? 112 : 132}px;${st(e2)}">Same account.</span>
     <div style="margin-top:44px;${st(e3)}"><span id="url">play.terrace.social</span></div>
     <div style="margin-top:40px;${st(e4)}"><span class="brands"><span class="b">Passkeys by Mera</span><span class="b">Email by <img src="assets/privy-wordmark.png" style="height:34px" /></span><span class="b">On <img src="assets/monad.png" style="height:42px;border-radius:10px" /><b style="color:var(--ink);font-family:var(--cond);font-size:32px;letter-spacing:1px">MONAD</b></span></span></div>` : "";
 };
