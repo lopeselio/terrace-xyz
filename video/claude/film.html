@@ -60,16 +60,47 @@
   .tl .hl { color: var(--green-ink); font-weight: 700; }
   .tl .lnk { color: #0a0a0a; background: var(--green); padding: 1px 8px; border-radius: 6px; font-weight: 700; }
   .cur { display: inline-block; width: 13px; height: 27px; background: #e5e7eb; vertical-align: -4px; margin-left: 2px; }
-  #desk { background: #faf9f5; border: 1.5px solid #e4e1d6; color: #1f1e1d; }
-  #desk .bar { background: #f0eee6; border-bottom: 1px solid #e4e1d6; color: #6b6a65; }
-  #desk .bar .who { color: #9a4a2f; }
-  #dbody { position: absolute; left: 0; right: 0; top: 46px; bottom: 92px; padding: 22px 28px; overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
-  .ub { align-self: flex-end; max-width: 82%; background: #ebe8dd; border-radius: 18px; padding: 14px 20px; font-size: 23px; font-weight: 500; }
-  .ab { font-family: "Source Serif 4", Georgia, serif; font-size: 27px; line-height: 1.45; color: #1f1e1d; max-width: 94%; }
+  #desk { background: #ffffff; border: 1.5px solid #e6e4dd; color: #1f1f1f; }
+  #desk .bar { background: #f7f6f2; border-bottom: 1px solid #ebe9e2; color: #6b6a65; }
+  #desk .bar .who { color: #b4552f; }
+  #dbody { position: absolute; left: 0; right: 0; top: 46px; bottom: 96px; overflow: hidden; }
+  #dchat { position: absolute; left: 0; right: 0; top: 0; padding: 22px 30px; display: flex; flex-direction: column; gap: 14px; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .ub { align-self: flex-end; max-width: 82%; background: #f0efea; border-radius: 16px; padding: 13px 18px; font-size: 22px; line-height: 1.4; }
+  .ub a { color: #1a5fb4; text-decoration: underline; }
+  .ab { font-size: 22px; line-height: 1.5; color: #1f1f1f; }
   .ab b { font-weight: 600; }
-  .chipt { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ddd9cc; border-radius: 10px; padding: 7px 14px; font-size: 18px; font-weight: 600; color: #6b6a65; background: #f5f3ec; }
-  .chipt i { width: 8px; height: 8px; border-radius: 50%; background: var(--clay); display: block; }
-  #dinput { position: absolute; left: 24px; right: 24px; bottom: 20px; height: 56px; border-radius: 16px; border: 1.5px solid #ddd9cc; background: #fff; display: flex; align-items: center; padding: 0 18px; font-size: 18px; color: #a19f97; }
+  .ab ul { margin: 6px 0 6px 28px; } .ab li { margin: 3px 0; }
+  .ab code { font-family: var(--mono); font-size: 18px; background: #f3f2ee; border: 1px solid #e6e4dd; border-radius: 6px; padding: 1px 6px; }
+  .ab .lnk2 { color: #1a5fb4; text-decoration: underline; }
+  .used { font-size: 19px; color: #8a8883; }
+  #dinput { position: absolute; left: 24px; right: 24px; bottom: 20px; height: 60px; border-radius: 18px; border: 1.5px solid #e2e0d8; background: #fff; display: flex; align-items: center; gap: 14px; padding: 0 12px; font-family: -apple-system, "Helvetica Neue", sans-serif; font-size: 20px; color: #a19f97; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+  #dinput .plus { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #3d3c39; font-size: 26px; font-weight: 300; }
+  #dinput .plus.on { background: #ecebe6; }
+  #dinput .txt { color: #1f1f1f; }
+  #dinput .ph { color: #a19f97; }
+  #dinput .model { margin-left: auto; font-size: 17px; color: #6b6a65; padding-right: 8px; }
+  .menu { position: absolute; background: #fff; border: 1px solid #e2e0d8; border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,0.12); padding: 6px; font-family: -apple-system, "Helvetica Neue", sans-serif; font-size: 18px; color: #2b2a27; z-index: 4; }
+  .mi { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 9px; white-space: nowrap; }
+  .mi .ic { width: 20px; text-align: center; color: #55534e; }
+  .mi .ch { margin-left: auto; color: #8a8883; }
+  .mi.hot { background: #f0efea; }
+  .sep { height: 1px; background: #ebe9e2; margin: 4px 8px; }
+  .tog { margin-left: auto; width: 40px; height: 24px; border-radius: 12px; background: #d4d2cb; position: relative; }
+  .tog i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+  .tico { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  #cursor { position: absolute; z-index: 25; width: 30px; height: 30px; pointer-events: none; }
+  .mk { display: inline-block; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; vertical-align: middle; }
+  .mk-claude { --m: url(assets/claude.svg); background: #d97757; }
+  .mk-npm { --m: url(assets/npm.svg); background: #cb3837; }
+  .mk-gh { --m: url(assets/github.svg); background: #f9fafb; }
+  .ilogo { height: 1em; width: 1em; border-radius: 0.25em; vertical-align: -0.15em; margin: 0 0.15em; }
+  .ilogo.round { border-radius: 50%; background: #fff; }
+  .clawd { display: inline-block; vertical-align: middle; image-rendering: pixelated; }
+  .banner { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+  .banner b { color: #f3f4f6; }
+  .links { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 14px; font-family: var(--mono); font-size: 26px; color: #e5e7eb; }
+  .links div { display: flex; align-items: center; gap: 16px; }
+  body.v .links { font-size: 22px; }
   #fly { position: absolute; z-index: 20; height: 40px; border-radius: 10px; background: var(--green); color: #04180c; font-family: var(--mono); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; padding: 0 14px; white-space: nowrap; box-shadow: 0 0 40px rgba(34,197,94,0.45); }
   #trail { position: absolute; inset: 0; z-index: 19; pointer-events: none; }
 
@@ -105,6 +136,7 @@
   .odd-yes { background: #0c1f14; border-color: #17422a; } .odd-yes .lbl { color: var(--green-ink); }
   .odd-no { background: #1d0d0d; border-color: #452020; } .odd-no .lbl { color: var(--red-ink); }
   .kv { display: flex; justify-content: space-between; align-items: center; padding: 11px 0 0; font-size: 15px; }
+  .cta-p { margin-top: 10px; height: 52px; border-radius: 14px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; }
   .kv .k { color: var(--ink-2); } .kv .v { font-weight: 700; }
 
   /* full-time board */
@@ -123,21 +155,21 @@
   #cmd .p { color: var(--ink-3); }
   body.v #cmd { font-size: 19px; padding: 0 18px; }
   body.v #tbody { font-size: 23px; padding: 22px 24px; }
-  body.v .ab { font-size: 25px; }
-  body.v .ub { font-size: 22px; }
-  body.v #dbody { gap: 10px; padding: 18px 24px; }
+  body.v .ab { font-size: 21px; }
+  body.v .ub { font-size: 21px; }
+  body.v #dchat { gap: 10px; padding: 18px 24px; }
 </style>
 </head>
 <body>
 <div id="frame">
   <div id="glow"></div><div id="grid"></div>
   <div id="cover"></div>
-  <div id="term" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who">You</span><span class="app">Claude Code · terminal</span></div><div id="tbody"></div></div>
-  <div id="desk" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who">Your mate</span><span class="app">Claude Desktop</span></div><div id="dbody"></div><div id="dinput">Reply to Claude…</div></div>
+  <div id="term" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who" id="who-you">You</span><span class="app"><span class="mk mk-claude" style="width:18px;height:18px;margin-right:8px"></span>Claude Code · terminal</span></div><div id="tbody"></div></div>
+  <div id="desk" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who" id="who-mate">Your mate</span><span class="app"><span class="mk mk-claude" style="width:18px;height:18px;margin-right:8px"></span>Claude Desktop</span></div><div id="dbody"><div id="dchat"></div></div><div id="dmenu"></div><div id="dinput"></div></div>
   <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div></div></div></div>
   <div id="ft"></div>
   <svg id="trail"></svg><div id="fly"></div><div id="coin"></div>
-  <div id="end"></div>
+  <div id="end"></div><svg id="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6.2 1.6L16 20l-2.6 1.2-3.2-7.3L5 18z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
   <div id="dim"></div><div id="chap"></div>
   <div id="vig"></div>
 </div>
@@ -148,6 +180,7 @@ if (VERT) document.body.classList.add("v");
 const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
 const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, d) => cl((t - a) / d);
+const span = (t, [a, b]) => prog(t, a, b - a); // progress through a [start, end] window
 const eo = (x) => 1 - Math.pow(1 - x, 3);
 const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
@@ -163,22 +196,51 @@ const typed = (t, a, b, text) => text.slice(0, Math.round(cl((t - a) / (b - a)) 
 const T = {
   coverOut: 3.0, split: [3.0, 4.2],
   ch: [
-    { at: 4.2, n: 1, text: "Say your take." },
-    { at: 14.6, n: 2, text: "Send the link." },
-    { at: 19.6, n: 3, text: "Their Claude takes it on." },
-    { at: 28.6, n: 4, text: "It's live on Terrace." },
-    { at: 35.6, n: 5, text: "Full time decides." },
+    { at: 4.2, n: 1, text: "Add Terrace to Claude." },
+    { at: 15.4, n: 2, text: "Say your take." },
+    { at: 25.8, n: 3, text: "Send the link." },
+    { at: 30.8, n: 4, text: "Their Claude takes it on." },
+    { at: 40.6, n: 5, text: "It's live on Terrace." },
+    { at: 47.6, n: 6, text: "Full time decides." },
+    { at: 56.4, n: 7, text: "Collect it from the chat." },
   ],
-  // terminal
-  type1: [6.2, 8.6], tool1: 9.0, rule1: 9.5, ask1: 10.1, type2: [11.2, 11.5], tool2: 11.9, live: 12.5, send: 12.9,
-  // link flight
-  fly: [16.6, 17.9], landed: 18.1,
-  // desktop
-  dtool1: 21.6, dsay1: [22.1, 23.6], dyes: 24.6, dtool2: 25.2, dsay2: [25.8, 27.0],
-  // phone + settle
-  phoneIn: 29.8, ftIn: 37.4, stamp: 38.6, chainlink: 39.2, settled: 40.0, coin: [40.8, 42.0],
-  end: 44.4, dur: 50,
+  // 1: install in Claude Code, switch the connector on in Claude Desktop, both show their account
+  add: [6.1, 7.5], added: 7.8, mcp: [8.5, 8.8], mcpOk: 9.1, acct: [10.6, 11.6], acctTool: 11.9, acctOut: 12.3,
+  plus: 6.9, conn: 7.5, tog: 8.3, menuOut: 9.2, dtype: [9.5, 10.3], dsend: 10.5, dused: 11.0, dacct: [11.4, 13.4],
+  // 2: the take
+  newSession: 15.4, type1: [17.4, 19.8], tool1: 20.2, ask1: 21.3, type2: [22.4, 22.7], tool2: 23.1, live: 23.7, send: 24.1,
+  // 3: link flight
+  fly: [27.9, 29.2], landed: 29.4,
+  // 4: desktop accepts
+  dtool1: 32.6, dsay1: [33.0, 35.0], dyes: 35.8, dtool2: 36.4, dsay2: [36.9, 38.2],
+  // 5, 6: phone + settle
+  phoneIn: 41.8, ftIn: 49.4, stamp: 50.6, chainlink: 51.2, payBtn: 52.0,
+  // 7: collect from Claude Code
+  termBack: [56.6, 57.5], ctype: [58.4, 59.4], ctool: 59.8, cout: 60.3, settled: 60.3, coin: [60.5, 61.7], hop: 61.7,
+  end: 64.4, dur: 70,
 };
+
+/* ---------------- Clawd ----------------
+   The block-character crab from Claude Code's welcome banner:  ▐▛███▜▌ / ▝▜█████▛▘ / ▘▘ ▝▝
+   Each character is 2x2 quadrants; quadrants are 1 wide x 2 tall like a terminal cell. */
+const Q = { " ": "0000", "▐": "0101", "▛": "1110", "█": "1111", "▜": "1101", "▌": "1010", "▝": "0100", "▘": "1000" };
+const CLAWD_ROWS = [" ▐▛███▜▌", "▝▜█████▛▘", "  ▘▘ ▝▝"];
+const CLAWD_RECTS = (() => {
+  const r = [];
+  CLAWD_ROWS.forEach((row, ri) => [...row].forEach((ch, ci) => {
+    const q = Q[ch];
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([dx, dy], k) => { if (q[k] === "1") r.push([2 * ci + dx, (2 * ri + dy) * 2]); });
+  }));
+  return r;
+})();
+/** w = width in px. blink closes the eyes; flip mirrors it to face the other way. */
+function clawd(w, { color = "#d97757", blink = false, flip = false, style = "" } = {}) {
+  const rects = CLAWD_RECTS.map(([x, y]) => `<rect x="${x}" y="${y}" width="1.04" height="2.04"/>`).join("");
+  const eyes = blink ? `<rect x="5" y="2" width="1.04" height="2.04"/><rect x="12" y="2" width="1.04" height="2.04"/>` : "";
+  return `<svg class="clawd" width="${w}" height="${(w * 12) / 18}" viewBox="0 0 18 12" shape-rendering="crispEdges" fill="${color}" style="${flip ? "transform:scaleX(-1);" : ""}${style}">${rects}${eyes}</svg>`;
+}
+const blinkAt = (t, seed = 0) => (t + seed) % 3.1 < 0.12;
+const ML = `<img class="ilogo" src="assets/monad.png" />`, CL = `<img class="ilogo round" src="assets/chainlink.png" />`;
 
 /* ---------------- chapter titles ---------------- */
 function chapter(t) {
@@ -207,57 +269,149 @@ function chapter(t) {
 
 /* ---------------- layout ---------------- */
 const L = VERT
-  ? { term: [60, 330, 960, 570], desk: [60, 960, 960, 570], phone: { x: 540 - 220 * 0.9, y: 620, k: 0.9 }, phoneSide: { x: 540 - 220 * 0.9, y: 712 }, ft: { x: 330, y: 290, k: 0.75 } }
-  : { term: [80, 190, 860, 740], desk: [980, 190, 860, 740], phone: { x: 960 - 220 * 0.95, y: 110, k: 0.95 }, phoneSide: { x: 1180, y: 110 }, ft: { x: 220, y: 300, k: 1 } };
+  ? { term: [60, 330, 960, 570], desk: [60, 960, 960, 570], phone: { x: 540 - 220 * 0.9, y: 620, k: 0.9 }, phoneSide: { x: 540 - 220 * 0.9, y: 712 }, ft: { x: 330, y: 290, k: 0.75 }, termC: [60, 300, 960, 400], phoneC: { x: 540 - 220 * 0.85, y: 740, k: 0.85 } }
+  : { term: [80, 190, 860, 740], desk: [980, 190, 860, 740], phone: { x: 960 - 220 * 0.95, y: 110, k: 0.95 }, phoneSide: { x: 1180, y: 110 }, ft: { x: 220, y: 300, k: 1 }, termC: [80, 190, 860, 740], phoneC: { x: 1180, y: 110, k: 0.95 } };
 
 function windows(t) {
   // windows slide in from the side their title went (my Claude left/top, your Claude right/bottom)
   const inT = eo(prog(t, T.split[0] + 0.4, 0.8));
   const back = eio(prog(t, T.phoneIn - 0.8, 0.7)); // make room for the phone
+  const ret = eio(span(t, T.termBack)); // the terminal comes back to collect
   for (const [id, r, dir] of [["term", L.term, -1], ["desk", L.desk, 1]]) {
     const el = $(id);
-    const [x, y, w, h] = r;
+    const rr = id === "term" ? r.map((v, i) => lerp(v, L.termC[i], ret)) : r;
+    const [x, y, w, h] = rr;
+    const b = id === "term" ? back * (1 - ret) : back;
     const off = (1 - inT) * (VERT ? 0 : 1200) * dir, offY = (1 - inT) * (VERT ? 1200 : 0) * dir;
-    const o = inT * (1 - back * 0.94) * (1 - prog(t, T.end - 0.6, 0.5));
-    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:${o.toFixed(3)};transform:translate(${off}px,${offY}px) scale(${lerp(1, 0.92, back)});filter:blur(${(back * 4).toFixed(1)}px)`;
+    const o = inT * (1 - b * 0.94) * (1 - prog(t, T.end - 0.6, 0.5));
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:${o.toFixed(3)};transform:translate(${off}px,${offY}px) scale(${lerp(1, 0.92, b)});filter:blur(${(b * 4).toFixed(1)}px)`;
   }
+  $("who-you").innerHTML = `${clawd(30, { blink: blinkAt(t), style: "margin-right:10px;vertical-align:-3px" })}You`;
+  $("who-mate").innerHTML = `${clawd(30, { blink: blinkAt(t, 1.3), flip: true, style: "margin-right:10px;vertical-align:-3px" })}Your mate`;
   // the window that isn't speaking dims a little
-  const focus = t < T.ch[1].at ? "term" : t < T.ch[2].at ? null : "desk";
+  const focus = t < T.ch[1].at ? null : t < T.ch[2].at ? "term" : t < T.ch[3].at ? null : "desk";
   if (focus && back === 0) $(focus === "term" ? "desk" : "term").style.opacity = (inT * 0.55).toFixed(3);
 }
 
 function terminal(t) {
   const lines = [];
-  const p1 = "bet my mate $10 there'll be over 2.5 goals in Stuttgart v Gladbach tonight";
-  const cur = (t2) => (Math.floor(t2 * 2.4) % 2 === 0 ? `<span class="cur"></span>` : "");
-  if (t >= T.split[0]) lines.push(`<div class="tl"><span class="p">&gt; </span>${typed(t, ...T.type1, p1)}${t < T.tool1 ? cur(t) : ""}</div>`);
+  const cur = (on) => (on && Math.floor(t * 2.4) % 2 === 0 ? `<span class="cur"></span>` : "");
   const show = (at, html) => { if (t >= at) lines.push(`<div class="tl" style="opacity:${prog(t, at, 0.25)}">${html}</div>`); };
-  show(T.tool1, `<span class="dot">⏺</span> <span class="tool">terrace · preview take</span>\n  <span class="dim">⎿ settles YES if the match has 3 or more goals</span>`);
-  show(T.ask1, `<span class="dot">⏺</span> Rule: <span class="hl">YES if there are 3+ goals.</span> $10 each, winner takes <span class="hl">$20</span>. Go?`);
-  if (t >= T.type2[0] - 0.4) lines.push(`<div class="tl"><span class="p">&gt; </span>${typed(t, ...T.type2, "yes")}${t < T.tool2 ? cur(t) : ""}</div>`);
-  show(T.tool2, `<span class="dot">⏺</span> <span class="tool">terrace · challenge</span>`);
-  show(T.live, `<span class="dot">⏺</span> Challenge #15 is live: <span class="lnk" id="tlink">play.terrace.social/c/15</span>`);
-  show(T.send, `  <span class="dim">Send your mate the link.</span>`);
+  const prompt = (at, [a, b], text, sign = "&gt;", until = Infinity) => { if (t >= at) lines.push(`<div class="tl"><span class="p">${sign} </span>${typed(t, a, b, text)}${cur(t < until)}</div>`); };
+  const banner = (at) => show(at, `<div class="banner">${clawd(VERT ? 66 : 76, { blink: blinkAt(t, 0.4) })}<div><b>Claude Code</b>\n<span class="dim">Opus 5.5 · ~/terrace</span></div></div>`);
+  if (t >= T.termBack[0]) {
+    lines.push(`<div class="tl" style="opacity:0.45"><span class="dot">⏺</span> Challenge #15 is live: play.terrace.social/c/15</div>`);
+    prompt(T.termBack[1], T.ctype, "it's full time, collect my winnings", "&gt;", T.ctool);
+    show(T.ctool, `<span class="dot">⏺</span> <span class="tool">terrace · collect</span>`);
+    const hop = Math.abs(Math.sin(cl((t - T.hop) / 0.9) * Math.PI * 3)) * (1 - prog(t, T.hop, 0.9)) * 18;
+    show(T.cout, `<span class="dot">⏺</span> You called it: <span class="hl" id="tpay">+$20.00</span> from challenge #15,\n  paid to your account on ${ML}Monad. ${clawd(44, { style: `transform:translateY(${-hop}px);margin-left:6px` })}`);
+    $("tbody").style.opacity = 1;
+    $("tbody").innerHTML = lines.join("");
+    return;
+  }
+  if (t < T.newSession) {
+    banner(T.split[0]);
+    prompt(T.split[0], T.add, "claude mcp add terrace -- npx -y terrace-mcp", "$", T.added);
+    show(T.added, `<span class="dim">Added MCP server terrace</span>`);
+    prompt(T.added + 0.3, T.mcp, "/mcp", "&gt;", T.mcpOk);
+    show(T.mcpOk, `<span class="dot">⏺</span> <span class="tool">terrace</span> <span class="hl">✔ connected</span> <span class="dim">· 11 tools</span>`);
+    prompt(T.mcpOk + 0.6, T.acct, "show my terrace account", "&gt;", T.acctTool);
+    show(T.acctTool, `<span class="dot">⏺</span> <span class="tool">terrace · account</span>`);
+    show(T.acctOut, `<span class="dot">⏺</span> Your Terrace account on ${ML}Monad: <span class="hl">0x3a50…1738</span>\n  $0.00 test dollars · max $25 a bet\n  <span class="dim">Tops up with $100 on the first bet.</span>`);
+  } else {
+    banner(T.newSession + 0.6);
+    const p1 = "bet my mate $10 there'll be over 2.5 goals in Stuttgart v Gladbach tonight";
+    prompt(T.newSession + 0.8, T.type1, p1, "&gt;", T.tool1);
+    show(T.tool1, `<span class="dot">⏺</span> <span class="tool">terrace · preview take</span>\n  <span class="dim">⎿ settles YES if the match has 3 or more goals</span>`);
+    show(T.ask1, `<span class="dot">⏺</span> Rule: <span class="hl">YES if there are 3+ goals.</span> $10 each, winner takes <span class="hl">$20</span>. Go?`);
+    prompt(T.type2[0] - 0.4, T.type2, "yes", "&gt;", T.tool2);
+    show(T.tool2, `<span class="dot">⏺</span> <span class="tool">terrace · challenge</span>`);
+    show(T.live, `<span class="dot">⏺</span> Challenge #15 is live: <span class="lnk" id="tlink">play.terrace.social/c/15</span>`);
+    show(T.send, `  <span class="dim">Send your mate the link.</span>`);
+  }
+  const f = t >= T.newSession ? eo(prog(t, T.newSession + 0.6, 0.3)) : 1;
+  $("tbody").style.opacity = f;
   $("tbody").innerHTML = lines.join("");
 }
 
+const words = (t, t0, t1, html) => {
+  // reveal word by word; tags pass through untouched
+  const parts = html.split(/(<[^>]+>|\s+)/).filter(Boolean);
+  const n = parts.filter((w) => !w.startsWith("<") && w.trim()).length;
+  let k = Math.round(cl((t - t0) / (t1 - t0)) * n), i = 0;
+  return parts.map((w) => (w.startsWith("<") || !w.trim() ? w : i++ < k ? w : `<span style="opacity:0">${w}</span>`)).join("");
+};
+const USED = `<div class="used">Loaded tools, used terrace integration ▸</div>`;
 function desktop(t) {
   const out = [];
-  const pop = (at, html) => { if (t >= at) { const p = spring(prog(t, at, 0.5)); out.push(html.replace("STYLE", `opacity:${cl(prog(t, at, 0.25))};transform:translateY(${((1 - p) * 14).toFixed(1)}px)`)); } };
-  const words = (t0, t1, html) => {
-    // reveal word by word; tags pass through untouched
-    const parts = html.split(/(<[^>]+>|\s+)/).filter(Boolean);
-    const n = parts.filter((w) => !w.startsWith("<") && w.trim()).length;
-    let k = Math.round(cl((t - t0) / (t1 - t0)) * n), i = 0;
-    return parts.map((w) => (w.startsWith("<") || !w.trim() ? w : i++ < k ? w : `<span style="opacity:0">${w}</span>`)).join("");
-  };
-  pop(T.landed, `<div class="ub" style="STYLE">accept this: play.terrace.social/c/15</div>`);
-  pop(T.dtool1, `<div class="chipt" style="STYLE"><i></i>terrace · challenge details</div>`);
-  if (t >= T.dsay1[0]) out.push(`<div class="ab">${words(...T.dsay1, "Your mate's Claude says <b>YES: over 2.5 goals</b> in Stuttgart v Gladbach. You'd take <b>NO</b> for $10. Winner takes $20. Want in?")}</div>`);
-  pop(T.dyes, `<div class="ub" style="STYLE">yes</div>`);
-  pop(T.dtool2, `<div class="chipt" style="STYLE"><i></i>terrace · accept challenge</div>`);
-  if (t >= T.dsay2[0]) out.push(`<div class="ab">${words(...T.dsay2, "You're on: you back <b>NO</b> with $10. Winner takes $20 once Chainlink settles it.")}</div>`);
-  $("dbody").innerHTML = out.join("");
+  const pop = (at, html) => { if (t >= at) { const p = spring(prog(t, at, 0.5)); out.push(`<div style="display:contents">${html.replace("STYLE", `opacity:${cl(prog(t, at, 0.25))};transform:translateY(${((1 - p) * 14).toFixed(1)}px)`)}</div>`); } };
+  const say = ([a, b], html) => { if (t >= a) out.push(`<div class="ab">${words(t, a, b, html)}</div>`); };
+  let input = `<span class="ph">Reply to Claude…</span>`;
+  if (t < T.landed - 0.1) {
+    // chapter 1: the account, through the terrace connector
+    if (t >= T.dtype[0] && t < T.dsend) input = `<span class="txt">${typed(t, ...T.dtype, "show my terrace account")}</span>`;
+    pop(T.dsend, `<div class="ub" style="STYLE">show my terrace account</div>`);
+    pop(T.dused, USED.replace('class="used"', 'class="used" style="STYLE"'));
+    say(T.dacct, `Here's the Terrace account this session uses on ${ML}Monad testnet. It only holds test money.<ul><li><b>Address:</b> <code>0x25A5D3c9…Ef0eeD9b</code> (<span class="lnk2">explorer</span>)</li><li><b>Test dollars:</b> $0.00</li><li><b>Max per bet:</b> $25</li></ul>It gets $100 in test dollars plus gas automatically when the first bet is placed.`);
+  } else {
+    // chapter 4: a new chat with the invite
+    pop(T.landed, `<div class="ub" style="STYLE">I bet you $10.00 that Over 2.5 goals. You say it won't? Open <a>https://play.terrace.social/c/15</a></div>`);
+    pop(T.dtool1, USED.replace('class="used"', 'class="used" style="STYLE"'));
+    say(T.dsay1, `I opened challenge #15. Here are the terms:<ul><li><b>Match:</b> VfB Stuttgart v Borussia Mönchengladbach</li><li><b>Their side:</b> Over 2.5 goals (3 or more)</li><li><b>Your side:</b> Under (2 goals or fewer)</li><li><b>Stake:</b> $10 each, winner takes $20</li></ul>Want in?`);
+    pop(T.dyes, `<div class="ub" style="STYLE">yes</div>`);
+    pop(T.dtool2, USED.replace('class="used"', 'class="used" style="STYLE"'));
+    say(T.dsay2, `You're on: you back <b>Under</b> with $10. Winner takes $20 once ${CL}Chainlink settles it.`);
+  }
+  const chat = $("dchat");
+  chat.innerHTML = out.join("");
+  const over = Math.max(0, chat.scrollHeight - $("dbody").clientHeight);
+  chat.style.transform = `translateY(${-over}px)`;
+  $("dinput").innerHTML = `<span class="plus${t >= T.plus && t < T.menuOut ? " on" : ""}" id="d-plus">+</span>${input}<span class="model">Opus 5.5</span>`;
+  connectorMenu(t);
+}
+
+/* the "+" menu → Connectors → terrace switched on (as in Claude Desktop) */
+function connectorMenu(t) {
+  const m = $("dmenu");
+  if (t < T.plus + 0.1 || t > T.menuOut + 0.25) { m.innerHTML = ""; return; }
+  const o = cl(prog(t, T.plus + 0.1, 0.15)) * (1 - prog(t, T.menuOut, 0.25));
+  const sub = t >= T.conn + 0.1;
+  const on = eo(prog(t, T.tog + 0.05, 0.25));
+  const tog = (v, id = "") => `<span class="tog" ${id} style="background:${v === 1 ? "#2c84db" : `rgb(${lerp(212, 44, v)},${lerp(210, 132, v)},${lerp(203, 219, v)})`}"><i style="left:${3 + v * 16}px"></i></span>`;
+  const bottom = 92;
+  m.innerHTML = `<div class="menu" style="left:24px;bottom:${bottom}px;width:300px;opacity:${o}">
+      <div class="mi"><span class="ic">📎</span>Upload or add files</div>
+      <div class="mi"><span class="ic">⏺</span>Record a skill</div><div class="sep"></div>
+      <div class="mi"><span class="ic">▤</span>Skills<span class="ch">›</span></div>
+      <div class="mi ${t >= T.conn - 0.05 ? "hot" : ""}" id="d-conn"><span class="ic">⧉</span>Connectors<span class="ch">›</span></div>
+      <div class="mi"><span class="ic">◐</span>Design system<span class="ch">›</span></div>
+      <div class="mi"><span class="ic">⌁</span>Add plugins</div></div>
+    ${sub ? `<div class="menu" style="left:332px;bottom:${bottom + 46}px;width:290px;opacity:${o * cl(prog(t, T.conn + 0.1, 0.15))}">
+      <div class="mi"><span class="ic">+</span>Add connector<span class="ch">›</span></div>
+      <div class="mi"><span class="ic">▭</span>Manage connectors</div><div class="sep"></div>
+      <div class="mi"><span class="tico" style="background:#1a73e8;color:#fff">D</span>Google Docs${tog(1)}</div>
+      <div class="mi"><span class="tico" style="background:#ecebe6;color:#55534e">C</span>Claude in Chrome${tog(1)}</div>
+      <div class="mi ${t >= T.tog - 0.05 ? "hot" : ""}"><span class="tico" style="background:#0a0a0a;color:#22c55e">T</span><b style="font-weight:600">terrace</b>${tog(on, 'id="d-tog"')}</div></div>` : ""}`;
+}
+
+/* mouse in Claude Desktop: "+" → Connectors → terrace switch */
+function cursor(t) {
+  const c = $("cursor");
+  const pts = [[T.plus, "d-plus"], [T.conn, "d-conn"], [T.tog, "d-tog"]];
+  if (t < T.plus - 0.9 || t > T.menuOut + 0.4) { c.style.opacity = 0; return; }
+  const fr = $("frame").getBoundingClientRect();
+  const at = (id) => { const r = $(id)?.getBoundingClientRect(); return r ? [r.left - fr.left + r.width * 0.5, r.top - fr.top + r.height * 0.5] : null; };
+  const start = at("dinput") ? [at("dinput")[0] + 120, at("dinput")[1] - 160] : [0, 0];
+  let prev = start, pos = start;
+  for (const [time, id] of pts) {
+    const p = at(id) || prev;
+    if (t < time - 0.5) break;
+    pos = t >= time ? p : [lerp(prev[0], p[0], eio(prog(t, time - 0.5, 0.45))), lerp(prev[1], p[1], eio(prog(t, time - 0.5, 0.45)))];
+    prev = p;
+  }
+  const press = pts.some(([time]) => t > time - 0.03 && t < time + 0.09) ? 0.82 : 1;
+  const o = cl(prog(t, T.plus - 0.9, 0.2)) * (1 - prog(t, T.menuOut + 0.1, 0.3));
+  c.style.cssText = `left:${pos[0] - 6}px;top:${pos[1] - 4}px;opacity:${o};transform:scale(${press})`;
 }
 
 /* the link flies from the terminal to the desktop's input */
@@ -269,7 +423,7 @@ function flight(t) {
   if (!a) return;
   const fr = $("frame").getBoundingClientRect();
   const x0 = a.left - fr.left, y0 = a.top - fr.top - 4, x1 = b.left - fr.left + 30, y1 = b.top - fr.top + 8;
-  const p = eio(prog(t, ...T.fly));
+  const p = eio(span(t, T.fly));
   const cx = (x0 + x1) / 2, cy = Math.min(y0, y1) - (VERT ? 0 : 220);
   const cxv = VERT ? Math.max(x0, x1) + 260 : cx;
   const bez = (u) => [(1 - u) ** 2 * x0 + 2 * (1 - u) * u * cxv + u * u * x1, (1 - u) ** 2 * y0 + 2 * (1 - u) * u * cy + u * u * y1];
@@ -289,11 +443,12 @@ const BMG = `<div class="crest" style="background:#111;color:#fff;border:3px sol
 function challenge(t) {
   const settled = t >= T.settled;
   const badge = settled ? `<span class="badge b-settled">Settled</span>` : `<span class="badge b-open">On</span>`;
+  const pay = !settled && t >= T.payBtn ? `<div class="cta-p" style="opacity:${prog(t, T.payBtn, 0.3)}">Settle and pay the winner</div>` : "";
   const won = settled ? `<div class="card greenish" style="opacity:${prog(t, T.settled, 0.3)};transform:scale(${lerp(0.94, 1, spring(prog(t, T.settled, 0.5)))})"><div class="q" style="margin:0;font-size:24px">Claude called it</div><div class="umeta" style="margin-top:4px">$20 paid out. Bragging rights: settled.</div></div>` : "";
   return `<div class="pad">
     <div class="apphdr"><img src="assets/terrace.png" />TERRACE<span class="pill">1v1</span></div>
     <div class="card" style="border-color:var(--green-mid)">
-      <div class="row"><div class="avatar" style="background:#3b1d14;color:#f0a68a">C</div>
+      <div class="row"><div class="avatar" style="background:#2a1710">${clawd(30, { blink: blinkAt(t, 0.7) })}</div>
         <div style="flex:1;min-width:0"><div class="umeta">Challenge from</div><div class="uname">Claude <span class="badge b-ai">AI</span></div></div>${badge}</div>
       <div class="row" style="justify-content:center;gap:22px;margin-top:16px">
         <div style="text-align:center">${VFB}<div class="umeta" style="margin-top:7px;color:var(--ink-2)">VfB Stuttgart</div></div>
@@ -304,23 +459,24 @@ function challenge(t) {
       <div class="kv"><span class="k">Stake each</span><span class="v">$10.00</span></div>
       <div class="kv"><span class="k">Winner takes</span><span class="v" style="font-family:var(--cond);font-size:24px;color:var(--green)">$20.00</span></div>
     </div>
-    <div class="card row"><div class="avatar" style="background:#2e1065;color:#c4b5fd">M</div><div><div class="uname">Mate's Claude <span class="badge b-ai">AI</span></div><div class="umeta">took the other side: No</div></div></div>
-    ${won}
-    <div class="row" style="justify-content:center;gap:6px;margin-top:14px"><span class="badge b-terrace">1v1</span><span class="badge b-chainlink">Settled by Chainlink</span></div>
+    <div class="card row"><div class="avatar" style="background:#2a1710">${clawd(30, { blink: blinkAt(t, 2.1), flip: true })}</div><div><div class="uname">Mate's Claude <span class="badge b-ai">AI</span></div><div class="umeta">took the other side: No</div></div></div>
+    ${pay}${won}
+    <div class="row" style="justify-content:center;gap:6px;margin-top:14px"><span class="badge b-terrace">1v1</span><span class="badge b-chainlink"><img src="assets/chainlink.png" style="width:13px;height:13px;border-radius:50%;background:#fff" />Settled by Chainlink</span></div>
   </div>`;
 }
 
 function phone(t) {
   const inP = spring(prog(t, T.phoneIn, 0.8)), o = cl(prog(t, T.phoneIn, 0.3)) * (1 - prog(t, T.end - 0.5, 0.45));
   const side = eio(prog(t, T.ftIn - 0.7, 0.7));
-  const x = lerp(L.phone.x, L.phoneSide.x, side), y = lerp(L.phone.y, L.phoneSide.y, side);
-  $("phonewrap").style.cssText = `left:${x}px;top:${y + (1 - inP) * 160}px;opacity:${o};transform:scale(${L.phone.k})`;
+  const c7 = eio(span(t, T.termBack));
+  const x = lerp(lerp(L.phone.x, L.phoneSide.x, side), L.phoneC.x, c7), y = lerp(lerp(L.phone.y, L.phoneSide.y, side), L.phoneC.y, c7);
+  $("phonewrap").style.cssText = `left:${x}px;top:${y + (1 - inP) * 160}px;opacity:${o};transform:scale(${lerp(L.phone.k, L.phoneC.k, c7)})`;
   if (o > 0) $("view").innerHTML = challenge(t);
 }
 
 function fulltime(t) {
   const el = $("ft");
-  const o = cl(prog(t, T.ftIn, 0.3)) * (1 - prog(t, T.end - 0.5, 0.45));
+  const o = cl(prog(t, T.ftIn, 0.3)) * (1 - prog(t, T.termBack[0] - 0.2, 0.5));
   const p = spring(prog(t, T.ftIn, 0.6));
   el.style.cssText = `left:${L.ft.x}px;top:${L.ft.y + (1 - p) * 40}px;opacity:${o};transform:scale(${L.ft.k});transform-origin:0 0`;
   if (o <= 0) { el.innerHTML = ""; return; }
@@ -338,28 +494,29 @@ function coin(t) {
   c.style.opacity = 0;
   if (t < T.coin[0] || t > T.coin[1] + 0.3) return;
   const fr = $("frame").getBoundingClientRect();
-  const from = $("ft").getBoundingClientRect(), to = $("phonewrap").getBoundingClientRect();
-  const x0 = from.left - fr.left + from.width / 2 - 50, y0 = from.top - fr.top + from.height - 60;
-  const x1 = to.left - fr.left + to.width / 2 - 50, y1 = to.top - fr.top + to.height * 0.66;
-  const p = eio(prog(t, ...T.coin));
+  const from = $("phonewrap").getBoundingClientRect(), to = $("tpay")?.getBoundingClientRect();
+  if (!to) return;
+  const x0 = from.left - fr.left + from.width / 2 - 50, y0 = from.top - fr.top + from.height * 0.7;
+  const x1 = to.left - fr.left, y1 = to.top - fr.top - 12;
+  const p = eio(span(t, T.coin));
   const arc = Math.sin(p * Math.PI) * (VERT ? 80 : 160);
   c.style.cssText = `left:${lerp(x0, x1, p)}px;top:${lerp(y0, y1, p) - arc}px;opacity:${(1 - prog(t, T.coin[1], 0.3))};transform:scale(${lerp(0.8, 1.1, Math.sin(p * Math.PI))})`;
   c.textContent = "+$20";
 }
 
 /* ---------------- cover + end ---------------- */
-const BRANDS = `<span class="brands"><span class="b">In <span class="w">CLAUDE</span></span><span class="b">Settled by <img src="assets/chainlink.png" style="height:34px;border-radius:50%;background:#fff" /><span class="w">CHAINLINK</span></span><span class="b">On <img src="assets/monad.png" style="height:40px;border-radius:10px" /><span class="w">MONAD</span></span></span>`;
+const BRANDS = `<span class="brands"><span class="b">In <span class="mk mk-claude" style="width:36px;height:36px"></span><span class="w">CLAUDE</span></span><span class="b">Settled by <img src="assets/chainlink.png" style="height:34px;border-radius:50%;background:#fff" /><span class="w">CHAINLINK</span></span><span class="b">On <img src="assets/monad.png" style="height:40px;border-radius:10px" /><span class="w">MONAD</span></span></span>`;
 function cover(t) {
   const el = $("cover");
   if (t >= T.split[1]) { el.innerHTML = ""; return; }
-  const s = eio(prog(t, ...T.split));
+  const s = eio(span(t, T.split));
   const fade = 1 - prog(t, T.split[0], 0.6);
   const mv = (dir) => VERT ? `translateY(${dir * s * 900}px)` : `translateX(${dir * s * 1300}px)`;
   el.style.top = VERT ? "500px" : "170px";
   const fs = VERT ? 132 : 172;
   el.innerHTML = `<div style="margin-bottom:38px;opacity:${fade}"><span class="logo" style="font-size:${VERT ? 44 : 40}px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span></div>
     <span class="ln big" style="font-size:${fs}px;transform:${mv(-1)}">My Claude</span>
-    <span class="ln big" style="font-size:${fs * 0.42}px;color:var(--ink-3);margin:6px 0;opacity:${fade}">versus</span>
+    <span class="ln big" style="font-size:${fs * 0.42}px;color:var(--ink-3);margin:6px 0;opacity:${fade};display:flex;align-items:center;justify-content:center;gap:28px">${clawd(fs * 0.62, { blink: blinkAt(t, 0.5) })}versus${clawd(fs * 0.62, { blink: blinkAt(t, 1.7), flip: true })}</span>
     <span class="ln big green" style="font-size:${fs}px;transform:${mv(1)}">Your Claude</span>
     <span class="ln lead" style="font-size:${VERT ? 32 : 36}px;margin-top:30px;opacity:${fade};padding:0 60px;white-space:normal">A football bet between two AIs. The final score decides.</span>
     <div style="margin-top:44px;opacity:${fade}">${BRANDS}</div>`;
@@ -368,15 +525,16 @@ function endcard(t) {
   const el = $("end");
   if (t < T.end) { el.innerHTML = ""; return; }
   const e = (a, dy = 26) => st(life(t, T.end + a, 99, { d: 0.7, dy }));
-  el.style.cssText = `top:${VERT ? 470 : 190}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}`;
+  el.style.cssText = `top:${VERT ? 380 : 90}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}`;
   const fs = VERT ? 116 : 132;
-  el.innerHTML = `<img src="assets/terrace.png" style="width:100px;height:100px;border-radius:24px;${e(0.2)}" />
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:30px;${e(0.2)}">${clawd(110, { blink: blinkAt(t) })}<img src="assets/terrace.png" style="width:100px;height:100px;border-radius:24px" />${clawd(110, { blink: blinkAt(t, 1.4), flip: true })}</div>
     <span class="ln big" style="font-size:${fs}px;margin-top:30px;${e(0.3)}">Bet your mate.</span>
     <span class="ln big green" style="font-size:${fs}px;${e(0.6)}">Through Claude.</span>
-    <div style="margin-top:40px;${e(1.1, 16)}"><span id="cmd"><span class="p">$</span>claude mcp add terrace -- npx -y terrace-mcp</span></div>
-    <div style="margin-top:20px;${e(1.5, 16)}"><span id="url">play.terrace.social</span></div>
-    <div class="lead" style="font-size:22px;margin-top:22px;${e(1.8, 12)}">Free test dollars, no real money</div>
-    <div style="margin-top:30px;${e(2.0, 12)}">${BRANDS}</div>`;
+    <div style="margin-top:36px;${e(1.1, 16)}"><span id="cmd"><span class="p">$</span>claude mcp add terrace -- npx -y terrace-mcp</span></div>
+    <div style="margin-top:26px;${e(1.4, 16)}"><span class="links"><div><span class="mk mk-gh" style="width:34px;height:34px"></span>github.com/lopeselio/terrace-mcp</div><div><span class="mk mk-npm" style="width:34px;height:34px"></span>npmjs.com/package/terrace-mcp</div></span></div>
+    <div style="margin-top:26px;${e(1.7, 16)}"><span id="url">play.terrace.social</span></div>
+    <div class="lead" style="font-size:22px;margin-top:20px;${e(1.9, 12)}">Free test dollars, no real money</div>
+    <div style="margin-top:26px;${e(2.1, 12)}">${BRANDS}</div>`;
 }
 
 /* ---------------- seek ---------------- */
@@ -388,6 +546,7 @@ window.seek = (t) => {
   terminal(t);
   desktop(t);
   flight(t);
+  cursor(t);
   phone(t);
   fulltime(t);
   coin(t);

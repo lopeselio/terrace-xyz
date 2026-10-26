@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 OUT = ROOT / "out"
 SIZES = {"16x9": (1920, 1080), "9x16": (1080, 1920), "4x5": (1080, 1350)}
-DUR = 50.0
+DUR = 70.0
 
 
 def serve():
@@ -37,7 +37,7 @@ def open_page(p, fmt, port, scale=1.0):
     w, h = SIZES[fmt]
     browser = p.chromium.launch(args=["--force-color-profile=srgb", "--font-render-hinting=none", "--disable-threaded-animation"])
     page = browser.new_page(viewport={"width": w, "height": h}, device_scale_factor=scale)
-    page.goto(f"http://127.0.0.1:{port}/film.html?render=1&f={fmt}")
+    page.goto(f"http://127.0.0.1:{port}/film.html?render=1&f={fmt}", timeout=120_000)
     page.wait_for_function("window.ready === true", timeout=60_000)
     return browser, page
 
