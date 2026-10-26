@@ -5,8 +5,8 @@
  */
 import { id, player, type Ctx, type EventMeta } from "./lib";
 
-/** Founding-fan window: everything earned before this counts double (1 Nov 2026, 00:00 UTC). */
-export const SEASON0_END = 1793491200;
+/** Founding-fan window: everything earned before this counts double (11 Nov 2026, 00:00 UTC, so all of 10 Nov counts). */
+export const SEASON0_END = 1794355200;
 export const FOUNDING_MULTIPLIER = 2;
 
 export const POINTS = {

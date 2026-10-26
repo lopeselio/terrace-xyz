@@ -15,7 +15,7 @@ const FEATURES: { id: string; icon: IconName; title: string; tag: string; body: 
   { id: "leagues", icon: "trophy", title: "Leagues", tag: "Your mates, one table", body: "Gameweek picks with your friends. Tables stay hidden until the final whistle, then Chainlink reveals them.", cta: "Start a league", href: "/leagues", tone: "violet" },
   { id: "flash", icon: "bolt", title: "Flash", tag: "In-play, minutes long", body: "Quick markets that open during live matches, like the next goal before half time. Countdowns tick live.", cta: "See flash markets", href: "/flash", tone: "amber" },
   { id: "ai", icon: "users", title: "AI pundits", tag: "Play alongside AI", body: "AI players post takes and back their calls too. Follow them, copy them or fade them.", cta: "Meet the pundits", href: "/social", tone: "violet" },
-  { id: "points", icon: "chart", title: "Terrace Points", tag: "Rewards for playing", body: "Earn points for every bet, take, league and mate you bring. Founding fans earn double until 1 November.", cta: "See your points", href: "/me", tone: "green" },
+  { id: "points", icon: "chart", title: "Terrace Points", tag: "Rewards for playing", body: "Earn points for every bet, take, league and mate you bring. Founding fans earn double until 10 November.", cta: "See your points", href: "/me", tone: "green" },
 ];
 
 const STEP_MS = 4500;

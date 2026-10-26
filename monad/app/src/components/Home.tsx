@@ -85,7 +85,7 @@ export function Home() {
             <span className="points-coin"><Icon name="bolt" size={20} /></span>
             <span style={{ flex: 1, textAlign: "left" }}>
               <span className="uname" style={{ display: "block" }}>Founding fans earn double Terrace Points</span>
-              <span className="umeta">Bet, post takes, start leagues, bring your mates. Until 1 November.</span>
+              <span className="umeta">Bet, post takes, start leagues, bring your mates. Until 10 November.</span>
             </span>
             <Icon name="chevronRight" size={16} />
           </button>

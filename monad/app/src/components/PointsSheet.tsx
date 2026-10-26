@@ -24,7 +24,7 @@ export function PointsSheet({ address, total, onClose }: { address?: string | nu
       {double && (
         <div className="card greenish" style={{ marginTop: 14, padding: 12 }}>
           <div className="uname">Founding fans earn double</div>
-          <div className="umeta">Everything you do before 1 November counts twice. Early fans get remembered.</div>
+          <div className="umeta">Everything you do until 10 November counts twice. Early fans get remembered.</div>
         </div>
       )}
       {lines && lines.length > 0 && (

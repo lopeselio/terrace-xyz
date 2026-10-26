@@ -1,5 +1,5 @@
 /** Terrace Points, as the indexer awards them (monad/indexer/src/points.ts). Rewards for playing; no cash value. */
-export const SEASON0_END = 1793491200; // 1 Nov 2026 00:00 UTC: founding fans earn double until then
+export const SEASON0_END = 1794355200; // 11 Nov 2026 00:00 UTC: founding fans earn double through 10 Nov
 export const foundingFans = () => Date.now() / 1000 < SEASON0_END;
 
 export const EARN: { reason: string; label: string; points: number; note?: string }[] = [

@@ -168,7 +168,7 @@ function PointsTally() {
           <b className={doubled ? "x2" : ""}>{doubled ? ALL_ONCE * 2 : total}<small> pts</small></b>
         </div>
       </div>
-      <div className={`onb-founding${doubled ? " on" : ""}`}><Icon name="crown" size={14} /> Founding fans earn <b>2×</b> on everything until 1 Nov</div>
+      <div className={`onb-founding${doubled ? " on" : ""}`}><Icon name="crown" size={14} /> Founding fans earn <b>2×</b> on everything until 10 Nov</div>
     </>
   );
 }
