@@ -123,6 +123,7 @@
   body.v .elbl { font-size: 17px; }
   body.v .brands { flex-direction: column; gap: 18px; }
   body.v .lead { padding: 0 80px; }
+  body.v #title .brands { transform: scale(1.3); }
 </style>
 </head>
 <body>
@@ -305,6 +306,7 @@ const lock = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke
 const vault = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5V7M15.5 12H17"/></svg>`;
 const privy = `<img class="logo-i" src="assets/privy-mark.png" />`;
 const monad = `<img class="mon" src="assets/monad.png" />`;
+const BRANDS = `<span class="brands"><span class="b">Passkeys by <b style="color:var(--ink);font-family:var(--cond);font-size:32px;letter-spacing:1px">MERA</b></span><span class="b">Email by <img src="assets/privy-wordmark.png" style="height:34px" /></span><span class="b">On <img src="assets/monad.png" style="height:42px;border-radius:10px" /><b style="color:var(--ink);font-family:var(--cond);font-size:32px;letter-spacing:1px">MONAD</b></span></span>`;
 const tick = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
 
 function diagram(t) {
@@ -383,10 +385,12 @@ window.seek = (t) => {
   const t2 = life(t, 0.75, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
   const t3 = life(t, 1.6, T.titleOut, { d: 0.7, dy: 20, out: 0.5 });
   const TS = VERT ? 124 : 170;
-  $("title").style.top = VERT ? "660px" : "310px";
-  $("title").innerHTML = t < T.titleOut ? `<span class="ln big" style="font-size:${TS}px;${st(ti)}">Two ways in.</span>
+  $("title").style.top = VERT ? "520px" : "190px";
+  const t4 = life(t, 2.2, T.titleOut, { d: 0.6, dy: 16, out: 0.5 });
+  $("title").innerHTML = t < T.titleOut ? `<div style="margin-bottom:40px;${st(life(t, 0, T.titleOut, { d: 0.6, dy: 16, out: 0.5 }))}"><span class="logo" style="display:inline-flex;font-size:${VERT ? 44 : 40}px;gap:16px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span></div><span class="ln big" style="font-size:${TS}px;${st(ti)}">Two ways in.</span>
     <span class="ln big green" style="font-size:${TS}px;${st(t2)}">One account.</span>
-    <span class="ln lead" style="font-size:36px;margin-top:34px;${st(t3)}">Face ID or an email code. Same picks, same points.</span>` : "";
+    <span class="ln lead" style="font-size:36px;margin-top:34px;${st(t3)}">Face ID or an email code. Same picks, same points.</span>
+    <div style="margin-top:48px;${st(t4)}">${BRANDS}</div>` : "";
 
   // phone
   const ph = life(t, T.a[0] - 0.1, T.end, { d: 0.8, dy: 120, out: 0.5 });
@@ -415,7 +419,7 @@ window.seek = (t) => {
     <span class="ln big" style="font-size:${VERT ? 112 : 132}px;margin-top:34px;${st(e1)}">Face ID or email.</span>
     <span class="ln big green" style="font-size:${VERT ? 112 : 132}px;${st(e2)}">Same account.</span>
     <div style="margin-top:44px;${st(e3)}"><span id="url">play.terrace.social</span></div>
-    <div style="margin-top:40px;${st(e4)}"><span class="brands"><span class="b">Passkeys by Mera</span><span class="b">Email by <img src="assets/privy-wordmark.png" style="height:34px" /></span><span class="b">On <img src="assets/monad.png" style="height:42px;border-radius:10px" /><b style="color:var(--ink);font-family:var(--cond);font-size:32px;letter-spacing:1px">MONAD</b></span></span></div>` : "";
+    <div style="margin-top:40px;${st(e4)}">${BRANDS}</div>` : "";
 };
 
 document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {})))).then(() => {
