@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace Points</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<script src="assets/icons.js"></script>
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c; --green-glow: rgba(34,197,94,0.14);
+    --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1605;
+    --red-ink: #f87171;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  body.v .ecard { width: 900px; margin-left: -450px; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  .layer { position: absolute; inset: 0; z-index: 4; }
+  .abs { position: absolute; }
+  .i { display: inline-block; flex: none; }
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .amber { color: var(--amber-ink); }
+  .green { color: var(--green); }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  .ctr { position: absolute; left: 0; right: 0; text-align: center; }
+  /* kinetic words: each word rises out of a mask */
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.06em 0.05em 0.1em; margin: -0.06em -0.05em -0.1em; }
+  .w { display: inline-block; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--amber-deep); border: 1.5px solid #5a3a0c; color: var(--amber-ink); font-weight: 800; font-size: 19px; letter-spacing: 1.6px; text-transform: uppercase; }
+  .pillurl { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
+  .brandrow { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brandrow img { height: 42px; border-radius: 10px; }
+  .brandrow b { color: var(--ink); font-family: var(--cond); font-size: 32px; letter-spacing: 1px; }
+
+  /* the coin: the app's points-coin, scaled up */
+  .coin { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #4a2a07, var(--amber-deep) 70%); border: 4px solid var(--amber); color: var(--amber-ink); box-shadow: 0 0 80px rgba(245,158,11,0.35), inset 0 0 40px rgba(0,0,0,0.5); }
+  .orb { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: var(--surface); border: 1.5px solid #4a3410; display: flex; align-items: center; justify-content: center; color: var(--amber-ink); }
+
+  /* earn cards */
+  .ecard { position: absolute; width: 720px; height: 170px; margin: -85px 0 0 -360px; border-radius: 26px; background: linear-gradient(90deg, #1c1407, #111 70%); border: 1.5px solid #4a3410; display: flex; align-items: center; gap: 24px; padding: 0 32px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+  .ecard .ic { width: 84px; height: 84px; border-radius: 50%; background: var(--amber-deep); border: 2px solid var(--amber); display: flex; align-items: center; justify-content: center; color: var(--amber-ink); flex: none; }
+  .ecard .lb { flex: 1; font-weight: 700; font-size: 40px; line-height: 1.1; }
+  .ecard .lb small { display: block; font-size: 20px; font-weight: 600; color: var(--ink-2); margin-top: 6px; }
+  .ecard .pv { font-family: var(--cond); font-weight: 800; font-size: 84px; color: var(--amber-ink); }
+  .floater { position: absolute; font-family: var(--cond); font-weight: 800; color: var(--amber-ink); white-space: nowrap; transform: translate(-50%, -50%); }
+  #counter { position: absolute; text-align: center; transform: translate(-50%, -50%); }
+  #counter .lbl { font-weight: 800; font-size: 22px; letter-spacing: 3px; color: var(--ink-3); text-transform: uppercase; }
+  #counter .num { font-family: var(--cond); font-weight: 800; color: var(--amber-ink); line-height: 0.95; font-variant-numeric: tabular-nums; }
+  #counter .num small { font-size: 0.32em; color: var(--ink-2); margin-left: 10px; letter-spacing: 1px; }
+  .stamp { position: absolute; font-family: var(--cond); font-weight: 800; color: #1a0e00; background: linear-gradient(110deg, #f59e0b, #fde047, #fb923c); border-radius: 26px; padding: 0 26px; transform: translate(-50%, -50%); box-shadow: 0 0 60px rgba(253,224,71,0.45); }
+
+  /* phone */
+  #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
+  body.v #phonewrap { left: 342px; top: 500px; transform: scale(0.9); }
+  #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; }
+  #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
+  #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
+  #view { position: absolute; inset: 0; }
+  .hdr { position: absolute; left: 0; right: 0; top: 56px; height: 58px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 1px solid var(--line-hair); z-index: 3; background: var(--canvas); }
+  .hdr .logo { display: flex; align-items: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 22px; letter-spacing: 1px; flex: 1; }
+  .hdr .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .ptspill { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--amber-deep); border: 1px solid #5a3a0c; color: var(--amber-ink); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .ptspill.charging { border-color: transparent; color: #1a0e00; background: linear-gradient(110deg, #f59e0b, #fde047, #fb923c, #f59e0b); box-shadow: 0 0 18px rgba(253,224,71,0.55); }
+  .bellb { width: 36px; height: 36px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .body { position: absolute; left: 18px; right: 18px; top: 126px; bottom: 84px; overflow: hidden; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line-hair); background: rgba(10,10,10,0.94); padding-bottom: 14px; z-index: 4; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-4); padding-top: 8px; }
+  .tab .pill { width: 46px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab .tl { font-size: 11px; font-weight: 600; }
+  .tab.on { color: var(--green); }
+  .tab.on .pill { background: var(--green-glow); }
+  .tab-create .pill { width: 48px; height: 48px; border-radius: 50%; background: var(--green); color: var(--on-green); margin-top: -18px; box-shadow: 0 8px 20px rgba(34,197,94,0.28); }
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 14px; }
+  .card + .card { margin-top: 10px; }
+  .eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-3); }
+  .eyebrow.amber { color: var(--amber-ink); }
+  .uname { font-weight: 700; font-size: 16.5px; }
+  .umeta { font-size: 13.5px; color: var(--ink-3); font-weight: 500; line-height: 1.35; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .points-coin { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--amber-deep); border: 1.5px solid var(--amber); color: var(--amber-ink); flex: none; }
+  .points-banner, .points-card { border-color: #4a3410; background: linear-gradient(90deg, #1c1407, #0f0f0f); }
+  .points-card { background: linear-gradient(180deg, #1c1407, #0f0f0f 80%); }
+  .odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .odd { height: 54px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: 1px; }
+  .odd b { font-family: var(--cond); font-size: 22px; letter-spacing: 0; }
+  .yes { background: #0b1a10; border: 1.5px solid #1f5133; color: var(--green-ink); }
+  .no { background: #1a0b0b; border: 1.5px solid #4f1d1d; color: var(--red-ink); }
+  .cta { height: 50px; border-radius: 14px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 17px; margin-top: 10px; }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 999px; background: #1c1407; border: 1px solid #5a3a0c; color: var(--amber-ink); font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 6; }
+  .toast b { font-family: var(--cond); font-size: 21px; font-weight: 800; }
+  .toast span { color: #c99a4a; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 150px; border-radius: 28px 28px 0 0; background: #101010; border-top: 1px solid var(--line); padding: 22px 18px; z-index: 7; box-shadow: 0 -20px 50px rgba(0,0,0,0.6); }
+  .sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: #333; margin: -10px auto 14px; }
+  .sh-title { font-family: var(--cond); font-weight: 800; font-size: 32px; text-transform: uppercase; }
+  .kv { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0; font-size: 15px; font-weight: 600; }
+  .kv + .kv { border-top: 1px solid var(--line-hair); }
+  .kv .v { font-weight: 800; color: var(--amber-ink); }
+  .kv small { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .flabel { font-size: 12px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-3); margin: 16px 0 8px; }
+  .seg { display: flex; background: var(--raised); border: 1px solid var(--line); border-radius: 14px; padding: 3px; gap: 2px; }
+  .seg div { flex: 1; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--ink-2); }
+  .seg .on { background: #242424; color: var(--ink); font-weight: 700; }
+  .seg.main .on { background: var(--green); color: var(--on-green); }
+  .listrow { display: flex; align-items: center; gap: 11px; padding: 11px 0; }
+  .listrow + .listrow { border-top: 1px solid var(--line-hair); }
+  .lb-rank { width: 22px; text-align: center; font-family: var(--cond); font-size: 19px; font-weight: 700; color: var(--ink-4); }
+  .lb-rank.p1 { color: #fbbf24; } .lb-rank.p2 { color: #cbd5e1; } .lb-rank.p3 { color: #b98155; }
+  .lb-me { background: var(--green-tint, #0c1710); margin: 0 -14px; padding-left: 14px; padding-right: 14px; }
+  .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 15px; color: #fff; flex: none; }
+  .lb-rate { font-family: var(--cond); font-size: 22px; font-weight: 700; text-align: right; line-height: 1; color: var(--amber-ink); }
+  .lb-rate small { display: block; font-family: var(--sans); font-size: 10px; font-weight: 600; color: var(--ink-3); margin-top: 2px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 14px; padding: 10px; text-align: center; }
+  .stat .v { font-family: var(--cond); font-weight: 800; font-size: 26px; }
+  .stat .k { font-size: 11px; color: var(--ink-3); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* tap */
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
+
+  /* captions beside the phone */
+  #cap { position: absolute; left: 790px; top: 300px; width: 1020px; z-index: 6; }
+  body.v #cap { left: 64px; top: 210px; width: 952px; }
+  .ctitle { font-family: var(--cond); font-weight: 800; font-size: 104px; line-height: 0.95; text-transform: uppercase; margin-top: 22px; white-space: nowrap; }
+  body.v .ctitle { font-size: 84px; margin-top: 16px; }
+  .csub { font-size: 40px; font-weight: 700; color: var(--ink); margin-top: 26px; display: flex; align-items: center; gap: 16px; height: 50px; }
+  body.v .csub { font-size: 32px; margin-top: 18px; }
+  .csub .n { width: 46px; height: 46px; border-radius: 50%; background: var(--amber-deep); border: 1.5px solid var(--amber); color: var(--amber-ink); font-family: var(--cond); font-size: 26px; display: grid; place-items: center; flex: none; }
+  .steps { margin-top: 40px; display: flex; gap: 12px; }
+  body.v .steps { margin-top: 22px; }
+  .steps i { width: 64px; height: 6px; border-radius: 3px; background: #262626; display: block; }
+  .steps i.on { background: var(--amber); }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="stage" class="layer"></div>
+  <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div></div></div></div>
+  <div id="cap"></div>
+  <div id="tap"></div><div id="ripple"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
+const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
+const lerp = (a, b, x) => a + (b - a) * x;
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const icon = (n, s = 24, sw = 1.75) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+
+/** Words rise out of a mask one after another, and drop away together at `b`. *word* is amber. */
+function words(t, a, b, html, { stag = 0.07, d = 0.55 } = {}) {
+  return html.split(/(<br\/>)/).map((chunk) => chunk === "<br/>" ? "<br/>" : chunk.split(" ").filter(Boolean).map((w, i) => {
+    const p = spring(prog(t, a + i * stag, d)), o = eo(prog(t, b - 0.3, 0.3));
+    const hot = /^\*.*\*$/.test(w), txt = hot ? `<span class="amber">${w.slice(1, -1)}</span>` : w;
+    return `<span class="m"><span class="w" style="transform:translateY(${((1 - p) * 110 + o * -110).toFixed(1)}%)">${txt}</span></span>`;
+  }).join(" ")).join("");
+}
+
+/* ---------------- timeline ---------------- */
+const T = {
+  cover: [0, 3.9],
+  what: [3.9, 10.6],
+  earn: [10.6, 24.9], cardsAt: 12.2, cardStep: 1.4,
+  founding: [24.9, 33.7], crown: 25.7, stamp: 26.5, dbl: [27.0, 28.1],
+  check: [33.7, 48.9], tapYes: 35.1, charge: [35.4, 36.5], toast: 36.6, tapPill: 38.9, sheet: 39.2, tapProfile: 41.9, profile: 42.2, tapSocial: 45.2, social: 45.5,
+  end: 48.9, dur: 55,
+};
+const CARDS = [
+  ["bolt", "Your first move", 100],
+  ["calendar", "Play on a new day", 10],
+  ["flame", "3 days in a row", 30],
+  ["dollar", "Place a bet", 10, "+1 per dollar, up to 25 more"],
+  ["trophy", "A bet comes in", 20],
+  ["chat", "Post a take in the chat", 5],
+  ["swords", "Send a 1v1", 15],
+  ["users", "Join a league", 25],
+  ["share", "Bring a new fan in", 100],
+];
+const BASE = CARDS.reduce((s, c) => s + c[2], 0); // 315
+const arrive = (i) => T.cardsAt + i * T.cardStep + 1.15;
+
+/* ---------------- layout per format ---------------- */
+const L = VERT
+  ? { coinY: 640, coinR: 150, whatTitleY: 980, counterEarn: [540, 560], cardAt: [540, 1120], counterBig: [540, 760], foundY: 1060, titleY: 250 }
+  : { coinY: 400, coinR: 140, whatTitleY: 690, counterEarn: [560, 560], cardAt: [1330, 560], counterBig: [960, 420], foundY: 680, titleY: 120 };
+
+/* ---------------- scenes ---------------- */
+function cover(t) {
+  if (t >= T.cover[1]) return "";
+  const out = eo(prog(t, T.cover[1] - 0.5, 0.5));
+  const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
+  const cy = VERT ? 480 : 180;
+  return `<div class="ctr" style="top:${cy}px;${s(1)}">
+      <span style="display:inline-flex;align-items:center;gap:16px;font-family:var(--cond);font-weight:800;font-size:${VERT ? 44 : 40}px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span>
+    </div>
+    <div class="coin" style="left:${W / 2 - (VERT ? 95 : 80)}px;top:${cy + (VERT ? 110 : 96)}px;width:${VERT ? 190 : 160}px;height:${VERT ? 190 : 160}px;${s(1.4)};box-shadow:0 0 ${90 + 20 * Math.sin(t * 3)}px rgba(245,158,11,0.4)">${icon("bolt", VERT ? 100 : 86, 1.9)}</div>
+    <div class="ctr" style="top:${cy + (VERT ? 340 : 290)}px;${s(1.8)}">
+      <span class="big" style="display:block;font-size:${VERT ? 150 : 176}px">Terrace <span class="amber">Points</span></span>
+      <span class="lead" style="display:block;font-size:${VERT ? 40 : 42}px;margin-top:26px">Play more. Stack points.</span>
+      <div style="margin-top:${VERT ? 44 : 38}px"><span class="kicker" style="height:56px;font-size:${VERT ? 22 : 22}px">${icon("crown", 24, 2.2)} Founding fans earn 2× until 10 Nov</span></div>
+      <div style="margin-top:${VERT ? 50 : 40}px"><span class="brandrow">On <img src="assets/monad.png" /><b>MONAD</b></span></div>
+    </div>`;
+}
+
+function what(t) {
+  const [a, b] = T.what;
+  if (t < a || t >= b) return "";
+  const fade = 1 - eo(prog(t, b - 0.4, 0.4));
+  const r = L.coinR, cx = W / 2, cy = L.coinY;
+  const pc = spring(prog(t, a + 0.1, 0.7));
+  const orbs = ["dollar", "flame", "swords", "users", "share", "trophy"].map((n, i) => {
+    const at = a + 1.0 + i * 0.22, p = spring(prog(t, at, 0.5));
+    const ang = -Math.PI / 2 + (i / 6) * Math.PI * 2 + t * 0.25;
+    const R = (r + 120) * lerp(0.5, 1, p);
+    return `<div class="orb" style="left:${cx + Math.cos(ang) * R}px;top:${cy + Math.sin(ang) * R}px;opacity:${cl(prog(t, at, 0.25))};transform:scale(${lerp(0.4, 1, p)})">${icon(n, 42)}</div>`;
+  }).join("");
+  const tt = VERT ? "Rewards<br/>for playing." : "Rewards for playing.";
+  return `<div style="opacity:${fade}">
+    ${orbs}
+    <div class="coin" style="left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;transform:scale(${lerp(0.3, 1, pc)} );opacity:${cl(prog(t, a + 0.1, 0.25))}">${icon("bolt", r * 1.05, 1.9)}</div>
+    <div class="ctr" style="top:${L.whatTitleY}px">
+      <span class="big" style="display:block;font-size:${VERT ? 120 : 130}px">${words(t, a + 1.9, b, tt)}</span>
+      <span class="big amber" style="display:block;font-size:${VERT ? 76 : 76}px;margin-top:18px">${words(t, a + 3.0, b, "Not just for winning.")}</span>
+      <span class="lead" style="display:block;font-size:30px;margin-top:30px;${st(life(t, a + 4.0, b))}">Test money only. Points have no cash value.</span>
+    </div></div>`;
+}
+
+/** The running total: cards fly in during "earn", then founding fans double it. */
+function counterValue(t) {
+  let v = 0;
+  CARDS.forEach((c, i) => { v += c[2] * eo(prog(t, arrive(i), 0.4)); });
+  return v * (1 + eio(prog(t, T.dbl[0], T.dbl[1] - T.dbl[0])));
+}
+
+function earn(t) {
+  const [a] = T.earn, b = T.founding[1];
+  if (t < a || t >= b) return "";
+  const fade = 1 - eo(prog(t, b - 0.45, 0.45));
+  // counter slides from beside the cards to the middle when founding fans begins
+  const mv = eio(prog(t, T.founding[0], 0.7));
+  const cx = lerp(L.counterEarn[0], L.counterBig[0], mv), cy = lerp(L.counterEarn[1], L.counterBig[1], mv);
+  const cIn = spring(prog(t, a + 0.6, 0.6));
+  let bump = 1;
+  CARDS.forEach((c, i) => { const k = t - arrive(i); if (k > 0 && k < 0.35) bump = Math.max(bump, 1 + 0.08 * Math.sin((k / 0.35) * Math.PI)); });
+  const numSize = lerp(VERT ? 190 : 210, VERT ? 230 : 240, mv);
+  const doubled = t >= T.dbl[0];
+  let h = `<div id="counter" style="left:${cx}px;top:${cy}px;opacity:${cl(prog(t, a + 0.6, 0.3))};transform:translate(-50%,-50%) scale(${(lerp(0.85, 1, cIn) * bump).toFixed(4)})">
+    <div class="lbl">Your points</div>
+    <div class="num" style="font-size:${numSize}px;${doubled ? "text-shadow:0 0 60px rgba(253,224,71,0.5)" : ""}">${fmt(counterValue(t))}<small>PTS</small></div></div>`;
+
+  // title over the cards
+  if (t < T.founding[0] + 0.1) {
+    h += `<div class="ctr" style="top:${L.titleY}px"><span class="big" style="font-size:${VERT ? 104 : 96}px">${words(t, a + 0.1, T.founding[0], "Earn as you *play.*")}</span></div>`;
+  }
+  // cards: spring in at the card spot, hold, then fly into the counter
+  CARDS.forEach(([ic, label, pts, sub], i) => {
+    const at = T.cardsAt + i * T.cardStep, fly = at + 0.8, land = arrive(i);
+    if (t < at || t > land + 0.05) return;
+    const pin = spring(prog(t, at, 0.45)), pf = eio(prog(t, fly, land - fly));
+    const x = lerp(L.cardAt[0], cx, pf), y = lerp(L.cardAt[1], cy, pf) - Math.sin(pf * Math.PI) * 120;
+    const s = lerp(0.7, 1, pin) * lerp(1, 0.18, pf);
+    h += `<div class="ecard" style="left:${x}px;top:${y}px;opacity:${cl(prog(t, at, 0.15)) * (1 - prog(t, land - 0.12, 0.12))};transform:scale(${s.toFixed(4)}) rotate(${(-4 * (1 - pin) + 6 * pf).toFixed(2)}deg)">
+      <div class="ic">${icon(ic, 44, 2)}</div><div class="lb">${label}${sub ? `<small>${sub}</small>` : ""}</div><div class="pv">+${pts}</div></div>`;
+  });
+  // +N floaters rising off the counter as each card lands
+  CARDS.forEach(([, , pts], i) => {
+    const k = prog(t, arrive(i), 0.8);
+    if (k <= 0 || k >= 1) return;
+    h += `<div class="floater" style="left:${cx + (VERT ? 200 : 230)}px;top:${cy - 90 - eo(k) * 70}px;font-size:54px;opacity:${1 - k}">+${pts}</div>`;
+  });
+
+  // founding fans: crown drops on, ×2 stamp slams, total doubles
+  const [fa, fb] = T.founding;
+  if (t >= fa) {
+    const pc = spring(prog(t, T.crown, 0.7));
+    const crownY = cy - (VERT ? 250 : 260) - (1 - pc) * 260;
+    h += `<div class="abs amber" style="left:${cx - 70}px;top:${crownY}px;opacity:${cl(prog(t, T.crown, 0.2))};transform:rotate(${(1 - pc) * -18}deg);filter:drop-shadow(0 0 24px rgba(251,191,36,0.6))">${icon("crown", 140, 1.9)}</div>`;
+    const ps = prog(t, T.stamp, 0.35);
+    if (t >= T.stamp) h += `<div class="stamp" style="left:${cx + (VERT ? 300 : 360)}px;top:${cy - (VERT ? 120 : 110)}px;font-size:${VERT ? 90 : 100}px;opacity:${cl(ps * 3)};transform:translate(-50%,-50%) scale(${lerp(2.4, 1, eo(ps))}) rotate(${lerp(-30, -10, eo(ps))}deg)">2×</div>`;
+    h += `<div class="ctr" style="top:${L.foundY}px">
+      <div style="${st(life(t, T.dbl[1] - 0.2, fb))}"><span class="kicker">${icon("crown", 20, 2.2)} Founding fans</span></div>
+      <span class="big" style="display:block;font-size:${VERT ? 92 : 104}px;margin-top:24px">${words(t, T.dbl[1] + 0.1, fb, VERT ? "Everything<br/>counts *double.*" : "Everything counts *double.*")}</span>
+      <span class="lead" style="display:block;font-size:${VERT ? 40 : 44}px;margin-top:26px;color:var(--ink);${st(life(t, T.dbl[1] + 1.2, fb))}">Until <b class="amber">10 November</b>.</span>
+    </div>`;
+  }
+  return `<div style="opacity:${fade}">${h}</div>`;
+}
+
+/* ---------------- phone screens ---------------- */
+const hdr = (t, val, charging) => `<div class="hdr"><div class="logo"><img src="assets/terrace.png" />TERRACE</div>
+  <span class="ptspill${charging ? " charging" : ""}" id="pill">${icon("bolt", 16, 2)}${fmt(val)}</span><span class="bellb">${icon("bell", 18)}</span></div>`;
+const tabs = (on) => `<div class="tabbar">${[["home", "Home"], ["pitch", "Markets"], ["plus", "Create"], ["users", "Social"], ["shield", "Profile"]].map(([ic, l]) =>
+  `<div class="tab${l === "Create" ? " tab-create" : ""}${l === on ? " on" : ""}" id="tab-${l}"><span class="pill">${icon(ic, 22)}</span><span class="tl">${l}</span></div>`).join("")}</div>`;
+const START = 2 * BASE; // 630: the total the counter reached
+const pillValue = (t) => START + 40 * eo(prog(t, T.charge[1] - 0.2, 0.6));
+
+function homeScreen(t) {
+  const locked = t >= T.tapYes + 0.15;
+  return `<div class="body">
+    <div class="card points-banner"><div class="row"><span class="points-coin">${icon("bolt", 20)}</span><div style="flex:1"><div class="uname">Founding fans earn double Terrace Points</div><div class="umeta">Bet, post takes, start leagues, bring your mates. Until 10 November.</div></div></div></div>
+    <div class="card"><div class="eyebrow">Trending take</div>
+      <div class="uname" style="font-size:19px;margin-top:6px;line-height:1.25">Haaland scores before the hour</div>
+      <div class="odds"><div class="odd yes" id="b-yes">YES <b>11/10</b></div><div class="odd no">NO <b>8/11</b></div></div>
+      <div class="cta" style="${locked ? "" : "opacity:0.0"}">${icon("bolt", 18, 2)} Locked in · $10 on YES</div></div>
+    <div class="card"><div class="eyebrow">Tonight</div><div class="uname" style="margin-top:6px">Liverpool v Man City</div><div class="umeta">Kick-off 20:00 · 142 fans in the room</div></div>
+  </div>`;
+}
+
+function sheet(t) {
+  const p = eo(prog(t, T.sheet, 0.45));
+  const lines = [["Place a bet", "just now", 40], ["Post a take in the chat", "2h", 10], ["Play on a new day", "2h", 20], ["3-day run", "2h", 60]];
+  return `<div class="sheet" style="transform:translateY(${(1 - p) * 760}px)"><div class="grab"></div>
+    <div class="eyebrow">Rewards for playing</div>
+    <div class="sh-title" style="margin-top:4px">Terrace Points · <span class="amber">${fmt(pillValue(t))}</span></div>
+    <div class="card points-banner" style="margin-top:12px;padding:12px"><div class="uname">Founding fans earn double</div><div class="umeta">Everything you do until 10 November counts twice. Early fans get remembered.</div></div>
+    <div class="flabel">Your latest</div>
+    <div class="card" style="padding:2px 14px">${lines.map(([k, a, v]) => `<div class="kv"><span>${k} <small>· ${a}</small></span><span class="v">+${v} <small>(2×)</small></span></div>`).join("")}</div>
+    <div class="flabel">How to earn</div>
+    <div class="card" style="padding:2px 14px">${[["Join Terrace", 100], ["Play on a new day", 10]].map(([k, v]) => `<div class="kv"><span>${k}</span><span class="v">+${v} <small>×2</small></span></div>`).join("")}</div>
+  </div>`;
+}
+
+function profileScreen(t) {
+  return `<div class="body">
+    <div class="row" style="margin-top:4px"><div class="av" style="width:58px;height:58px;font-size:22px;background:#14532d">CL</div><div><div class="uname" style="font-size:20px">Clinical Libero</div><div class="umeta">Founding fan</div></div></div>
+    <div class="stats"><div class="stat"><div class="v green">7</div><div class="k">Won</div></div><div class="stat"><div class="v" style="color:var(--red-ink)">4</div><div class="k">Lost</div></div><div class="stat"><div class="v">+$38</div><div class="k">Profit</div></div></div>
+    <div class="card points-card" style="margin-top:10px" id="pcard"><div class="row">
+      <span class="points-coin">${icon("bolt", 20)}</span>
+      <div style="flex:1"><div class="eyebrow amber">Terrace Points · founding fan 2×</div><div style="font-family:var(--cond);font-weight:800;font-size:34px;line-height:1.1">${fmt(pillValue(t))}</div><div class="umeta">3-day streak</div></div>
+      <span class="amber" style="font-weight:700;font-size:14px">How to earn ›</span></div></div>
+    <div class="card"><div class="eyebrow">Available balance</div><div style="font-family:var(--cond);font-weight:800;font-size:32px">$94.00</div><div class="umeta">Test money</div></div>
+  </div>`;
+}
+
+function socialScreen(t) {
+  const fans = [["Calm Nutmeg", "5-day run", 1240, "#7c3aed"], ["Lucky Libero", "3-day run", 985, "#0ea5e9"], ["Silky Regista", "Early fan", 760, "#db2777"], ["Clinical Libero", "3-day run", 670, "#15803d", 1], ["Brave Sweeper", "Early fan", 540, "#ea580c"], ["Quiet Poacher", "Early fan", 410, "#64748b"]];
+  return `<div class="body">
+    <div class="seg main"><div>For you</div><div>Following</div><div class="on">Top fans</div></div>
+    <div class="seg" style="margin-top:10px"><div class="on">Terrace Points</div><div>Win rate</div></div>
+    <div class="eyebrow amber" style="margin:14px 0 8px">Founding fans · Terrace Points</div>
+    <div class="card" style="padding:2px 14px">${fans.map(([n, m, v, c, me], i) => {
+      const p = spring(prog(t, T.social + 0.2 + i * 0.1, 0.45));
+      return `<div class="listrow${me ? " lb-me" : ""}" style="opacity:${cl(prog(t, T.social + 0.2 + i * 0.1, 0.2))};transform:translateX(${(1 - p) * 30}px)"><span class="lb-rank${i < 3 ? ` p${i + 1}` : ""}">${i + 1}</span><span class="av" style="background:${c}">${n.split(" ").map((w) => w[0]).join("")}</span><div style="flex:1"><div class="uname" style="${me ? "color:var(--green)" : ""}">${n}</div><div class="umeta">${m}</div></div><div class="lb-rate">${fmt(v)}<small>POINTS</small></div></div>`;
+    }).join("")}</div>
+  </div>`;
+}
+
+function phoneView(t) {
+  const charging = t >= T.charge[0] && t < T.charge[1];
+  if (t < T.profile) {
+    let h = hdr(t, pillValue(t), charging) + homeScreen(t) + tabs("Home");
+    const tp = prog(t, T.toast, 0.35) * (1 - prog(t, T.toast + 2.0, 0.3));
+    if (tp > 0) h += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.toast, 0.35))) * 14}px)"><b>+40</b> Terrace Points <span>· Place a bet</span></div>`;
+    if (t >= T.sheet) h += `<div style="position:absolute;inset:0;background:rgba(0,0,0,${0.5 * eo(prog(t, T.sheet, 0.3))});z-index:6"></div>` + sheet(t);
+    return [h, T.check[0]];
+  }
+  if (t < T.social) return [hdr(t, pillValue(t), false) + profileScreen(t) + tabs("Profile"), T.profile];
+  return [hdr(t, pillValue(t), false) + socialScreen(t) + tabs("Social"), T.social];
+}
+
+const TAPS = [[T.tapYes, "b-yes"], [T.tapPill, "pill"], [T.tapProfile, "tab-Profile"], [T.tapSocial, "tab-Social"]];
+function tap(t) {
+  const dot = $("tap"), rip = $("ripple");
+  dot.style.opacity = 0; rip.style.opacity = 0;
+  for (const [at, id] of TAPS) {
+    if (t < at - 0.45 || t > at + 0.5) continue;
+    const el = $(id);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2, k = t - at;
+    const o = k < -0.3 ? prog(t, at - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, at + 0.3, 0.2) : 1;
+    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, at - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${k > -0.08 && k < 0.1 ? 0.8 : 1})`;
+    if (k > 0) {
+      const p = eo(prog(t, at, 0.45)), size = 30 + p * 70;
+      rip.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;opacity:${(1 - p) * 0.9}`;
+    }
+  }
+}
+
+/* captions beside the phone: one title, then a numbered line per place to check */
+const CHECKS = [[T.check[0] + 0.4, "Watch the bolt light up"], [T.sheet, "Tap it to see every point"], [T.profile, "On your profile"], [T.social, "On the leaderboard"]];
+function captions(t) {
+  const [a, b] = T.check;
+  if (t < a || t >= b) return "";
+  const idx = CHECKS.reduce((n, [at], i) => (t >= at ? i : n), -1);
+  let h = `<div style="${st(life(t, a + 0.1, b))}"><span class="kicker">${icon("bolt", 20, 2.2)} Terrace Points</span></div>
+    <div class="ctitle">${words(t, a + 0.25, b, VERT ? "Check them *anytime.*" : "Check them<br/>*anytime.*")}</div>`;
+  if (idx >= 0) {
+    const [at, line] = CHECKS[idx], next = CHECKS[idx + 1] ? CHECKS[idx + 1][0] : b;
+    h += `<div class="csub" style="${st(life(t, at + 0.15, next, { dy: 30, out: 0.25 }))}"><span class="n">${idx + 1}</span>${line}</div>`;
+  }
+  h += `<div class="steps" style="${st(life(t, a + 0.6, b))}">${CHECKS.map((_, i) => `<i class="${i <= idx ? "on" : ""}"></i>`).join("")}</div>`;
+  return h;
+}
+
+function endCard(t) {
+  if (t < T.end) return "";
+  const e = (k, dy = 30) => st(life(t, T.end + 0.25 + k * 0.3, 99, { d: 0.7, dy }));
+  const top = VERT ? 520 : 170;
+  return `<div class="ctr" style="top:${top}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}">
+    <div class="coin" style="position:relative;display:inline-flex;width:150px;height:150px;${e(0)}">${icon("bolt", 80, 1.9)}</div>
+    <span class="big" style="display:block;font-size:${VERT ? 122 : 132}px;margin-top:40px;${e(1)}">Play more.</span>
+    <span class="big amber" style="display:block;font-size:${VERT ? 122 : 132}px;${e(2)}">Stack points.</span>
+    <div style="margin-top:40px;${e(3, 16)}"><span class="kicker" style="height:56px;font-size:22px">${icon("crown", 24, 2.2)} Founding fans: 2× until 10 Nov</span></div>
+    <div style="margin-top:34px;${e(4, 16)}"><span class="pillurl">play.terrace.social</span></div>
+    <div style="margin-top:34px;${e(5, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
+  </div>`;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  const am = 0.10 + 0.05 * cl(prog(t, T.founding[0], 1)) * (1 - prog(t, T.founding[1], 1));
+  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : lerp(46, 54, t / T.dur)}% ${VERT ? 40 : 46}%, rgba(245,158,11,${am.toFixed(3)}), transparent 70%), radial-gradient(800px 640px at 15% 85%, rgba(34,197,94,0.08), transparent 70%)`;
+
+  $("stage").innerHTML = cover(t) + what(t) + earn(t) + endCard(t);
+
+  const inPhone = t >= T.check[0] - 0.2 && t < T.end;
+  const pw = $("phonewrap");
+  pw.style.display = inPhone ? "" : "none";
+  if (inPhone) {
+    const ph = life(t, T.check[0], T.end, { d: 0.8, dy: 120, out: 0.5 });
+    $("phone").style.cssText = st(ph);
+    const [html, since] = phoneView(t);
+    $("view").innerHTML = html;
+    const f = eo(prog(t, since, 0.3));
+    $("view").style.cssText = since === T.check[0] ? "" : `opacity:${f};transform:translateX(${(1 - f) * 24}px)`;
+  }
+  $("cap").innerHTML = captions(t);
+  tap(t);
+};
+
+document.fonts.ready.then(() => Promise.all(["assets/terrace.png", "assets/monad.png"].map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
