@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace · Two ways in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c; --green-tint: #0c1710;
+    --violet: #a78bfa; --violet-deep: #2e1065;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 20; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  .abs { position: absolute; }
+
+  /* title + end card */
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .green { color: var(--green); }
+  #title, #end { position: absolute; left: 0; right: 0; text-align: center; z-index: 10; }
+  .ln { display: block; }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  #url { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
+
+  /* phone */
+  #phone { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; z-index: 5; }
+  #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
+  #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
+  #view { position: absolute; inset: 0; }
+  #devpill { position: absolute; left: 240px; width: 440px; top: 40px; text-align: center; z-index: 6; }
+  #devpill span { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 18px; border-radius: 20px; background: #151515; border: 1.5px solid var(--line); font-weight: 700; font-size: 17px; color: var(--ink-2); }
+
+  /* app UI inside the phone (classes mirror the app) */
+  .pad { position: absolute; inset: 64px 22px 26px; display: flex; flex-direction: column; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 10px; font-family: var(--cond); font-weight: 800; font-size: 24px; letter-spacing: 1px; }
+  .logo img { width: 34px; height: 34px; border-radius: 9px; }
+  .onb-hero { font-family: var(--cond); font-weight: 800; font-size: 78px; line-height: 0.9; text-transform: uppercase; margin-top: 34px; }
+  .onb-sub { font-size: 18px; line-height: 1.4; color: var(--ink-2); margin-top: 14px; font-weight: 500; }
+  .cta { width: 100%; height: 56px; border-radius: 14px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 18px; }
+  .cta-ghost { background: var(--raised); color: var(--ink); border: 1px solid var(--line); }
+  .cta-sm { height: 46px; font-size: 16px; font-weight: 700; }
+  .cta.off { opacity: 0.45; }
+  .textbtn { display: block; text-align: center; font-size: 14.5px; font-weight: 600; color: var(--ink-2); margin-top: 12px; }
+  .textbtn .g { color: var(--green-ink); }
+  .umeta { font-size: 13.5px; color: var(--ink-3); font-weight: 500; line-height: 1.35; }
+  .field { display: flex; align-items: center; height: 50px; border-radius: 12px; background: var(--deep); border: 1px solid var(--line); padding: 0 14px; font-size: 17px; font-weight: 600; }
+  .field.focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,0.14); }
+  .field .ph { color: var(--ink-4); }
+  .field.code { justify-content: center; font-size: 24px; font-weight: 700; letter-spacing: 0.4em; }
+  .caret { display: inline-block; width: 2px; height: 22px; background: var(--green); margin-left: 2px; vertical-align: middle; }
+  .hdr { font-family: var(--cond); font-weight: 800; font-size: 30px; text-transform: uppercase; }
+  .me { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+  .av { width: 62px; height: 62px; border-radius: 50%; background: var(--green-deep); border: 2px solid var(--green-mid); display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 24px; color: var(--green-ink); }
+  .uname { font-weight: 700; font-size: 21px; }
+  .flabel { font-size: 12.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); margin: 26px 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 4px 16px; }
+  .kv { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; }
+  .kv + .kv { border-top: 1px solid var(--line-hair); }
+  .kv .v { font-weight: 700; font-size: 16.5px; }
+  .on { color: var(--green-ink); font-weight: 700; font-size: 14.5px; }
+  .chip { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); font-weight: 700; font-size: 14.5px; }
+  .ghostrow { height: 64px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); margin-top: 10px; }
+
+  /* Face ID sheet */
+  #face { position: absolute; inset: 0; background: rgba(0,0,0,0.55); z-index: 7; display: grid; place-items: center; }
+  #face .box { width: 190px; height: 190px; border-radius: 40px; background: rgba(38,38,38,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  #face .lbl { font-weight: 700; font-size: 17px; color: #e5e7eb; }
+
+  /* tap */
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 12; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 12; }
+
+  /* right side: caption + diagram */
+  #cap { position: absolute; left: 790px; top: 150px; width: 1020px; z-index: 6; }
+  .step { font-weight: 800; font-size: 20px; letter-spacing: 2.4px; text-transform: uppercase; color: var(--green-ink); }
+  .ctitle { font-family: var(--cond); font-weight: 800; font-size: 86px; line-height: 0.95; text-transform: uppercase; margin-top: 14px; white-space: nowrap; }
+  .csub { font-size: 30px; font-weight: 600; color: var(--ink-2); margin-top: 18px; line-height: 1.3; }
+  .bul { font-size: 28px; font-weight: 600; color: var(--ink); margin-top: 14px; display: flex; gap: 14px; align-items: center; }
+  .bul i { width: 10px; height: 10px; border-radius: 50%; background: var(--green); flex: none; }
+  #dia { position: absolute; left: 790px; top: 520px; width: 1020px; height: 440px; z-index: 6; }
+  #dia > svg { position: absolute; inset: 0; overflow: visible; }
+  .node { position: absolute; height: 124px; border-radius: 20px; background: var(--surface); border: 1.5px solid var(--line); padding: 20px 22px; display: flex; flex-direction: column; justify-content: center; }
+  .node .t { font-weight: 800; font-size: 26px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .node .s { font-weight: 600; font-size: 17.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.3; }
+  .node.acc { background: var(--green-tint); border-color: var(--green-mid); }
+  .node.acc .t { color: var(--green-ink); }
+  .node.pv { background: #120d1f; border-color: #3b2d6b; }
+  .node.pv .t { color: #c4b5fd; }
+  .node.sm { height: 84px; padding: 14px 20px; }
+  .node.sm .t { font-size: 21px; }
+  .node.sm .s { font-size: 15.5px; margin-top: 3px; }
+  .tag { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.6px; text-transform: uppercase; background: var(--green-deep); color: var(--green-ink); border: 1px solid var(--green-mid); }
+  .elbl { position: absolute; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; transform: translate(-50%, -100%); padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="title"></div>
+  <div id="devpill"></div>
+  <div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div><div id="face"></div></div></div>
+  <div id="cap"></div>
+  <div id="dia"></div>
+  <div id="end"></div>
+  <div id="tap"></div><div id="ripple"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x)); // settles with a small overshoot
+const lerp = (a, b, x) => a + (b - a) * x;
+/** Fades/slides something in at `a` and out at `b`. Returns {o, y, s}. */
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const typed = (t, a, b, text) => text.slice(0, Math.round(cl((t - a) / (b - a)) * text.length));
+
+const EMAIL = "libero@example.com", CODE = "482915", ACCT = "0xf2a0…f873", NAME = "Clinical Libero";
+
+/* ---------------- timeline ---------------- */
+const T = {
+  titleOut: 4.4,
+  a: [4.4, 15], tapStart: 6.6, faceIn: 6.9, faceOk: 8.0, profile: 8.9,
+  b: [15, 28], tapAdd: 16.0, emailOpen: 16.3, typeE: [16.7, 17.9], tapSend: 18.4, codeView: 18.7, typeC: [19.1, 20.1], tapLink: 20.6, linked: 21.7,
+  c: [28, 40], fresh: 28.2, tapUse: 29.5, cEmail: 29.8, cTypeE: [30.2, 31.2], cTapSend: 31.6, cCode: 31.9, cTypeC: [32.2, 33.0], cTapGo: 33.5, cOpen: 34.8,
+  d: [40, 48.2],
+  end: 48.2, dur: 53,
+};
+
+/* ---------------- phone ---------------- */
+const shield = (c = "currentColor", s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z"/></svg>`;
+const caret = (t) => (Math.floor(t * 2.2) % 2 === 0 ? `<span class="caret"></span>` : "");
+
+/** EmailCode from EmailSignIn.tsx: email step, then code step. */
+function emailCode(t, { cta, open, typeE, send, codeAt, typeC, go }) {
+  if (t < codeAt) {
+    const e = typed(t, typeE[0], typeE[1], EMAIL);
+    const ready = e.includes("@");
+    return `<div class="field focus" id="f-email">${e ? e : `<span class="ph">you@example.com</span>`}${caret(t - open)}</div>
+      <button class="cta cta-ghost cta-sm ${ready ? "" : "off"}" style="margin-top:8px" id="b-send">${t >= send ? "Sending…" : "Send me a code"}</button>`;
+  }
+  const c = typed(t, typeC[0], typeC[1], CODE);
+  return `<div class="umeta" style="margin-bottom:8px;text-align:center">We sent a 6-digit code to <b style="color:var(--ink)">${EMAIL}</b>.</div>
+    <div class="field focus code" id="f-code">${c || `<span class="ph">000000</span>`}</div>
+    <button class="cta cta-ghost cta-sm ${c.length === 6 ? "" : "off"}" style="margin-top:8px" id="b-go">${t >= go ? "Opening your account…" : cta}</button>
+    <div class="textbtn">Use a different email</div>`;
+}
+
+function onboarding(t, email) {
+  const open = email && t >= email.open;
+  return `<div class="pad">
+    <div>
+      <div class="logo"><img src="assets/terrace.png" />TERRACE</div>
+      <div class="onb-hero">Back your<br/>take.</div>
+      <div class="onb-sub">One Face ID and you're in, with $100 in test dollars to play. No real money.</div>
+    </div>
+    <div>
+      <button class="cta" id="b-start">${t >= T.tapStart && t < T.profile && !email ? "Checking your passkey…" : "Get started"}</button>
+      <button class="cta cta-ghost cta-sm" style="margin-top:8px">I already have an account</button>
+      ${open
+        ? `<div style="margin-top:12px"><div class="umeta" style="text-align:center;margin-bottom:8px">New here? This makes your account. Already play with Face ID? Sign in with Face ID, then add your email in Profile.</div>${emailCode(t, email)}</div>`
+        : `<div class="textbtn" id="b-use">No Face ID? <span class="g">Use email instead</span></div>`}
+      <div class="umeta" style="text-align:center;margin-top:10px">${shield("var(--ink-3)", 12)} Face ID or fingerprint. No passwords, nothing to install.</div>
+      <div class="umeta" style="text-align:center;margin-top:12px">Test money only · 18+ · Please play responsibly</div>
+    </div>
+  </div>`;
+}
+
+/** Profile → "Ways to sign in" (SignInMethods). emailState: add | form | on */
+function profile(t, emailState, flow) {
+  const emailRight = emailState === "on" ? `<span class="on">On</span>` : emailState === "add" ? `<span class="chip" id="b-add">Add</span>` : "";
+  const emailMeta = emailState === "on" ? EMAIL : "For a laptop or phone without your passkey.";
+  return `<div class="pad" style="justify-content:flex-start">
+    <div class="hdr">Profile</div>
+    <div class="me"><div class="av">CL</div><div><div class="uname">${NAME}</div><div class="umeta">Your picks, points and AI agent</div></div></div>
+    <div class="flabel">Ways to sign in</div>
+    <div class="card">
+      <div class="kv"><div><div class="v">Face ID or fingerprint</div><div class="umeta">One tap on any phone or laptop with your passkey.</div></div><span class="on">On</span></div>
+      <div class="kv"><div style="min-width:0"><div class="v">Email</div><div class="umeta">${emailMeta}</div></div>${emailRight}</div>
+      ${emailState === "form" ? `<div style="padding:4px 0 14px">${emailCode(t, flow)}</div>` : ""}
+    </div>
+    <div class="flabel">Your record</div>
+    <div class="ghostrow"></div><div class="ghostrow"></div>
+  </div>`;
+}
+
+const B_FLOW = { cta: "Link this email", open: T.emailOpen, typeE: T.typeE, send: T.tapSend, codeAt: T.codeView, typeC: T.typeC, go: T.tapLink };
+const C_FLOW = { cta: "Continue", open: T.cEmail, typeE: T.cTypeE, send: T.cTapSend, codeAt: T.cCode, typeC: T.cTypeC, go: T.cTapGo };
+
+/** Which screen, and when it last changed (for the fade-in). */
+function phoneView(t) {
+  if (t < T.profile) return [onboarding(t, null), T.a[0]];
+  if (t < T.c[0]) {
+    const s = t < T.emailOpen ? "add" : t < T.linked ? "form" : "on";
+    return [profile(t, s, B_FLOW), t < T.linked ? T.profile : T.linked];
+  }
+  if (t < T.cOpen) return [onboarding(t, C_FLOW), T.fresh];
+  return [profile(t, "on"), T.cOpen];
+}
+
+/* tap: [time, element id]. The dot arrives 0.35 s early, presses, ripples. */
+const TAPS = [[T.tapStart, "b-start"], [T.tapAdd, "b-add"], [T.tapSend, "b-send"], [T.tapLink, "b-go"], [T.tapUse, "b-use"], [T.cTapSend, "b-send"], [T.cTapGo, "b-go"]];
+function tap(t) {
+  const dot = $("tap"), rip = $("ripple");
+  dot.style.opacity = 0; rip.style.opacity = 0;
+  for (const [at, id] of TAPS) {
+    if (t < at - 0.45 || t > at + 0.5) continue;
+    const el = $(id);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const k = t - at;
+    const o = k < -0.3 ? prog(t, at - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, at + 0.3, 0.2) : 1;
+    const press = k > -0.08 && k < 0.1 ? 0.8 : 1;
+    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, at - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${press})`;
+    if (k > 0) {
+      const p = eo(prog(t, at, 0.45)), size = 30 + p * 70;
+      rip.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;opacity:${(1 - p) * 0.9}`;
+    }
+  }
+}
+
+function faceSheet(t) {
+  const el = $("face");
+  const o = prog(t, T.faceIn, 0.2) * (1 - prog(t, T.profile - 0.3, 0.3));
+  el.style.opacity = o;
+  if (o <= 0) { el.innerHTML = ""; return; }
+  const draw = eo(prog(t, T.faceIn + 0.15, 0.8)), ok = prog(t, T.faceOk, 0.35);
+  const c = ok > 0 ? "#4ade80" : "#e5e7eb";
+  const len = 60;
+  const corners = ["M8 22V14a6 6 0 0 1 6-6h8", "M48 8h8a6 6 0 0 1 6 6v8", "M62 48v8a6 6 0 0 1-6 6h-8", "M22 62h-8a6 6 0 0 1-6-6v-8"]
+    .map((d) => `<path d="${d}" stroke-dasharray="${len}" stroke-dashoffset="${len * (1 - draw)}"/>`).join("");
+  const face = ok > 0
+    ? `<path d="M22 36l9 9 17-19" stroke-dasharray="44" stroke-dashoffset="${44 * (1 - eo(ok))}"/>`
+    : `<g opacity="${draw}"><path d="M26 27v4M44 27v4M35 29v9h-3"/><path d="M27 46c4.5 4 11.5 4 16 0"/></g>`;
+  el.innerHTML = `<div class="box" style="transform:scale(${lerp(0.9, 1, spring(prog(t, T.faceIn, 0.4)))})">
+    <svg width="78" height="78" viewBox="0 0 70 70" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">${corners}${face}</svg>
+    <div class="lbl">Face ID</div></div>`;
+}
+
+/* ---------------- diagrams ---------------- */
+function node(t, at, x, y, w, cls, title, sub, extra = "") {
+  const p = spring(prog(t, at, 0.55)), o = cl(prog(t, at, 0.3));
+  return `<div class="node ${cls}" style="left:${x}px;top:${y}px;width:${w}px;opacity:${o};transform:translateY(${(1 - p) * 18}px) scale(${lerp(0.94, 1, p)})">
+    <div class="t">${title}${extra}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`;
+}
+/** Elbow connector from (x1,y1) to (x2,y2), drawn in from `at`. */
+function edge(t, at, x1, y1, x2, y2, label = "", color = "#3f3f46", lp = null) {
+  const p = eo(prog(t, at, 0.5));
+  const mx = (x1 + x2) / 2;
+  const d = `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`;
+  const L = Math.hypot(x2 - x1, y2 - y1) * 1.25;
+  const k = x2 >= x1 ? 11 : -11;
+  const head = p > 0.95 ? `<path d="M${x2 - k} ${y2 - 7}L${x2} ${y2}L${x2 - k} ${y2 + 7}" stroke="${color}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : "";
+  const svg = `<path d="${d}" stroke="${color}" stroke-width="3" fill="none" stroke-dasharray="${L}" stroke-dashoffset="${L * (1 - p)}"/>${head}`;
+  const [lx, ly] = lp || [mx, Math.min(y1, y2) + (y1 === y2 ? 0 : Math.abs(y2 - y1) / 2)];
+  const lbl = label ? `<div class="elbl" style="left:${lx}px;top:${ly}px;opacity:${prog(t, at + 0.3, 0.3)}">${label}</div>` : "";
+  return [svg, lbl];
+}
+const G = "#22c55e", V = "#8b5cf6";
+const face = `<svg width="26" height="26" viewBox="0 0 70 70" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="M8 22V14a6 6 0 0 1 6-6h8M48 8h8a6 6 0 0 1 6 6v8M62 48v8a6 6 0 0 1-6 6h-8M22 62h-8a6 6 0 0 1-6-6v-8M26 27v4M44 27v4M27 46c4.5 4 11.5 4 16 0"/></svg>`;
+const key = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>`;
+const mail = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`;
+const lock = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
+const vault = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5V7M15.5 12H17"/></svg>`;
+const tick = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+
+function diagram(t) {
+  const out = [], svg = [];
+  const add = (n) => out.push(n);
+  const e = (...a) => { const [s, l] = edge(t, ...a); svg.push(s); out.push(l); };
+  let fade = 1, scene = null;
+  for (const [k, [a, b]] of Object.entries({ a: T.a, b: T.b, c: T.c, d: T.d })) if (t >= a && t < b) { scene = k; fade = 1 - eo(prog(t, b - 0.45, 0.45)); }
+  if (scene === "a") {
+    add(node(t, T.faceOk, 0, 158, 270, "", `${face} Face ID passkey`, "on this phone"));
+    e(T.faceOk + 0.5, 270, 220, 380, 220, "PRF", G);
+    add(node(t, T.faceOk + 0.9, 380, 158, 290, "acc", `${key} Root key`, "32 bytes, made by your passkey"));
+    for (const [i, [tt, ss]] of [["Your account", ACCT], ["AI agent key", "plays for you"], ["Sealed-picks key", "hides picks until kickoff"]].entries()) {
+      e(T.faceOk + 1.7 + i * 0.35, 670, 220, 760, 64 + i * 156, i === 0 ? "" : "");
+      add(node(t, T.faceOk + 2.0 + i * 0.35, 760, 22 + i * 156, 260, "sm", tt, ss));
+    }
+    out.push(`<div class="elbl" style="left:715px;top:206px;opacity:${prog(t, T.faceOk + 2, 0.3)}">HKDF</div>`);
+  } else if (scene === "b") {
+    add(node(t, T.b[0] + 0.5, 0, 20, 290, "acc", `${key} Root key`, "from your Face ID"));
+    add(node(t, T.codeView + 0.2, 0, 280, 290, "pv", `${mail} Privy email wallet`, "signs one fixed message"));
+    e(T.codeView + 0.7, 290, 82, 380, 200, "", G);
+    e(T.codeView + 0.9, 290, 342, 380, 240, "wrap key", V, [345, 400]);
+    add(node(t, T.tapLink, 380, 158, 280, "", `${lock} Sealed root`, "AES-GCM, bound to your account"));
+    e(T.tapLink + 0.5, 660, 220, 740, 220, "", G);
+    add(node(t, T.linked - 0.2, 740, 158, 280, "", `${vault} TerraceVault`, "on Monad: this email ↦ your account", t >= T.linked + 0.3 ? ` <span class="tag" style="opacity:${prog(t, T.linked + 0.3, 0.3)}">Linked</span>` : ""));
+    out.push(`<div class="elbl" style="left:700px;top:206px;opacity:${prog(t, T.tapLink + 0.8, 0.3)}">EIP-712</div>`);
+  } else if (scene === "c") {
+    add(node(t, T.cCode + 0.1, 0, 20, 300, "pv", `${mail} Privy email wallet`, "same email, same signature"));
+    add(node(t, T.cTapGo + 0.1, 0, 280, 300, "", `${vault} TerraceVault`, "hands back the sealed root"));
+    e(T.cTapGo + 0.5, 300, 82, 390, 200, "wrap key", V, [345, 72]);
+    e(T.cTapGo + 0.7, 300, 342, 390, 240, "", "#52525b");
+    add(node(t, T.cTapGo + 0.9, 390, 158, 270, "acc", `${key} Root key`, "opened on this device"));
+    e(T.cOpen - 0.2, 660, 220, 740, 220, "", G);
+    add(node(t, T.cOpen + 0.1, 740, 158, 280, "acc", `${tick} Same account`, ACCT));
+  } else if (scene === "d") {
+    const a = T.d[0];
+    add(node(t, a + 0.3, 0, 120, 270, "", `${face} Face ID`, "Mera passkey", ` <span class="tag">On</span>`));
+    add(node(t, a + 0.5, 750, 120, 270, "pv", `${mail} Email`, "code from Privy", ` <span class="tag">On</span>`));
+    e(a + 0.9, 270, 182, 375, 182, "", G);
+    e(a + 1.0, 750, 182, 645, 182, "", V);
+    add(node(t, a + 1.3, 375, 120, 270, "acc", `${key} One root key`, "one account"));
+    out.push(`<div style="position:absolute;left:0;width:1020px;top:300px;display:flex;justify-content:center;gap:12px">${["Picks", "Points", "AI agent", "Sealed picks"].map((s, i) => {
+      const p = spring(prog(t, a + 1.9 + i * 0.15, 0.5));
+      return `<div class="chip" style="height:42px;font-size:17px;opacity:${cl(prog(t, a + 1.9 + i * 0.15, 0.3))};transform:translateY(${(1 - p) * 14}px)">${s}</div>`;
+    }).join("")}</div>`);
+  }
+  $("dia").style.opacity = fade;
+  $("dia").innerHTML = `<svg width="1020" height="440">${svg.join("")}</svg>${out.join("")}`;
+}
+
+/* ---------------- captions ---------------- */
+const CAPS = [
+  { at: T.a[0] + 0.5, end: T.a[1], step: "01 · Face ID", title: "Face ID makes the key.", sub: "A Mera passkey on this phone.<br/>No seed phrase, no password." },
+  { at: T.b[0] + 0.2, end: T.b[1], step: "02 · Add email", title: "Link an email in Profile.", sub: "Privy sends a code. Your key is sealed<br/>and stored in the vault." },
+  { at: T.c[0] + 0.3, end: T.c[1], step: "03 · Email only", title: "The code opens it.", sub: "New laptop, no passkey: the email code<br/>opens the same account." },
+  { at: T.d[0] + 0.2, end: T.d[1], step: "Two equal ways in", title: "Either one alone.", bullets: ["Face ID still rebuilds it on its own", "Started with email? Add Face ID later", "Privy never sees your key", "Your email never goes on-chain"] },
+];
+function captions(t) {
+  const c = CAPS.find((c) => t >= c.at - 0.01 && t < c.end);
+  if (!c) { $("cap").innerHTML = ""; return; }
+  const L = (i, html, cls) => `<div class="${cls}" style="${st(life(t, c.at + i * 0.22, c.end))}">${html}</div>`;
+  let h = L(0, c.step, "step") + L(1, c.title, "ctitle");
+  if (c.sub) h += L(2, c.sub, "csub");
+  if (c.bullets) c.bullets.forEach((b, i) => (h += L(2.5 + i * 1.6, `<i></i>${b}`, "bul")));
+  $("cap").innerHTML = h;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  // background glow drifts slowly; violet joins once email is in the story
+  const v = cl(prog(t, T.b[0], 3)) * (1 - prog(t, T.end, 1));
+  $("glow").style.background = `radial-gradient(900px 700px at ${lerp(30, 38, t / T.dur)}% 46%, rgba(34,197,94,0.13), transparent 70%), radial-gradient(800px 640px at 80% 70%, rgba(139,92,246,${(0.10 * v).toFixed(3)}), transparent 70%)`;
+
+  // title
+  const ti = life(t, 0.2, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
+  const t2 = life(t, 0.75, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
+  const t3 = life(t, 1.6, T.titleOut, { d: 0.7, dy: 20, out: 0.5 });
+  $("title").style.top = "310px";
+  $("title").innerHTML = t < T.titleOut ? `<span class="ln big" style="font-size:170px;${st(ti)}">Two ways in.</span>
+    <span class="ln big green" style="font-size:170px;${st(t2)}">One account.</span>
+    <span class="ln lead" style="font-size:36px;margin-top:34px;${st(t3)}">Face ID or an email code. Same picks, same points.</span>` : "";
+
+  // phone
+  const ph = life(t, T.a[0] - 0.1, T.end, { d: 0.8, dy: 120, out: 0.5 });
+  $("phone").style.cssText = st(ph);
+  const [html, since] = phoneView(t);
+  const view = $("view");
+  view.innerHTML = html;
+  const f = eo(prog(t, since, 0.3));
+  view.style.cssText = since === T.a[0] ? "" : `opacity:${f};transform:translateX(${(1 - f) * 24}px)`;
+  faceSheet(t);
+
+  // device pill for the second device
+  const pl = life(t, T.c[0] + 0.1, T.d[0], { d: 0.5, dy: 14 });
+  $("devpill").innerHTML = t >= T.c[0] && t < T.d[0] ? `<span style="${st(pl)}">${shield("var(--ink-3)", 16)} Another laptop · no passkey</span>` : "";
+
+  captions(t);
+  diagram(t);
+  tap(t);
+
+  // end card
+  const e1 = life(t, T.end + 0.3, 99, { d: 0.7, dy: 30 }), e2 = life(t, T.end + 0.6, 99, { d: 0.7, dy: 30 });
+  const e3 = life(t, T.end + 1.2, 99, { d: 0.6, dy: 16 }), e4 = life(t, T.end + 1.6, 99, { d: 0.6, dy: 12 });
+  const fadeAll = 1 - prog(t, T.dur - 0.6, 0.6);
+  $("end").style.cssText = `top:250px;opacity:${fadeAll}`;
+  $("end").innerHTML = t >= T.end ? `<img src="assets/terrace.png" style="width:110px;height:110px;border-radius:26px;${st(e1)}" />
+    <span class="ln big" style="font-size:132px;margin-top:34px;${st(e1)}">Face ID or email.</span>
+    <span class="ln big green" style="font-size:132px;${st(e2)}">Same account.</span>
+    <div style="margin-top:44px;${st(e3)}"><span id="url">play.terrace.social</span></div>
+    <div class="lead" style="font-size:24px;margin-top:30px;${st(e4)}">Passkeys by Mera · Email by Privy · On Monad</div>` : "";
+};
+
+document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {})))).then(() => {
+  const img = new Image(); img.src = "assets/terrace.png";
+  return img.decode().catch(() => {});
+}).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
