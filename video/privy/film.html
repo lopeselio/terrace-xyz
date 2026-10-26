@@ -380,14 +380,14 @@ window.seek = (t) => {
   const v = cl(prog(t, T.b[0], 3)) * (1 - prog(t, T.end, 1));
   $("glow").style.background = `radial-gradient(900px 700px at ${lerp(30, 38, t / T.dur)}% 46%, rgba(34,197,94,0.13), transparent 70%), radial-gradient(800px 640px at 80% 70%, rgba(139,92,246,${(0.10 * v).toFixed(3)}), transparent 70%)`;
 
-  // title
-  const ti = life(t, 0.2, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
-  const t2 = life(t, 0.75, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
-  const t3 = life(t, 1.6, T.titleOut, { d: 0.7, dy: 20, out: 0.5 });
+  // title: fully on screen from frame 0 so the first frame is the cover
+  const ti = life(t, -9, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
+  const t2 = life(t, -9, T.titleOut, { d: 0.7, dy: 40, out: 0.5 });
+  const t3 = life(t, -9, T.titleOut, { d: 0.7, dy: 20, out: 0.5 });
   const TS = VERT ? 124 : 170;
   $("title").style.top = VERT ? "520px" : "190px";
-  const t4 = life(t, 2.2, T.titleOut, { d: 0.6, dy: 16, out: 0.5 });
-  $("title").innerHTML = t < T.titleOut ? `<div style="margin-bottom:40px;${st(life(t, 0, T.titleOut, { d: 0.6, dy: 16, out: 0.5 }))}"><span class="logo" style="display:inline-flex;font-size:${VERT ? 44 : 40}px;gap:16px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span></div><span class="ln big" style="font-size:${TS}px;${st(ti)}">Two ways in.</span>
+  const t4 = life(t, -9, T.titleOut, { d: 0.6, dy: 16, out: 0.5 });
+  $("title").innerHTML = t < T.titleOut ? `<div style="margin-bottom:40px;${st(life(t, -9, T.titleOut, { d: 0.6, dy: 16, out: 0.5 }))}"><span class="logo" style="display:inline-flex;font-size:${VERT ? 44 : 40}px;gap:16px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span></div><span class="ln big" style="font-size:${TS}px;${st(ti)}">Two ways in.</span>
     <span class="ln big green" style="font-size:${TS}px;${st(t2)}">One account.</span>
     <span class="ln lead" style="font-size:36px;margin-top:34px;${st(t3)}">Face ID or an email code. Same picks, same points.</span>
     <div style="margin-top:48px;${st(t4)}">${BRANDS}</div>` : "";
