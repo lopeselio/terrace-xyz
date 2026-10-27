@@ -127,7 +127,8 @@
   .b-terrace { background: var(--green-deep); color: var(--green-ink); }
   .b-chainlink { background: var(--blue-deep); color: var(--blue); }
   .b-ai { background: var(--violet-deep); color: var(--violet-ink); font-size: 10.5px; padding: 2px 6px; }
-  .crest { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 20px; margin: 0 auto; }
+  .crest { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; background: #161616; margin: 0 auto; overflow: hidden; }
+  .crest img { width: 78%; height: 78%; object-fit: contain; }
   .q { font-family: var(--cond); font-weight: 700; text-transform: uppercase; font-size: 28px; line-height: 1.05; margin-top: 16px; }
   .oddsrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .odd { border-radius: 14px; border: 1px solid var(--line); min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -144,7 +145,7 @@
   #ft .h { display: flex; align-items: center; gap: 14px; font-family: var(--cond); font-weight: 800; font-size: 40px; text-transform: uppercase; }
   #ft .teams { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
   #ft .tm { text-align: center; font-weight: 700; font-size: 17px; color: var(--ink-2); width: 160px; }
-  #ft .tm .crest { width: 74px; height: 74px; font-size: 24px; margin-bottom: 10px; }
+  #ft .tm .crest { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 10px; }
   #ft .stamp { margin-top: 24px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; font-family: var(--cond); font-weight: 800; font-size: 32px; text-transform: uppercase; background: #0c1f14; border: 1.5px solid #17422a; color: var(--green-ink); }
   #ft .cl { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 18px; font-weight: 600; color: var(--ink-2); }
   #ft .cl img { width: 26px; height: 26px; border-radius: 50%; background: #fff; }
@@ -438,8 +439,8 @@ function flight(t) {
 }
 
 /* ---------------- phone: ChallengeView ---------------- */
-const VFB = `<div class="crest" style="background:#e32219;color:#fff">VfB</div>`;
-const BMG = `<div class="crest" style="background:#111;color:#fff;border:3px solid #1fa04a">BMG</div>`;
+const VFB = `<div class="crest"><img src="assets/vfb.png" /></div>`;
+const BMG = `<div class="crest"><img src="assets/bmg.png" /></div>`;
 function challenge(t) {
   const settled = t >= T.settled;
   const badge = settled ? `<span class="badge b-settled">Settled</span>` : `<span class="badge b-open">On</span>`;
@@ -554,7 +555,7 @@ window.seek = (t) => {
   chapter(t);
 };
 
-document.fonts.ready.then(() => Promise.all(["assets/terrace.png", "assets/monad.png", "assets/chainlink.png"].map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+document.fonts.ready.then(() => Promise.all(["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", "assets/vfb.png", "assets/bmg.png"].map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
   window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
   window.ready = true;
 });
