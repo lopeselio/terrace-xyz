@@ -218,7 +218,8 @@ const T = {
   phoneIn: 41.8, ftIn: 49.4, stamp: 50.6, chainlink: 51.2, payBtn: 52.0,
   // 7: collect from Claude Code
   termBack: [56.6, 57.5], ctype: [58.4, 59.4], ctool: 59.8, cout: 60.3, settled: 60.3, coin: [60.5, 61.7], hop: 61.7,
-  end: 64.4, dur: 70,
+  deskBack: [62.4, 63.2], mtype: [63.4, 64.3], msend: 64.5, mused: 65.0, mans: [65.4, 67.6],
+  end: 69.4, dur: 75,
 };
 
 /* ---------------- Clawd ----------------
@@ -270,8 +271,8 @@ function chapter(t) {
 
 /* ---------------- layout ---------------- */
 const L = VERT
-  ? { term: [60, 330, 960, 570], desk: [60, 960, 960, 570], phone: { x: 540 - 220 * 0.9, y: 620, k: 0.9 }, phoneSide: { x: 540 - 220 * 0.9, y: 712 }, ft: { x: 330, y: 290, k: 0.75 }, termC: [60, 300, 960, 400], phoneC: { x: 540 - 220 * 0.85, y: 740, k: 0.85 } }
-  : { term: [80, 190, 860, 740], desk: [980, 190, 860, 740], phone: { x: 960 - 220 * 0.95, y: 110, k: 0.95 }, phoneSide: { x: 1180, y: 110 }, ft: { x: 220, y: 300, k: 1 }, termC: [80, 190, 860, 740], phoneC: { x: 1180, y: 110, k: 0.95 } };
+  ? { term: [60, 330, 960, 570], desk: [60, 960, 960, 570], phone: { x: 540 - 220 * 0.9, y: 620, k: 0.9 }, phoneSide: { x: 540 - 220 * 0.9, y: 712 }, ft: { x: 330, y: 290, k: 0.75 }, termC: [60, 300, 960, 400], deskC: [60, 740, 960, 640], phoneC: { x: 540 - 220 * 0.85, y: 740, k: 0.85 } }
+  : { term: [80, 190, 860, 740], desk: [980, 190, 860, 740], phone: { x: 960 - 220 * 0.95, y: 110, k: 0.95 }, phoneSide: { x: 1180, y: 110 }, ft: { x: 220, y: 300, k: 1 }, termC: [80, 190, 860, 740], deskC: [980, 190, 860, 740], phoneC: { x: 1180, y: 110, k: 0.95 } };
 
 function windows(t) {
   // windows slide in from the side their title went (my Claude left/top, your Claude right/bottom)
@@ -280,9 +281,10 @@ function windows(t) {
   const ret = eio(span(t, T.termBack)); // the terminal comes back to collect
   for (const [id, r, dir] of [["term", L.term, -1], ["desk", L.desk, 1]]) {
     const el = $(id);
-    const rr = id === "term" ? r.map((v, i) => lerp(v, L.termC[i], ret)) : r;
+    const ret2 = eio(span(t, T.deskBack)); // then Desktop, for the mate
+    const rr = id === "term" ? r.map((v, i) => lerp(v, L.termC[i], ret)) : r.map((v, i) => lerp(v, L.deskC[i], ret2));
     const [x, y, w, h] = rr;
-    const b = id === "term" ? back * (1 - ret) : back;
+    const b = id === "term" ? back * (1 - ret) : back * (1 - ret2);
     const off = (1 - inT) * (VERT ? 0 : 1200) * dir, offY = (1 - inT) * (VERT ? 1200 : 0) * dir;
     const o = inT * (1 - b * 0.94) * (1 - prog(t, T.end - 0.6, 0.5));
     el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:${o.toFixed(3)};transform:translate(${off}px,${offY}px) scale(${lerp(1, 0.92, b)});filter:blur(${(b * 4).toFixed(1)}px)`;
@@ -348,7 +350,13 @@ function desktop(t) {
   const pop = (at, html) => { if (t >= at) { const p = spring(prog(t, at, 0.5)); out.push(`<div style="display:contents">${html.replace("STYLE", `opacity:${cl(prog(t, at, 0.25))};transform:translateY(${((1 - p) * 14).toFixed(1)}px)`)}</div>`); } };
   const say = ([a, b], html) => { if (t >= a) out.push(`<div class="ab">${words(t, a, b, html)}</div>`); };
   let input = `<span class="ph">Reply to Claude…</span>`;
-  if (t < T.landed - 0.1) {
+  if (t >= T.deskBack[0]) {
+    // chapter 7: the mate checks in
+    if (t >= T.mtype[0] && t < T.msend) input = `<span class="txt">${typed(t, ...T.mtype, "how did my bet go?")}</span>`;
+    pop(T.msend, `<div class="ub" style="STYLE">how did my bet go?</div>`);
+    pop(T.mused, USED.replace('class="used"', 'class="used" style="STYLE"'));
+    say(T.mans, `Challenge #15 is settled by ${CL}Chainlink. 3+ goals came in, so <b>Over 2.5</b> won and you lost this one: your $10 went to your mate's Claude. Nothing to collect this time.<br/><br/>Want a rematch? ⚽`);
+  } else if (t < T.landed - 0.1) {
     // chapter 1: the account, through the terrace connector
     if (t >= T.dtype[0] && t < T.dsend) input = `<span class="txt">${typed(t, ...T.dtype, "show my terrace account")}</span>`;
     pop(T.dsend, `<div class="ub" style="STYLE">show my terrace account</div>`);
@@ -467,7 +475,7 @@ function challenge(t) {
 }
 
 function phone(t) {
-  const inP = spring(prog(t, T.phoneIn, 0.8)), o = cl(prog(t, T.phoneIn, 0.3)) * (1 - prog(t, T.end - 0.5, 0.45));
+  const inP = spring(prog(t, T.phoneIn, 0.8)), o = cl(prog(t, T.phoneIn, 0.3)) * (1 - prog(t, T.deskBack[0] - 0.2, 0.5));
   const side = eio(prog(t, T.ftIn - 0.7, 0.7));
   const c7 = eio(span(t, T.termBack));
   const x = lerp(lerp(L.phone.x, L.phoneSide.x, side), L.phoneC.x, c7), y = lerp(lerp(L.phone.y, L.phoneSide.y, side), L.phoneC.y, c7);

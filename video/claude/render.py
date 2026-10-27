@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 OUT = ROOT / "out"
 SIZES = {"16x9": (1920, 1080), "9x16": (1080, 1920), "4x5": (1080, 1350)}
-DUR = 70.0
+DUR = 75.0
 
 
 def serve():
