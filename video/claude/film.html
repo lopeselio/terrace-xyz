@@ -98,6 +98,11 @@
   .clawd { display: inline-block; vertical-align: middle; image-rendering: pixelated; }
   .banner { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
   .banner b { color: #f3f4f6; }
+  .compat { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 26px; max-width: 1500px; font-size: 22px; font-weight: 600; color: var(--ink-2); }
+  .compat .lbl { color: var(--ink-3); font-size: 18px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; }
+  .compat .c { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
+  .compat .mk { width: 26px; height: 26px; background: #f9fafb; }
+  body.v .compat { max-width: 860px; font-size: 21px; }
   .links { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 14px; font-family: var(--mono); font-size: 26px; color: #e5e7eb; }
   .links div { display: flex; align-items: center; gap: 16px; }
   body.v .links { font-size: 22px; }
@@ -514,6 +519,10 @@ function coin(t) {
 }
 
 /* ---------------- cover + end ---------------- */
+/* other MCP clients that run local (stdio) servers like terrace-mcp */
+const COMPAT = `<span class="compat"><span class="lbl">Also works in</span>${[
+  ["cursor", "Cursor", true], ["windsurf", "Windsurf"], ["githubcopilot", "GitHub Copilot"], ["googlegemini", "Gemini CLI"], ["openai", "Codex CLI"], ["zedindustries", "Zed"],
+].map(([f, n, img]) => `<span class="c">${img ? `<img src="assets/${f}.svg" style="width:28px;height:28px;border-radius:7px" />` : `<span class="mk" style="--m:url(assets/${f}.svg)"></span>`}${n}</span>`).join("")}</span>`;
 const BRANDS = `<span class="brands"><span class="b">In <span class="mk mk-claude" style="width:36px;height:36px"></span><span class="w">CLAUDE</span></span><span class="b">Settled by <img src="assets/chainlink.png" style="height:34px;border-radius:50%;background:#fff" /><span class="w">CHAINLINK</span></span><span class="b">On <img src="assets/monad.png" style="height:40px;border-radius:10px" /><span class="w">MONAD</span></span></span>`;
 function cover(t) {
   const el = $("cover");
@@ -534,7 +543,7 @@ function endcard(t) {
   const el = $("end");
   if (t < T.end) { el.innerHTML = ""; return; }
   const e = (a, dy = 26) => st(life(t, T.end + a, 99, { d: 0.7, dy }));
-  el.style.cssText = `top:${VERT ? 380 : 90}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}`;
+  el.style.cssText = `top:${VERT ? 300 : 50}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}`;
   const fs = VERT ? 116 : 132;
   el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:30px;${e(0.2)}">${clawd(110, { blink: blinkAt(t) })}<img src="assets/terrace.png" style="width:100px;height:100px;border-radius:24px" />${clawd(110, { blink: blinkAt(t, 1.4), flip: true })}</div>
     <span class="ln big" style="font-size:${fs}px;margin-top:30px;${e(0.3)}">Bet your mate.</span>
@@ -542,8 +551,9 @@ function endcard(t) {
     <div style="margin-top:36px;${e(1.1, 16)}"><span id="cmd"><span class="p">$</span>claude mcp add terrace -- npx -y terrace-mcp</span></div>
     <div style="margin-top:26px;${e(1.4, 16)}"><span class="links"><div><span class="mk mk-gh" style="width:34px;height:34px"></span>github.com/lopeselio/terrace-mcp</div><div><span class="mk mk-npm" style="width:34px;height:34px"></span>npmjs.com/package/terrace-mcp</div></span></div>
     <div style="margin-top:26px;${e(1.7, 16)}"><span id="url">play.terrace.social</span></div>
-    <div class="lead" style="font-size:22px;margin-top:20px;${e(1.9, 12)}">Free test dollars, no real money</div>
-    <div style="margin-top:26px;${e(2.1, 12)}">${BRANDS}</div>`;
+    <div class="lead" style="font-size:22px;margin-top:16px;${e(1.9, 12)}">Free test dollars, no real money</div>
+    <div style="margin-top:22px;${e(2.1, 12)}">${BRANDS}</div>
+    <div style="margin-top:22px;${e(2.4, 12)}">${COMPAT}</div>`;
 }
 
 /* ---------------- seek ---------------- */
