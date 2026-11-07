@@ -223,7 +223,7 @@ function cover(t) {
     <div class="ctr" style="top:${cy + (VERT ? 340 : 290)}px;${s(1.8)}">
       <span class="big" style="display:block;font-size:${VERT ? 150 : 176}px">Terrace <span class="amber">Points</span></span>
       <span class="lead" style="display:block;font-size:${VERT ? 40 : 42}px;margin-top:26px">Play more. Stack points.</span>
-      <div style="margin-top:${VERT ? 44 : 38}px"><span class="kicker" style="height:56px;font-size:${VERT ? 22 : 22}px">${icon("crown", 24, 2.2)} Founding fans earn 2× until 10 Nov</span></div>
+      <div style="margin-top:${VERT ? 44 : 38}px"><span class="kicker" style="height:56px;font-size:${VERT ? 22 : 22}px">${icon("crown", 24, 2.2)} Founding fans earn 2× until 30 Nov</span></div>
       <div style="margin-top:${VERT ? 50 : 40}px"><span class="brandrow">On <img src="assets/monad.png" /><b>MONAD</b></span></div>
     </div>`;
 }
@@ -306,7 +306,7 @@ function earn(t) {
     h += `<div class="ctr" style="top:${L.foundY}px">
       <div style="${st(life(t, T.dbl[1] - 0.2, fb))}"><span class="kicker">${icon("crown", 20, 2.2)} Founding fans</span></div>
       <span class="big" style="display:block;font-size:${VERT ? 92 : 104}px;margin-top:24px">${words(t, T.dbl[1] + 0.1, fb, VERT ? "Everything<br/>counts *double.*" : "Everything counts *double.*")}</span>
-      <span class="lead" style="display:block;font-size:${VERT ? 40 : 44}px;margin-top:26px;color:var(--ink);${st(life(t, T.dbl[1] + 1.2, fb))}">Until <b class="amber">10 November</b>.</span>
+      <span class="lead" style="display:block;font-size:${VERT ? 40 : 44}px;margin-top:26px;color:var(--ink);${st(life(t, T.dbl[1] + 1.2, fb))}">Until <b class="amber">30 November</b>.</span>
     </div>`;
   }
   return `<div style="opacity:${fade}">${h}</div>`;
@@ -323,7 +323,7 @@ const pillValue = (t) => START + 40 * eo(prog(t, T.charge[1] - 0.2, 0.6));
 function homeScreen(t) {
   const locked = t >= T.tapYes + 0.15;
   return `<div class="body">
-    <div class="card points-banner"><div class="row"><span class="points-coin">${icon("bolt", 20)}</span><div style="flex:1"><div class="uname">Founding fans earn double Terrace Points</div><div class="umeta">Bet, post takes, start leagues, bring your mates. Until 10 November.</div></div></div></div>
+    <div class="card points-banner"><div class="row"><span class="points-coin">${icon("bolt", 20)}</span><div style="flex:1"><div class="uname">Founding fans earn double Terrace Points</div><div class="umeta">Bet, post takes, start leagues, bring your mates. Until 30 November.</div></div></div></div>
     <div class="card"><div class="eyebrow">Trending take</div>
       <div class="uname" style="font-size:19px;margin-top:6px;line-height:1.25">Haaland scores before the hour</div>
       <div class="odds"><div class="odd yes" id="b-yes">YES <b>11/10</b></div><div class="odd no">NO <b>8/11</b></div></div>
@@ -338,7 +338,7 @@ function sheet(t) {
   return `<div class="sheet" style="transform:translateY(${(1 - p) * 760}px)"><div class="grab"></div>
     <div class="eyebrow">Rewards for playing</div>
     <div class="sh-title" style="margin-top:4px">Terrace Points · <span class="amber">${fmt(pillValue(t))}</span></div>
-    <div class="card points-banner" style="margin-top:12px;padding:12px"><div class="uname">Founding fans earn double</div><div class="umeta">Everything you do until 10 November counts twice. Early fans get remembered.</div></div>
+    <div class="card points-banner" style="margin-top:12px;padding:12px"><div class="uname">Founding fans earn double</div><div class="umeta">Everything you do until 30 November counts twice. Early fans get remembered.</div></div>
     <div class="flabel">Your latest</div>
     <div class="card" style="padding:2px 14px">${lines.map(([k, a, v]) => `<div class="kv"><span>${k} <small>· ${a}</small></span><span class="v">+${v} <small>(2×)</small></span></div>`).join("")}</div>
     <div class="flabel">How to earn</div>
@@ -427,7 +427,7 @@ function endCard(t) {
     <div class="coin" style="position:relative;display:inline-flex;width:150px;height:150px;${e(0)}">${icon("bolt", 80, 1.9)}</div>
     <span class="big" style="display:block;font-size:${VERT ? 122 : 132}px;margin-top:40px;${e(1)}">Play more.</span>
     <span class="big amber" style="display:block;font-size:${VERT ? 122 : 132}px;${e(2)}">Stack points.</span>
-    <div style="margin-top:40px;${e(3, 16)}"><span class="kicker" style="height:56px;font-size:22px">${icon("crown", 24, 2.2)} Founding fans: 2× until 10 Nov</span></div>
+    <div style="margin-top:40px;${e(3, 16)}"><span class="kicker" style="height:56px;font-size:22px">${icon("crown", 24, 2.2)} Founding fans: 2× until 30 Nov</span></div>
     <div style="margin-top:34px;${e(4, 16)}"><span class="pillurl">play.terrace.social</span></div>
     <div style="margin-top:34px;${e(5, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
   </div>`;
