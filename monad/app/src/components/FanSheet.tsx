@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FollowButton } from "./FollowButton";
+import { Icon } from "./Icon";
 import { Avatar, Badge, Sheet, ago, fanName, handle } from "./ui";
 import { useAccount } from "@/lib/account";
 import { query } from "@/lib/indexer";
@@ -64,6 +65,12 @@ export function FanSheet({ who, name, onClose }: { who: string; name?: string; o
         <div><b>{fan && fan.streak > 0 ? fan.streak : 0}</b><small>Win streak</small></div>
         <div><b className="amber">{fan ? points(fan.terracePoints) : 0}</b><small>Points</small></div>
       </div>
+
+      {!me && (
+        <Link href={`/live?fan=${id}`} className="btn-out mute" style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12 }} onClick={onClose}>
+          <Icon name="whistle" size={16} /> {shown}&apos;s game day
+        </Link>
+      )}
 
       <div className="eyebrow" style={{ margin: "16px 0 8px" }}>Latest takes</div>
       {takes === null && <div className="sk" style={{ height: 64, borderRadius: 14 }} />}

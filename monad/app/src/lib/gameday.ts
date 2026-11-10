@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { query } from "./indexer";
 import { callStoppage } from "./errors";
 import { FINISHED, LIVE } from "@/components/MatchRow";
-import { GD_QUERY, RECENT, buildGroups, type Acca, type RawBet, type RawDuel } from "./positions";
+import { GD_QUERY, MATES_QUERY, RECENT, buildGroups, type Acca, type MatchGroup, type RawBet, type RawDuel } from "./positions";
 import type { MatchLite } from "./useMatches";
 
 export type { Acca, MatchGroup, Position, RawBet, Standing } from "./positions";
@@ -88,4 +88,36 @@ export function useGameDay(address: string | null) {
 
   const groups = useMemo(() => (raw && me && matches ? buildGroups(raw.bets, raw.duels, me, matches, custom, now) : null), [raw, me, matches, custom, now]);
   return { groups, accas: raw?.accas ?? [], matches: matches ?? new Map<number, MatchLite>(), reload: load };
+}
+
+/** Followed fans with something on a match in play, and how it stands for them. */
+export function useMatesLive(follows: Set<string>, matches: Map<number, MatchLite>) {
+  const [bets, setBets] = useState<(RawBet & { bettor: string })[] | null>(null);
+  const key = [...follows].sort().slice(0, 40).join(",");
+  useEffect(() => {
+    if (!key) return setBets([]);
+    let alive = true;
+    const load = () =>
+      query<{ Bet: (RawBet & { bettor: string })[] }>(MATES_QUERY, { fans: key.split(",") })
+        .then((d) => alive && setBets(d.Bet))
+        .catch(() => {});
+    load();
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 30_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [key]);
+  return useMemo(() => {
+    if (!bets || !matches.size) return [];
+    const now = Date.now() / 1000;
+    const byFan = new Map<string, RawBet[]>();
+    for (const b of bets) byFan.set(b.bettor, [...(byFan.get(b.bettor) ?? []), b]);
+    const out: { fan: string; live: MatchGroup[] }[] = [];
+    for (const [fan, list] of byFan) {
+      const live = buildGroups(list, [], fan, matches, {}, now).filter((g) => g.phase === "live");
+      if (live.length) out.push({ fan, live });
+    }
+    return out;
+  }, [bets, matches]);
 }

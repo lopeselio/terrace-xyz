@@ -169,3 +169,8 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
     .filter((g) => g.positions.length)
     .sort((a, b) => order[a.phase] - order[b.phase] || (a.phase === "fulltime" ? b.kickoff - a.kickoff : a.kickoff - b.kickoff));
 }
+
+/** Open positions for several fans at once (the mates strip): bets only, each row tagged with its fan. */
+export const MATES_QUERY = `query Mates($fans: [String!]) {
+  Bet(where: { bettor: { _in: $fans }, market: { question: { answer: { _eq: 0 } } } }, limit: 400) { id bettor side stake result payout market { id feeBps yesPool noPool isFlash question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } } } }
+}`;

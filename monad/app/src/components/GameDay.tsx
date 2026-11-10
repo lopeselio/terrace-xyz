@@ -10,10 +10,12 @@ import { Icon } from "./Icon";
 import { MarketCard, fixtureOf, marketPick, useOpenMarkets, type OpenMarket } from "./MarketCard";
 import { OnboardingPanel } from "./Onboarding";
 import { announceCollected } from "./OutcomePopup";
-import { Badge, Crest, Empty, LeagueLogo, SectionHead, SkeletonCards, money } from "./ui";
+import { Avatar, Badge, Crest, Empty, LeagueLogo, SectionHead, SkeletonCards, money } from "./ui";
 import { useAccount } from "@/lib/account";
 import { useFavTeam } from "@/lib/favTeam";
-import { useGameDay, type Acca, type MatchGroup, type Position, type Standing } from "@/lib/gameday";
+import { useGameDay, useMatesLive, type Acca, type MatchGroup, type Position, type Standing } from "@/lib/gameday";
+import { useFollows } from "@/lib/follows";
+import { fanName } from "@/lib/names";
 import { collect } from "@/lib/play";
 import { useMatchPrices } from "@/lib/picks";
 import { balanceChanged } from "@/lib/useBalance";
@@ -35,10 +37,15 @@ const STANDING: Record<Standing, { label: string; tone: "won" | "lost" | "live" 
 };
 const signed = (raw: number) => `${raw >= 0 ? "+" : "−"}${money(Math.abs(raw))}`;
 
-/** Game day: every position you hold, beside the action, with more to back on the games you follow. */
-export function GameDay() {
+/**
+ * Game day: every position you hold, beside the action, with more to back on the games you follow.
+ * With `fan`, a mate's game day instead: the same board, read only.
+ */
+export function GameDay({ fan }: { fan?: string }) {
   const { status, address, send } = useAccount();
-  const owner = status === "ready" ? address : null;
+  const me = status === "ready" ? address : null;
+  const watching = fan && fan.toLowerCase() !== me?.toLowerCase() ? (fan.toLowerCase() as Address) : null;
+  const owner = watching ?? me;
   const { groups, accas, matches, reload } = useGameDay(owner);
   const { team } = useFavTeam();
   const [pick, setPick] = useState<BetPick | null>(null);
@@ -78,28 +85,33 @@ export function GameDay() {
 
   return (
     <>
-      <Header title="Game day" sub="Everything you've got on, as it happens" />
+      {watching ? (
+        <Header title={`${fanName(watching)}'s game day`} sub="Their bets, as it stands" back="/live" />
+      ) : (
+        <Header title="Game day" sub="Everything you've got on, as it happens" />
+      )}
       <div className="pad page-enter gd">
         {!groups && <SkeletonCards n={2} odds={0} />}
-        {groups && <Summary groups={groups} accas={accas} />}
+        {groups && <Summary groups={groups} accas={accas} theirs={!!watching} />}
+        {!watching && <Mates matches={matches} />}
         {error && <div className="card umeta" role="alert" style={{ marginTop: 12, color: "var(--red-ink)" }}>{error}</div>}
 
         {live.length > 0 && (
           <div className="sec">
             <SectionHead title="In play" color="var(--red-ink)"><Badge tone="live">{live.length} {live.length === 1 ? "game" : "games"}</Badge></SectionHead>
-            {live.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={collectBet} />)}
+            {live.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={watching ? undefined : collectBet} />)}
           </div>
         )}
         {fulltime.length > 0 && (
           <div className="sec">
             <SectionHead title="Full time" />
-            {fulltime.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={collectBet} />)}
+            {fulltime.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={watching ? undefined : collectBet} />)}
           </div>
         )}
         {upcoming.length > 0 && (
           <div className="sec">
             <SectionHead title="Coming up" />
-            {upcoming.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={collectBet} />)}
+            {upcoming.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={watching ? undefined : collectBet} />)}
           </div>
         )}
         {accas.length > 0 && (
@@ -109,12 +121,16 @@ export function GameDay() {
           </div>
         )}
         {groups && groups.length === 0 && accas.length === 0 && (
-          <Empty title="Nothing on yet" action={<Link href="/matches" className="cta cta-sm">Find a match</Link>}>
-            Back a result, take on a mate or call a moment. Everything you&apos;ve got on lands here, live.
-          </Empty>
+          watching ? (
+            <Empty title="Nothing on right now">{fanName(watching)} hasn&apos;t got a bet riding. Check back on matchday.</Empty>
+          ) : (
+            <Empty title="Nothing on yet" action={<Link href="/matches" className="cta cta-sm">Find a match</Link>}>
+              Back a result, take on a mate or call a moment. Everything you&apos;ve got on lands here, live.
+            </Empty>
+          )
         )}
 
-        {groups && <Discover groups={groups} matches={matches} team={team} owner={owner} send={send} onPick={setPick} />}
+        {groups && <Discover groups={groups} matches={matches} team={watching ? null : team} owner={me} send={send} onPick={setPick} title={watching ? "Back the same games" : undefined} />}
       </div>
       {pick && <BetSheet pick={pick} onClose={() => (setPick(null), reload())} />}
     </>
@@ -122,7 +138,7 @@ export function GameDay() {
 }
 
 /** The fan's whole exposure in one line: what's riding, and where it stands right now. */
-function Summary({ groups, accas }: { groups: MatchGroup[]; accas: Acca[] }) {
+function Summary({ groups, accas, theirs }: { groups: MatchGroup[]; accas: Acca[]; theirs?: boolean }) {
   const all = groups.flatMap((g) => g.positions);
   const riding = groups.reduce((s, g) => s + g.staked, 0) + accas.reduce((s, a) => s + Number(a.stake), 0);
   const games = groups.filter((g) => g.staked > 0).length;
@@ -148,13 +164,13 @@ function Summary({ groups, accas }: { groups: MatchGroup[]; accas: Acca[] }) {
         )}
       </div>
       {toCollect > 0 && (
-        <div className="gd-collect"><Icon name="dollar" size={16} /> {money(toCollect)} ready to collect below</div>
+        <div className="gd-collect"><Icon name="dollar" size={16} /> {money(toCollect)} {theirs ? "waiting to be collected" : "ready to collect below"}</div>
       )}
     </div>
   );
 }
 
-function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null; onCollect: (p: Position) => void }) {
+function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null; onCollect?: (p: Position) => void }) {
   const m = g.match;
   const positions = [...g.positions].sort((a, b) => Number(b.collectible) - Number(a.collectible));
   const clock =
@@ -178,7 +194,7 @@ function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null
         g.score && <div className="gd-score"><span className="sc">{g.score.home}–{g.score.away}</span></div>
       )}
       <div className="gd-positions">
-        {positions.map((p) => <PositionLine key={p.key} p={p} busy={busy === p.key} onCollect={() => onCollect(p)} />)}
+        {positions.map((p) => <PositionLine key={p.key} p={p} busy={busy === p.key} onCollect={onCollect && (() => onCollect(p))} />)}
       </div>
       {(g.staked > 0 || g.ifEndsNow !== null) && (
         <div className="gd-foot">
@@ -190,7 +206,7 @@ function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null
   );
 }
 
-function PositionLine({ p, busy, onCollect }: { p: Position; busy: boolean; onCollect: () => void }) {
+function PositionLine({ p, busy, onCollect }: { p: Position; busy: boolean; onCollect?: () => void }) {
   const s = STANDING[p.standing];
   const amount =
     p.standing === "winning" || p.standing === "won" ? (p.returns !== null ? `+${money(p.returns - p.stake)}` : "")
@@ -209,11 +225,43 @@ function PositionLine({ p, busy, onCollect }: { p: Position; busy: boolean; onCo
         <Badge tone={s.tone}>{s.label}</Badge>
         {amount && <div className={`gd-amt${p.standing === "winning" || p.standing === "won" ? " amt-won" : p.standing === "losing" || p.standing === "lost" ? " amt-lost" : ""}`}>{amount}</div>}
       </div>
-      {p.collectible && (
+      {p.collectible && onCollect && (
         <button className="cta cta-sm gd-pos-cta" disabled={busy} onClick={onCollect}>
           {busy ? "One moment…" : p.standing === "won" ? `Collect ${money(p.returns ?? p.stake)}` : `Get my ${money(p.stake)} back`}
         </button>
       )}
+    </div>
+  );
+}
+
+/** Followed fans with a bet on a match in play: how it stands for them, one tap to their board. */
+function Mates({ matches }: { matches: Map<number, MatchLite> }) {
+  const { follows } = useFollows();
+  const mates = useMatesLive(follows, matches);
+  if (!mates.length) return null;
+  return (
+    <div className="sec">
+      <SectionHead title="Your mates in play" />
+      {mates.map(({ fan, live }) => {
+        const ps = live.flatMap((g) => g.positions);
+        const winning = ps.filter((p) => p.standing === "winning").length;
+        const losing = ps.filter((p) => p.standing === "losing").length;
+        const m = live[0].match;
+        return (
+          <Link key={fan} href={`/live?fan=${fan}`} className="card card-tap gd-mate" style={{ color: "var(--ink)" }}>
+            <Avatar seed={fan} size={34} />
+            <span className="gd-mate-t">
+              <span className="uname">{fanName(fan)}</span>
+              <span className="umeta">{m ? `On ${m.home.name} v ${m.away.name}${live.length > 1 ? ` +${live.length - 1}` : ""}` : `${live.length} games`}</span>
+            </span>
+            <span className="gd-mate-s">
+              {winning > 0 && <Badge tone="won">{winning} winning</Badge>}
+              {losing > 0 && <Badge tone="lost">{losing} losing</Badge>}
+              {!winning && !losing && <Badge tone="live">In play</Badge>}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -235,11 +283,12 @@ function AccaLine({ a }: { a: Acca }) {
  * Discovery tied to what the fan already follows: open markets on the games they're on, then on their
  * clubs (their positions' teams and the club they picked), then those clubs' next fixtures.
  */
-function Discover({ groups, matches, team, owner, send, onPick }: {
+function Discover({ groups, matches, team, owner, send, onPick, title }: {
   groups: MatchGroup[];
   matches: Map<number, MatchLite>;
   team: { id: number; name: string } | null;
-  owner: Address;
+  owner: Address | null;
+  title?: string;
   send: ReturnType<typeof useAccount>["send"];
   onPick: (p: BetPick) => void;
 }) {
@@ -278,7 +327,7 @@ function Discover({ groups, matches, team, owner, send, onPick }: {
     <>
       {onYours.length > 0 && (
         <div className="sec">
-          <SectionHead title="More on your games" more="Markets" href="/markets" />
+          <SectionHead title={title ?? "More on your games"} more="Markets" href="/markets" />
           {onYours.map(card)}
         </div>
       )}

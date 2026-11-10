@@ -35,3 +35,9 @@
 .gd-strip { display: flex; align-items: center; gap: 10px; margin: 12px var(--gutter) 0; padding: 12px 14px; border-radius: var(--r-lg); border: 1px solid var(--red-mid); background: var(--surface); color: var(--ink); }
 .gd-strip .gd-strip-t { flex: 1; min-width: 0; }
 .gd-strip .uname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Mates in play */
+.gd-mate { display: flex; align-items: center; gap: 10px; }
+.gd-mate-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.gd-mate-t .umeta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gd-mate-s { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
