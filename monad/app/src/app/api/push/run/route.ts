@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runPush } from "@/lib/server/push";
 
-/** One push round: called every minute by the terrace-push timer on the Azure VM, with the cron key. */
+/** One push round (results, challenges, followers, swings): called every minute by the terrace-push timer on the Azure VM, with the cron key. */
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
