@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import sample from "./fixtures-data/sample.json";
-import { evaluate, evidence, parseRule, type FixtureDetail, type Rule } from "./rules";
+import { asItStands, evaluate, evidence, parseRule, type FixtureDetail, type Rule } from "./rules";
 
 // Man United 1-0 Fulham (API-Football fixture 1208021): Zirkzee 87', five yellow cards, corners 7-8.
 const full = sample.response[0] as unknown as FixtureDetail;
@@ -100,5 +100,20 @@ describe("plain-English readings", () => {
     expect(describeRule(rule({ left: { player: { player: 526, field: "goals.saves" } }, op: ">=", value: 5 }), names)).toBe(
       "Settles YES if Onana's saves is at least 5 at full time.",
     );
+  });
+});
+
+describe("as it stands, for the live view", () => {
+  test("reads the take mid-match without settling it", () => {
+    const zirkzeeScores = rule({ left: { events: { type: "Goal", player: 70100 } }, op: ">=", value: 1 });
+    expect(asItStands(zirkzeeScores, at("NS", 0))).toBeNull();
+    expect(asItStands(zirkzeeScores, at("2H", 85))).toBe("NO");
+    expect(evaluate(zirkzeeScores, at("2H", 85))).toBe("PENDING");
+    expect(asItStands(zirkzeeScores, at("2H", 88))).toBe("YES");
+  });
+
+  test("a settled answer wins over the live reading", () => {
+    const atMostOneFulhamCard = rule({ left: { events: { type: "Card", team: 36 } }, op: "<=", value: 1 });
+    expect(asItStands(atMostOneFulhamCard, full)).toBe("NO");
   });
 });

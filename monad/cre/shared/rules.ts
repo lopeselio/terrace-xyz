@@ -108,6 +108,20 @@ export function evaluate(rule: Rule, f: FixtureDetail): Verdict {
   return "PENDING";
 }
 
+/**
+ * How a rule reads right now, for the live game-day view: YES or NO if the match ended this minute,
+ * null when there's nothing to read yet (not started, or the data isn't published). Never used to settle.
+ */
+export function asItStands(rule: Rule, f: FixtureDetail): "YES" | "NO" | null {
+  const settled = evaluate(rule, f);
+  if (settled === "YES" || settled === "NO") return settled;
+  if (settled === "VOID" || NOT_STARTED.has(f.fixture.status.short)) return null;
+  const left = metric(rule.left, f).value;
+  const right = rule.right ? metric(rule.right, f).value : rule.value!;
+  if (left === null || right === null) return null;
+  return compare(left, rule.op, right) ? "YES" : "NO";
+}
+
 /** A metric's value now, and whether it can still change. */
 function metric(m: Metric, f: FixtureDetail): { value: number | null; final: boolean } {
   const status = f.fixture.status.short;
