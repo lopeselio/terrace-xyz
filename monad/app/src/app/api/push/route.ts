@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   try {
     const s = await find(endpoint);
     return NextResponse.json(
-      { on: !!s, fan: s?.partitionKey ?? null, prefs: s ? { results: s.results, challenges: s.challenges, followers: s.followers } : DEFAULT_PREFS },
+      { on: !!s, fan: s?.partitionKey ?? null, prefs: s ? { results: s.results, challenges: s.challenges, followers: s.followers, swings: s.swings !== false } : DEFAULT_PREFS },
       { headers: { "cache-control": "no-store" } },
     );
   } catch {
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       await sent.deleteEntity(fan, BASELINE).catch(() => {});
     }
     await subs.upsertEntity({ partitionKey: fan, rowKey: device, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, ...prefs, at: b.at }, "Replace");
-    if (b.test) await sendPush({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth }, { title: "You're on the terrace", body: "Results, challenges and new followers will land here.", url: "/", tag: "welcome" }).catch(() => {});
+    if (b.test) await sendPush({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth }, { title: "You're on the terrace", body: "Results, challenges, new followers and swings in your matches will land here.", url: "/", tag: "welcome" }).catch(() => {});
   } catch {
     return NextResponse.json({ error: "Notifications are catching up. Try again in a moment." }, { status: 503 });
   }

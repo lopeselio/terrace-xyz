@@ -7,7 +7,7 @@ import { showError } from "@/lib/errors";
 import { DEFAULT_PREFS, PREF_LABELS, deviceKey, pushNote, type PushPrefs } from "@/lib/push";
 
 /*
- * Push notifications on this device: results, challenges and new followers, sent by /api/push/run.
+ * Push notifications on this device: results, challenges, new followers and live swings, sent by /api/push/run.
  * iPhones only get web push from the Home Screen app, so there we ask fans to add it first.
  */
 
