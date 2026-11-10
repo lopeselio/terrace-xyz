@@ -43,7 +43,7 @@ export function standardAnswer(kind: number, line: number, f: { state: number; h
 /** TerraceOracle.RESOLVE_GRACE: a match or take with no answer this long after it closes counts as void. */
 export const RESOLVE_GRACE = 3 * 86400;
 
-export type AnswerLike = { answer: number; kind: number; closeTime?: string | null; fixture?: { state: number; kickoff: string } | null };
+export type AnswerLike = { answer: number; kind: number; line?: number; closeTime?: string | null; fixture?: { state: number; kickoff: string; homeGoals?: number; awayGoals?: number } | null };
 
 /**
  * The answer the contracts act on, as TerraceOracle.outcomeOf works it out: the stored answer, or void
@@ -53,6 +53,9 @@ export type AnswerLike = { answer: number; kind: number; closeTime?: string | nu
 export function effectiveAnswer(q: AnswerLike, now = Date.now() / 1000): number {
   if (q.answer !== 0) return q.answer;
   if (q.fixture?.state === 2) return 3;
+  // Standard questions are never answered directly: the oracle reads them off the final score.
+  if (q.kind >= 1 && q.kind <= 5 && q.fixture?.state === 1 && q.fixture.homeGoals !== undefined && q.fixture.awayGoals !== undefined)
+    return standardAnswer(q.kind, q.line ?? 0, { state: 1, homeGoals: q.fixture.homeGoals, awayGoals: q.fixture.awayGoals });
   const close = q.kind === 0 ? Number(q.closeTime || q.fixture?.kickoff || 0) : q.fixture?.state === 0 ? Number(q.fixture.kickoff) : 0;
   return close && now > close + RESOLVE_GRACE ? 3 : 0;
 }

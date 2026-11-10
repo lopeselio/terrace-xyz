@@ -14,6 +14,8 @@ export type Q = { id: string; text: string; kind: number; line: number; answer: 
 export type RawBet = { id: string; side: number; stake: string; result: number | null; payout: string | null; market: { id: string; feeBps: number; yesPool: string; noPool: string; isFlash: boolean; question: Q } };
 export type RawDuel = { id: string; challenger: string; opponent: string | null; challengerSide: number; stake: string; status: number; winner: string | null; question: Q };
 export type Acca = { id: string; legs: number; liveLegs: number; stake: string; status: number; payout: string | null };
+/** One leg of an open parlay, read from TerraceParlays.getParlay (the indexer doesn't store legs). */
+export type RawLeg = { acca: string; index: number; of: number; side: 1 | 2; question: Q };
 
 /**
  * won/lost/refund: settled. winning/losing: as it stands (or as it finished, before the result lands).
@@ -24,7 +26,7 @@ export type Standing = "won" | "lost" | "refund" | "winning" | "losing" | "live"
 
 export type Position = {
   key: string;
-  kind: "bet" | "duel";
+  kind: "bet" | "duel" | "leg"; // leg: one leg of a parlay, shown on its own match
   title: string;
   pick: string; // the side in plain words
   stake: number; // raw units (6 decimals)
@@ -49,7 +51,8 @@ export type MatchGroup = {
   ifEndsNow: number | null; // net, live and full-time matches only
 };
 
-const Q_FIELDS = `question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } }`;
+export const Q_BARE = `id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals }`;
+const Q_FIELDS = `question { ${Q_BARE} }`;
 export const GD_BET = `id side stake result payout market { id feeBps yesPool noPool isFlash ${Q_FIELDS} }`;
 export const GD_DUEL = `id challenger opponent challengerSide stake status winner ${Q_FIELDS}`;
 
@@ -91,7 +94,7 @@ function openStanding(g: MatchGroup, side: 1 | 2 | null, r: 1 | 2 | null, now: n
   return r === side ? "winning" : "losing";
 }
 
-export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matches: Map<number, MatchLite>, custom: Record<string, "YES" | "NO" | null>, now: number) {
+export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matches: Map<number, MatchLite>, custom: Record<string, "YES" | "NO" | null>, now: number, legs: RawLeg[] = []) {
   const groups = new Map<number, MatchGroup>();
   const group = (q: Q) => {
     const id = Number(q.fixture?.id ?? 0);
@@ -140,7 +143,7 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
 
   for (const d of duels) {
     const q = d.question;
-    if ((d.status === 4 || d.status === 5) && !recent(q)) continue;
+    if ((d.status === 4 || d.status === 5 || (d.status === 0 && Number(q.fixture?.kickoff ?? 0) < now)) && !recent(q)) continue; // old news
     const g = group(q);
     const mine = d.challenger === me ? d.challengerSide : 3 - d.challengerSide;
     const side = (mine === 1 ? 1 : 2) as 1 | 2;
@@ -148,7 +151,10 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
     if (d.status === 4) standing = d.winner === me ? "won" : "lost";
     else if (d.status === 5 || effectiveAnswer(q, now) === 3) standing = "refund";
     else if (d.status === 0) standing = g.phase === "upcoming" && g.kickoff > now ? "waiting" : "expired";
-    else standing = openStanding(g, side, reading(q, g.match, custom), now);
+    else {
+      const answer = effectiveAnswer(q, now); // taken 1v1s wait for a settle call; the answer may already be in
+      standing = answer === 1 || answer === 2 ? (answer === side ? "won" : "lost") : openStanding(g, side, reading(q, g.match, custom), now);
+    }
     const stake = Number(d.stake);
     g.positions.push({
       key: `d${d.id}`,
@@ -166,11 +172,33 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
     });
   }
 
+  // Parlay legs: no stake of their own (the parlay carries it), just how each one stands on its match.
+  for (const l of legs) {
+    const q = l.question;
+    const g = group(q);
+    const answer = effectiveAnswer(q, now);
+    const standing: Standing = answer === 3 ? "refund" : answer ? (answer === l.side ? "won" : "lost") : openStanding(g, l.side, reading(q, g.match, custom), now);
+    g.positions.push({
+      key: `l${l.acca}-${l.index}`,
+      kind: "leg",
+      title: questionLabel(q, g.match),
+      pick: `${sideLabel(l.side, q)} · parlay leg ${l.index + 1} of ${l.of}`,
+      stake: 0,
+      returns: null,
+      standing,
+      collectible: false,
+      flash: false,
+      href: "/acca",
+      side: l.side,
+      question: q,
+    });
+  }
+
   for (const g of groups.values()) {
     const riding = g.positions.filter((p) => !["won", "lost", "refund"].includes(p.standing));
     g.staked = riding.reduce((s, p) => s + p.stake, 0);
     if (g.phase !== "upcoming") {
-      const read = g.positions.filter((p) => p.standing === "winning" || p.standing === "losing");
+      const read = g.positions.filter((p) => p.kind !== "leg" && (p.standing === "winning" || p.standing === "losing"));
       g.ifEndsNow = read.length ? read.reduce((s, p) => s + (p.standing === "winning" ? (p.returns ?? p.stake) - p.stake : -p.stake), 0) : null;
     }
   }

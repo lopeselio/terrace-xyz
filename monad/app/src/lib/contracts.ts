@@ -131,6 +131,7 @@ export const parlaysAbi = parseAbi([
   "function settleParlay(uint256 parlayId)",
   "function claim(uint256 parlayId) returns (uint256)",
   "function projectedPayout(uint256 parlayId) view returns (uint256)",
+  "function getParlay(uint256 parlayId) view returns ((address player, address token, uint128 stake, uint64 potId, uint8 liveLegs, uint8 status) parlay, (uint256 questionId, uint8 side)[] legs)",
   "function potEndsAt(uint64 potId) pure returns (uint256)",
   "function pots(address token, uint64 potId) view returns (uint128 total, uint32 unsettled, uint256 winningWeight)",
   "event ParlayPlaced(uint256 indexed parlayId, address indexed player, uint64 indexed potId, address token, uint256 stake, uint8 legs)",

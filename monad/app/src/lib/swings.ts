@@ -26,7 +26,7 @@ export function livePositions(groups: MatchGroup[]): LivePosition[] {
   for (const g of groups) {
     if (g.phase !== "live" || !g.score || !g.match) continue;
     for (const p of g.positions) {
-      if ((p.standing !== "winning" && p.standing !== "losing") || !p.side) continue;
+      if ((p.standing !== "winning" && p.standing !== "losing") || !p.side || p.kind === "leg") continue;
       out.push({
         key: p.key,
         fixture: g.fixture,

@@ -124,7 +124,7 @@ export function GameDay({ fan }: { fan?: string }) {
         {accas.length > 0 && (
           <div className="sec">
             <SectionHead title="Parlays riding" more="All" href="/acca" />
-            {accas.map((a) => <AccaLine key={a.id} a={a} />)}
+            {accas.map((a) => <AccaLine key={a.id} a={a} legs={(groups ?? []).flatMap((g) => g.positions).filter((p) => p.key.startsWith(`l${a.id}-`))} />)}
           </div>
         )}
         {groups && groups.length === 0 && accas.length === 0 && (
@@ -227,7 +227,8 @@ function MatchBoard({ g, busy, onCollect, children }: { g: MatchGroup; busy: str
 function PositionLine({ p, busy, onCollect }: { p: Position; busy: boolean; onCollect?: () => void }) {
   const s = STANDING[p.standing];
   const amount =
-    p.standing === "winning" || p.standing === "won" ? (p.returns !== null ? `+${money(p.returns - p.stake)}` : "")
+    p.kind === "leg" ? ""
+    : p.standing === "winning" || p.standing === "won" ? (p.returns !== null ? `+${money(p.returns - p.stake)}` : "")
     : p.standing === "losing" || p.standing === "lost" ? `−${money(p.stake)}`
     : p.standing === "refund" || p.standing === "expired" ? money(p.stake)
     : p.returns !== null ? `pays ${money(p.returns)}` : "";
@@ -236,7 +237,7 @@ function PositionLine({ p, busy, onCollect }: { p: Position; busy: boolean; onCo
       <Link href={p.href} className="gd-pos-main" style={{ color: "var(--ink)" }}>
         <div className="uname">{p.title}</div>
         <div className="umeta">
-          {p.pick} · {money(p.stake)}{p.flash ? " · flash" : ""}
+          {p.pick}{p.kind === "leg" ? "" : ` · ${money(p.stake)}`}{p.flash ? " · flash" : ""}
         </div>
       </Link>
       <div className="gd-pos-side">
@@ -324,13 +325,16 @@ function InPlay({ m, open, owner, send, onPick }: { m: MatchLite; open: OpenMark
   );
 }
 
-function AccaLine({ a }: { a: Acca }) {
-  const dead = a.legs - a.liveLegs;
+/** A parlay in one line: how its legs stand (each leg also sits on its own match above). */
+function AccaLine({ a, legs }: { a: Acca; legs: Position[] }) {
+  const count = (...s: Standing[]) => legs.filter((p) => s.includes(p.standing)).length;
+  const [good, bad, open] = [count("won", "winning"), count("lost", "losing"), count("live", "due", "upcoming")];
+  const line = !legs.length ? "Legs on their way" : bad ? `${bad} ${bad === 1 ? "leg" : "legs"} down · ${good} of ${a.legs} landing` : `${good} of ${a.legs} landing${open ? ` · ${open} to play` : ""}`;
   return (
-    <Link href="/acca" className="card card-tap gd-acca" style={{ color: "var(--ink)" }}>
+    <Link href="/acca" className={`card card-tap gd-acca${bad ? " lost" : good === a.legs ? " won" : ""}`} style={{ color: "var(--ink)" }}>
       <div>
         <div className="uname">{a.legs}-leg parlay</div>
-        <div className="umeta">{a.liveLegs} of {a.legs} legs still to settle{dead ? ` · ${dead} in` : ""}</div>
+        <div className="umeta">{line}</div>
       </div>
       <Badge tone="settled">{money(a.stake)}</Badge>
     </Link>

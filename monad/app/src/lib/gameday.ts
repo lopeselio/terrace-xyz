@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { query } from "./indexer";
 import { callStoppage } from "./errors";
 import { FINISHED, LIVE } from "@/components/MatchRow";
-import { GD_QUERY, MATES_QUERY, RECENT, buildGroups, type Acca, type MatchGroup, type RawBet, type RawDuel } from "./positions";
+import { GD_QUERY, MATES_QUERY, Q_BARE, RECENT, buildGroups, type Acca, type MatchGroup, type Q, type RawBet, type RawDuel, type RawLeg } from "./positions";
+import { publicClient } from "./chain";
+import { ADDR, parlaysAbi } from "./contracts";
 import type { MatchLite } from "./useMatches";
 
 export type { Acca, MatchGroup, Position, RawBet, Standing } from "./positions";
@@ -86,7 +88,31 @@ export function useGameDay(address: string | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [takesKey]);
 
-  const groups = useMemo(() => (raw && me && matches ? buildGroups(raw.bets, raw.duels, me, matches, custom, now) : null), [raw, me, matches, custom, now]);
+  // Parlay legs live only on-chain: read each open parlay's legs, then their questions from the index.
+  const [legs, setLegs] = useState<RawLeg[]>([]);
+  const accaKey = raw?.accas.map((a) => a.id).join(",") ?? "";
+  useEffect(() => {
+    if (!accaKey) return setLegs([]);
+    let alive = true;
+    (async () => {
+      const read = await Promise.all(accaKey.split(",").map(async (id) => ({ id, legs: (await publicClient.readContract({ address: ADDR.parlays, abi: parlaysAbi, functionName: "getParlay", args: [BigInt(id)] }))[1] })));
+      const qids = [...new Set(read.flatMap((r) => r.legs.map((l) => String(l.questionId))))];
+      const d = await query<{ Question: Q[] }>(`query L($ids: [String!]) { Question(where: { id: { _in: $ids } }) { ${Q_BARE} } }`, { ids: qids });
+      const byId = new Map(d.Question.map((q) => [q.id, q]));
+      const out: RawLeg[] = [];
+      for (const r of read)
+        r.legs.forEach((l, index) => {
+          const q = byId.get(String(l.questionId));
+          if (q) out.push({ acca: r.id, index, of: r.legs.length, side: l.side === 1 ? 1 : 2, question: q });
+        });
+      if (alive) setLegs(out);
+    })().catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [accaKey]);
+
+  const groups = useMemo(() => (raw && me && matches ? buildGroups(raw.bets, raw.duels, me, matches, custom, now, legs) : null), [raw, me, matches, custom, now, legs]);
   return { groups, accas: raw?.accas ?? [], matches: matches ?? new Map<number, MatchLite>(), reload: load };
 }
 
