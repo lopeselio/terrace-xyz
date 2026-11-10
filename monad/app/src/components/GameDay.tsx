@@ -5,7 +5,7 @@ import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { FixtureCard, kickoffDay, kickoffTime } from "./FixtureCard";
 import { FINISHED } from "./MatchRow";
-import { Header } from "./Header";
+import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { MarketCard, fixtureOf, marketPick, useOpenMarkets, type OpenMarket } from "./MarketCard";
 import { OnboardingPanel } from "./Onboarding";
@@ -88,7 +88,7 @@ export function GameDay({ fan }: { fan?: string }) {
       {watching ? (
         <Header title={`${fanName(watching)}'s game day`} sub="Their bets, as it stands" back="/live" />
       ) : (
-        <Header title="Game day" sub="Everything you've got on, as it happens" />
+        <Header title="Game day" sub="Everything you've got on, as it happens" share={groups?.length ? () => shareDay(groups, me!) : undefined} />
       )}
       <div className="pad page-enter gd">
         {!groups && <SkeletonCards n={2} odds={0} />}
@@ -135,6 +135,16 @@ export function GameDay({ fan }: { fan?: string }) {
       {pick && <BetSheet pick={pick} onClose={() => (setPick(null), reload())} />}
     </>
   );
+}
+
+/** Share your matchday: the link unfurls as your matchday card (/api/card). */
+function shareDay(groups: MatchGroup[], me: string) {
+  const ps = groups.flatMap((g) => g.positions);
+  const won = ps.filter((p) => p.standing === "won").length, lost = ps.filter((p) => p.standing === "lost").length;
+  const winning = ps.filter((p) => p.standing === "winning").length;
+  const net = ps.reduce((s, p) => s + (p.standing === "won" || p.standing === "winning" ? (p.returns ?? p.stake) - p.stake : p.standing === "lost" || p.standing === "losing" ? -p.stake : 0), 0);
+  const line = won + lost ? `${won} from ${won + lost}, ${signed(net)} on the day` : winning ? `${winning} winning as it stands` : "bets on, kick-off soon";
+  shareLink("My matchday on Terrace", `My matchday on Terrace: ${line}.`, `${window.location.origin}/live?fan=${me.toLowerCase()}`);
 }
 
 /** The fan's whole exposure in one line: what's riding, and where it stands right now. */
