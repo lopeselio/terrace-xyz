@@ -212,6 +212,7 @@ clear yes first. Stakes are in test dollars.
 | [`terrace_open_takes`](#terrace_open_takes) | read | The hottest open take markets fans have posted |
 | [`terrace_back`](#terrace_back) | write | Back (yes) or fade (no) an open take market |
 | [`terrace_my_bets`](#terrace_my_bets) | read | This account's challenges and bets, and what's ready to collect |
+| [`terrace_game_day`](#terrace_game_day) | read | Every open bet by match beside the live score: winning or losing as it stands |
 | [`terrace_collect`](#terrace_collect) | write | Pay out everything settled, and refund challenges nobody took |
 
 Each tool answers with a sentence and, where useful, a JSON block that Claude reads. Errors come back as
@@ -343,6 +344,41 @@ Pari-mutuel: the winning side splits the pool.
 No input. Lists `challenges` (with `youBack`, `stakeEach`, and a status such as `on`, `ready to collect`,
 `won $20.00`, `lost`) and market `bets`.
 
+### terrace_game_day
+
+No input. How this account's bets stand right now, as the Game day page in the app shows them: every
+position grouped by match (live first, then full time awaiting a result, then upcoming), beside the score,
+read against it. Plain text, ready to read out:
+
+```
+LIVE 67'  Arsenal 2-1 Chelsea
+  - Arsenal win: Yes, $5.00 staked. Winning, +$4.85
+  - "Saka scores before the hour": Not happening, 1v1, $3.00 staked. Losing, -$3.00
+  If it ends now: +$1.85
+
+FT  ST Mirren 1-1 Hibernian (awaiting result)
+  - Over 2.5 goals in ST Mirren v Hibernian: No, $9.00 staked. Winning, +$7.10
+  As it finished: +$7.10
+
+FT  Genoa 2-0 Juventus
+  - "Over 2.5 goals at Marassi": Yes, $9.00 staked. To collect, $9.00 (stake back)
+
+Sat, 14 Nov 15:00 UTC  Aston Villa v Manchester City
+  - Manchester City win: Yes, $10.00 staked. Not started, pays $18.40
+
+On the line: $27.00 across 3 games.
+If it all ends now: +$8.95 (2 winning, 1 losing).
+Ready to collect: $9.00. Run terrace_collect to pay it out.
+Readings are as it stands, never a result: Chainlink settles every bet after full time.
+```
+
+Each position reads *Winning*, *Losing*, *In play* (a take with nothing to read yet), *Awaiting result*,
+*Not started*, *Waiting for a mate* or *Not taken* (1v1s), *Won*, *Lost*, *Refund*, or *To collect* when
+`terrace_collect` would pay it out now. Match results and 1X2, goals and both-teams-score markets are read
+from the live score; a fan's own take is read by the same rule Chainlink settles it with, through Terrace's
+public live endpoint. A question nobody answers within three days of closing counts as void (a refund), as
+the contracts treat it. Settled positions stay on the board for 36 hours after kick-off.
+
 ### terrace_collect
 
 No input. Settles every finished 1v1 and market bet this account is in, and refunds its challenges nobody
@@ -357,6 +393,7 @@ accepted before betting closed. Safe to run any time: anything not ready is repo
 - *"I say City don't win. Challenge anyone $10 on the no side."*
 - *"Accept this: play.terrace.social/c/16"*
 - *"What are the hottest takes right now? Fade the biggest one with $2."*
+- *"How are my bets doing right now?"*
 - *"Did I win anything? Collect it."*
 
 ## Use it from code
@@ -469,9 +506,11 @@ an in-play take with no time window. Send the link early.
 npm install
 npm run build        # tsc → dist/
 npm run typecheck
+npm test             # build, then the game day tests (node:test, no extra dependencies)
 node test/client.mjs                                   # list the tools
 node test/client.mjs terrace_account                   # call one, the way Claude would
 node test/client.mjs terrace_preview_take '{"match":1557438,"take":"Over 2.5 goals"}'
+node test/client.mjs terrace_game_day                  # your bets beside the live score
 TERRACE_HOME=~/.terrace-b node test/client.mjs terrace_account   # play as a second person
 ```
 
@@ -479,7 +518,9 @@ TERRACE_HOME=~/.terrace-b node test/client.mjs terrace_account   # play as a sec
 |---|---|
 | `src/index.ts` | The MCP server: tool definitions and the instructions sent to the model |
 | `src/terrace.ts` | Contract addresses and ABIs, the Terrace API and indexer, the local account, sending with plain-English errors |
+| `src/gameday.ts` | Game day: positions by match, read against the live score (mirrors the app's rules), and the board in words |
 | `test/client.mjs` | A minimal MCP client for calling tools by hand |
+| `test/gameday.test.mjs` | Tests for how game day groups, reads and totals positions |
 
 Issues and pull requests are welcome at [github.com/lopeselio/terrace-mcp](https://github.com/lopeselio/terrace-mcp/issues).
 See [CHANGELOG.md](CHANGELOG.md) for releases.
