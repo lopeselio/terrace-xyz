@@ -16,6 +16,7 @@ import {
   ABI, ADDR, ANSWER, API, MATCHUP_STATUS, MAX_STAKE, SIDE, account, approve, chain, challengeId, challengeLink, checkStake, compileTake,
   dollars, ensureFunds, fixtureName, gql, matchLink, matches, send,
 } from "./terrace.js";
+import { loadGameDay, renderGameDay } from "./gameday.js";
 
 // The published package.json sits next to dist/, so the server reports the version actually installed.
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
@@ -27,7 +28,8 @@ const server = new McpServer(
       "Terrace is a social prediction game for football on Monad testnet, played with free test dollars. " +
       "To bet a friend: find the match with terrace_matches, preview the take with terrace_preview_take, then terrace_challenge, and give the user the link and invite text it returns to send to their friend. " +
       "When the user pastes a Terrace challenge link (play.terrace.social/c/<n>), show it with terrace_challenge_details before terrace_accept_challenge. " +
-      "Always show the plain-English rule and the stake to the user and get a clear yes before any tool that stakes money. After full time, terrace_collect pays out.",
+      "Always show the plain-English rule and the stake to the user and get a clear yes before any tool that stakes money. " +
+      "When the user asks how their bets are doing, use terrace_game_day. After full time, terrace_collect pays out.",
   },
 );
 
@@ -170,6 +172,21 @@ server.registerTool(
     }));
     const ready = [...challenges, ...bets].filter((x) => x.status === "ready to collect").length;
     return ok(`${challenges.length} challenges, ${bets.length} market bets${ready ? `, ${ready} ready to collect (terrace_collect)` : ""}.`, { challenges, bets });
+  }),
+);
+
+server.registerTool(
+  "terrace_game_day",
+  {
+    title: "Game day",
+    description:
+      "How this Claude's bets stand right now: every open position grouped by match, beside the live score, winning or losing as it stands, and what it comes to if the games ended now. " +
+      "Live matches first, then full time awaiting a result, then upcoming; ends with what's ready for terrace_collect.",
+    annotations: { readOnlyHint: true },
+  },
+  tool(async () => {
+    const { groups, accas } = await loadGameDay(API, account.address);
+    return ok(renderGameDay(groups, accas));
   }),
 );
 
