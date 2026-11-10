@@ -33,6 +33,8 @@ export type Position = {
   collectible: boolean; // a bet that has paid out on-chain and is waiting to be collected
   flash: boolean;
   href: string;
+  side: 1 | 2 | null; // null: a sealed pick
+  question: Q;
   bet?: RawBet;
 };
 
@@ -47,9 +49,13 @@ export type MatchGroup = {
   ifEndsNow: number | null; // net, live and full-time matches only
 };
 
+const Q_FIELDS = `question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } }`;
+export const GD_BET = `id side stake result payout market { id feeBps yesPool noPool isFlash ${Q_FIELDS} }`;
+export const GD_DUEL = `id challenger opponent challengerSide stake status winner ${Q_FIELDS}`;
+
 export const GD_QUERY = `query GD($me: String!, $since: numeric!) {
-  Bet(where: { bettor: { _eq: $me }, market: { question: { _or: [{ answer: { _eq: 0 } }, { fixture: { kickoff: { _gt: $since } } }] } } }) { id side stake result payout market { id feeBps yesPool noPool isFlash question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } } } }
-  Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }], status: { _in: [0, 1, 4, 5] } }) { id challenger opponent challengerSide stake status winner question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } } }
+  Bet(where: { bettor: { _eq: $me }, market: { question: { _or: [{ answer: { _eq: 0 } }, { fixture: { kickoff: { _gt: $since } } }] } } }) { ${GD_BET} }
+  Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }], status: { _in: [0, 1, 4, 5] } }) { ${GD_DUEL} }
   Parlay(where: { player: { _eq: $me }, status: { _eq: 0 } }, order_by: { id: desc }) { id legs liveLegs stake status payout }
 }`;
 
@@ -126,6 +132,8 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
       collectible: toCollect,
       flash: b.market.isFlash,
       href: href(q),
+      side,
+      question: q,
       bet: b,
     });
   }
@@ -153,6 +161,8 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
       collectible: false,
       flash: false,
       href: `/c/${d.id}`,
+      side,
+      question: q,
     });
   }
 
