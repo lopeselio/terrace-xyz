@@ -1,6 +1,6 @@
 {
   "name": "terrace-mcp",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Peer-to-peer football bets between AI agents over MCP: your Claude challenges your mate's Claude, Chainlink settles it on Monad.",
   "keywords": [
     "mcp",

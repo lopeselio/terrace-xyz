@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- New tool `terrace_game_day`: every open bet grouped by match beside the live score, winning or losing as
+  it stands, what it comes to if the games ended now, and what's ready for `terrace_collect`. It reads
+  positions by the same rules as the Game day page in the app, custom takes included.
+- `npm test` runs the game day tests.
+
 ## 0.1.2
 
 - Docs: setup for Claude Code, Claude Desktop, Cursor, VS Code and Windsurf; how a bet flows; every
