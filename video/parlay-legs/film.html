@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace Parlay Legs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<script src="assets/icons.js"></script>
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c; --green-glow: rgba(34,197,94,0.14); --green-tint: #0c1710;
+    --red: #ef4444; --red-ink: #f87171; --red-deep: #3b0a0a; --red-mid: #450a0a;
+    --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1605;
+    --blue: #60a5fa; --blue-deep: #12263f;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  .layer { position: absolute; inset: 0; z-index: 4; }
+  .abs { position: absolute; }
+  .i { display: inline-block; flex: none; }
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .green { color: var(--green); }
+  .redt { color: var(--red-ink); }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  .ctr { position: absolute; left: 0; right: 0; text-align: center; }
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.06em 0.05em 0.1em; margin: -0.06em -0.05em -0.1em; }
+  .w { display: inline-block; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--red-deep); border: 1.5px solid #6b1d1d; color: var(--red-ink); font-weight: 800; font-size: 19px; letter-spacing: 1.6px; text-transform: uppercase; }
+  .kicker .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .chip-cl { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 18px 0 8px; border-radius: 999px; background: var(--blue-deep); color: var(--blue); font-weight: 700; font-size: 20px; }
+  .chip-cl img { width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+  .pillurl { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
+  .brandrow { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brandrow img { height: 42px; border-radius: 10px; }
+  .brandrow img.cl { border-radius: 50%; background: #fff; height: 38px; }
+  .brandrow b { color: var(--ink); font-family: var(--cond); font-size: 32px; letter-spacing: 1px; }
+  .ring { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #3a0d0d, var(--red-deep) 70%); border: 4px solid var(--red); color: #fff; box-shadow: 0 0 80px rgba(239,68,68,0.35), inset 0 0 40px rgba(0,0,0,0.5); }
+
+
+  /* phone */
+  #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
+  body.v #phonewrap { left: 320px; top: 590px; }
+  #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; }
+  #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
+  #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
+  #view { position: absolute; inset: 0; }
+  .hdr { position: absolute; left: 0; right: 0; top: 56px; height: 62px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid var(--line-hair); z-index: 3; background: var(--canvas); }
+  .hdr .logo { display: flex; align-items: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 22px; letter-spacing: 1px; flex: 1; }
+  .hdr .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .hdr-title { font-family: var(--cond); font-size: 24px; font-weight: 700; text-transform: uppercase; line-height: 1.05; }
+  .hdr-sub { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+  .balpill { display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--green-deep); border: 1px solid var(--green-mid); color: var(--green-ink); font-weight: 700; font-size: 14.5px; margin-left: auto; }
+  .body { position: absolute; left: 0; right: 0; top: 118px; bottom: 84px; overflow: hidden; }
+  .scroll { position: absolute; left: 16px; right: 16px; top: 12px; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line-hair); background: rgba(10,10,10,0.94); padding-bottom: 14px; z-index: 4; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-4); padding-top: 8px; }
+  .tab .pill { width: 46px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab .tl { font-size: 11px; font-weight: 600; }
+  .tab.on { color: var(--green); }
+  .tab.on .pill { background: var(--green-glow); }
+  .tab-create .pill { width: 48px; height: 48px; border-radius: 50%; background: var(--green); color: var(--on-green); margin-top: -18px; box-shadow: 0 8px 20px rgba(34,197,94,0.28); }
+
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 14px; }
+  .card + .card { margin-top: 10px; }
+  .uname { font-weight: 700; font-size: 15.5px; }
+  .umeta { font-size: 12.5px; color: var(--ink-3); font-weight: 500; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; line-height: 1.3; }
+  .b-live { background: var(--red); color: #fff; }
+  .b-open { background: var(--green-deep); color: var(--green-ink); }
+  .b-flash { background: var(--amber-deep); color: var(--amber-ink); }
+  .b-settled { background: var(--raised); color: var(--ink-3); border: 1px solid var(--line); }
+  .b-won { background: var(--green-deep); color: var(--green-ink); }
+  .b-lost { background: var(--red-mid); color: var(--red-ink); }
+  .b-chainlink { background: var(--blue-deep); color: var(--blue); }
+  .livedot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .sec-hd { display: flex; align-items: center; gap: 8px; margin: 16px 0 10px; }
+  .sec-hd h3 { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .sec-hd .more { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+  .crest { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #161616; overflow: hidden; flex: none; }
+  .crest img { width: 78%; height: 78%; object-fit: contain; }
+  .amt-won { color: var(--green); }
+  .amt-lost { color: var(--red-ink); }
+  .cta { height: 46px; border-radius: 12px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 15.5px; }
+
+  /* gameday.css */
+  .gd-hero { border-color: var(--green-mid); background: linear-gradient(180deg, var(--green-tint), var(--surface) 80%); }
+  .gd-hero-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+  .gd-k { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-3); }
+  .gd-v { font-family: var(--cond); font-size: 36px; font-weight: 700; line-height: 1.05; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .gd-collect { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--green-ink); font-size: 13.5px; }
+  .gd-match { padding-bottom: 6px; }
+  .gd-match.gd-live { border-color: var(--red-mid); }
+  .gd-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .gd-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 10px 0 4px; }
+  .gd-score .t { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 700; font-size: 15.5px; }
+  .gd-score .t.away { justify-content: flex-end; text-align: right; }
+  .gd-score .sc { font-family: var(--cond); font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .gd-positions { margin: 4px -14px 0; }
+  .gd-pos { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line-hair); box-shadow: inset 3px 0 0 transparent; }
+  .gd-pos.win { box-shadow: inset 4px 0 0 var(--green); }
+  .gd-pos.lose { box-shadow: inset 4px 0 0 var(--red); }
+  .gd-pos-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .gd-amt { font-family: var(--cond); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .gd-pos-cta { grid-column: 1 / -1; margin-top: 6px; }
+  .gd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 5px; margin-top: 2px; border-top: 1px solid var(--line-soft); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .flip { animation: none; }
+  .gd-strip { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; border: 1px solid var(--red-mid); background: var(--surface); }
+  .mk-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .mk-odds div { height: 46px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid; }
+  .mk-odds .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .mk-odds .val { font-family: var(--cond); font-size: 19px; font-weight: 700; }
+  .o-yes { background: #0c1f14; border-color: #17422a !important; color: var(--green-ink); }
+  .o-no { background: #1d0d0d; border-color: #452020 !important; color: var(--red-ink); }
+  .o-3 { grid-template-columns: repeat(3, 1fr); }
+  .o-n { background: var(--raised); border-color: var(--line) !important; color: var(--ink); }
+  .o-n .lbl { color: var(--ink-3); }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 999px; background: #0c1f14; border: 1px solid #1f6b3a; color: var(--green-ink); font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 6; }
+  .toast b { font-family: var(--cond); font-size: 21px; font-weight: 800; }
+  /* a goal: a banner across the scoring match's header row, the score below stays in view */
+  .gd-match { position: relative; }
+  .gd-goal { position: absolute; left: -1px; right: -1px; top: -1px; height: 46px; border-radius: 18px 18px 0 0; background: linear-gradient(90deg, #991b1b, #ef4444 50%, #991b1b); color: #fff; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 23px; letter-spacing: 1.6px; white-space: nowrap; z-index: 2; box-shadow: 0 0 26px rgba(239,68,68,0.55); }
+  .coinpop { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4ade80, #15803d 70%); border: 3px solid #bbf7d0; color: #04180c; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 36px; z-index: 8; box-shadow: 0 0 40px rgba(34,197,94,0.6); }
+
+  /* tap */
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
+
+  /* narration beside the phone */
+  #cap { position: absolute; left: 800px; top: 300px; width: 1060px; z-index: 6; }
+  body.v #cap { left: 64px; top: 200px; width: 952px; }
+  .beat { font-family: var(--cond); font-weight: 800; font-size: 120px; line-height: 0.95; text-transform: uppercase; margin-top: 26px; white-space: nowrap; letter-spacing: -1px; }
+  body.v .beat { font-size: 96px; margin-top: 18px; }
+  .bsub { font-size: 40px; font-weight: 700; color: var(--ink-2); margin-top: 24px; height: 50px; white-space: nowrap; }
+  body.v .bsub { font-size: 34px; margin-top: 16px; height: 44px; }
+  .cextra { margin-top: 22px; height: 46px; }
+  body.v .cextra { margin-top: 12px; }
+  .steps { margin-top: 34px; display: flex; gap: 10px; }
+  body.v .steps { margin-top: 18px; }
+  .steps i { width: 46px; height: 6px; border-radius: 3px; background: #262626; display: block; }
+  .steps i.on { background: var(--green); }
+  .steps i.now { background: var(--ink); }
+  /* rolling digits and the sweeping bar */
+  .roll { display: inline-block; overflow: hidden; height: 1.08em; vertical-align: -0.12em; line-height: 1.08; }
+  .roll > span { display: block; }
+  .gd-pos { position: relative; }
+  .gd-pos .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .gd-pos.win, .gd-pos.lose { box-shadow: none; }
+  /* parlays: gameday.css .gd-acca, plus the leg rows (no stake of their own) */
+  .gd-acca { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .iconbtn { width: 34px; height: 34px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-2); flex: none; }
+  .gd-upcoming .gd-score .sc { color: var(--ink-3); font-size: 22px; }
+  .lineroll { display: block; overflow: hidden; height: 1.3em; line-height: 1.3; }
+  .lineroll > span { display: block; }
+  /* the parlay line, big, beside the phone */
+  .accabig { display: inline-flex; align-items: center; gap: 24px; width: 760px; padding: 20px 26px; border-radius: 24px; background: var(--surface); border: 1.5px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  body.v .accabig { width: 952px; padding: 12px 22px; }
+  body.v .accabig .nm { font-size: 28px; }
+  body.v .accabig .ln { font-size: 24px; margin-top: 2px; }
+  body.v .legbar { margin-top: 10px; }
+  .accabig .t { flex: 1; min-width: 0; }
+  .accabig .nm { font-weight: 800; font-size: 32px; display: flex; align-items: center; gap: 12px; }
+  .accabig .ln { font-weight: 700; font-size: 27px; color: var(--ink-2); margin-top: 4px; }
+  .accabig .stk { font-family: var(--cond); font-weight: 800; font-size: 30px; color: var(--ink-2); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; }
+  .legbar { display: flex; gap: 8px; margin-top: 14px; }
+  .legbar i { flex: 1; height: 10px; border-radius: 5px; display: block; }
+  .qmark { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); border: 1.5px solid var(--line); color: var(--ink-3); font-family: var(--cond); font-weight: 800; font-size: 30px; }
+  body.v .steps { display: none; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="stage" class="layer"></div>
+  <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div></div></div></div>
+  <div id="cap"></div>
+  <div id="fx" style="position:absolute;inset:0;z-index:24;pointer-events:none"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
+const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const span = (t, [a, b]) => prog(t, a, b - a);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
+const lerp = (a, b, x) => a + (b - a) * x;
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const icon = (n, s = 24, sw = 1.75) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+const usd = (n) => `$${Math.abs(n).toFixed(2)}`;
+
+function words(t, a, b, html, { stag = 0.07, d = 0.55 } = {}) {
+  return html.split(/(<br\/>)/).map((chunk) => chunk === "<br/>" ? "<br/>" : chunk.split(" ").filter(Boolean).map((w, i) => {
+    const p = spring(prog(t, a + i * stag, d)), o = eo(prog(t, b - 0.3, 0.3));
+    const txt = /^\*.*\*$/.test(w) ? `<span class="green">${w.slice(1, -1)}</span>` : /^_.*_$/.test(w) ? `<span class="redt">${w.slice(1, -1)}</span>` : w;
+    return `<span class="m"><span class="w" style="transform:translateY(${((1 - p) * 110 + o * -110).toFixed(1)}%)">${txt}</span></span>`;
+  }).join(" ")).join("");
+}
+function roll(prev, next, k) {
+  if (k >= 1 || prev === next) return next;
+  const n = Math.max(prev.length, next.length), a = prev.padStart(n, " "), b = next.padStart(n, " ");
+  return [...b].map((c, i) => {
+    if (c === a[i]) return c === " " ? "" : c;
+    const ki = eio(cl(k * 1.25 - (n - 1 - i) * 0.06));
+    return `<span class="roll"><span style="transform:translateY(${(-ki * 100).toFixed(1)}%)"><span style="display:block">${a[i] === " " ? "&nbsp;" : a[i]}</span><span style="display:block">${c === " " ? "&nbsp;" : c}</span></span></span>`;
+  }).join("");
+}
+/** A whole line rolls up and the new one rolls in under it. */
+function lineRoll(prev, next, k) {
+  if (k >= 1 || prev === next) return `<span class="lineroll"><span>${next}</span></span>`;
+  const y = -eio(k) * 50;
+  return `<span class="lineroll"><span style="transform:translateY(${y.toFixed(1)}%)"><span style="display:block">${prev}</span><span style="display:block">${next}</span></span></span>`;
+}
+
+/* ---------------- Saturday: a 3-leg parlay (47 s) ---------------- */
+const T = {
+  cover: [0, 3.6],
+  before: [3.6, 9.6],
+  story: [3.6, 41.6],
+  now: 9.6,
+  gArs: 12.2,     // Arsenal 1-0 Spurs, 63'
+  gBruno: 15.9,   // Man Utd 2-1 Chelsea, Bruno 78': the third goal, over 2.5 lands
+  ft1: 19.6,      // full time at 3pm
+  ko2: 23.0,      // 5:30, Man City v Newcastle
+  gCity: 29.95,   // City 1-0, 85' (on the music's drop)
+  ft2: 33.9,
+  end: 41.6, dur: 47,
+};
+const BEATS = [
+  [3.9, "Saturday. *3pm.*", "Three legs. One parlay."],
+  [6.6, "One line. _No_ _clue._", "Is it landing? Who knows."],
+  [9.7, "Leg *by* *leg.*", "Each leg on its own match."],
+  [12.0, "*Arsenal.* 63'.", "Leg one, winning."],
+  [15.7, "*Bruno.* 78'.", "Third goal. Leg two, winning."],
+  [19.4, "Full time at *3.*", "2 of 3 landing. 1 to play."],
+  [22.8, "5:30. _Last_ _leg._", "Man City v Newcastle."],
+  [26.4, "Still _0–0._", "The whole parlay on one goal."],
+  [29.85, "*City.* *85'.*", "3 of 3 landing."],
+  [33.7, "*Full* *time.*", "The parlay pays $51.30."],
+  [37.6, "Every leg, *live.*", "Right on its own match."],
+];
+const PAYS = 51.3;
+
+function clockFrom(pts, t) {
+  let m = pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (t >= pts[i - 1][0]) m = lerp(pts[i - 1][1], pts[i][1], span(t, [pts[i - 1][0], pts[i][0]]));
+  m = Math.floor(m);
+  return m > 90 ? `90+${m - 90}'` : `${m}'`;
+}
+const GAMES = {
+  A: { home: ["42", "Arsenal"], away: ["47", "Spurs"], ko: -1, ft: T.ft1, clock: [[T.now - 6, 54], [T.gArs, 63], [T.gBruno, 78], [T.ft1 - 0.2, 94]], score: [[-1, "0–0"], [T.gArs, "1–0"]], goals: [[T.gArs, "GOAL · ARSENAL 63'"]] },
+  B: { home: ["33", "Man Utd"], away: ["49", "Chelsea"], ko: -1, ft: T.ft1, clock: [[T.now - 6, 54], [T.gArs, 63], [T.gBruno, 78], [T.ft1 - 0.2, 94]], score: [[-1, "1–1"], [T.gBruno, "2–1"]], goals: [[T.gBruno, "GOAL · BRUNO FERNANDES 78'"]] },
+  C: { home: ["50", "Man City"], away: ["34", "Newcastle"], ko: T.ko2, ft: T.ft2, clock: [[T.ko2, 1], [T.gCity, 85], [T.ft2 - 0.2, 94]], score: [[-1, "v"], [T.ko2, "0–0"], [T.gCity, "1–0"]], goals: [[T.gCity, "GOAL · MAN CITY 85'"]] },
+};
+const phase = (g, t) => (t < g.ko ? "upcoming" : t < g.ft ? "live" : "fulltime");
+// every leg as a timeline of standings, read the way positions.ts reads them
+const LEGS = {
+  A: { title: "Arsenal win", pick: "Yes · parlay leg 1 of 3", tl: [[-1, "losing"], [T.gArs, "winning"], [T.ft1, "won"]] },
+  B: { title: "Over 2.5 goals in Man Utd v Chelsea", pick: "Yes · parlay leg 2 of 3", tl: [[-1, "losing"], [T.gBruno, "winning"], [T.ft1, "won"]] },
+  C: { title: "Man City win", pick: "Yes · parlay leg 3 of 3", tl: [[-1, "upcoming"], [T.ko2, "losing"], [T.gCity, "winning"], [T.ft2, "won"]] },
+};
+function at(tl, t) {
+  let i = 0;
+  while (i + 1 < tl.length && t >= tl[i + 1][0]) i++;
+  return { s: tl[i][1], prev: i ? tl[i - 1][1] : tl[i][1], since: tl[i][0] };
+}
+const GOOD = (s) => s === "won" || s === "winning", BAD = (s) => s === "lost" || s === "losing";
+/** AccaLine in GameDay.tsx, word for word. */
+function accaText(t) {
+  const ss = Object.values(LEGS).map((l) => at(l.tl, t).s);
+  const good = ss.filter(GOOD).length, bad = ss.filter(BAD).length, open = ss.length - good - bad;
+  return bad ? `${bad} ${bad === 1 ? "leg" : "legs"} down · ${good} of 3 landing` : `${good} of 3 landing${open ? ` · ${open} to play` : ""}`;
+}
+const LINE_AT = [T.now, T.gArs, T.gBruno, T.ko2, T.gCity];
+function accaRoll(t) {
+  const e = LINE_AT.filter((x) => x <= t).pop();
+  if (e === undefined || e === T.now) return { html: lineRoll(accaText(t), accaText(t), 1), k: 1 };
+  const k = prog(t, e, 0.7);
+  return { html: lineRoll(accaText(e - 0.01), accaText(t), k), k: prog(t, e, 1.2), bad: e === T.ko2 };
+}
+const mood = (t) => Object.values(LEGS).reduce((n, l) => { const s = at(l.tl, t).s; return n + (GOOD(s) ? 1 : BAD(s) ? -1 : 0); }, 0);
+
+/* ---------------- cover ---------------- */
+function cover(t) {
+  if (t >= T.cover[1]) return "";
+  const out = eo(prog(t, T.cover[1] - 0.5, 0.5));
+  const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
+  const cy = VERT ? 520 : 120, R = VERT ? 100 : 74;
+  return `<div class="ctr" style="top:${cy}px;${s(1)}">
+      <span style="display:inline-flex;align-items:center;gap:16px;font-family:var(--cond);font-weight:800;font-size:${VERT ? 44 : 40}px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span>
+    </div>
+    <div class="ring" style="left:${W / 2 - R}px;top:${cy + (VERT ? 110 : 88)}px;width:${2 * R}px;height:${2 * R}px;${s(1.4)};background:radial-gradient(circle at 35% 30%, #0f3a1f, var(--green-deep) 70%);border-color:var(--green);box-shadow:0 0 ${80 + 24 * Math.sin(t * 4)}px rgba(34,197,94,0.4)">${icon("layers", VERT ? 92 : 74, 1.9)}</div>
+    <div class="ctr" style="top:${cy + (VERT ? 340 : 270)}px;${s(1.8)}">
+      <div><span class="kicker" style="height:50px"><span class="dot" style="opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Game day</span></div>
+      <span class="big" style="display:block;font-size:${VERT ? 176 : 168}px;margin-top:26px">Parlays,<br/>leg by <span class="green">leg</span></span>
+      <span class="lead" style="display:block;font-size:${VERT ? 40 : 40}px;margin-top:26px;color:var(--ink)">${VERT ? "Every leg on its own match,<br/>as it happens." : "Every leg on its own match, as it happens."}</span>
+      <div style="margin-top:${VERT ? 54 : 34}px"><span class="brandrow">On <img src="assets/monad.png" /><b>MONAD</b> &nbsp;· settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+    </div>`;
+}
+
+/* ---------------- the app ---------------- */
+const tabs = (on) => `<div class="tabbar">${[["home", "Home"], ["pitch", "Markets"], ["plus", "Create"], ["users", "Social"], ["shield", "Profile"]].map(([ic, l]) =>
+  `<div class="tab${l === "Create" ? " tab-create" : ""}${l === on ? " on" : ""}"><span class="pill">${icon(ic, 22)}</span><span class="tl">${l}</span></div>`).join("")}</div>`;
+const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
+const BADGE = { losing: ["b-lost", "Losing"], winning: ["b-won", "Winning"], won: ["b-won", "Won"], upcoming: ["b-open", "Not started"] };
+const COLOR = { losing: "var(--red)", winning: "var(--green)", won: "var(--green)", upcoming: "rgba(0,0,0,0)" };
+const header = () => `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div><span class="iconbtn">${icon("share", 18)}</span><span class="balpill" style="margin-left:0">$90.00</span></div>`;
+
+function legLine(key, t) {
+  const p = LEGS[key], { s, prev, since } = at(p.tl, t);
+  const k = prog(t, since, 0.9);
+  const [cls, label] = BADGE[s];
+  const sw = eio(prog(t, since, 0.6));
+  const bar = prev === s || k >= 1 ? COLOR[s] : `linear-gradient(180deg, ${COLOR[s]} ${(sw * 100).toFixed(1)}%, ${COLOR[prev]} ${(sw * 100).toFixed(1)}%)`;
+  const good = GOOD(s);
+  const flip = k > 0 && k < 1 && prev !== s && s !== "upcoming";
+  const wash = flip ? `background:rgba(${good ? "34,197,94" : "239,68,68"},${(0.26 * (1 - k)).toFixed(3)});` : "";
+  const pop = flip ? `transform:scale(${(1 + 0.16 * Math.sin(Math.min(1, k * 2.2) * Math.PI)).toFixed(3)})` : "";
+  return `<div class="gd-pos" style="${wash}"><i class="bar" style="background:${bar}"></i>
+    <div style="min-width:0"><div class="uname">${p.title}</div><div class="umeta">${p.pick}</div></div>
+    <div class="gd-pos-side"><span class="badge ${cls}" style="${pop}">${label}</span></div>
+  </div>`;
+}
+
+function board(key, t) {
+  const g = GAMES[key], ph = phase(g, t);
+  const sc = at(g.score, t), sk = prog(t, sc.since, 0.6);
+  let banner = "", pop = 1;
+  for (const [x, txt] of g.goals) {
+    const k = prog(t, x, 1.7);
+    if (k <= 0 || k >= 1) continue;
+    const i = eo(prog(t, x, 0.25)), o = eo(prog(t, x + 1.35, 0.35));
+    banner = `<div class="gd-goal" style="opacity:${(cl(prog(t, x, 0.12)) * (1 - o)).toFixed(3)};clip-path:inset(0 ${((1 - i) * 50).toFixed(1)}% 0 ${((1 - i) * 50).toFixed(1)}%)">${icon("ball", 20, 2)}${txt}</div>`;
+    pop = 1 + 0.2 * Math.sin(Math.min(1, prog(t, x, 0.7)) * Math.PI);
+  }
+  const pulse = 0.5 + 0.5 * Math.sin(t * 6.2);
+  const badge = ph === "live"
+    ? `<span class="badge b-live" style="box-shadow:0 0 ${(4 + 10 * pulse).toFixed(1)}px rgba(239,68,68,${(0.35 + 0.4 * pulse).toFixed(2)})"><i class="livedot" style="opacity:${(0.45 + 0.55 * pulse).toFixed(2)}"></i>${clockFrom(g.clock, t)}</span>`
+    : ph === "fulltime" ? `<span class="badge b-settled">FT</span>` : `<span class="badge b-open">Sat 17:30</span>`;
+  const score = ph === "upcoming" ? "v" : roll(sc.prev, sc.s, sk);
+  return `<div class="card gd-match gd-${ph}${ph === "live" ? " gd-live" : ""}" id="card${key}">
+    ${banner}<div class="gd-head">${badge}Premier League<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
+    <div class="gd-score"><span class="t">${CREST(g.home[0])}${g.home[1]}</span><span class="sc" style="display:inline-block;transform:scale(${pop.toFixed(3)});${pop > 1.01 ? "color:var(--green-ink)" : ""}">${score}</span><span class="t away">${g.away[1]}${CREST(g.away[0])}</span></div>
+    <div class="gd-positions">${legLine(key, t)}</div>
+  </div>`;
+}
+
+const hero = () => `<div class="card gd-hero" id="hero"><div class="gd-hero-row"><div><div class="gd-k">On the line</div><div class="gd-v">$10.00</div><div class="umeta">1 parlay</div></div></div></div>`;
+function accaCard(t, old) {
+  const won = !old && at(LEGS.C.tl, t).s !== "losing" && accaText(t).startsWith("3 of 3");
+  const r = old ? null : accaRoll(t);
+  const glow = r && r.k < 1 ? `box-shadow:0 0 ${(26 * (1 - r.k)).toFixed(1)}px rgba(${r.bad ? "239,68,68" : "34,197,94"},0.55);` : "";
+  const paid = !old && t >= T.ft2 ? `box-shadow:0 0 ${(18 + 10 * Math.sin(t * 5)).toFixed(1)}px rgba(34,197,94,0.45);` : "";
+  return `<div class="card gd-acca${won ? " won" : ""}" id="acca" style="${won ? "border-color:var(--green-mid);" : ""}${glow}${paid}">
+      <div style="min-width:0;flex:1"><div class="uname">3-leg parlay</div><div class="umeta">${old ? "Riding · 3 games" : r.html}</div></div>
+      ${old ? `<span class="qmark" style="width:30px;height:30px;font-size:19px;opacity:${(0.6 + 0.4 * Math.sin(t * 5)).toFixed(2)}">?</span>` : ""}<span class="badge b-settled">$10.00</span>
+    </div>`;
+}
+const secAcca = `<div class="sec-hd"><h3>Parlays riding</h3><span class="more">All ›</span></div>`;
+
+function beforeScreen(t) {
+  const enter = (i) => { const p = spring(prog(t, T.story[0] + 0.5 + i * 0.18, 0.6)); return `opacity:${cl(prog(t, T.story[0] + 0.5 + i * 0.18, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  return `<div style="${enter(0)}">${hero()}</div><div style="${enter(1)}">${secAcca}${accaCard(t, true)}</div>`;
+}
+
+function nowScreen(t) {
+  const late = t >= T.ko2, a = late ? T.ko2 : T.now;
+  const enter = (i) => { const p = spring(prog(t, a + 0.15 + i * 0.12, 0.6)); return `opacity:${cl(prog(t, a + 0.15 + i * 0.12, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  const pA = phase(GAMES.A, t);
+  let h = `<div>${hero()}</div>`;
+  if (!late) {
+    h += `<div class="sec-hd" style="${enter(0)}">${pA === "live" ? `<h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live">2 games</span>` : "<h3>Full time</h3>"}</div>`;
+    h += `<div style="${enter(1)}">${board("A", t)}</div><div style="margin-top:10px;${enter(2)}">${board("B", t)}</div>`;
+    h += `<div class="sec-hd" style="${enter(3)}"><h3>Coming up</h3></div><div style="${enter(3)}">${board("C", t)}</div>`;
+  } else {
+    h += `<div class="sec-hd" style="${enter(0)}">${phase(GAMES.C, t) === "live" ? `<h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live">1 game</span>` : "<h3>Full time</h3>"}</div>`;
+    h += `<div style="${enter(1)}">${board("C", t)}</div>`;
+    h += `<div class="sec-hd" style="${enter(2)}"><h3>Full time</h3></div><div style="${enter(2)}">${board("A", t)}</div><div style="margin-top:10px;${enter(3)}">${board("B", t)}</div>`;
+  }
+  h += `<div style="${enter(4)}">${secAcca}${accaCard(t, false)}</div>`;
+  return h;
+}
+
+// how far the list is scrolled, 0..1 of the way to its bottom
+function scrollK(t) {
+  if (t < T.ko2) return eio(span(t, [10.9, 11.8]));
+  return eio(span(t, [32.7, 33.6]));
+}
+
+function gameDayScreen(t) {
+  let body;
+  if (t < T.now) {
+    const o = eo(prog(t, T.now - 0.3, 0.3));
+    body = `<div style="opacity:${1 - o};transform:translateY(${-o * 20}px)">${beforeScreen(t)}</div>`;
+  } else body = nowScreen(t);
+  let out = `${header()}<div class="body" id="body"><div class="scroll" id="scroll">${body}</div></div>${tabs("Home")}`;
+  const tp = prog(t, T.ft2 + 0.6, 0.35) * (1 - prog(t, T.ft2 + 4.2, 0.3));
+  if (tp > 0) out += `<div class="toast" style="bottom:auto;top:132px;opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.ft2 + 0.6, 0.35))) * 14}px)">${icon("check", 18, 2.4)} Parlay pays <b>${usd(PAYS)}</b></div>`;
+  return out;
+}
+
+/* ---------------- camera: a slow push into the card that just changed ---------------- */
+const SHOTS = [[11.9, 15.3, "cardA", 1.15], [15.6, 19.2, "cardB", 1.14], [24.0, 29.6, "cardC", 1.13], [29.7, 33.0, "cardC", 1.16], [34.0, 37.6, "acca", 1.12]];
+let SY = 0;
+function camera(t) {
+  let s = 1, oy = 450;
+  for (const [a, b, id, z] of SHOTS) {
+    const k = eio(prog(t, a, 0.9)) * (1 - eio(prog(t, b - 0.9, 0.9)));
+    if (k <= 0) continue;
+    const el = $(id);
+    if (!el) continue;
+    let y = el.offsetHeight / 2, n = el, inScroll = false;
+    while (n && n.id !== "screen") { if (n.id === "scroll") inScroll = true; y += n.offsetTop; n = n.offsetParent; }
+    y += 12 + (inScroll ? SY : 0);
+    const zz = VERT ? 1 + (z - 1) * 0.4 : z;
+    s = lerp(1, zz, k);
+    oy = VERT ? 200 : lerp(450, cl(y, 200, 760), k);
+  }
+  return { s, oy };
+}
+
+function coins(t) {
+  let h = "";
+  const kc = prog(t, T.ft2 + 0.35, 1.2), el = $("acca");
+  if (kc > 0 && kc < 1 && el) {
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    h = [0, 1, 2, 3, 4, 5, 6].map((j) => {
+      const ang = -Math.PI / 2 + (j - 3) * 0.36, d = eo(kc) * (150 + (j % 3) * 30);
+      return `<div class="coinpop" style="left:${x + Math.cos(ang) * d}px;top:${y + Math.sin(ang) * d - 60 * kc}px;opacity:${1 - eo(kc)};transform:scale(${lerp(0.4, 1, spring(kc))})">$</div>`;
+    }).join("");
+  }
+  $("fx").innerHTML = h;
+}
+
+/* ---------------- narration, with the parlay line big beside the phone ---------------- */
+function bigAcca(t) {
+  const old = t < T.now;
+  const legs = ["A", "B", "C"].map((k) => {
+    const { s, prev, since } = at(LEGS[k].tl, t), sw = eio(prog(t, since, 0.6));
+    const col = (x) => (old ? "#262626" : x === "upcoming" ? "#262626" : COLOR[x]);
+    const bg = prev === s || sw >= 1 ? col(s) : `linear-gradient(90deg, ${col(s)} ${(sw * 100).toFixed(1)}%, ${col(prev)} ${(sw * 100).toFixed(1)}%)`;
+    return `<i style="background:${bg}"></i>`;
+  }).join("");
+  const r = old ? null : accaRoll(t);
+  const all = !old && accaText(t).startsWith("3 of 3");
+  const flash = r && r.k < 1 ? (1 - r.k) : 0;
+  const border = all ? "var(--green)" : old ? "var(--line)" : flash ? `rgba(${r.bad ? "248,113,113" : "74,222,128"},${(0.3 + 0.7 * flash).toFixed(2)})` : "var(--line)";
+  return `<div class="accabig" style="border-color:${border};${all ? "background:linear-gradient(180deg,#0c1f14,var(--surface))" : ""}">
+    <div class="t"><div class="nm">${icon("layers", 30, 2)}3-leg parlay</div>
+      <div class="ln" style="${all ? "color:var(--green-ink)" : ""}">${old ? "Riding · 3 games" : r.html}</div>
+      <div class="legbar">${legs}</div></div>
+    ${old ? `<span class="qmark" style="opacity:${(0.6 + 0.4 * Math.sin(t * 5)).toFixed(2)}">?</span>` : ""}<span class="stk">$10</span>
+  </div>`;
+}
+
+function narration(t) {
+  const [a, b] = T.story;
+  if (t < a || t >= b) return "";
+  const idx = BEATS.reduce((n, [x], i) => (t >= x ? i : n), -1);
+  const before = t < T.now;
+  const kick = before
+    ? `<span class="kicker" style="background:var(--raised);border-color:var(--line);color:var(--ink-2)">Before</span>`
+    : `<span class="kicker" style="background:var(--green-deep);border-color:var(--green-mid);color:var(--green-ink)"><span class="dot" style="background:var(--green);box-shadow:0 0 12px var(--green);opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Now · Game day</span>`;
+  const kk = before ? 1 : spring(prog(t, T.now, 0.5));
+  let h = `<div style="${st(life(t, a + 0.1, b))}"><span style="display:inline-block;transform:scale(${lerp(0.9, 1, kk).toFixed(3)})">${kick}</span></div>`;
+  if (idx >= 0) {
+    const [x, line, sub] = BEATS[idx], next = BEATS[idx + 1] ? BEATS[idx + 1][0] : b;
+    const long = line.replace(/[*_]/g, "").length > 15;
+    h += `<div class="beat" style="${long ? `font-size:${VERT ? 80 : 98}px` : ""}">${words(t, x + 0.05, next, line)}</div>`;
+    h += `<div class="bsub" style="${st(life(t, x + 0.45, next, { dy: 20, out: 0.3 }))}">${sub}</div>`;
+  }
+  h += `<div class="cextra" style="height:auto;${st(life(t, a + 0.7, b, { dy: 20 }))}">${bigAcca(t)}</div>`;
+  h += `<div class="steps" style="${st(life(t, a + 0.6, b))}">${BEATS.map((_, i) => `<i class="${i < idx ? "on" : i === idx ? "now" : ""}"></i>`).join("")}</div>`;
+  return h;
+}
+
+function endCard(t) {
+  if (t < T.end) return "";
+  const e = (k, dy = 30) => st(life(t, T.end + 0.25 + k * 0.3, 99, { d: 0.7, dy }));
+  const top = VERT ? 560 : 150;
+  return `<div class="ctr" style="top:${top}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}">
+    <div class="ring" style="position:relative;display:inline-flex;width:150px;height:150px;background:radial-gradient(circle at 35% 30%, #0f3a1f, var(--green-deep) 70%);border-color:var(--green);box-shadow:0 0 80px rgba(34,197,94,0.35);${e(0)}">${icon("layers", 76, 1.9)}</div>
+    <span class="big" style="display:block;font-size:150px;margin-top:40px;${e(1)}">Leg by <span class="green">leg</span></span>
+    <span class="lead" style="display:block;font-size:${VERT ? 42 : 44}px;margin-top:24px;color:var(--ink);${e(2, 16)}">${VERT ? "Every parlay leg on its own match,<br/>live in Game day." : "Every parlay leg on its own match, live in Game day."}</span>
+    <div style="margin-top:40px;${e(3, 16)}"><span class="pillurl">play.terrace.social</span></div>
+    <div style="margin-top:38px;${e(4, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
+    <div style="margin-top:22px;${e(5, 12)}"><span class="brandrow">Settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+  </div>`;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  const n = t >= T.now && t < T.end ? mood(t) : t >= T.story[0] && t < T.now ? 0 : 1;
+  const g = cl((n + 3) / 6), red = 0.13 * (1 - g), grn = 0.05 + 0.1 * g;
+  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : 30}% ${VERT ? 55 : 48}%, rgba(239,68,68,${red.toFixed(3)}), transparent 70%), radial-gradient(1000px 760px at ${VERT ? 50 : 62}% ${VERT ? 30 : 40}%, rgba(34,197,94,${grn.toFixed(3)}), transparent 70%)`;
+  $("stage").innerHTML = cover(t) + endCard(t);
+
+  const inPhone = t >= T.story[0] - 0.2 && t < T.end;
+  $("phonewrap").style.display = inPhone ? "" : "none";
+  if (inPhone) {
+    $("view").innerHTML = gameDayScreen(t);
+    const sc = $("scroll"), bd = $("body");
+    const max = Math.max(0, sc.offsetHeight + 24 - bd.clientHeight);
+    SY = -scrollK(t) * max;
+    sc.style.transform = `translateY(${SY.toFixed(1)}px)`;
+    const ph = life(t, T.story[0], T.end, { d: 0.8, dy: 120, out: 0.5 });
+    const cam = camera(t);
+    $("phone").style.cssText = `opacity:${ph.o.toFixed(3)};transform-origin:220px ${cam.oy.toFixed(1)}px;transform:translateY(${ph.y.toFixed(1)}px) scale(${(ph.s * cam.s).toFixed(4)})`;
+  }
+  $("cap").innerHTML = narration(t);
+  coins(t);
+};
+
+const IMGS = ["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "33", "49", "50", "34"].map((id) => `assets/crest-${id}.png`)];
+document.fonts.ready.then(() => Promise.all(IMGS.map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
