@@ -22,7 +22,7 @@ import { useAccount } from "@/lib/account";
 import { useFollows } from "@/lib/follows";
 import { query } from "@/lib/indexer";
 import { questionLabel } from "@/lib/labels";
-import { betOutcome } from "@/lib/outcome";
+import { betOutcome, effectiveAnswer } from "@/lib/outcome";
 import { fractional, poolDecimal } from "@/lib/odds";
 import { collect } from "@/lib/play";
 import { balanceChanged, useBalance } from "@/lib/useBalance";
@@ -32,7 +32,7 @@ import { showError, callStoppage } from "@/lib/errors";
 import { emailSignInEnabled } from "@/lib/email";
 import { SignInMethods } from "./EmailSignIn";
 
-type Q = { text: string; kind: number; line: number; answer: number; fixture: { id: string } | null };
+type Q = { text: string; kind: number; line: number; answer: number; closeTime: string; fixture: { id: string; kickoff: string; state: number } | null };
 type Player = { points: string; results: number; wins: number; winRateBps: number; streak: number; badge: number; exactScores: number; titles: number; takesListed: number; takesWon: number };
 type Bet = { id: string; side: number; stake: string; result: number | null; payout: string | null; market: { id: string; feeBps: number; yesPool: string; noPool: string; question: Q } };
 type Acca = { id: string; legs: number; stake: string; status: number; payout: string | null };
@@ -74,10 +74,10 @@ export function Profile() {
     query<{ Player_by_pk: Player | null; Bet: Bet[]; Parlay: Acca[]; Matchup: Duel[]; Market: Created[]; LeagueMember: Member[] }>(
       `query R($me: String!) {
         Player_by_pk(id: $me) { points results wins winRateBps streak badge exactScores titles takesListed takesWon }
-        Bet(where: { bettor: { _eq: $me } }) { id side stake result payout market { id feeBps yesPool noPool question { text kind line answer fixture { id } } } }
+        Bet(where: { bettor: { _eq: $me } }) { id side stake result payout market { id feeBps yesPool noPool question { text kind line answer closeTime fixture { id kickoff state } } } }
         Parlay(where: { player: { _eq: $me } }, order_by: { id: desc }) { id legs stake status payout }
-        Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }] }, order_by: { createdAt: desc }) { id challenger challengerSide stake status winner question { text kind line answer fixture { id } } }
-        Market(where: { creator: { _eq: $me } }, order_by: { createdAt: desc }) { id feeBps yesPool noPool bettors question { text kind line answer fixture { id } } }
+        Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }] }, order_by: { createdAt: desc }) { id challenger challengerSide stake status winner question { text kind line answer closeTime fixture { id kickoff state } } }
+        Market(where: { creator: { _eq: $me } }, order_by: { createdAt: desc }) { id feeBps yesPool noPool bettors question { text kind line answer closeTime fixture { id kickoff state } } }
         LeagueMember(where: { member: { _eq: $me } }) { seasonScore league { id name memberCount isPrivate } }
       }`,
       { me: address.toLowerCase() },
@@ -92,7 +92,9 @@ export function Profile() {
           `query G($me: String!) { Player_by_pk(id: $me) { followers following } }`,
           { me: address.toLowerCase() },
         ).then((x) => setGraph(x.Player_by_pk)).catch(() => {});
-        setBets(d.Bet.filter((b) => !b.market.question.text.startsWith("E2E ")).reverse());
+        // Timed-out questions count as void on-chain (refunds), even though the indexer still reads them as open.
+        const settle = (q: Q) => ({ ...q, answer: effectiveAnswer(q) });
+        setBets(d.Bet.filter((b) => !b.market.question.text.startsWith("E2E ")).map((b) => ({ ...b, market: { ...b.market, question: settle(b.market.question) } })).reverse());
         setAccas(d.Parlay);
         setDuels(d.Matchup);
         setCreated(d.Market.filter((m) => !m.question.text.startsWith("E2E ")));

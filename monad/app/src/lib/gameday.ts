@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { query } from "./indexer";
 import { questionLabel, sideLabel } from "./labels";
-import { betOutcome, standardAnswer } from "./outcome";
+import { betOutcome, effectiveAnswer, standardAnswer } from "./outcome";
 import { callStoppage } from "./errors";
 import { FINISHED, LIVE } from "@/components/MatchRow";
 import type { MatchLite } from "./useMatches";
@@ -14,7 +14,7 @@ import type { MatchLite } from "./useMatches";
 const RECENT = 36 * 3600; // settled positions stay on the board this long after kickoff (older ones live on Profile)
 
 type Fx = { id: string; kickoff: string; state: number; homeGoals: number; awayGoals: number };
-type Q = { id: string; text: string; kind: number; line: number; answer: number; spec: string | null; fixture: Fx | null };
+type Q = { id: string; text: string; kind: number; line: number; answer: number; closeTime: string; spec: string | null; fixture: Fx | null };
 export type RawBet = { id: string; side: number; stake: string; result: number | null; payout: string | null; market: { id: string; feeBps: number; yesPool: string; noPool: string; isFlash: boolean; question: Q } };
 type RawDuel = { id: string; challenger: string; opponent: string | null; challengerSide: number; stake: string; status: number; winner: string | null; question: Q };
 export type Acca = { id: string; legs: number; liveLegs: number; stake: string; status: number; payout: string | null };
@@ -52,8 +52,8 @@ export type MatchGroup = {
 };
 
 const GD_QUERY = `query GD($me: String!, $since: numeric!) {
-  Bet(where: { bettor: { _eq: $me }, market: { question: { _or: [{ answer: { _eq: 0 } }, { fixture: { kickoff: { _gt: $since } } }] } } }) { id side stake result payout market { id feeBps yesPool noPool isFlash question { id text kind line answer spec fixture { id kickoff state homeGoals awayGoals } } } }
-  Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }], status: { _in: [0, 1, 4, 5] } }) { id challenger opponent challengerSide stake status winner question { id text kind line answer spec fixture { id kickoff state homeGoals awayGoals } } }
+  Bet(where: { bettor: { _eq: $me }, market: { question: { _or: [{ answer: { _eq: 0 } }, { fixture: { kickoff: { _gt: $since } } }] } } }) { id side stake result payout market { id feeBps yesPool noPool isFlash question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } } } }
+  Matchup(where: { _or: [{ challenger: { _eq: $me } }, { opponent: { _eq: $me } }], status: { _in: [0, 1, 4, 5] } }) { id challenger opponent challengerSide stake status winner question { id text kind line answer closeTime spec fixture { id kickoff state homeGoals awayGoals } } }
   Parlay(where: { player: { _eq: $me }, status: { _eq: 0 } }, order_by: { id: desc }) { id legs liveLegs stake status payout }
 }`;
 
@@ -130,7 +130,9 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
   const recent = (q: Q) => Number(q.fixture?.kickoff ?? 0) > now - RECENT;
   const href = (q: Q) => (q.fixture ? `/m/${q.fixture.id}` : "/me");
 
-  for (const b of bets) {
+  for (const raw of bets) {
+    // Act on the answer the contracts use, so a timed-out question shows as a refund.
+    const b = { ...raw, market: { ...raw.market, question: { ...raw.market.question, answer: effectiveAnswer(raw.market.question, now) } } };
     const q = b.market.question;
     if (q.text.startsWith("E2E ")) continue;
     const settled = betOutcome(b);
@@ -163,7 +165,7 @@ export function buildGroups(bets: RawBet[], duels: RawDuel[], me: string, matche
     const side = (mine === 1 ? 1 : 2) as 1 | 2;
     let standing: Standing;
     if (d.status === 4) standing = d.winner === me ? "won" : "lost";
-    else if (d.status === 5) standing = "refund";
+    else if (d.status === 5 || effectiveAnswer(q, now) === 3) standing = "refund";
     else if (d.status === 0) standing = g.phase === "upcoming" && g.kickoff > now ? "waiting" : "expired";
     else standing = openStanding(g, side, reading(q, g.match, custom), now);
     const stake = Number(d.stake);
