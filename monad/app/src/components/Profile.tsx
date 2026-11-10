@@ -282,6 +282,13 @@ export function Profile() {
         <div key={tab} className="page-enter">
           {tab === "open" && (
             <>
+              {openBets.length + openDuels.length > 0 && (
+                <Link href="/live" className="card card-tap" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <Icon name="whistle" size={20} />
+                  <span style={{ flex: 1 }}><span className="uname">Game day</span><span className="umeta" style={{ display: "block" }}>Follow all of these live, match by match</span></span>
+                  <Icon name="chevronRight" size={16} />
+                </Link>
+              )}
               {openBets.map((b) => <BetRow key={b.id} b={b} m={matchOf(b.market.question)} label={label(b.market.question)} busy={busy === b.id} onCollect={() => collectBet(b)} />)}
               {openAccas.map((a) => <AccaRow key={`a${a.id}`} a={a} />)}
               {openDuels.map((d) => <DuelRow key={`d${d.id}`} d={d} me={me} m={matchOf(d.question)} label={label(d.question)} />)}

@@ -9,6 +9,7 @@ import { ThemeButton } from "./ThemeSwitch";
 
 /* Desktop layout: the tab bar becomes a sidebar, with room for the screens the phone keeps under Profile. */
 const MORE: { href: string; icon: IconName; label: string; match: (p: string) => boolean }[] = [
+  { href: "/live", icon: "whistle", label: "Game day", match: (p) => p.startsWith("/live") },
   { href: "/leagues", icon: "trophy", label: "Leagues", match: (p) => /^\/(leagues|l\/)/.test(p) },
   { href: "/challenges", icon: "swords", label: "1v1 challenges", match: (p) => /^\/(challenges|c\/)/.test(p) },
   { href: "/acca", icon: "list", label: "Parlays", match: (p) => p.startsWith("/acca") },

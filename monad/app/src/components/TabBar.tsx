@@ -9,7 +9,7 @@ export const TABS: { href: string; icon: IconName; label: string; match: (p: str
   { href: "/markets", icon: "pitch", label: "Markets", match: (p) => /^\/(markets|matches|m\/|flash|swipe)/.test(p) },
   { href: "/take", icon: "plus", label: "Create", match: (p) => p.startsWith("/take") },
   { href: "/social", icon: "users", label: "Social", match: (p) => p.startsWith("/social") },
-  { href: "/me", icon: "shield", label: "Profile", match: (p) => /^\/(me|leagues|l\/|challenges|c\/|acca)/.test(p) },
+  { href: "/me", icon: "shield", label: "Profile", match: (p) => /^\/(me|leagues|l\/|challenges|c\/|acca|live)/.test(p) },
 ];
 
 export function TabBar() {

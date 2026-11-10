@@ -7,6 +7,7 @@ import { BetSheet, type BetPick } from "./BetSheet";
 import { FixtureCard, LiveFixtureCard, kickoffDay } from "./FixtureCard";
 import { ActivityTicker } from "./ActivityTicker";
 import { FeatureCarousel } from "./FeatureCarousel";
+import { GameDayStrip } from "./GameDay";
 import { TeamBrief } from "./TeamBrief";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
@@ -48,6 +49,7 @@ export function Home() {
     <>
       <Header brand search bell />
       <ActivityTicker />
+      <GameDayStrip />
       <FeatureCarousel />
       <TeamBrief odds={prices.odds} onPick={(m, kind) => setPick(prices.pick(m, kind, 1, send, owner))} />
 
