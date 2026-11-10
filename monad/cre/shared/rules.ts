@@ -64,6 +64,9 @@ const ON_HOLD = new Set(["PST", "ABD"]);
 const NOT_STARTED = new Set(["NS", "TBD"]);
 const OPS = new Set([">=", ">", "==", "<=", "<"]);
 
+/** Whether a match is over (finished or called off), for judges that need the whole match. */
+export const matchOver = (f: FixtureDetail) => FINISHED.has(f.fixture.status.short) || CALLED_OFF.has(f.fixture.status.short);
+
 /** Parse and sanity-check a rule; anything malformed returns null (the question is then voided). */
 export function parseRule(raw: string): Rule | null {
   try {

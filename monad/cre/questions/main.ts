@@ -15,9 +15,9 @@ import { consensusIdenticalAggregation, cre, json, ok, Runner, type HTTPSendRequ
 import { encodeAbiParameters, hexToString, type Hex } from "viem";
 import { z } from "zod";
 import { askVerdict, type AiProvider } from "../shared/ai";
-import { ANSWER, FIXTURE, ORACLE_ABI, REPORT } from "../shared/abi";
+import { ANSWER, ORACLE_ABI, REPORT } from "../shared/abi";
 import { evmClient, nowSeconds, read, writeReport } from "../shared/chain";
-import { evaluate, evidence, parseRule, type FixtureDetail, type Verdict } from "../shared/rules";
+import { evaluate, evidence, matchOver, parseRule, type FixtureDetail, type Verdict } from "../shared/rules";
 
 const configSchema = z.object({
   schedule: z.string(), // every minute while matches are live: "0 * * * * *"
@@ -62,6 +62,9 @@ const settleByJudge = (
   closedAt: string,
 ): Verdict => {
   const fixture = url ? fetchFixture(send, url, apiKey) : null;
+  // Judge from the match itself, not from the oracle's result: if posting results stalls, takes would
+  // otherwise sit until RESOLVE_GRACE and void. One API call and no AI call while the match is on.
+  if (url && (!fixture || !matchOver(fixture))) return "PENDING";
   return askVerdict(send, provider, model, aiKey, {
     question,
     closedAt,
@@ -92,14 +95,7 @@ const onCron = (runtime: Runtime<Config>): string => {
         .sendRequest(runtime, settleByRule, consensusIdenticalAggregation<Verdict>())(url, resultsKey, hexToString(q.spec as Hex))
         .result();
     } else {
-      // Rule-less takes wait for full time so the judge sees the whole match.
-      if (url) {
-        const [state] = read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "fixtureResult", [q.fixtureId]);
-        if (state === FIXTURE.PENDING) {
-          runtime.log(`question ${id}: waiting for full time before judging`);
-          continue;
-        }
-      }
+      // Rule-less takes wait for full time so the judge sees the whole match (checked in settleByJudge).
       aiKey ??= runtime.getSecret({ id: cfg.aiProvider === "anthropic" ? "ANTHROPIC_API_KEY" : "GEMINI_API_KEY" }).result().value;
       const closedAt = new Date(Number(read(runtime, evm, cfg.oracleAddress, ORACLE_ABI, "closeTimeOf", [id])) * 1000).toISOString();
       verdict = http
