@@ -54,16 +54,27 @@ const jobs: Job[] = [
 ];
 
 const lastRun = new Map<string, number>();
+// Each run compiles its workflow (~450 MB), so runs never overlap and a stuck one is killed: overlapping
+// ticks once stacked compiles until the server ran out of memory and stopped settling matches.
+const RUN_LIMIT_MS = 5 * 60_000;
+let ticking = false;
 const stamp = () => new Date().toLocaleTimeString();
 
 function simulate(workflow: string, trigger: number): Promise<string> {
   return new Promise((resolve) => {
     const args = ["workflow", "simulate", workflow, "-T", "staging-settings", "--non-interactive", "--trigger-index", String(trigger), "--broadcast"];
-    const child = spawn("cre", args, { cwd: root });
+    // Its own process group, so a kill takes the compile and javy children with it.
+    const child = spawn("cre", args, { cwd: root, detached: true });
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-child.pid!, "SIGKILL");
+      } catch {}
+    }, RUN_LIMIT_MS);
     let out = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (out += d));
     child.on("close", (code) => {
+      clearTimeout(timer);
       const logs = out.split("\n").filter((l) => l.includes("[USER LOG]")).map((l) => l.replace(/.*\[USER LOG\]\s*/, ""));
       const result = out.match(/Workflow Simulation Result:\s*\n?\s*"?(.*?)"?\s*$/m)?.[1];
       resolve(code === 0 ? [...logs, result ? `→ ${result}` : ""].filter(Boolean).join(" | ") : `failed (exit ${code}): ${out.split("\n").filter((l) => /✗|rror/.test(l)).slice(-2).join(" ")}`);
@@ -72,6 +83,16 @@ function simulate(workflow: string, trigger: number): Promise<string> {
 }
 
 async function tick() {
+  if (ticking) return; // the last tick is still running its workflows
+  ticking = true;
+  try {
+    await runDue();
+  } finally {
+    ticking = false;
+  }
+}
+
+async function runDue() {
   for (const job of jobs) {
     const now = Date.now();
     if (now - (lastRun.get(job.name) ?? 0) < job.everyMs) continue;
