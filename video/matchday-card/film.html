@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace Matchday Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<script src="assets/icons.js"></script>
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c; --green-glow: rgba(34,197,94,0.14); --green-tint: #0c1710;
+    --red: #ef4444; --red-ink: #f87171; --red-deep: #3b0a0a; --red-mid: #450a0a;
+    --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1605;
+    --blue: #60a5fa; --blue-deep: #12263f;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  .layer { position: absolute; inset: 0; z-index: 4; }
+  .abs { position: absolute; }
+  .i { display: inline-block; flex: none; }
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .green { color: var(--green); }
+  .redt { color: var(--red-ink); }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  .ctr { position: absolute; left: 0; right: 0; text-align: center; }
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.06em 0.05em 0.1em; margin: -0.06em -0.05em -0.1em; }
+  .w { display: inline-block; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--red-deep); border: 1.5px solid #6b1d1d; color: var(--red-ink); font-weight: 800; font-size: 19px; letter-spacing: 1.6px; text-transform: uppercase; }
+  .kicker .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .chip-cl { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 18px 0 8px; border-radius: 999px; background: var(--blue-deep); color: var(--blue); font-weight: 700; font-size: 20px; }
+  .chip-cl img { width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+  .pillurl { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
+  .brandrow { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brandrow img { height: 42px; border-radius: 10px; }
+  .brandrow img.cl { border-radius: 50%; background: #fff; height: 38px; }
+  .brandrow b { color: var(--ink); font-family: var(--cond); font-size: 32px; letter-spacing: 1px; }
+  .ring { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #3a0d0d, var(--red-deep) 70%); border: 4px solid var(--red); color: #fff; box-shadow: 0 0 80px rgba(239,68,68,0.35), inset 0 0 40px rgba(0,0,0,0.5); }
+
+
+  /* phone */
+  #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
+  body.v #phonewrap { left: 320px; top: 590px; }
+  #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; }
+  #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
+  #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
+  #view { position: absolute; inset: 0; }
+  .hdr { position: absolute; left: 0; right: 0; top: 56px; height: 62px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid var(--line-hair); z-index: 3; background: var(--canvas); }
+  .hdr .logo { display: flex; align-items: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 22px; letter-spacing: 1px; flex: 1; }
+  .hdr .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .hdr-title { font-family: var(--cond); font-size: 24px; font-weight: 700; text-transform: uppercase; line-height: 1.05; }
+  .hdr-sub { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+  .balpill { display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--green-deep); border: 1px solid var(--green-mid); color: var(--green-ink); font-weight: 700; font-size: 14.5px; margin-left: auto; }
+  .body { position: absolute; left: 0; right: 0; top: 118px; bottom: 84px; overflow: hidden; }
+  .scroll { position: absolute; left: 16px; right: 16px; top: 12px; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line-hair); background: rgba(10,10,10,0.94); padding-bottom: 14px; z-index: 4; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-4); padding-top: 8px; }
+  .tab .pill { width: 46px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab .tl { font-size: 11px; font-weight: 600; }
+  .tab.on { color: var(--green); }
+  .tab.on .pill { background: var(--green-glow); }
+  .tab-create .pill { width: 48px; height: 48px; border-radius: 50%; background: var(--green); color: var(--on-green); margin-top: -18px; box-shadow: 0 8px 20px rgba(34,197,94,0.28); }
+
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 14px; }
+  .card + .card { margin-top: 10px; }
+  .uname { font-weight: 700; font-size: 15.5px; }
+  .umeta { font-size: 12.5px; color: var(--ink-3); font-weight: 500; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; line-height: 1.3; }
+  .b-live { background: var(--red); color: #fff; }
+  .b-open { background: var(--green-deep); color: var(--green-ink); }
+  .b-flash { background: var(--amber-deep); color: var(--amber-ink); }
+  .b-settled { background: var(--raised); color: var(--ink-3); border: 1px solid var(--line); }
+  .b-won { background: var(--green-deep); color: var(--green-ink); }
+  .b-lost { background: var(--red-mid); color: var(--red-ink); }
+  .b-chainlink { background: var(--blue-deep); color: var(--blue); }
+  .livedot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .sec-hd { display: flex; align-items: center; gap: 8px; margin: 16px 0 10px; }
+  .sec-hd h3 { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .sec-hd .more { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+  .crest { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #161616; overflow: hidden; flex: none; }
+  .crest img { width: 78%; height: 78%; object-fit: contain; }
+  .amt-won { color: var(--green); }
+  .amt-lost { color: var(--red-ink); }
+  .cta { height: 46px; border-radius: 12px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 15.5px; }
+
+  /* gameday.css */
+  .gd-hero { border-color: var(--green-mid); background: linear-gradient(180deg, var(--green-tint), var(--surface) 80%); }
+  .gd-hero-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+  .gd-k { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-3); }
+  .gd-v { font-family: var(--cond); font-size: 36px; font-weight: 700; line-height: 1.05; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .gd-collect { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--green-ink); font-size: 13.5px; }
+  .gd-match { padding-bottom: 6px; }
+  .gd-match.gd-live { border-color: var(--red-mid); }
+  .gd-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .gd-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 10px 0 4px; }
+  .gd-score .t { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 700; font-size: 15.5px; }
+  .gd-score .t.away { justify-content: flex-end; text-align: right; }
+  .gd-score .sc { font-family: var(--cond); font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .gd-positions { margin: 4px -14px 0; }
+  .gd-pos { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line-hair); box-shadow: inset 3px 0 0 transparent; }
+  .gd-pos.win { box-shadow: inset 4px 0 0 var(--green); }
+  .gd-pos.lose { box-shadow: inset 4px 0 0 var(--red); }
+  .gd-pos-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .gd-amt { font-family: var(--cond); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .gd-pos-cta { grid-column: 1 / -1; margin-top: 6px; }
+  .gd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 5px; margin-top: 2px; border-top: 1px solid var(--line-soft); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .flip { animation: none; }
+  .gd-strip { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; border: 1px solid var(--red-mid); background: var(--surface); }
+  .mk-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .mk-odds div { height: 46px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid; }
+  .mk-odds .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .mk-odds .val { font-family: var(--cond); font-size: 19px; font-weight: 700; }
+  .o-yes { background: #0c1f14; border-color: #17422a !important; color: var(--green-ink); }
+  .o-no { background: #1d0d0d; border-color: #452020 !important; color: var(--red-ink); }
+  .o-3 { grid-template-columns: repeat(3, 1fr); }
+  .o-n { background: var(--raised); border-color: var(--line) !important; color: var(--ink); }
+  .o-n .lbl { color: var(--ink-3); }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 999px; background: #0c1f14; border: 1px solid #1f6b3a; color: var(--green-ink); font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 6; }
+  .toast b { font-family: var(--cond); font-size: 21px; font-weight: 800; }
+  /* a goal: a banner across the scoring match's header row, the score below stays in view */
+  .gd-match { position: relative; }
+  .gd-goal { position: absolute; left: -1px; right: -1px; top: -1px; height: 46px; border-radius: 18px 18px 0 0; background: linear-gradient(90deg, #991b1b, #ef4444 50%, #991b1b); color: #fff; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 23px; letter-spacing: 1.6px; white-space: nowrap; z-index: 2; box-shadow: 0 0 26px rgba(239,68,68,0.55); }
+  .coinpop { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4ade80, #15803d 70%); border: 3px solid #bbf7d0; color: #04180c; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 36px; z-index: 8; box-shadow: 0 0 40px rgba(34,197,94,0.6); }
+
+  /* tap */
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
+
+  /* narration beside the phone */
+  #cap { position: absolute; left: 800px; top: 300px; width: 1060px; z-index: 6; }
+  body.v #cap { left: 64px; top: 200px; width: 952px; }
+  .beat { font-family: var(--cond); font-weight: 800; font-size: 120px; line-height: 0.95; text-transform: uppercase; margin-top: 26px; white-space: nowrap; letter-spacing: -1px; }
+  body.v .beat { font-size: 96px; margin-top: 18px; }
+  .bsub { font-size: 40px; font-weight: 700; color: var(--ink-2); margin-top: 24px; height: 50px; white-space: nowrap; }
+  body.v .bsub { font-size: 34px; margin-top: 16px; height: 44px; }
+  .cextra { margin-top: 22px; height: 46px; }
+  body.v .cextra { margin-top: 12px; }
+  .steps { margin-top: 34px; display: flex; gap: 10px; }
+  body.v .steps { margin-top: 18px; }
+  .steps i { width: 46px; height: 6px; border-radius: 3px; background: #262626; display: block; }
+  .steps i.on { background: var(--green); }
+  .steps i.now { background: var(--ink); }
+  /* rolling digits and the sweeping bar */
+  .roll { display: inline-block; overflow: hidden; height: 1.08em; vertical-align: -0.12em; line-height: 1.08; }
+  .roll > span { display: block; }
+  .gd-pos { position: relative; }
+  .gd-pos .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .gd-pos.win, .gd-pos.lose { box-shadow: none; }
+  .iconbtn { width: 34px; height: 34px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-2); flex: none; }
+  .hdr .hdr-act { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  body.v .steps { display: none; }
+  /* the share sheet (the phone's own) */
+  .dim { position: absolute; inset: 0; background: #000; z-index: 6; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; background: #1c1c1e; border-radius: 26px 26px 0 0; padding: 10px 18px 34px; }
+  .grab { width: 40px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto 14px; }
+  .sh-prev { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #2c2c2e; }
+  .sh-prev img { width: 48px; height: 48px; border-radius: 12px; }
+  .sh-prev b { display: block; font-size: 16px; }
+  .sh-prev span { font-size: 13px; color: #8e8e93; }
+  .sh-apps { display: flex; justify-content: space-between; padding: 18px 4px 16px; border-bottom: 1px solid #2c2c2e; }
+  .sh-app { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 72px; font-size: 12px; color: #d1d1d6; font-weight: 600; }
+  .sh-ic { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; color: #fff; }
+  .sh-row { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 16px; margin-top: 10px; border-radius: 12px; background: #2c2c2e; font-size: 16px; font-weight: 600; }
+  /* a group chat */
+  .chat-h { position: absolute; left: 0; right: 0; top: 56px; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #141414; border-bottom: 1px solid #222; z-index: 3; }
+  .chat-av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #04180c; flex: none; }
+  .chat-b { position: absolute; left: 0; right: 0; top: 120px; bottom: 76px; overflow: hidden; background: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1.2px) 0 0 / 18px 18px, #0b0d0c; }
+  .msgs { position: absolute; left: 12px; right: 12px; bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 82%; padding: 8px 11px 7px; border-radius: 14px; font-size: 15px; line-height: 1.32; font-weight: 500; }
+  .msg.in { align-self: flex-start; background: #1f2321; border-top-left-radius: 4px; }
+  .msg.out { align-self: flex-end; background: #144d2c; border-top-right-radius: 4px; }
+  .msg .who { font-size: 12.5px; font-weight: 700; margin-bottom: 2px; }
+  .msg .tm { font-size: 11px; color: rgba(255,255,255,0.5); text-align: right; margin-top: 2px; }
+  .msg a { color: #7dd3fc; text-decoration: underline; word-break: break-all; }
+  .unf { margin: -2px -5px 7px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.28); }
+  .unf .ttl { padding: 7px 9px 1px; font-weight: 700; font-size: 14px; }
+  .unf .dom { padding: 0 9px 8px; font-size: 12px; color: rgba(255,255,255,0.55); }
+  .composer { position: absolute; left: 0; right: 0; bottom: 0; min-height: 76px; display: flex; align-items: flex-end; gap: 10px; padding: 10px 12px 22px; background: #141414; border-top: 1px solid #222; z-index: 3; }
+  .composer .in { flex: 1; min-height: 40px; border-radius: 20px; background: #262626; padding: 9px 14px; font-size: 14.5px; line-height: 1.3; color: var(--ink); }
+  .composer .ph { color: #6b7280; }
+  .sendb { width: 40px; height: 40px; border-radius: 50%; background: var(--green); color: var(--on-green); display: grid; place-items: center; flex: none; }
+  /* the bet sheet */
+  .betsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; background: var(--surface); border-top: 1px solid var(--line); border-radius: 24px 24px 0 0; padding: 10px 18px 30px; }
+  .stakes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .stakes span { height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--raised); border: 1px solid var(--line); font-family: var(--cond); font-weight: 700; font-size: 19px; }
+  .stakes span.on { border-color: var(--green); background: var(--green-deep); color: var(--green-ink); }
+  /* the matchday card, 1200 x 630, as /api/card draws it */
+  .md { position: relative; width: 1200px; height: 630px; display: flex; gap: 48px; padding: 56px 64px; background: #0a0a0a; color: #f9fafb; font-family: var(--sans); font-weight: 600; overflow: hidden; transform-origin: 0 0; }
+  .md .glow { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 75% at 20% 60%, rgba(34,197,94,0.22), transparent 70%); }
+  .md .l { position: relative; display: flex; flex-direction: column; justify-content: space-between; width: 470px; flex: none; }
+  .md .r { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 14px; flex: 1; min-width: 0; }
+  .md .row { display: flex; flex-direction: column; background: #111; border: 1.5px solid #262626; border-radius: 20px; padding: 16px 20px; box-shadow: inset 5px 0 0 #4ade80; }
+  .md .chip { font-size: 15px; font-weight: 700; color: #9ca3af; background: #1a1a1a; border-radius: 8px; padding: 3px 8px; }
+  .md .won { font-size: 15px; font-weight: 800; color: #4ade80; background: #052e16; border-radius: 8px; padding: 3px 9px; }
+  #pop { position: absolute; z-index: 22; border-radius: 22px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.75), 0 0 0 1.5px #262626; }
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="stage" class="layer"></div>
+  <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"></div></div></div></div>
+  <div id="cap"></div>
+  <div id="popdim" style="position:absolute;inset:0;z-index:21;background:#000;opacity:0;pointer-events:none"></div>
+  <div id="pop" style="display:none"></div>
+  <div id="fx" style="position:absolute;inset:0;z-index:24;pointer-events:none"></div>
+  <div id="tap"></div><div id="ripple"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
+const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const span = (t, [a, b]) => prog(t, a, b - a);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
+const lerp = (a, b, x) => a + (b - a) * x;
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const icon = (n, s = 24, sw = 1.75) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+const usd = (n) => `$${Math.abs(n).toFixed(2)}`;
+function words(t, a, b, html, { stag = 0.07, d = 0.55 } = {}) {
+  return html.split(/(<br\/>)/).map((chunk) => chunk === "<br/>" ? "<br/>" : chunk.split(" ").filter(Boolean).map((w, i) => {
+    const p = spring(prog(t, a + i * stag, d)), o = eo(prog(t, b - 0.3, 0.3));
+    const txt = /^\*.*\*$/.test(w) ? `<span class="green">${w.slice(1, -1)}</span>` : /^_.*_$/.test(w) ? `<span class="redt">${w.slice(1, -1)}</span>` : w;
+    return `<span class="m"><span class="w" style="transform:translateY(${((1 - p) * 110 + o * -110).toFixed(1)}%)">${txt}</span></span>`;
+  }).join(" ")).join("");
+}
+
+/* ---------------- full time, share, the card in the chat, a mate backs the same (48 s) ---------------- */
+const T = {
+  cover: [0, 3.6],
+  story: [3.6, 40.5],
+  tapShare: 8.4,
+  sheet: [8.6, 11.3],
+  tapWa: 10.9,
+  chat: 11.3,
+  tapSend: 12.9,
+  unfurl: 15.7,           // on the music's drop
+  pop: [16.5, 21.2],      // the card, full size
+  r1: 21.7, r2: 22.6,
+  tapCard: 24.0,
+  mate: 24.4,
+  scroll: [28.6, 29.6],
+  tapYes: 31.0,
+  bet: 31.25,
+  tapBack: 33.3,
+  end: 40.5, dur: 48,
+};
+const BEATS = [
+  [3.9, "*Full* *time.*", "Three from three. +$59.10."],
+  [6.5, "Tell the *group.*", "One tap on share."],
+  [8.9, "Pick the *chat.*", "WhatsApp, X, wherever your mates are."],
+  [12.1, "*Send.*", "Your matchday, in one link."],
+  [15.6, "It *unfurls.*", "Your matchday card, right in the chat."],
+  [21.4, "The group's *in.*", "Three from three? Get in."],
+  [23.6, "A mate *taps* *it.*", "Straight to your Game day."],
+  [26.4, "Your bets, *live.*", "Every pick, how it finished."],
+  [29.3, "Back the *same.*", "Next up: Arsenal v Man Utd."],
+  [33.2, "*Mates* *in.*", "Same game, same side."],
+  [36.6, "Your day, *shared.*", "One link, the whole matchday."],
+];
+const NAME = "Golden Rabona";
+const LINK = "play.terrace.social/live?fan=0x7a3f…c41e";
+const TEXT = "My matchday on Terrace: 3 from 3, +$59.10 on the day.";
+const GAMES = [
+  { id: "A", home: ["42", "Arsenal"], away: ["47", "Spurs"], score: "2–0", title: "Arsenal win", gain: 8.8 },
+  { id: "B", home: ["33", "Man Utd"], away: ["49", "Chelsea"], score: "2–1", title: "Bruno Fernandes scores", gain: 32.5 },
+  { id: "C", home: ["50", "Man City"], away: ["34", "Newcastle"], score: "3–1", title: "Over 2.5 goals in Man City v Newcastle", gain: 17.8 },
+];
+
+/* ---------------- the matchday card (/api/card) ---------------- */
+function mdCard() {
+  const rows = GAMES.map((g) => `<div class="row">
+      <div style="display:flex;align-items:center;gap:12px"><span class="chip">FT</span><span style="font-size:24px;flex:1;white-space:nowrap;overflow:hidden">${g.home[1]} ${g.score} ${g.away[1]}</span></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:10px"><span style="font-size:19px;color:#9ca3af;flex:1;white-space:nowrap;overflow:hidden">${g.title}: Yes</span><span class="won">WON</span><span style="font-family:var(--cond);font-size:30px;font-weight:800;color:#22c55e">+$${g.gain.toFixed(2)}</span></div>
+    </div>`).join("");
+  return `<div class="glow"></div>
+    <div class="l">
+      <div style="display:flex;align-items:center;gap:16px"><img src="assets/terrace.png" width="64" height="64" style="border-radius:14px" /><span style="font-family:var(--cond);font-size:40px;font-weight:800;letter-spacing:1px">TERRACE</span></div>
+      <div style="display:flex;flex-direction:column"><span style="font-size:26px;color:#9ca3af">${NAME}'s matchday</span>
+        <span style="font-family:var(--cond);font-size:112px;font-weight:800;line-height:0.95;letter-spacing:-1px;margin-top:8px">3 FROM 3</span>
+        <span style="font-family:var(--cond);font-size:54px;font-weight:800;color:#22c55e;margin-top:6px">+$59.10 on the day</span></div>
+      <span style="font-size:22px;color:#6b7280">play.terrace.social · test money</span>
+    </div>
+    <div class="r">${rows}</div>`;
+}
+const cardAt = (w) => `<div style="width:${w}px;height:${(w * 630 / 1200).toFixed(1)}px;overflow:hidden;position:relative"><div class="md" style="transform:scale(${(w / 1200).toFixed(4)})">${mdCard()}</div></div>`;
+
+/* ---------------- cover ---------------- */
+function cover(t) {
+  if (t >= T.cover[1]) return "";
+  const out = eo(prog(t, T.cover[1] - 0.5, 0.5));
+  const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
+  const cy = VERT ? 520 : 120, R = VERT ? 100 : 74;
+  return `<div class="ctr" style="top:${cy}px;${s(1)}">
+      <span style="display:inline-flex;align-items:center;gap:16px;font-family:var(--cond);font-weight:800;font-size:${VERT ? 44 : 40}px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span>
+    </div>
+    <div class="ring" style="left:${W / 2 - R}px;top:${cy + (VERT ? 110 : 88)}px;width:${2 * R}px;height:${2 * R}px;${s(1.4)};background:radial-gradient(circle at 35% 30%, #0f3a1f, var(--green-deep) 70%);border-color:var(--green);box-shadow:0 0 ${80 + 24 * Math.sin(t * 4)}px rgba(34,197,94,0.4)">${icon("share", VERT ? 88 : 70, 1.9)}</div>
+    <div class="ctr" style="top:${cy + (VERT ? 340 : 270)}px;${s(1.8)}">
+      <div><span class="kicker" style="height:50px;background:var(--green-deep);border-color:var(--green-mid);color:var(--green-ink)"><span class="dot" style="background:var(--green);box-shadow:0 0 12px var(--green);opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Game day</span></div>
+      <span class="big" style="display:block;font-size:${VERT ? 176 : 168}px;margin-top:26px">Share your<br/><span class="green">matchday</span></span>
+      <span class="lead" style="display:block;font-size:40px;margin-top:26px;color:var(--ink)">${VERT ? "Your record as a card<br/>your mates can open." : "Your record as a card your mates can open."}</span>
+      <div style="margin-top:${VERT ? 54 : 34}px"><span class="brandrow">On <img src="assets/monad.png" /><b>MONAD</b> &nbsp;· settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+    </div>`;
+}
+
+/* ---------------- Game day at full time (the fan's, then as a mate sees it) ---------------- */
+const tabs = (on) => `<div class="tabbar">${[["home", "Home"], ["pitch", "Markets"], ["plus", "Create"], ["users", "Social"], ["shield", "Profile"]].map(([ic, l]) =>
+  `<div class="tab${l === "Create" ? " tab-create" : ""}${l === on ? " on" : ""}"><span class="pill">${icon(ic, 22)}</span><span class="tl">${l}</span></div>`).join("")}</div>`;
+const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
+
+function board(g) {
+  return `<div class="card gd-match gd-fulltime" id="card${g.id}">
+    <div class="gd-head"><span class="badge b-settled">FT</span>Premier League<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
+    <div class="gd-score"><span class="t">${CREST(g.home[0])}${g.home[1]}</span><span class="sc">${g.score}</span><span class="t away">${g.away[1]}${CREST(g.away[0])}</span></div>
+    <div class="gd-positions"><div class="gd-pos"><i class="bar" style="background:var(--green)"></i>
+      <div style="min-width:0"><div class="uname">${g.title}</div><div class="umeta">Yes · $10.00</div></div>
+      <div class="gd-pos-side"><span class="badge b-won">Won</span><div class="gd-amt amt-won">+${usd(g.gain)}</div></div></div></div>
+    <div class="gd-foot"><span></span><span class="amt-won">As it finished +${usd(g.gain)}</span></div>
+  </div>`;
+}
+const hero = () => `<div class="card gd-hero"><div class="gd-hero-row">
+    <div><div class="gd-k">On the line</div><div class="gd-v">$0.00</div><div class="umeta">0 games</div></div>
+    <div style="text-align:right"><div class="gd-k">If it all ends now</div><div class="gd-v amt-won">+$59.10</div><div class="umeta">3 won</div></div>
+  </div></div>`;
+
+function fanScreen(t) {
+  const enter = (i) => { const p = spring(prog(t, T.story[0] + 0.5 + i * 0.16, 0.6)); return `opacity:${cl(prog(t, T.story[0] + 0.5 + i * 0.16, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  const pulse = t > 6.4 && t < T.tapShare ? 0.5 + 0.5 * Math.sin((t - 6.4) * 7) : 0;
+  let h = `<div style="${enter(0)}">${hero()}</div><div class="sec-hd" style="${enter(1)}"><h3>Full time</h3></div>`;
+  h += GAMES.map((g, i) => `<div style="${i ? "margin-top:10px;" : ""}${enter(i + 1)}">${board(g)}</div>`).join("");
+  return `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div>
+      <span class="iconbtn" id="sharebtn" style="${pulse ? `box-shadow:0 0 0 ${(2 + 5 * pulse).toFixed(1)}px rgba(34,197,94,${(0.25 + 0.3 * pulse).toFixed(2)});color:var(--green-ink);border-color:var(--green-mid)` : ""}">${icon("share", 18)}</span><span class="balpill" style="margin-left:0">$149.10</span></div>
+    <div class="body"><div class="scroll">${h}</div></div>${tabs("Home")}`;
+}
+
+function shareSheet(t) {
+  const k = eo(prog(t, T.sheet[0], 0.45)), o = eio(prog(t, T.sheet[1] - 0.35, 0.35));
+  const y = (1 - k) * 560 + o * 560;
+  const apps = [
+    ["app-wa", "WhatsApp", "#25d366", icon("chat", 30, 2)],
+    ["app-x", "X", "#000", `<span style="font-family:var(--cond);font-weight:800;font-size:34px">X</span>`],
+    ["app-msg", "Messages", "#34c759", icon("chat", 30, 2)],
+    ["app-mail", "Mail", "#0a84ff", icon("mail", 30, 2)],
+  ];
+  const press = (id) => (id === "app-wa" && t > T.tapWa - 0.05 && t < T.tapWa + 0.15 ? "transform:scale(0.92)" : "");
+  return `<div class="dim" style="opacity:${(0.5 * k * (1 - o)).toFixed(3)}"></div>
+    <div class="sheet" style="transform:translateY(${y.toFixed(1)}px)"><div class="grab"></div>
+      <div class="sh-prev"><img src="assets/terrace.png" /><div style="min-width:0"><b>My matchday on Terrace</b><span>play.terrace.social</span></div><span style="margin-left:auto;width:30px;height:30px;border-radius:50%;background:#2c2c2e;display:grid;place-items:center;color:#8e8e93;font-size:16px">✕</span></div>
+      <div class="sh-apps">${apps.map(([id, l, bg, ic]) => `<div class="sh-app"><span class="sh-ic" id="${id}" style="background:${bg};${bg === "#000" ? "border:1px solid #3a3a3c;" : ""}${press(id)}">${ic}</span>${l}</div>`).join("")}</div>
+      <div class="sh-row">Copy ${icon("copy", 20)}</div>
+      <div class="sh-row" style="margin-top:8px">Add to Reading List ${icon("list", 20)}</div>
+    </div>`;
+}
+
+/* ---------------- the group chat ---------------- */
+function chatScreen(t) {
+  const sent = t >= T.tapSend + 0.1;
+  const unf = prog(t, T.unfurl, 0.55);
+  const appear = (a) => { const p = spring(prog(t, a, 0.5)); return `opacity:${cl(prog(t, a, 0.2))};transform:translateY(${((1 - p) * 24).toFixed(1)}px) scale(${lerp(0.94, 1, p).toFixed(3)});transform-origin:${"100% 100%"}`; };
+  const appearIn = (a) => { const p = spring(prog(t, a, 0.5)); return `opacity:${cl(prog(t, a, 0.2))};transform:translateY(${((1 - p) * 24).toFixed(1)}px);`; };
+  const bw = 290;
+  const pressCard = t > T.tapCard - 0.05 && t < T.tapCard + 0.18 ? "transform:scale(0.97);" : "";
+  const preview = unf > 0 ? `<div class="unf" id="bubblecard" style="max-height:${(eo(unf) * 240).toFixed(1)}px;opacity:${cl(unf * 1.6).toFixed(3)};${pressCard}">${cardAt(bw)}<div class="ttl">${NAME}'s matchday on Terrace</div><div class="dom">play.terrace.social</div></div>` : "";
+  let m = `<div class="msg in"><div class="who" style="color:#fbbf24">Sam</div>Anyone on City today?<div class="tm">17:58</div></div>
+    <div class="msg in"><div class="who" style="color:#60a5fa">Jordan</div>BRUNO 🙌<div class="tm">18:03</div></div>`.replace(" 🙌", "!!");
+  if (sent) m += `<div class="msg out" style="width:${bw + 22}px;${appear(T.tapSend + 0.1)}">${preview}${TEXT} <a>${LINK}</a><div class="tm">19:47 ✓✓</div></div>`;
+  if (t >= T.r1) m += `<div class="msg in" style="${appearIn(T.r1)}"><div class="who" style="color:#60a5fa">Jordan</div>3 from 3?? Get in<div class="tm">19:48</div></div>`;
+  if (t >= T.r2) m += `<div class="msg in" style="${appearIn(T.r2)}"><div class="who" style="color:#fbbf24">Sam</div>Bruno again. What's next?<div class="tm">19:48</div></div>`;
+  const comp = sent ? `<span class="ph">Message</span>` : `${TEXT} <span style="color:#7dd3fc">${LINK}</span>`;
+  const pressSend = t > T.tapSend - 0.05 && t < T.tapSend + 0.15 ? "transform:scale(0.88)" : "";
+  return `<div class="chat-h"><span style="color:var(--green-ink)">${icon("chevronLeft", 24, 2.2)}</span><span class="chat-av" style="background:var(--green)">5</span>
+      <div style="min-width:0"><div style="font-weight:800;font-size:16.5px">Five-a-side</div><div style="font-size:12.5px;color:var(--ink-3);font-weight:500">Jordan, Sam, Priya, you</div></div></div>
+    <div class="chat-b"><div class="msgs">${m}</div></div>
+    <div class="composer"><div class="in">${comp}</div><span class="sendb" id="sendbtn" style="${pressSend}">${icon("send", 20, 2.2)}</span></div>`;
+}
+
+/* ---------------- a mate's phone: the fan's Game day, read-only ---------------- */
+function mateScreen(t) {
+  const enter = (i) => { const p = spring(prog(t, T.mate + 0.2 + i * 0.12, 0.6)); return `opacity:${cl(prog(t, T.mate + 0.2 + i * 0.12, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  let h = `<div style="${enter(0)}">${hero()}</div><div class="sec-hd" style="${enter(1)}"><h3>Full time</h3></div>`;
+  h += GAMES.map((g, i) => `<div style="${i ? "margin-top:10px;" : ""}${enter(i + 1)}">${board(g)}</div>`).join("");
+  const yesOn = t > T.tapYes - 0.05 && t < T.tapYes + 0.18;
+  h += `<div class="sec-hd" id="sameHd"><h3>Back the same games</h3><span class="more">Markets ›</span></div>
+    <div class="card" id="mk1"><div class="gd-head"><span class="badge b-open">Sat 17:30</span>Arsenal v Man Utd</div>
+      <div class="uname" style="font-size:17px;margin-top:8px">Arsenal win</div>
+      <div class="mk-odds"><div class="o-yes" id="yesbtn" style="${yesOn ? "transform:scale(0.95);background:#14532d" : ""}"><span class="lbl">Yes</span><span class="val">4/5</span></div><div class="o-no"><span class="lbl">No</span><span class="val">5/4</span></div></div></div>
+    <div class="card"><div class="gd-head"><span class="badge b-open">Sat 17:30</span>Arsenal v Man Utd</div>
+      <div class="uname" style="font-size:17px;margin-top:8px">Bruno Fernandes scores</div>
+      <div class="mk-odds"><div class="o-yes"><span class="lbl">Yes</span><span class="val">9/4</span></div><div class="o-no"><span class="lbl">No</span><span class="val">1/3</span></div></div></div>
+    <div class="card"><div class="gd-head"><span class="badge b-open">Sun 16:30</span>Newcastle v Man City</div>
+      <div class="uname" style="font-size:17px;margin-top:8px">Over 2.5 goals</div>
+      <div class="mk-odds"><div class="o-yes"><span class="lbl">Yes</span><span class="val">8/11</span></div><div class="o-no"><span class="lbl">No</span><span class="val">11/10</span></div></div></div>`;
+  let out = `<div class="hdr"><span class="iconbtn">${icon("chevronLeft", 20)}</span><div style="flex:1;min-width:0"><div class="hdr-title" style="font-size:21px;white-space:nowrap">${NAME}'s game day</div><div class="hdr-sub">Their bets, as it stands</div></div><span class="balpill" style="margin-left:0">$100.00</span></div>
+    <div class="body" id="body"><div class="scroll" id="scroll">${h}</div></div>${tabs("Social")}`;
+  // the bet sheet
+  const k = eo(prog(t, T.bet, 0.45)), o = eio(prog(t, T.tapBack + 0.25, 0.35));
+  if (k > 0 && o < 1) {
+    const backOn = t > T.tapBack - 0.05 && t < T.tapBack + 0.18;
+    out += `<div class="dim" style="opacity:${(0.55 * k * (1 - o)).toFixed(3)}"></div>
+      <div class="betsheet" style="transform:translateY(${((1 - k) * 420 + o * 420).toFixed(1)}px)"><div class="grab" style="background:#333"></div>
+        <div class="gd-k">Arsenal v Man Utd · Sat 17:30</div>
+        <div class="hdr-title" style="font-size:28px;margin-top:4px">Yes · Arsenal win</div>
+        <div class="stakes"><span>$5</span><span class="on">$10</span><span>$25</span><span>$50</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:14px;font-weight:700;font-size:15px"><span style="color:var(--ink-2)">Pays if it lands</span><span class="amt-won" style="font-family:var(--cond);font-size:22px">$18.00</span></div>
+        <div class="umeta" style="margin-top:8px;display:flex;align-items:center;gap:6px"><img src="assets/chainlink.png" style="width:14px;height:14px;border-radius:50%;background:#fff" />How it settles: from the match data, by Chainlink.</div>
+        <div class="cta" id="backit" style="margin-top:14px;${backOn ? "transform:scale(0.97);filter:brightness(0.9)" : ""}">Back it · $10</div>
+      </div>`;
+  }
+  const tp = prog(t, T.tapBack + 0.45, 0.35) * (1 - prog(t, T.tapBack + 3.4, 0.3));
+  if (tp > 0) out += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.tapBack + 0.45, 0.35))) * 14}px)">${icon("check", 18, 2.4)} You're on · pays <b>$18.00</b></div>`;
+  return out;
+}
+
+function screen(t) {
+  if (t < T.chat) {
+    let h = fanScreen(t);
+    if (t >= T.sheet[0]) h += shareSheet(t);
+    return h;
+  }
+  if (t < T.mate) return chatScreen(t);
+  return mateScreen(t);
+}
+// screens slide across when the app changes
+function slide(t) {
+  for (const a of [T.chat, T.mate]) {
+    const k = prog(t, a, 0.45);
+    if (k > 0 && k < 1) return { x: (1 - eo(k)) * 120, o: eo(k) };
+  }
+  return { x: 0, o: 1 };
+}
+
+/* ---------------- the card pops out of the chat, full size ---------------- */
+function popCard(t) {
+  const el = $("pop"), dm = $("popdim");
+  const [a, b] = T.pop;
+  if (t < a || t >= b || !$("bubblecard")) { el.style.display = "none"; dm.style.opacity = 0; return; }
+  const src = $("bubblecard").getBoundingClientRect();
+  const tw = VERT ? 980 : 1240, tx = (W - tw) / 2, ty = VERT ? 700 : 300;
+  const k = eio(prog(t, a, 0.7)) * (1 - eio(prog(t, b - 0.6, 0.6)));
+  const w = lerp(src.width, tw, k), x = lerp(src.left, tx, k), y = lerp(src.top, ty, k);
+  el.style.cssText = `display:block;left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;border-radius:${lerp(10, 22, k).toFixed(1)}px`;
+  el.innerHTML = cardAt(w);
+  dm.style.opacity = (0.72 * k).toFixed(3);
+}
+
+/* ---------------- taps ---------------- */
+const TAPS = [[T.tapShare, "sharebtn"], [T.tapWa, "app-wa"], [T.tapSend, "sendbtn"], [T.tapCard, "bubblecard"], [T.tapYes, "yesbtn"], [T.tapBack, "backit"]];
+function tap(t) {
+  const dot = $("tap"), rip = $("ripple");
+  dot.style.opacity = 0; rip.style.opacity = 0;
+  for (const [a, id] of TAPS) {
+    if (t < a - 0.45 || t > a + 0.5) continue;
+    const el = $(id);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2, k = t - a;
+    const o = k < -0.3 ? prog(t, a - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, a + 0.3, 0.2) : 1;
+    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, a - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${k > -0.08 && k < 0.1 ? 0.8 : 1})`;
+    if (k > 0) {
+      const p = eo(prog(t, a, 0.45)), size = 30 + p * 70;
+      rip.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;opacity:${(1 - p) * 0.9}`;
+    }
+  }
+}
+
+/* ---------------- camera ---------------- */
+const SHOTS = [[13.2, 16.3, "bubblecard", 1.14], [21.3, 23.9, "bubblecard", 1.1], [33.6, 36.4, "mk1", 1.1]];
+let SY = 0;
+function camera(t) {
+  let s = 1, oy = 450;
+  for (const [a, b, id, z] of SHOTS) {
+    const k = eio(prog(t, a, 0.9)) * (1 - eio(prog(t, b - 0.9, 0.9)));
+    if (k <= 0) continue;
+    const el = $(id);
+    if (!el) continue;
+    const ph = $("phone").getBoundingClientRect(), r = el.getBoundingClientRect(), sc = ph.height / 900;
+    const y = (r.top + r.height / 2 - ph.top) / sc;
+    const zz = VERT ? 1 + (z - 1) * 0.4 : z;
+    s = lerp(1, zz, k);
+    oy = VERT ? 200 : lerp(450, cl(y, 200, 760), k);
+  }
+  return { s, oy };
+}
+
+/* ---------------- narration ---------------- */
+function narration(t) {
+  const [a, b] = T.story;
+  if (t < a || t >= b) return "";
+  const idx = BEATS.reduce((n, [x], i) => (t >= x ? i : n), -1);
+  const mate = t >= T.tapCard - 0.4;
+  const kick = mate
+    ? `<span class="kicker" style="background:var(--blue-deep);border-color:#1e3a5f;color:var(--blue)">${icon("users", 20, 2)}A mate's phone</span>`
+    : `<span class="kicker" style="background:var(--green-deep);border-color:var(--green-mid);color:var(--green-ink)"><span class="dot" style="background:var(--green);box-shadow:0 0 12px var(--green)"></span>Your matchday</span>`;
+  const kk = mate ? spring(prog(t, T.tapCard - 0.4, 0.5)) : 1;
+  const popK = eio(prog(t, T.pop[0], 0.5)) * (1 - eio(prog(t, T.pop[1] - 0.5, 0.5)));
+  let h = `<div style="${st(life(t, a + 0.1, b))}"><span style="display:inline-block;transform:scale(${lerp(0.9, 1, kk).toFixed(3)})">${kick}</span></div>`;
+  if (idx >= 0) {
+    const [x, line, sub] = BEATS[idx], next = BEATS[idx + 1] ? BEATS[idx + 1][0] : b;
+    const long = line.replace(/[*_]/g, "").length > 15;
+    h += `<div class="beat" style="${long ? `font-size:${VERT ? 80 : 98}px` : ""}">${words(t, x + 0.05, next, line)}</div>`;
+    h += `<div class="bsub" style="${st(life(t, x + 0.45, next, { dy: 20, out: 0.3 }))};${popK ? `opacity:${(1 - popK).toFixed(3)}` : ""}">${sub}</div>`;
+  }
+  h += `<div class="steps" style="${st(life(t, a + 0.6, b))};${popK ? `opacity:${(1 - popK).toFixed(3)}` : ""}">${BEATS.map((_, i) => `<i class="${i < idx ? "on" : i === idx ? "now" : ""}"></i>`).join("")}</div>`;
+  return h;
+}
+
+function endCard(t) {
+  if (t < T.end) return "";
+  const e = (k, dy = 30) => st(life(t, T.end + 0.25 + k * 0.3, 99, { d: 0.7, dy }));
+  const top = VERT ? 560 : 150;
+  return `<div class="ctr" style="top:${top}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}">
+    <div class="ring" style="position:relative;display:inline-flex;width:150px;height:150px;background:radial-gradient(circle at 35% 30%, #0f3a1f, var(--green-deep) 70%);border-color:var(--green);box-shadow:0 0 80px rgba(34,197,94,0.35);${e(0)}">${icon("share", 72, 1.9)}</div>
+    <span class="big" style="display:block;font-size:${VERT ? 130 : 150}px;margin-top:40px;${e(1)}">Share your <span class="green">day</span></span>
+    <span class="lead" style="display:block;font-size:${VERT ? 42 : 44}px;margin-top:24px;color:var(--ink);${e(2, 16)}">${VERT ? "Your matchday as a card,<br/>one tap from Game day." : "Your matchday as a card, one tap from Game day."}</span>
+    <div style="margin-top:40px;${e(3, 16)}"><span class="pillurl">play.terrace.social</span></div>
+    <div style="margin-top:38px;${e(4, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
+    <div style="margin-top:22px;${e(5, 12)}"><span class="brandrow">Settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+  </div>`;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  const grn = t >= T.unfurl && t < T.end ? 0.15 : 0.11;
+  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : 30}% ${VERT ? 55 : 48}%, rgba(34,197,94,0.05), transparent 70%), radial-gradient(1000px 760px at ${VERT ? 50 : 62}% ${VERT ? 30 : 40}%, rgba(34,197,94,${grn}), transparent 70%)`;
+  $("stage").innerHTML = cover(t) + endCard(t);
+  const inPhone = t >= T.story[0] - 0.2 && t < T.end;
+  $("phonewrap").style.display = inPhone ? "" : "none";
+  if (inPhone) {
+    $("view").innerHTML = screen(t);
+    const sl = slide(t);
+    $("view").style.cssText = `transform:translateX(${sl.x.toFixed(1)}px);opacity:${sl.o.toFixed(3)}`;
+    const sc = $("scroll"), bd = $("body");
+    if (sc && bd && t >= T.mate) {
+      const target = $("sameHd").offsetTop - 6;
+      SY = -eio(span(t, T.scroll)) * Math.min(target, Math.max(0, sc.offsetHeight + 24 - bd.clientHeight));
+      sc.style.transform = `translateY(${SY.toFixed(1)}px)`;
+    }
+    const ph = life(t, T.story[0], T.end, { d: 0.8, dy: 120, out: 0.5 });
+    $("phone").style.cssText = `opacity:${ph.o.toFixed(3)};transform:translateY(${ph.y.toFixed(1)}px) scale(${ph.s.toFixed(4)})`;
+    const cam = camera(t);
+    $("phone").style.cssText = `opacity:${ph.o.toFixed(3)};transform-origin:220px ${cam.oy.toFixed(1)}px;transform:translateY(${ph.y.toFixed(1)}px) scale(${(ph.s * cam.s).toFixed(4)})`;
+  }
+  $("cap").innerHTML = narration(t);
+  popCard(t);
+  tap(t);
+};
+
+const IMGS = ["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "33", "49", "50", "34"].map((id) => `assets/crest-${id}.png`)];
+document.fonts.ready.then(() => Promise.all(IMGS.map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
