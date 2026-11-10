@@ -47,21 +47,10 @@
   .brandrow b { color: var(--ink); font-family: var(--cond); font-size: 32px; letter-spacing: 1px; }
   .ring { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #3a0d0d, var(--red-deep) 70%); border: 4px solid var(--red); color: #fff; box-shadow: 0 0 80px rgba(239,68,68,0.35), inset 0 0 40px rgba(0,0,0,0.5); }
 
-  /* problem: five scoreboards, five tabs */
-  .tabwin { position: absolute; width: 460px; border-radius: 18px; background: #121212; border: 1.5px solid #2a2a2a; box-shadow: 0 28px 60px rgba(0,0,0,0.65); overflow: hidden; }
-  .tabwin .bar { height: 34px; background: #1b1b1b; display: flex; align-items: center; gap: 7px; padding: 0 14px; }
-  .tabwin .bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3a3a; display: block; }
-  .tabwin .bar span { margin-left: 8px; font-size: 14px; color: var(--ink-3); font-weight: 600; }
-  .tabwin .sb { display: flex; align-items: center; justify-content: space-between; padding: 22px 30px 22px 26px; font-family: var(--cond); font-weight: 800; font-size: 36px; }
-  .tabwin .sb img { width: 40px; height: 40px; object-fit: contain; }
-  .tabwin .sb .tm { display: flex; align-items: center; gap: 10px; }
-  .tabwin .sb .sc { font-size: 42px; }
-  .tabwin .mn { position: absolute; right: 60px; top: 6px; font-size: 13px; font-weight: 800; color: #fff; background: var(--red); border-radius: 6px; padding: 2px 7px; }
-  .qmark { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: var(--amber-deep); border: 2px solid var(--amber); color: var(--amber-ink); font-family: var(--cond); font-weight: 800; font-size: 42px; display: grid; place-items: center; }
 
   /* phone */
   #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
-  body.v #phonewrap { left: 309px; top: 570px; transform: scale(1.05); }
+  body.v #phonewrap { left: 309px; top: 560px; transform: scale(1.05); }
   #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; }
   #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
   #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
@@ -148,20 +137,26 @@
   #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
   #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
 
-  /* captions beside the phone */
-  #cap { position: absolute; left: 790px; top: 290px; width: 1040px; z-index: 6; }
-  body.v #cap { left: 64px; top: 210px; width: 952px; }
-  .ctitle { font-family: var(--cond); font-weight: 800; font-size: 104px; line-height: 0.95; text-transform: uppercase; margin-top: 22px; white-space: nowrap; }
-  body.v .ctitle { font-size: 84px; margin-top: 16px; }
-  .csub { font-size: 40px; font-weight: 700; color: var(--ink); margin-top: 26px; display: flex; align-items: center; gap: 16px; height: 50px; white-space: nowrap; }
-  body.v .csub { font-size: 34px; margin-top: 18px; }
-  .csub .n { width: 46px; height: 46px; border-radius: 50%; background: var(--green-deep); border: 1.5px solid var(--green); color: var(--green-ink); font-family: var(--cond); font-size: 26px; display: grid; place-items: center; flex: none; }
+  /* narration beside the phone */
+  #cap { position: absolute; left: 800px; top: 300px; width: 1060px; z-index: 6; }
+  body.v #cap { left: 64px; top: 200px; width: 952px; }
+  .beat { font-family: var(--cond); font-weight: 800; font-size: 120px; line-height: 0.95; text-transform: uppercase; margin-top: 26px; white-space: nowrap; letter-spacing: -1px; }
+  body.v .beat { font-size: 96px; margin-top: 18px; }
+  .bsub { font-size: 40px; font-weight: 700; color: var(--ink-2); margin-top: 24px; height: 50px; white-space: nowrap; }
+  body.v .bsub { font-size: 34px; margin-top: 16px; height: 44px; }
   .cextra { margin-top: 22px; height: 46px; }
-  body.v .cextra { margin-top: 14px; }
-  .steps { margin-top: 36px; display: flex; gap: 12px; }
-  body.v .steps { margin-top: 20px; }
-  .steps i { width: 56px; height: 6px; border-radius: 3px; background: #262626; display: block; }
+  body.v .cextra { margin-top: 12px; }
+  .steps { margin-top: 34px; display: flex; gap: 10px; }
+  body.v .steps { margin-top: 18px; }
+  .steps i { width: 46px; height: 6px; border-radius: 3px; background: #262626; display: block; }
   .steps i.on { background: var(--green); }
+  .steps i.now { background: var(--ink); }
+  /* rolling digits and the sweeping bar */
+  .roll { display: inline-block; overflow: hidden; height: 1.08em; vertical-align: -0.12em; line-height: 1.08; }
+  .roll > span { display: block; }
+  .gd-pos { position: relative; }
+  .gd-pos .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .gd-pos.win, .gd-pos.lose { box-shadow: none; }
 </style>
 </head>
 <body>
@@ -196,77 +191,89 @@ const icon = (n, s = 24, sw = 1.75) => `<svg class="i" width="${s}" height="${s}
 const usd = (n) => `$${Math.abs(n).toFixed(2)}`;
 const signed = (n) => `${n >= 0 ? "+" : "−"}${usd(n)}`;
 
-/** Words rise out of a mask one after another, and drop away together at `b`. *word* is green. */
+/** Words rise out of a mask one after another, and drop away together at `b`. *word* is green, _word_ red. */
 function words(t, a, b, html, { stag = 0.07, d = 0.55 } = {}) {
   return html.split(/(<br\/>)/).map((chunk) => chunk === "<br/>" ? "<br/>" : chunk.split(" ").filter(Boolean).map((w, i) => {
     const p = spring(prog(t, a + i * stag, d)), o = eo(prog(t, b - 0.3, 0.3));
-    const hot = /^\*.*\*$/.test(w), txt = hot ? `<span class="green">${w.slice(1, -1)}</span>` : w;
+    const txt = /^\*.*\*$/.test(w) ? `<span class="green">${w.slice(1, -1)}</span>` : /^_.*_$/.test(w) ? `<span class="redt">${w.slice(1, -1)}</span>` : w;
     return `<span class="m"><span class="w" style="transform:translateY(${((1 - p) * 110 + o * -110).toFixed(1)}%)">${txt}</span></span>`;
   }).join(" ")).join("");
 }
 
-/* ---------------- timeline (45 s) ---------------- */
+/** Old text rolls up and out, new text rolls in from below, character by character (RollingNumber). */
+function roll(prev, next, k) {
+  if (k >= 1 || prev === next) return next;
+  const n = Math.max(prev.length, next.length), a = prev.padStart(n, " "), b = next.padStart(n, " ");
+  return [...b].map((c, i) => {
+    if (c === a[i]) return c === " " ? "" : c;
+    const ki = eio(cl(k * 1.25 - (n - 1 - i) * 0.06));
+    return `<span class="roll"><span style="transform:translateY(${(-ki * 100).toFixed(1)}%)"><span style="display:block">${a[i] === " " ? "&nbsp;" : a[i]}</span><span style="display:block">${c === " " ? "&nbsp;" : c}</span></span></span>`;
+  }).join("");
+}
+
+/* ---------------- one fan's Saturday (55 s) ---------------- */
 const T = {
-  cover: [0, 3.8],
-  problem: [3.8, 8.6],
-  phone: [8.6, 38.4],
-  goalA: 13.8,            // Arsenal 1-0, 63'
-  goalB: 19.6,            // Salah, 41'
-  goalC: 22.2,            // City level, 44'
-  ht: 24.0,               // Liverpool v City at half time
-  ftA: 25.4,              // Arsenal v Spurs full time
-  tapCollect: 27.3,
-  scroll: [29.4, 30.6],
-  tapHome: 33.9, home: 34.2,
-  end: 38.4, dur: 45,
+  cover: [0, 3.6],
+  story: [3.6, 46.4],
+  gBruno: 12.6,   // Man Utd 1-0, Bruno Fernandes 41'
+  gArs: 18.9,     // Arsenal 1-0, 63'
+  gChe: 24.4,     // Chelsea level, 84'
+  gWin: 28.9,     // Man Utd 2-1, 90+2'
+  ft: 32.8,
+  taps: [35.2, 36.7, 37.4], scrollA: [35.7, 36.3],
+  next: [40.2, 41.5],
+  end: 46.4, dur: 55,
 };
-const CAPS = [
-  [T.phone[0] + 0.4, "All your bets, one screen"],
-  [T.goalA - 0.6, "The score moves, your bets move"],
-  [T.goalB - 0.8, "Your takes read live too"],
-  [T.ftA - 0.2, "Full time? Collect in a tap"],
-  [T.scroll[0], "More on the games you follow"],
-  [T.tapHome - 0.2, "Always one tap from Home"],
+const BEATS = [
+  [3.9, "Saturday. *3pm.*", "Three bets, two games."],
+  [8.2, "Losing as it _stands._", "All three in the red."],
+  [12.4, "*Bruno.* 41'.", "Two bets flip to winning."],
+  [18.7, "*Arsenal.* 63'.", "All three winning."],
+  [24.2, "84'. Chelsea _level._", "One slips back."],
+  [28.7, "90+2'. *Back* *in* *front.*", "Three winning again."],
+  [32.7, "*Full* *time.*", "Three from three. Collect."],
+  [40.0, "What's *next?*", "Your teams meet on Saturday."],
 ];
-
-/* ---------------- the fan's positions, as the app reads them ---------------- */
-const RET = 19.7; // what a $10 pool bet pays back at these prices
-const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
-/** standing at time t: "lose" | "win" | "live" | "up" | "won" | "lost" */
-function positions(t) {
-  const ft = t >= T.ftA, collected = t >= T.tapCollect + 0.15;
-  return {
-    A: [
-      { title: "Arsenal win", pick: "Yes", stake: 10, ret: RET, s: ft ? "won" : t >= T.goalA ? "win" : "lose", collect: ft && t < T.tapCollect + 1.4, collected },
-      { title: "Over 2.5 goals in Arsenal v Spurs", pick: "Yes", stake: 10, ret: RET, s: ft ? "lost" : "lose" },
-      { title: "Spurs win", pick: "No · 1v1", stake: 5, ret: 10, s: ft ? "won" : "win" },
-    ],
-    B: [
-      { title: "Salah scores before half-time", pick: "Yes", stake: 10, ret: RET, s: t >= T.goalB ? "win" : "lose", take: true },
-      { title: "Both teams score in Liverpool v Man City", pick: "Yes", stake: 10, ret: RET, s: t >= T.goalC ? "win" : "lose" },
-    ],
-    C: [{ title: "Chelsea win", pick: "Yes", stake: 10, ret: RET, s: "up" }],
-  };
-}
-const net = (ps) => ps.reduce((s, p) => s + (p.s === "win" || p.s === "won" ? p.ret - p.stake : p.s === "lose" || p.s === "lost" ? -p.stake : 0), 0);
-const riding = (ps) => ps.filter((p) => !["won", "lost"].includes(p.s)).reduce((s, p) => s + p.stake, 0);
-
-function minuteA(t) {
-  if (t >= T.ftA) return "FT";
-  return `${Math.floor(t < T.goalA ? lerp(58, 63, span(t, [T.phone[0], T.goalA])) : lerp(63, 90, span(t, [T.goalA, T.ftA - 0.4])))}'`;
-}
-function minuteB(t) {
-  if (t >= T.ht) return "HT";
-  return `${Math.floor(t < T.goalB ? lerp(35, 41, span(t, [T.phone[0], T.goalB])) : lerp(41, 45, span(t, [T.goalB, T.ht - 0.2])))}'`;
+// match clock, shared by both 3pm kick-offs
+const CLOCK = [[T.story[0], 9], [T.gBruno, 41], [T.gArs, 63], [T.gChe, 84], [T.gWin, 92], [T.ft - 0.2, 95]];
+function clock(t) {
+  if (t >= T.ft) return "FT";
+  let m = CLOCK[0][1];
+  for (let i = 1; i < CLOCK.length; i++) if (t >= CLOCK[i - 1][0]) m = lerp(CLOCK[i - 1][1], CLOCK[i][1], span(t, [CLOCK[i - 1][0], CLOCK[i][0]]));
+  m = Math.floor(m);
+  return m > 90 ? `90+${m - 90}'` : `${m}'`;
 }
 
-/* ---------------- scenes ---------------- */
+/* every position as a timeline of states: lose / win / won */
+const RET = 19.7; // a $10 bet pays back $19.70 at these prices
+const POS = {
+  ars: { title: "Arsenal win", pick: "Yes", tl: [[-1, "lose"], [T.gArs, "win"], [T.ft, "won"]] },
+  utd: { title: "Man Utd win", pick: "Yes", tl: [[-1, "lose"], [T.gBruno, "win"], [T.gChe, "lose"], [T.gWin, "win"], [T.ft, "won"]] },
+  bruno: { title: "Bruno Fernandes scores before half-time", pick: "Yes", take: true, tl: [[-1, "lose"], [T.gBruno, "win"], [T.ft, "won"]] },
+};
+const SCORE = { A: [[-1, "0–0"], [T.gArs, "1–0"]], B: [[-1, "0–0"], [T.gBruno, "1–0"], [T.gChe, "1–1"], [T.gWin, "2–1"]] };
+function at(tl, t) {
+  let i = 0;
+  while (i + 1 < tl.length && t >= tl[i + 1][0]) i++;
+  return { s: tl[i][1], prev: i ? tl[i - 1][1] : tl[i][1], since: tl[i][0] };
+}
+const gain = (s) => (s === "win" || s === "won" ? RET - 10 : -10);
+const netNow = (t) => Object.values(POS).reduce((n, p) => n + gain(at(p.tl, t).s), 0);
+/** The net figure counts between values instead of jumping. */
+function netCount(t) {
+  const flips = [T.gBruno, T.gArs, T.gChe, T.gWin].filter((e) => e <= t);
+  const e = flips[flips.length - 1];
+  if (e === undefined) return netNow(t);
+  return lerp(netNow(e - 0.01), netNow(e), eio(prog(t, e, 1.0)));
+}
+const collectedAt = (i) => T.taps[i] + 0.15;
+
+/* ---------------- cover ---------------- */
 function cover(t) {
   if (t >= T.cover[1]) return "";
   const out = eo(prog(t, T.cover[1] - 0.5, 0.5));
   const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
-  const cy = VERT ? 560 : 150;
-  const R = VERT ? 105 : 82;
+  const cy = VERT ? 560 : 150, R = VERT ? 105 : 82;
   return `<div class="ctr" style="top:${cy}px;${s(1)}">
       <span style="display:inline-flex;align-items:center;gap:16px;font-family:var(--cond);font-weight:800;font-size:${VERT ? 44 : 40}px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span>
     </div>
@@ -279,188 +286,164 @@ function cover(t) {
     </div>`;
 }
 
-const TABS = [
-  ["42", "ARS", "47", "TOT", "0–0", "58'"],
-  ["40", "LIV", "50", "MCI", "0–0", "35'"],
-  ["49", "CHE", "34", "NEW", "v", "20:00"],
-  [null, "RMA", null, "BAR", "2–1", "71'"],
-  [null, "BAY", null, "BVB", "1–1", "HT"],
-];
-function problem(t) {
-  const [a, b] = T.problem;
-  if (t < a || t >= b) return "";
-  const fade = 1 - eo(prog(t, b - 0.4, 0.4));
-  const spots = VERT
-    ? [[50, 270, -6], [570, 240, 5], [300, 480, -2], [60, 1330, 4], [560, 1360, -4]]
-    : [[110, 120, -6], [1350, 110, 5], [730, 70, 2], [140, 780, 4], [1320, 790, -5]];
-  const wins = TABS.map(([h, hn, aw, an, sc, mn], i) => {
-    const at = a + 0.1 + i * 0.22, p = spring(prog(t, at, 0.5));
-    const [x, y, r] = spots[i];
-    const jitter = Math.sin(t * 7 + i) * 3 * prog(t, a + 2.2, 0.5);
-    const crest = (id, n) => id ? `<img src="assets/crest-${id}.png" />${n}` : n;
-    return `<div class="tabwin" style="left:${x}px;top:${y + jitter}px;opacity:${cl(prog(t, at, 0.2))};transform:scale(${lerp(0.6, 1, p)}) rotate(${r + (1 - p) * 8}deg)">
-      <div class="bar"><i></i><i></i><i></i><span>Tab ${i + 1}</span></div>
-      ${mn.includes("'") || mn === "HT" ? `<span class="mn">${mn}</span>` : ""}
-      <div class="sb"><span class="tm">${crest(h, hn)}</span><span class="sc">${sc}</span><span class="tm">${crest(aw, an)}</span></div>
-      <div class="qmark" style="left:428px;top:17px;width:52px;height:52px;margin:-26px 0 0 -26px;font-size:34px;opacity:${cl(prog(t, a + 2.0 + i * 0.12, 0.2))};transform:scale(${spring(prog(t, a + 2.0 + i * 0.12, 0.4))})">?</div></div>`;
-  }).join("");
-  const ty = VERT ? 790 : 400;
-  return `<div style="opacity:${fade}">${wins}
-    <div class="ctr" style="top:${ty}px">
-      <span class="big" style="display:block;font-size:${VERT ? 120 : 128}px">${words(t, a + 0.6, b, VERT ? "Five games.<br/>Five tabs." : "Five games. Five tabs.")}</span>
-      <span class="big" style="display:block;font-size:${VERT ? 84 : 84}px;margin-top:22px">${words(t, a + 2.1, b, VERT ? "Which bets are<br/>you *winning?*" : "Which bets are you *winning?*")}</span>
-    </div></div>`;
-}
-
-/* ---------------- phone: the Game day screen ---------------- */
+/* ---------------- the Game day screen ---------------- */
 const tabs = (on) => `<div class="tabbar">${[["home", "Home"], ["pitch", "Markets"], ["plus", "Create"], ["users", "Social"], ["shield", "Profile"]].map(([ic, l]) =>
   `<div class="tab${l === "Create" ? " tab-create" : ""}${l === on ? " on" : ""}" id="tab-${l}"><span class="pill">${icon(ic, 22)}</span><span class="tl">${l}</span></div>`).join("")}</div>`;
+const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
+const BADGE = { lose: ["b-lost", "Losing"], win: ["b-won", "Winning"], won: ["b-won", "Won"] };
+const COLOR = { lose: "var(--red)", win: "var(--green)", won: "var(--green)" };
 
-const BADGE = { lose: ["b-lost", "Losing"], win: ["b-won", "Winning"], live: ["b-live", "In play"], up: ["b-open", "Not started"], won: ["b-won", "Won"], lost: ["b-lost", "Lost"] };
-function posLine(p, t, flipAt) {
-  const [cls, label] = BADGE[p.s];
-  const amt = p.s === "win" || p.s === "won" ? `+${usd(p.ret - p.stake)}` : p.s === "lose" || p.s === "lost" ? `−${usd(p.stake)}` : `pays ${usd(p.ret)}`;
-  const tone = p.s === "win" || p.s === "won" ? " amt-won" : p.s === "lose" || p.s === "lost" ? " amt-lost" : "";
-  const bar = p.s === "win" || p.s === "won" ? " win" : p.s === "lose" || p.s === "lost" ? " lose" : "";
-  // a flash of green across the row when it flips
-  const k = flipAt ? prog(t, flipAt, 0.9) : 1;
-  const flash = k > 0 && k < 1 ? `background:rgba(34,197,94,${(0.28 * (1 - k)).toFixed(3)});` : "";
-  const pop = k > 0 && k < 1 ? `transform:scale(${(1 + 0.14 * Math.sin(Math.min(1, k * 2.2) * Math.PI)).toFixed(3)})` : "";
-  return `<div class="gd-pos${bar}" style="${flash}">
-    <div style="min-width:0"><div class="uname">${p.title}</div><div class="umeta">${p.pick} · ${usd(p.stake)}${p.take ? ` · <span class="badge b-chainlink" style="padding:1px 6px;font-size:10px"><img src="assets/chainlink.png" style="width:11px;height:11px;border-radius:50%;background:#fff" />read live</span>` : ""}</div></div>
-    <div class="gd-pos-side"><span class="badge ${cls}" style="${pop}">${p.s === "live" ? '<i class="livedot"></i>' : ""}${label}</span><div class="gd-amt${tone}">${amt}</div></div>
-    ${p.collect ? `<div class="cta gd-pos-cta" id="collect" style="${p.collected ? "background:var(--raised);color:var(--green-ink);border:1px solid var(--green-mid)" : ""}">${p.collected ? `${icon("check", 18, 2.4)} Collected` : `Collect ${usd(p.ret)}`}</div>` : ""}
+function posLine(key, t, tapIdx) {
+  const p = POS[key], { s, prev, since } = at(p.tl, t);
+  const k = prog(t, since, 0.9);
+  const [cls, label] = BADGE[s];
+  const amtOf = (x) => (x === "lose" ? `−${usd(10)}` : `+${usd(RET - 10)}`);
+  const amt = roll(amtOf(prev), amtOf(s), prog(t, since, 0.7));
+  // the bar sweeps down from the new colour; a soft wash crosses the row
+  const sw = eio(prog(t, since, 0.6));
+  const bar = prev === s || k >= 1 ? COLOR[s] : `linear-gradient(180deg, ${COLOR[s]} ${(sw * 100).toFixed(1)}%, ${COLOR[prev]} ${(sw * 100).toFixed(1)}%)`;
+  const good = s !== "lose";
+  const wash = k > 0 && k < 1 && prev !== s ? `background:rgba(${good ? "34,197,94" : "239,68,68"},${(0.26 * (1 - k)).toFixed(3)});` : "";
+  const pop = k > 0 && k < 1 && prev !== s ? `transform:scale(${(1 + 0.14 * Math.sin(Math.min(1, k * 2.2) * Math.PI)).toFixed(3)})` : "";
+  const ft = t >= T.ft, done = ft && t >= collectedAt(tapIdx);
+  const btn = ft && t < collectedAt(tapIdx) + 2.0
+    ? `<div class="cta gd-pos-cta" id="c${tapIdx}" style="opacity:${eo(prog(t, T.ft + 0.3 + tapIdx * 0.15, 0.4))};${done ? "background:var(--raised);color:var(--green-ink);border:1px solid var(--green-mid)" : ""}">${done ? `${icon("check", 18, 2.4)} Collected` : `Collect ${usd(RET)}`}</div>` : "";
+  return `<div class="gd-pos" style="${wash}"><i class="bar" style="background:${bar}"></i>
+    <div style="min-width:0"><div class="uname">${p.title}</div><div class="umeta">${p.pick} · ${usd(10)}${p.take ? ` · <span class="badge b-chainlink" style="padding:1px 6px;font-size:10px"><img src="assets/chainlink.png" style="width:11px;height:11px;border-radius:50%;background:#fff" />read live</span>` : ""}</div></div>
+    <div class="gd-pos-side"><span class="badge ${cls}" style="${pop}">${label}</span><div class="gd-amt ${good ? "amt-won" : "amt-lost"}">${amt}</div></div>${btn}
   </div>`;
 }
 
-function board({ phase, clock, league, home, away, score, ps, t, flips = [], goals = [] }) {
-  const n = net(ps), rid = riding(ps);
-  const read = phase !== "up";
-  // the banner sweeps in over the header, holds, then lifts away; the new score pops underneath
+function board(id, game, home, away, keys, taps, goals, t) {
+  const ft = t >= T.ft;
+  const sc = at(SCORE[game], t), sk = prog(t, sc.since, 0.6);
   let banner = "", pop = 1;
-  for (const [at, txt] of goals) {
-    const k = prog(t, at, 1.6);
+  for (const [g, txt] of goals) {
+    const k = prog(t, g, 1.7);
     if (k <= 0 || k >= 1) continue;
-    const i = eo(prog(t, at, 0.25)), o = eo(prog(t, at + 1.25, 0.35));
-    banner = `<div class="gd-goal" style="opacity:${(cl(prog(t, at, 0.12)) * (1 - o)).toFixed(3)};clip-path:inset(0 ${((1 - i) * 50).toFixed(1)}% 0 ${((1 - i) * 50).toFixed(1)}%)">${icon("ball", 20, 2)}${txt}</div>`;
-    pop = 1 + 0.22 * Math.sin(Math.min(1, prog(t, at, 0.6)) * Math.PI);
+    const i = eo(prog(t, g, 0.25)), o = eo(prog(t, g + 1.35, 0.35));
+    banner = `<div class="gd-goal" style="opacity:${(cl(prog(t, g, 0.12)) * (1 - o)).toFixed(3)};clip-path:inset(0 ${((1 - i) * 50).toFixed(1)}% 0 ${((1 - i) * 50).toFixed(1)}%)">${icon("ball", 20, 2)}${txt}</div>`;
+    pop = 1 + 0.2 * Math.sin(Math.min(1, prog(t, g, 0.7)) * Math.PI);
   }
-  return `<div class="card gd-match${phase === "live" ? " gd-live" : ""}">
-    ${banner}<div class="gd-head">${phase === "live" ? `<span class="badge b-live"><i class="livedot"></i>${clock}</span>` : `<span class="badge ${phase === "ft" ? "b-settled" : "b-open"}">${clock}</span>`}${league}<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
-    <div class="gd-score"><span class="t">${CREST(home[0])}${home[1]}</span><span class="sc" style="display:inline-block;transform:scale(${pop.toFixed(3)});${pop > 1.01 ? "color:var(--green-ink)" : ""}">${score}</span><span class="t away">${away[1]}${CREST(away[0])}</span></div>
-    <div class="gd-positions">${ps.map((p, i) => posLine(p, t, flips[i])).join("")}</div>
-    <div class="gd-foot">${rid ? `<span>${usd(rid)} riding</span>` : "<span></span>"}${read ? `<span class="${n >= 0 ? "amt-won" : "amt-lost"}">${phase === "live" ? "If it ends now" : "As it finished"} ${signed(n)}</span>` : ""}</div>
+  const n = keys.reduce((s, k) => s + gain(at(POS[k].tl, t).s), 0);
+  const pulse = 0.5 + 0.5 * Math.sin(t * 6.2);
+  const clk = clock(t);
+  return `<div class="card gd-match${ft ? "" : " gd-live"}" id="${id}">
+    ${banner}<div class="gd-head">${ft ? `<span class="badge b-settled">FT</span>` : `<span class="badge b-live" style="box-shadow:0 0 ${(4 + 10 * pulse).toFixed(1)}px rgba(239,68,68,${(0.35 + 0.4 * pulse).toFixed(2)})"><i class="livedot" style="opacity:${(0.45 + 0.55 * pulse).toFixed(2)}"></i>${clk}</span>`}Premier League<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
+    <div class="gd-score"><span class="t">${CREST(home[0])}${home[1]}</span><span class="sc" style="display:inline-block;transform:scale(${pop.toFixed(3)});${pop > 1.01 ? "color:var(--green-ink)" : ""}">${roll(sc.prev, sc.s, sk)}</span><span class="t away">${away[1]}${CREST(away[0])}</span></div>
+    <div class="gd-positions">${keys.map((k, i) => posLine(k, t, taps[i])).join("")}</div>
+    <div class="gd-foot">${ft ? "<span>Settled</span>" : `<span>${usd(10 * keys.length)} riding</span>`}<span class="${n >= 0 ? "amt-won" : "amt-lost"}">${ft ? "As it finished" : "If it ends now"} ${signed(n)}</span></div>
   </div>`;
 }
 
-function hero(t, P) {
-  const all = [...P.A, ...P.B, ...P.C];
-  const rid = riding(all);
-  const games = [P.A, P.B, P.C].filter((g) => riding(g) > 0).length;
-  const n = net(P.A) + net(P.B);
-  const w = all.filter((p) => p.s === "win").length, l = all.filter((p) => p.s === "lose").length;
-  const coll = P.A.filter((p) => p.collect && !p.collected).reduce((s, p) => s + p.ret, 0);
-  return `<div class="card gd-hero"><div class="gd-hero-row">
-      <div><div class="gd-k">On the line</div><div class="gd-v">${usd(rid)}</div><div class="umeta">${games} games</div></div>
-      <div style="text-align:right"><div class="gd-k">If it all ends now</div><div class="gd-v ${n >= 0 ? "amt-won" : "amt-lost"}">${signed(n)}</div><div class="umeta">${w} winning · ${l} losing</div></div>
-    </div>${coll ? `<div class="gd-collect">${icon("dollar", 16)} ${usd(coll)} ready to collect below</div>` : ""}</div>`;
+function hero(t) {
+  const ft = t >= T.ft;
+  const n = netCount(t);
+  const states = Object.values(POS).map((p) => at(p.tl, t).s);
+  const w = states.filter((s) => s === "win").length, l = states.filter((s) => s === "lose").length;
+  const left = T.taps.filter((x, i) => t < collectedAt(i)).length;
+  const rid = ft ? 0 : 30;
+  const tint = n >= 0 ? "var(--green-mid)" : "var(--red-mid)";
+  const bg = n >= 0 ? "var(--green-tint)" : "#1a0c0c";
+  return `<div class="card gd-hero" id="hero" style="border-color:${tint};background:linear-gradient(180deg, ${bg}, var(--surface) 80%)"><div class="gd-hero-row">
+      <div><div class="gd-k">On the line</div><div class="gd-v">${usd(rid)}</div><div class="umeta">${ft ? "0 games" : "2 games"}</div></div>
+      <div style="text-align:right"><div class="gd-k">If it all ends now</div><div class="gd-v ${n >= 0 ? "amt-won" : "amt-lost"}">${signed(n)}</div><div class="umeta">${ft ? "3 won" : `${w} winning · ${l} losing`}</div></div>
+    </div>${ft && left ? `<div class="gd-collect">${icon("dollar", 16)} ${usd(RET * left)} ready to collect below</div>` : ""}</div>`;
 }
 
 function gameDayScreen(t) {
-  const P = positions(t);
-  const ft = t >= T.ftA;
-  const A = board({ phase: ft ? "ft" : "live", clock: minuteA(t), league: "Premier League", home: ["42", "Arsenal"], away: ["47", "Spurs"], score: t >= T.goalA ? "1–0" : "0–0", ps: P.A, t, flips: [T.goalA, null, null], goals: [[T.goalA, "GOAL · ARSENAL 63'"]] });
-  const B = board({ phase: "live", clock: minuteB(t), league: "Premier League", home: ["40", "Liverpool"], away: ["50", "Man City"], score: t >= T.goalC ? "1–1" : t >= T.goalB ? "1–0" : "0–0", ps: P.B, t, flips: [T.goalB, T.goalC], goals: [[T.goalB, "GOAL · SALAH 41'"], [T.goalC, "GOAL · MAN CITY 44'"]] });
-  const C = board({ phase: "up", clock: "Today 20:00", league: "Premier League", home: ["49", "Chelsea"], away: ["34", "Newcastle"], score: "v", ps: P.C, t });
-  const live = ft ? [B] : [A, B];
-  let h = hero(t, P);
-  h += `<div class="sec-hd"><h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live">${live.length} ${live.length === 1 ? "game" : "games"}</span></div>` + live.join("");
-  if (ft) h += `<div class="sec-hd"><h3>Full time</h3></div>` + A;
-  h += `<div class="sec-hd"><h3>Coming up</h3></div>` + C;
-  h += `<div class="sec-hd"><h3>More on your games</h3><span class="more">Markets ›</span></div>
-    <div class="card"><div class="gd-head"><span class="badge b-flash">${icon("bolt", 11, 2.2)}Flash</span>Arsenal v Spurs</div>
-      <div class="uname" style="font-size:17px;margin-top:8px">Saka scores before full time</div>
-      <div class="mk-odds"><div class="o-yes"><span class="lbl">Yes</span><span class="val">6/4</span></div><div class="o-no"><span class="lbl">No</span><span class="val">1/2</span></div></div></div>
-    <div class="card"><div class="gd-head">Liverpool v Man City</div>
-      <div class="uname" style="font-size:17px;margin-top:8px">Haaland scores in the second half</div>
-      <div class="mk-odds"><div class="o-yes"><span class="lbl">Yes</span><span class="val">11/10</span></div><div class="o-no"><span class="lbl">No</span><span class="val">8/11</span></div></div></div>
-    <div class="sec-hd"><h3>Your teams play next</h3></div>
-    <div class="card"><div class="gd-head"><span class="badge b-open">Sat 15:00</span>Premier League</div>
-      <div class="gd-score"><span class="t">${CREST("42")}Arsenal</span><span class="sc" style="color:var(--ink-3);font-size:22px">v</span><span class="t away">Man City${CREST("50")}</span></div>
-      <div class="mk-odds o-3"><div class="o-n"><span class="lbl">Home</span><span class="val">13/10</span></div><div class="o-n"><span class="lbl">Draw</span><span class="val">12/5</span></div><div class="o-n"><span class="lbl">Away</span><span class="val">2/1</span></div></div></div>`;
-  const sy = -eio(span(t, T.scroll)) * 640;
-  let out = `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div><span class="balpill">$84.30</span></div>
+  const ft = t >= T.ft;
+  const enter = (i) => { const p = spring(prog(t, T.story[0] + 0.5 + i * 0.18, 0.6)); return `opacity:${cl(prog(t, T.story[0] + 0.5 + i * 0.18, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  const A = board("cardA", "A", ["42", "Arsenal"], ["47", "Spurs"], ["ars"], [0], [[T.gArs, "GOAL · ARSENAL 63'"]], t);
+  const B = board("cardB", "B", ["33", "Man Utd"], ["49", "Chelsea"], ["utd", "bruno"], [1, 2], [[T.gBruno, "GOAL · BRUNO FERNANDES 41'"], [T.gChe, "GOAL · CHELSEA 84'"], [T.gWin, "GOAL · MAN UTD 90+2'"]], t);
+  let h = `<div style="${enter(0)}">${hero(t)}</div>`;
+  h += `<div class="sec-hd" style="${enter(1)}">${ft ? "<h3>Full time</h3>" : `<h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live">2 games</span>`}</div>`;
+  h += `<div style="${enter(1)}">${A}</div><div style="margin-top:10px;${enter(2)}">${B}</div>`;
+  h += `<div class="sec-hd" id="nextHd"><h3>Your teams play next</h3><span class="more">Fixtures ›</span></div>
+    <div class="card"><div class="gd-head"><span class="badge b-open">Sat 17:30</span>Premier League</div>
+      <div class="gd-score"><span class="t">${CREST("42")}Arsenal</span><span class="sc" style="color:var(--ink-3);font-size:22px">v</span><span class="t away">Man Utd${CREST("33")}</span></div>
+      <div class="mk-odds o-3"><div class="o-n"><span class="lbl">Home</span><span class="val">4/5</span></div><div class="o-n"><span class="lbl">Draw</span><span class="val">13/5</span></div><div class="o-n"><span class="lbl">Away</span><span class="val">3/1</span></div></div></div>
+    <div class="sec-hd"><h3>Takes on it</h3><span class="more">Markets ›</span></div>
+    <div class="card"><div class="gd-head">Arsenal v Man Utd · 214 fans</div>
+      <div class="uname" style="font-size:17px;margin-top:8px">Bruno scores at the Emirates</div>
+      <div class="mk-odds"><div class="o-yes"><span class="lbl">Yes</span><span class="val">9/4</span></div><div class="o-no"><span class="lbl">No</span><span class="val">1/3</span></div></div></div>`;
+  const sy = -eio(span(t, T.scrollA)) * 150 - eio(span(t, T.next)) * 470;
+  let out = `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div><span class="balpill">$${(70 + RET * T.taps.filter((x, i) => t >= collectedAt(i) + 0.3).length).toFixed(2)}</span></div>
     <div class="body"><div class="scroll" style="transform:translateY(${sy.toFixed(1)}px)">${h}</div></div>${tabs("Profile")}`;
-  const tp = prog(t, T.tapCollect + 0.2, 0.35) * (1 - prog(t, T.tapCollect + 2.4, 0.3));
-  if (tp > 0) out += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.tapCollect + 0.2, 0.35))) * 14}px)">${icon("check", 18, 2.4)} <b>${usd(RET)}</b> collected</div>`;
+  const tp = prog(t, T.taps[2] + 0.4, 0.35) * (1 - prog(t, T.taps[2] + 2.6, 0.3));
+  if (tp > 0) out += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.taps[2] + 0.4, 0.35))) * 14}px)">${icon("check", 18, 2.4)} <b>${usd(RET * 3)}</b> collected</div>`;
   return out;
 }
 
-function homeScreen(t) {
-  const P = positions(t);
-  const n = net(P.B);
-  const w = P.B.filter((p) => p.s === "win").length, l = P.B.filter((p) => p.s === "lose").length;
-  const ps = spring(prog(t, T.home + 0.35, 0.6));
-  return `<div class="hdr"><div class="logo"><img src="assets/terrace.png" />TERRACE</div><span class="balpill">$104.00</span></div>
-    <div class="body"><div class="scroll">
-      <div class="gd-strip" id="strip" style="opacity:${cl(prog(t, T.home + 0.35, 0.25))};transform:translateY(${(1 - ps) * -20}px) scale(${lerp(0.94, 1, ps)});box-shadow:0 0 ${20 + 14 * Math.sin(t * 5)}px rgba(239,68,68,0.25)">
-        <span class="badge b-live"><i class="livedot"></i>LIVE</span>
-        <span style="flex:1;min-width:0"><span class="uname" style="display:block">Game day · you're on 2 games</span><span class="umeta">${w} winning · ${l} losing · ${signed(n)} if it ends now</span></span>
-        <span style="color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
-      <div class="card" style="margin-top:12px;border-color:#1f3a2a;background:linear-gradient(180deg,#0d1a12,#0f0f0f)"><div class="gd-k" style="color:var(--green-ink)">Your club</div><div class="uname" style="font-size:18px;margin-top:6px">Arsenal v Man City · Sat 15:00</div><div class="umeta">Back them before kick-off</div></div>
-      <div class="sec-hd"><h3 style="color:var(--red-ink)">In-play now</h3><span class="badge b-live">1 match</span></div>
-      <div class="card gd-live" style="border-color:var(--red-mid)"><div class="gd-head"><span class="badge b-live"><i class="livedot"></i>HT</span>Premier League</div>
-        <div class="gd-score"><span class="t">${CREST("40")}Liverpool</span><span class="sc">1–1</span><span class="t away">Man City${CREST("50")}</span></div></div>
-    </div></div>${tabs("Home")}`;
+/* ---------------- camera: a slow push into the card that just changed ---------------- */
+const SHOTS = [[8.0, 11.6, "hero", 1.16], [12.3, 15.9, "cardB", 1.14], [18.6, 21.9, "cardA", 1.15], [24.1, 27.6, "cardB", 1.14], [28.6, 31.7, "cardB", 1.12]];
+function camera(t) {
+  const ph = $("phone");
+  let s = 1, oy = 450;
+  for (const [a, b, id, z] of SHOTS) {
+    const k = eio(prog(t, a, 0.9)) * (1 - eio(prog(t, b - 0.9, 0.9)));
+    if (k <= 0) continue;
+    const el = $(id);
+    if (!el) continue;
+    // where the card sits on the phone, from layout (not affected by transforms)
+    let y = el.offsetHeight / 2, n = el;
+    while (n && n.id !== "screen") { y += n.offsetTop; n = n.offsetParent; }
+    y += 12;
+    const zz = VERT ? 1 + (z - 1) * 0.55 : z; // gentler in 9:16 so the phone stays inside the safe area
+    s = lerp(1, zz, k);
+    oy = lerp(450, cl(y, 200, 760), k);
+  }
+  return { s, oy };
 }
 
-function phoneView(t) {
-  if (t < T.home) return [gameDayScreen(t), T.phone[0]];
-  return [homeScreen(t), T.home];
-}
-
-/** Collect: coins burst out of the button. */
+/* ---------------- collect: coins burst out of each button ---------------- */
 function coins(t) {
-  const kc = prog(t, T.tapCollect + 0.1, 1.1), el = $("collect");
-  if (kc <= 0 || kc >= 1 || !el) return void ($("fx").innerHTML = "");
-  const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
-  $("fx").innerHTML = [0, 1, 2, 3, 4, 5, 6].map((i) => {
-    const ang = -Math.PI / 2 + (i - 3) * 0.38, d = eo(kc) * (150 + (i % 3) * 30);
-    return `<div class="coinpop" style="left:${x + Math.cos(ang) * d}px;top:${y + Math.sin(ang) * d - 60 * kc}px;opacity:${1 - eo(kc)};transform:scale(${lerp(0.4, 1, spring(kc))})">$</div>`;
-  }).join("");
+  let h = "";
+  T.taps.forEach((tp, i) => {
+    const kc = prog(t, tp + 0.1, 1.1), el = $(`c${i}`);
+    if (kc <= 0 || kc >= 1 || !el) return;
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    h += [0, 1, 2, 3, 4, 5].map((j) => {
+      const ang = -Math.PI / 2 + (j - 2.5) * 0.4, d = eo(kc) * (140 + (j % 3) * 28);
+      return `<div class="coinpop" style="left:${x + Math.cos(ang) * d}px;top:${y + Math.sin(ang) * d - 60 * kc}px;opacity:${1 - eo(kc)};transform:scale(${lerp(0.4, 1, spring(kc))})">$</div>`;
+    }).join("");
+  });
+  $("fx").innerHTML = h;
 }
 
-const TAPS = [[T.tapCollect, "collect"], [T.tapHome, "tab-Home"]];
+const TAPS = T.taps.map((x, i) => [x, `c${i}`]);
 function tap(t) {
   const dot = $("tap"), rip = $("ripple");
   dot.style.opacity = 0; rip.style.opacity = 0;
-  for (const [at, id] of TAPS) {
-    if (t < at - 0.45 || t > at + 0.5) continue;
+  for (const [a, id] of TAPS) {
+    if (t < a - 0.45 || t > a + 0.5) continue;
     const el = $(id);
     if (!el) continue;
     const r = el.getBoundingClientRect();
-    const x = r.left + r.width / 2, y = r.top + r.height / 2, k = t - at;
-    const o = k < -0.3 ? prog(t, at - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, at + 0.3, 0.2) : 1;
-    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, at - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${k > -0.08 && k < 0.1 ? 0.8 : 1})`;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2, k = t - a;
+    const o = k < -0.3 ? prog(t, a - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, a + 0.3, 0.2) : 1;
+    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, a - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${k > -0.08 && k < 0.1 ? 0.8 : 1})`;
     if (k > 0) {
-      const p = eo(prog(t, at, 0.45)), size = 30 + p * 70;
+      const p = eo(prog(t, a, 0.45)), size = 30 + p * 70;
       rip.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;opacity:${(1 - p) * 0.9}`;
     }
   }
 }
 
-function captions(t) {
-  const [a, b] = T.phone;
+/* ---------------- narration ---------------- */
+function narration(t) {
+  const [a, b] = T.story;
   if (t < a || t >= b) return "";
-  const idx = CAPS.reduce((n, [at], i) => (t >= at ? i : n), -1);
-  let h = `<div style="${st(life(t, a + 0.1, b))}"><span class="kicker"><span class="dot" style="opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Game day</span></div>
-    <div class="ctitle">${words(t, a + 0.25, b, VERT ? "Watch it *as* *it* *happens.*" : "Watch it<br/>*as* *it* *happens.*")}</div>`;
+  const idx = BEATS.reduce((n, [x], i) => (t >= x ? i : n), -1);
+  let h = `<div style="${st(life(t, a + 0.1, b))}"><span class="kicker"><span class="dot" style="opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>One fan · Game day</span></div>`;
   if (idx >= 0) {
-    const [at, line] = CAPS[idx], next = CAPS[idx + 1] ? CAPS[idx + 1][0] : b;
-    h += `<div class="csub" style="${st(life(t, at + 0.15, next, { dy: 30, out: 0.25 }))}"><span class="n">${idx + 1}</span>${line}</div>`;
-    h += `<div class="cextra" style="${st(life(t, at + 0.5, next, { dy: 20, out: 0.25 }))}">${idx === 2 ? `<span class="chip-cl"><img src="assets/chainlink.png" />Same rules Chainlink settles with</span>` : ""}</div>`;
+    const [x, line, sub] = BEATS[idx], next = BEATS[idx + 1] ? BEATS[idx + 1][0] : b;
+    const long = line.replace(/[*_]/g, "").length > 15; // long lines step down a size so they stay inside the frame
+    h += `<div class="beat" style="${long ? `font-size:${VERT ? 80 : 98}px` : ""}">${words(t, x + 0.05, next, line)}</div>`;
+    h += `<div class="bsub" style="${st(life(t, x + 0.45, next, { dy: 20, out: 0.3 }))}">${sub}</div>`;
+    h += `<div class="cextra" style="${st(life(t, x + 0.7, next, { dy: 16, out: 0.3 }))}">${idx === 2 ? `<span class="chip-cl"><img src="assets/chainlink.png" />Read live with the rules Chainlink settles by</span>` : ""}</div>`;
   }
-  h += `<div class="steps" style="${st(life(t, a + 0.6, b))}">${CAPS.map((_, i) => `<i class="${i <= idx ? "on" : ""}"></i>`).join("")}</div>`;
+  h += `<div class="steps" style="${st(life(t, a + 0.6, b))}">${BEATS.map((_, i) => `<i class="${i < idx ? "on" : i === idx ? "now" : ""}"></i>`).join("")}</div>`;
   return h;
 }
 
@@ -470,8 +453,8 @@ function endCard(t) {
   const top = VERT ? 560 : 150;
   return `<div class="ctr" style="top:${top}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}">
     <div class="ring" style="position:relative;display:inline-flex;width:150px;height:150px;${e(0)}">${icon("whistle", 80, 1.9)}</div>
-    <span class="big" style="display:block;font-size:${VERT ? 150 : 150}px;margin-top:40px;${e(1)}">Game <span class="green">day</span></span>
-    <span class="lead" style="display:block;font-size:${VERT ? 42 : 44}px;margin-top:24px;color:var(--ink);${e(2, 16)}">Open Terrace on matchday.</span>
+    <span class="big" style="display:block;font-size:150px;margin-top:40px;${e(1)}">Game <span class="green">day</span></span>
+    <span class="lead" style="display:block;font-size:${VERT ? 42 : 44}px;margin-top:24px;color:var(--ink);${e(2, 16)}">Every bet, beside the live score.</span>
     <div style="margin-top:40px;${e(3, 16)}"><span class="pillurl">play.terrace.social</span></div>
     <div style="margin-top:38px;${e(4, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
     <div style="margin-top:22px;${e(5, 12)}"><span class="brandrow">Settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
@@ -480,26 +463,27 @@ function endCard(t) {
 
 /* ---------------- seek ---------------- */
 window.seek = (t) => {
-  const red = 0.07 + 0.05 * Math.max(0, Math.sin(t * 0.9));
-  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : lerp(44, 56, t / T.dur)}% ${VERT ? 38 : 44}%, rgba(239,68,68,${red.toFixed(3)}), transparent 70%), radial-gradient(800px 640px at 15% 85%, rgba(34,197,94,0.10), transparent 70%)`;
-  $("stage").innerHTML = cover(t) + problem(t) + endCard(t);
+  // the room's light follows the fan's mood: red while losing, green once in front
+  const n = t >= T.story[0] && t < T.end ? netCount(t) : 0;
+  const g = cl((n + 30) / 60), red = 0.13 * (1 - g), grn = 0.05 + 0.1 * g;
+  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : 30}% ${VERT ? 55 : 48}%, rgba(239,68,68,${red.toFixed(3)}), transparent 70%), radial-gradient(1000px 760px at ${VERT ? 50 : 62}% ${VERT ? 30 : 40}%, rgba(34,197,94,${grn.toFixed(3)}), transparent 70%)`;
+  $("stage").innerHTML = cover(t) + endCard(t);
 
-  const inPhone = t >= T.phone[0] - 0.2 && t < T.end;
-  const pw = $("phonewrap");
-  pw.style.display = inPhone ? "" : "none";
+  const inPhone = t >= T.story[0] - 0.2 && t < T.end;
+  $("phonewrap").style.display = inPhone ? "" : "none";
   if (inPhone) {
-    $("phone").style.cssText = st(life(t, T.phone[0], T.end, { d: 0.8, dy: 120, out: 0.5 }));
-    const [html, since] = phoneView(t);
-    $("view").innerHTML = html;
-    const f = eo(prog(t, since, 0.3));
-    $("view").style.cssText = since === T.phone[0] ? "" : `opacity:${f};transform:translateX(${(1 - f) * 24}px)`;
+    $("view").innerHTML = gameDayScreen(t);
+    $("view").style.cssText = "";
+    const ph = life(t, T.story[0], T.end, { d: 0.8, dy: 120, out: 0.5 });
+    const cam = camera(t);
+    $("phone").style.cssText = `opacity:${ph.o.toFixed(3)};transform-origin:220px ${cam.oy.toFixed(1)}px;transform:translateY(${ph.y.toFixed(1)}px) scale(${(ph.s * cam.s).toFixed(4)})`;
   }
-  $("cap").innerHTML = captions(t);
+  $("cap").innerHTML = narration(t);
   coins(t);
   tap(t);
 };
 
-const IMGS = ["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "50", "40", "49", "34"].map((id) => `assets/crest-${id}.png`)];
+const IMGS = ["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "33", "49"].map((id) => `assets/crest-${id}.png`)];
 document.fonts.ready.then(() => Promise.all(IMGS.map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
   window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
   window.ready = true;
