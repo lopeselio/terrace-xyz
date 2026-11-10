@@ -7,7 +7,7 @@ import { FixtureCard, kickoffDay, kickoffTime } from "./FixtureCard";
 import { FINISHED } from "./MatchRow";
 import { Header, shareLink } from "./Header";
 import { Icon } from "./Icon";
-import { MarketCard, fixtureOf, marketPick, useOpenMarkets, type OpenMarket } from "./MarketCard";
+import { MarketCard, fixtureOf, marketOdds, marketPick, marketTitle, useOpenMarkets, type OpenMarket } from "./MarketCard";
 import { OnboardingPanel } from "./Onboarding";
 import { announceCollected } from "./OutcomePopup";
 import { Avatar, Badge, Crest, Empty, LeagueLogo, SectionHead, SkeletonCards, money } from "./ui";
@@ -16,7 +16,9 @@ import { useFavTeam } from "@/lib/favTeam";
 import { useGameDay, useMatesLive, type Acca, type MatchGroup, type Position, type Standing } from "@/lib/gameday";
 import { useFollows } from "@/lib/follows";
 import { fanName } from "@/lib/names";
+import { backInPlay, inPlayCalls } from "@/lib/inplay";
 import { collect } from "@/lib/play";
+import { FanError } from "@/lib/errors";
 import { useMatchPrices } from "@/lib/picks";
 import { balanceChanged } from "@/lib/useBalance";
 import type { MatchLite } from "@/lib/useMatches";
@@ -48,6 +50,7 @@ export function GameDay({ fan }: { fan?: string }) {
   const owner = watching ?? me;
   const { groups, accas, matches, reload } = useGameDay(owner);
   const { team } = useFavTeam();
+  const flash = useOpenMarkets({ flash: true }).list;
   const [pick, setPick] = useState<BetPick | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +102,11 @@ export function GameDay({ fan }: { fan?: string }) {
         {live.length > 0 && (
           <div className="sec">
             <SectionHead title="In play" color="var(--red-ink)"><Badge tone="live">{live.length} {live.length === 1 ? "game" : "games"}</Badge></SectionHead>
-            {live.map((g) => <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={watching ? undefined : collectBet} />)}
+            {live.map((g) => (
+              <MatchBoard key={g.fixture} g={g} busy={busy} onCollect={watching ? undefined : collectBet}>
+                {g.match && <InPlay m={g.match} open={(flash ?? []).filter((x) => fixtureOf(x) === g.fixture)} owner={me} send={send} onPick={setPick} />}
+              </MatchBoard>
+            ))}
           </div>
         )}
         {fulltime.length > 0 && (
@@ -180,7 +187,7 @@ function Summary({ groups, accas, theirs }: { groups: MatchGroup[]; accas: Acca[
   );
 }
 
-function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null; onCollect?: (p: Position) => void }) {
+function MatchBoard({ g, busy, onCollect, children }: { g: MatchGroup; busy: string | null; onCollect?: (p: Position) => void; children?: React.ReactNode }) {
   const m = g.match;
   const positions = [...g.positions].sort((a, b) => Number(b.collectible) - Number(a.collectible));
   const clock =
@@ -206,6 +213,7 @@ function MatchBoard({ g, busy, onCollect }: { g: MatchGroup; busy: string | null
       <div className="gd-positions">
         {positions.map((p) => <PositionLine key={p.key} p={p} busy={busy === p.key} onCollect={onCollect && (() => onCollect(p))} />)}
       </div>
+      {children}
       {(g.staked > 0 || g.ifEndsNow !== null) && (
         <div className="gd-foot">
           {g.staked > 0 && <span>{money(g.staked)} riding</span>}
@@ -272,6 +280,46 @@ function Mates({ matches }: { matches: Map<number, MatchLite> }) {
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Live on this game: open flash calls first, else a fresh one (a goal or a card in the next stretch),
+ * opened as a flash market by whoever backs it first.
+ */
+function InPlay({ m, open, owner, send, onPick }: { m: MatchLite; open: OpenMarket[]; owner: Address | null; send: ReturnType<typeof useAccount>["send"]; onPick: (p: BetPick) => void }) {
+  const eyebrow = `${m.home.name} v ${m.away.name} · In play`;
+  const rows: { key: string; text: string; odds: (side: 1 | 2) => string; pick: (side: 1 | 2) => BetPick }[] = open.length
+    ? open.slice(0, 2).map((x) => ({ key: x.id, text: marketTitle(x, m), odds: (side) => marketOdds(x, side), pick: (side) => marketPick(x, m, side, send, owner) }))
+    : inPlayCalls(m).map((c) => ({
+        key: c.key,
+        text: c.text,
+        odds: () => "Evens",
+        pick: (side) => ({
+          eyebrow,
+          label: side === 1 ? "Yes" : "No",
+          side,
+          pool: null,
+          neutral: 2,
+          note: "How it settles: from the match data, by Chainlink. Betting closes in five minutes.",
+          place: (dollars) => {
+            if (!owner) throw new FanError("Sign in to place it.");
+            return backInPlay(send, owner, m, c, side, dollars);
+          },
+        }),
+      }));
+  if (!rows.length) return null;
+  return (
+    <div className="gd-inplay">
+      <div className="gd-k"><Icon name="bolt" size={12} /> In play now</div>
+      {rows.map((r) => (
+        <div key={r.key} className="gd-inplay-row">
+          <span className="gd-inplay-t">{r.text}</span>
+          <button className="btn-out" onClick={() => onPick(r.pick(1))}>Yes {r.odds(1)}</button>
+          <button className="btn-out mute" onClick={() => onPick(r.pick(2))}>No</button>
+        </div>
+      ))}
     </div>
   );
 }

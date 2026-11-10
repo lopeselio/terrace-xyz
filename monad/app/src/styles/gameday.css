@@ -41,3 +41,9 @@
 .gd-mate-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .gd-mate-t .umeta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gd-mate-s { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* In play now: quick calls on a live match you're on */
+.gd-inplay { margin: 8px -14px 0; padding: 10px 14px 4px; border-top: 1px solid var(--line-hair); background: var(--deep); }
+.gd-inplay .gd-k { display: flex; align-items: center; gap: 4px; color: var(--amber-ink); margin-bottom: 6px; }
+.gd-inplay-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; }
+.gd-inplay-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; }

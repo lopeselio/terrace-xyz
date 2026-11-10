@@ -57,6 +57,8 @@ export const usdAbi = parseAbi(["function claim()", "function mint(address to, u
 
 export const oracleAbi = parseAbi([
   "function standardQuestion(uint256 fixtureId, uint8 kind, uint8 line) returns (uint256)",
+  "function customQuestion(uint256 fixtureId, uint64 closeTime, string text, bytes spec) returns (uint256)",
+  "event QuestionCreated(uint256 indexed questionId, uint256 indexed fixtureId, uint8 kind, uint8 line, uint64 closeTime, address creator, string text)",
   "function standardQuestionId(bytes32 key) view returns (uint256)",
   "function outcomeOf(uint256 questionId) view returns (uint8)",
   "function closeTimeOf(uint256 questionId) view returns (uint64)",
