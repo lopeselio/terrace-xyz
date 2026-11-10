@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace Mates in Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=block" rel="stylesheet" />
+<script src="assets/icons.js"></script>
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c; --green-glow: rgba(34,197,94,0.14); --green-tint: #0c1710;
+    --red: #ef4444; --red-ink: #f87171; --red-deep: #3b0a0a; --red-mid: #450a0a;
+    --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1605;
+    --blue: #60a5fa; --blue-deep: #12263f;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  .layer { position: absolute; inset: 0; z-index: 4; }
+  .abs { position: absolute; }
+  .i { display: inline-block; flex: none; }
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .green { color: var(--green); }
+  .redt { color: var(--red-ink); }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  .ctr { position: absolute; left: 0; right: 0; text-align: center; }
+  .m { display: inline-block; overflow: hidden; vertical-align: top; padding: 0.06em 0.05em 0.1em; margin: -0.06em -0.05em -0.1em; }
+  .w { display: inline-block; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--red-deep); border: 1.5px solid #6b1d1d; color: var(--red-ink); font-weight: 800; font-size: 19px; letter-spacing: 1.6px; text-transform: uppercase; }
+  .kicker .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .chip-cl { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 18px 0 8px; border-radius: 999px; background: var(--blue-deep); color: var(--blue); font-weight: 700; font-size: 20px; }
+  .chip-cl img { width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+  .pillurl { display: inline-flex; align-items: center; height: 72px; border-radius: 36px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 34px; font-weight: 700; font-size: 34px; }
+  .brandrow { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brandrow img { height: 42px; border-radius: 10px; }
+  .brandrow img.cl { border-radius: 50%; background: #fff; height: 38px; }
+  .brandrow b { color: var(--ink); font-family: var(--cond); font-size: 32px; letter-spacing: 1px; }
+  .ring { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #3a0d0d, var(--red-deep) 70%); border: 4px solid var(--red); color: #fff; box-shadow: 0 0 80px rgba(239,68,68,0.35), inset 0 0 40px rgba(0,0,0,0.5); }
+
+
+  /* phone */
+  #phonewrap { position: absolute; left: 240px; top: 92px; width: 440px; height: 900px; z-index: 5; transform-origin: 0 0; }
+  body.v #phonewrap { left: 309px; top: 560px; transform: scale(1.05); }
+  #phone { position: absolute; left: 0; top: 0; width: 440px; height: 900px; border-radius: 64px; background: #050505; border: 2px solid #2a2a2a; box-shadow: 0 40px 90px rgba(0,0,0,0.7), 0 0 0 10px #0e0e0e, 0 0 0 11.5px #262626; }
+  #screen { position: absolute; inset: 12px; border-radius: 52px; overflow: hidden; background: var(--canvas); }
+  #island { position: absolute; left: 50%; top: 12px; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 9; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 6px 36px 0; font-weight: 700; font-size: 17px; z-index: 8; }
+  #view { position: absolute; inset: 0; }
+  .hdr { position: absolute; left: 0; right: 0; top: 56px; height: 62px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid var(--line-hair); z-index: 3; background: var(--canvas); }
+  .hdr .logo { display: flex; align-items: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 22px; letter-spacing: 1px; flex: 1; }
+  .hdr .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .hdr-title { font-family: var(--cond); font-size: 24px; font-weight: 700; text-transform: uppercase; line-height: 1.05; }
+  .hdr-sub { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+  .balpill { display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--green-deep); border: 1px solid var(--green-mid); color: var(--green-ink); font-weight: 700; font-size: 14.5px; margin-left: auto; }
+  .body { position: absolute; left: 0; right: 0; top: 118px; bottom: 84px; overflow: hidden; }
+  .scroll { position: absolute; left: 16px; right: 16px; top: 12px; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line-hair); background: rgba(10,10,10,0.94); padding-bottom: 14px; z-index: 4; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-4); padding-top: 8px; }
+  .tab .pill { width: 46px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab .tl { font-size: 11px; font-weight: 600; }
+  .tab.on { color: var(--green); }
+  .tab.on .pill { background: var(--green-glow); }
+  .tab-create .pill { width: 48px; height: 48px; border-radius: 50%; background: var(--green); color: var(--on-green); margin-top: -18px; box-shadow: 0 8px 20px rgba(34,197,94,0.28); }
+
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 14px; }
+  .card + .card { margin-top: 10px; }
+  .uname { font-weight: 700; font-size: 15.5px; }
+  .umeta { font-size: 12.5px; color: var(--ink-3); font-weight: 500; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; line-height: 1.3; }
+  .b-live { background: var(--red); color: #fff; }
+  .b-open { background: var(--green-deep); color: var(--green-ink); }
+  .b-flash { background: var(--amber-deep); color: var(--amber-ink); }
+  .b-settled { background: var(--raised); color: var(--ink-3); border: 1px solid var(--line); }
+  .b-won { background: var(--green-deep); color: var(--green-ink); }
+  .b-lost { background: var(--red-mid); color: var(--red-ink); }
+  .b-chainlink { background: var(--blue-deep); color: var(--blue); }
+  .livedot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .sec-hd { display: flex; align-items: center; gap: 8px; margin: 16px 0 10px; }
+  .sec-hd h3 { font-family: var(--cond); font-size: 18px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .sec-hd .more { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+  .crest { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #161616; overflow: hidden; flex: none; }
+  .crest img { width: 78%; height: 78%; object-fit: contain; }
+  .amt-won { color: var(--green); }
+  .amt-lost { color: var(--red-ink); }
+  .cta { height: 46px; border-radius: 12px; background: var(--green); color: var(--on-green); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 15.5px; }
+
+  /* gameday.css */
+  .gd-hero { border-color: var(--green-mid); background: linear-gradient(180deg, var(--green-tint), var(--surface) 80%); }
+  .gd-hero-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+  .gd-k { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-3); }
+  .gd-v { font-family: var(--cond); font-size: 36px; font-weight: 700; line-height: 1.05; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .gd-collect { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--green-ink); font-size: 13.5px; }
+  .gd-match { padding-bottom: 6px; }
+  .gd-match.gd-live { border-color: var(--red-mid); }
+  .gd-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .gd-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 10px 0 4px; }
+  .gd-score .t { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 700; font-size: 15.5px; }
+  .gd-score .t.away { justify-content: flex-end; text-align: right; }
+  .gd-score .sc { font-family: var(--cond); font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .gd-positions { margin: 4px -14px 0; }
+  .gd-pos { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line-hair); box-shadow: inset 3px 0 0 transparent; }
+  .gd-pos.win { box-shadow: inset 4px 0 0 var(--green); }
+  .gd-pos.lose { box-shadow: inset 4px 0 0 var(--red); }
+  .gd-pos-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .gd-amt { font-family: var(--cond); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .gd-pos-cta { grid-column: 1 / -1; margin-top: 6px; }
+  .gd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 5px; margin-top: 2px; border-top: 1px solid var(--line-soft); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .flip { animation: none; }
+  .gd-strip { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; border: 1px solid var(--red-mid); background: var(--surface); }
+  .mk-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .mk-odds div { height: 46px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid; }
+  .mk-odds .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .mk-odds .val { font-family: var(--cond); font-size: 19px; font-weight: 700; }
+  .o-yes { background: #0c1f14; border-color: #17422a !important; color: var(--green-ink); }
+  .o-no { background: #1d0d0d; border-color: #452020 !important; color: var(--red-ink); }
+  .o-3 { grid-template-columns: repeat(3, 1fr); }
+  .o-n { background: var(--raised); border-color: var(--line) !important; color: var(--ink); }
+  .o-n .lbl { color: var(--ink-3); }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 999px; background: #0c1f14; border: 1px solid #1f6b3a; color: var(--green-ink); font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 6; }
+  .toast b { font-family: var(--cond); font-size: 21px; font-weight: 800; }
+  /* a goal: a banner across the scoring match's header row, the score below stays in view */
+  .gd-match { position: relative; }
+  .gd-goal { position: absolute; left: -1px; right: -1px; top: -1px; height: 46px; border-radius: 18px 18px 0 0; background: linear-gradient(90deg, #991b1b, #ef4444 50%, #991b1b); color: #fff; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 23px; letter-spacing: 1.6px; white-space: nowrap; z-index: 2; box-shadow: 0 0 26px rgba(239,68,68,0.55); }
+  .coinpop { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4ade80, #15803d 70%); border: 3px solid #bbf7d0; color: #04180c; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 36px; z-index: 8; box-shadow: 0 0 40px rgba(34,197,94,0.6); }
+
+  /* tap */
+  #tap { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 25; opacity: 0; }
+  #ripple { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.75); z-index: 25; opacity: 0; }
+
+  /* narration beside the phone */
+  #cap { position: absolute; left: 800px; top: 300px; width: 1060px; z-index: 6; }
+  body.v #cap { left: 64px; top: 200px; width: 952px; }
+  .beat { font-family: var(--cond); font-weight: 800; font-size: 120px; line-height: 0.95; text-transform: uppercase; margin-top: 26px; white-space: nowrap; letter-spacing: -1px; }
+  body.v .beat { font-size: 96px; margin-top: 18px; }
+  .bsub { font-size: 40px; font-weight: 700; color: var(--ink-2); margin-top: 24px; height: 50px; white-space: nowrap; }
+  body.v .bsub { font-size: 34px; margin-top: 16px; height: 44px; }
+  .cextra { margin-top: 22px; height: 46px; }
+  body.v .cextra { margin-top: 12px; }
+  .steps { margin-top: 34px; display: flex; gap: 10px; }
+  body.v .steps { margin-top: 18px; }
+  .steps i { width: 46px; height: 6px; border-radius: 3px; background: #262626; display: block; }
+  .steps i.on { background: var(--green); }
+  .steps i.now { background: var(--ink); }
+  /* rolling digits and the sweeping bar */
+  .roll { display: inline-block; overflow: hidden; height: 1.08em; vertical-align: -0.12em; line-height: 1.08; }
+  .roll > span { display: block; }
+  .gd-pos { position: relative; }
+  .gd-pos .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .gd-pos.win, .gd-pos.lose { box-shadow: none; }
+  /* mates in play (gameday.css .gd-mate) */
+  .avatar { border-radius: 999px; display: flex; align-items: center; justify-content: center; font-family: var(--cond); font-weight: 700; color: #fff; flex: none; }
+  .gd-mate { display: flex; align-items: center; gap: 10px; padding: 12px 14px; position: relative; }
+  .gd-mate-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .gd-mate-t .umeta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gd-mate-s { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .card + .gd-mate, .gd-mate + .gd-mate { margin-top: 8px; }
+  .iconbtn { width: 34px; height: 34px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-2); flex: none; }
+  .scr { position: absolute; inset: 0; background: var(--canvas); }
+  /* market card (MarketCard.tsx) */
+  .match-top { display: flex; align-items: center; gap: 6px; }
+  .crest-pair { display: flex; flex: none; }
+  .crest-pair .crest + .crest { margin-left: -8px; box-shadow: 0 0 0 2px var(--surface); }
+  .mrow { display: flex; align-items: center; gap: 10px; margin: 11px 0 10px; }
+  .odds2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .odd { height: 50px; border-radius: 12px; border: 1px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .odd .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .odd .val { font-family: var(--cond); font-size: 19px; font-weight: 700; }
+  .bubble { display: inline-flex; align-items: center; gap: 12px; height: 54px; padding: 0 22px 0 8px; border-radius: 27px 27px 27px 8px; background: #1b1b1b; border: 1.5px solid #2c2c2c; font-size: 25px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .bubble .avatar { width: 40px; height: 40px; font-size: 17px; }
+  .bubble b { color: var(--ink-2); font-weight: 700; }
+  body.v .bubble { font-size: 23px; height: 50px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="stage" class="layer"></div>
+  <div id="phonewrap"><div id="phone"><div id="screen"><div id="island"></div><div id="status"><span>9:41</span><span>●●● ▮</span></div><div id="view"><div id="scrA" class="scr"></div><div id="scrB" class="scr"></div></div></div></div></div>
+  <div id="cap"></div>
+  <div id="fx" style="position:absolute;inset:0;z-index:24;pointer-events:none"></div>
+  <div id="tap"></div><div id="ripple"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
+const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const span = (t, [a, b]) => prog(t, a, b - a);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
+const lerp = (a, b, x) => a + (b - a) * x;
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const icon = (n, s = 24, sw = 1.75) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+const usd = (n) => `$${Math.abs(n).toFixed(2)}`;
+const signed = (n) => `${n >= 0 ? "+" : "−"}${usd(n)}`;
+
+/** Words rise out of a mask one after another, and drop away together at `b`. *word* is green, _word_ red. */
+function words(t, a, b, html, { stag = 0.07, d = 0.55 } = {}) {
+  return html.split(/(<br\/>)/).map((chunk) => chunk === "<br/>" ? "<br/>" : chunk.split(" ").filter(Boolean).map((w, i) => {
+    const p = spring(prog(t, a + i * stag, d)), o = eo(prog(t, b - 0.3, 0.3));
+    const txt = /^\*.*\*$/.test(w) ? `<span class="green">${w.slice(1, -1)}</span>` : /^_.*_$/.test(w) ? `<span class="redt">${w.slice(1, -1)}</span>` : w;
+    return `<span class="m"><span class="w" style="transform:translateY(${((1 - p) * 110 + o * -110).toFixed(1)}%)">${txt}</span></span>`;
+  }).join(" ")).join("");
+}
+
+/** Old text rolls up and out, new text rolls in from below, character by character (RollingNumber). */
+function roll(prev, next, k) {
+  if (k >= 1 || prev === next) return next;
+  const n = Math.max(prev.length, next.length), a = prev.padStart(n, " "), b = next.padStart(n, " ");
+  return [...b].map((c, i) => {
+    if (c === a[i]) return c === " " ? "" : c;
+    const ki = eio(cl(k * 1.25 - (n - 1 - i) * 0.06));
+    return `<span class="roll"><span style="transform:translateY(${(-ki * 100).toFixed(1)}%)"><span style="display:block">${a[i] === " " ? "&nbsp;" : a[i]}</span><span style="display:block">${c === " " ? "&nbsp;" : c}</span></span></span>`;
+  }).join("");
+}
+
+/* ---------------- your mate's afternoon (48 s; music m129 from 42.12 s, its drop lands on the goal at 22.0) ---------------- */
+const T = {
+  cover: [0, 4.0],
+  story: [4.0, 40.0],
+  tapMate: 15.3, toB: [15.45, 16.05],     // tap Cold Libero's row, their game day slides in
+  goal: 22.0,                             // Arsenal 1-0, 79'
+  scrollB: [25.2, 26.4], tapBack: 28.6,   // down to "Back the same games", back the same call
+  tapHome: 31.2, toA: [31.35, 31.95],     // back to your own game day
+  end: 40.0, dur: 48,
+};
+const BEATS = [
+  [4.2, "You're *winning.*", "Man Utd 1–0 up. Bruno, 41'."],
+  [8.0, "Your *mates,* in play.", "Everyone you follow with a bet on."],
+  [12.0, "Cold Libero's _losing._", "Arsenal v Spurs, still 0–0."],
+  [16.0, "Their game *day.*", "Their bets, as it stands."],
+  [19.0, "Late on. Still _0–0._", ""],
+  [22.0, "*Arsenal,* 79'!", "One goal flips it to winning."],
+  [26.0, "Back the *same* *games.*", "Fancy a piece? Your stake, your call."],
+  [32.0, "All of you, *winning.*", "The group chat's back on."],
+];
+// both 3pm kick-offs share one clock
+const CLOCK = [[T.story[0], 70], [T.goal, 79], [T.end, 86]];
+function clock(t) {
+  let m = CLOCK[0][1];
+  for (let i = 1; i < CLOCK.length; i++) if (t >= CLOCK[i - 1][0]) m = lerp(CLOCK[i - 1][1], CLOCK[i][1], span(t, [CLOCK[i - 1][0], CLOCK[i][0]]));
+  return `${Math.floor(m)}'`;
+}
+function at(tl, t) {
+  let i = 0;
+  while (i + 1 < tl.length && t >= tl[i + 1][0]) i++;
+  return { s: tl[i][1], prev: i ? tl[i - 1][1] : tl[i][1], since: tl[i][0] };
+}
+
+/* Cold Libero's two bets on Arsenal v Spurs; yours on Man Utd v Chelsea */
+const POS = {
+  ars: { title: "Arsenal win", pick: "Yes", stake: 10, gain: 11.0, tl: [[-1, "lose"], [T.goal, "win"]] },
+  btts: { title: "Both teams score", pick: "No", stake: 10, gain: 6.5, tl: [[-1, "win"]] },
+  utd: { title: "Man Utd win", pick: "Yes", stake: 10, gain: 9.7, tl: [[-1, "win"]] },
+  bruno: { title: "Bruno Fernandes scores", pick: "Yes", stake: 10, gain: 12.5, take: true, tl: [[-1, "win"]] },
+};
+const gainOf = (p, s) => (s === "win" ? p.gain : -p.stake);
+const net = (keys, t) => keys.reduce((n, k) => n + gainOf(POS[k], at(POS[k].tl, t).s), 0);
+/** Libero's figure counts between values instead of jumping. */
+const liberoNet = (t) => lerp(net(["ars", "btts"], T.goal - 0.01), net(["ars", "btts"], T.goal), eio(prog(t, T.goal, 1.0)));
+
+/* ---------------- cover ---------------- */
+function cover(t) {
+  if (t >= T.cover[1]) return "";
+  const out = eo(prog(t, T.cover[1] - 0.5, 0.5));
+  const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
+  const cy = VERT ? 520 : 130;
+  const av = (n, bg, i) => `<span class="avatar" style="width:${VERT ? 112 : 100}px;height:${VERT ? 112 : 100}px;font-size:${VERT ? 46 : 42}px;background:${bg};margin-left:${i ? -22 : 0}px;box-shadow:0 0 0 6px var(--canvas);transform:translateY(${(Math.sin(t * 2.4 + i * 1.3) * 5).toFixed(1)}px)">${n}</span>`;
+  return `<div class="ctr" style="top:${cy}px;${s(1)}">
+      <span style="display:inline-flex;align-items:center;gap:16px;font-family:var(--cond);font-weight:800;font-size:${VERT ? 44 : 40}px;letter-spacing:2px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span>
+    </div>
+    <div class="ctr" style="top:${cy + (VERT ? 110 : 96)}px;${s(1.4)}"><span style="display:inline-flex">${av("CL", "#1d4ed8", 0)}${av("FN", "#831843", 1)}${av("GR", "#a16207", 2)}</span></div>
+    <div class="ctr" style="top:${cy + (VERT ? 270 : 240)}px;${s(1.8)}">
+      <div><span class="kicker" style="height:50px"><span class="dot" style="opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Live</span></div>
+      <span class="big" style="display:block;font-size:${VERT ? 150 : 180}px;margin-top:26px">${VERT ? `Your mates<br/><span class="green">in play</span>` : `Your mates <span class="green">in play</span>`}</span>
+      <span class="lead" style="display:block;font-size:${VERT ? 40 : 42}px;margin-top:26px;color:var(--ink)">${VERT ? "The group chat's bets,<br/>beside the live score." : "The group chat's bets, beside the live score."}</span>
+      <div style="margin-top:${VERT ? 54 : 40}px"><span class="brandrow">On <img src="assets/monad.png" /><b>MONAD</b> &nbsp;· settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+    </div>`;
+}
+
+/* ---------------- screens ---------------- */
+const tabs = (on) => `<div class="tabbar">${[["home", "Home"], ["pitch", "Markets"], ["plus", "Create"], ["users", "Social"], ["shield", "Profile"]].map(([ic, l]) =>
+  `<div class="tab${l === "Create" ? " tab-create" : ""}${l === on ? " on" : ""}"><span class="pill">${icon(ic, 22)}</span><span class="tl">${l}</span></div>`).join("")}</div>`;
+const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
+const BADGE = { lose: ["b-lost", "Losing"], win: ["b-won", "Winning"] };
+const COLOR = { lose: "var(--red)", win: "var(--green)" };
+const AV = (mono, bg, size = 34) => `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${(size * 0.42).toFixed(1)}px;background:${bg}">${mono}</span>`;
+const liveBadge = (t, txt) => { const pulse = 0.5 + 0.5 * Math.sin(t * 6.2); return `<span class="badge b-live" style="box-shadow:0 0 ${(4 + 10 * pulse).toFixed(1)}px rgba(239,68,68,${(0.35 + 0.4 * pulse).toFixed(2)})"><i class="livedot" style="opacity:${(0.45 + 0.55 * pulse).toFixed(2)}"></i>${txt}</span>`; };
+
+function posLine(key, t) {
+  const p = POS[key], { s, prev, since } = at(p.tl, t);
+  const k = prog(t, since, 0.9);
+  const [cls, label] = BADGE[s];
+  const amtOf = (x) => (x === "lose" ? `−${usd(p.stake)}` : `+${usd(p.gain)}`);
+  const amt = roll(amtOf(prev), amtOf(s), prog(t, since, 0.7));
+  const sw = eio(prog(t, since, 0.6));
+  const bar = prev === s || k >= 1 ? COLOR[s] : `linear-gradient(180deg, ${COLOR[s]} ${(sw * 100).toFixed(1)}%, ${COLOR[prev]} ${(sw * 100).toFixed(1)}%)`;
+  const good = s !== "lose";
+  const wash = k > 0 && k < 1 && prev !== s ? `background:rgba(34,197,94,${(0.26 * (1 - k)).toFixed(3)});` : "";
+  const pop = k > 0 && k < 1 && prev !== s ? `transform:scale(${(1 + 0.14 * Math.sin(Math.min(1, k * 2.2) * Math.PI)).toFixed(3)})` : "";
+  return `<div class="gd-pos" style="${wash}"><i class="bar" style="background:${bar}"></i>
+    <div style="min-width:0"><div class="uname">${p.title}</div><div class="umeta">${p.pick} · ${usd(p.stake)}${p.take ? ` · <span class="badge b-chainlink" style="padding:1px 6px;font-size:10px"><img src="assets/chainlink.png" style="width:11px;height:11px;border-radius:50%;background:#fff" />read live</span>` : ""}</div></div>
+    <div class="gd-pos-side"><span class="badge ${cls}" style="${pop}">${label}</span><div class="gd-amt ${good ? "amt-won" : "amt-lost"}">${amt}</div></div>
+  </div>`;
+}
+
+function board(id, home, away, score, keys, goal, t) {
+  let banner = "", pop = 1;
+  if (goal) {
+    const [g, txt] = goal, k = prog(t, g, 1.7);
+    if (k > 0 && k < 1) {
+      const i = eo(prog(t, g, 0.25)), o = eo(prog(t, g + 1.35, 0.35));
+      banner = `<div class="gd-goal" style="opacity:${(cl(prog(t, g, 0.12)) * (1 - o)).toFixed(3)};clip-path:inset(0 ${((1 - i) * 50).toFixed(1)}% 0 ${((1 - i) * 50).toFixed(1)}%)">${icon("ball", 20, 2)}${txt}</div>`;
+      pop = 1 + 0.2 * Math.sin(Math.min(1, prog(t, g, 0.7)) * Math.PI);
+    }
+  }
+  const n = net(keys, t);
+  return `<div class="card gd-match gd-live" id="${id}">
+    ${banner}<div class="gd-head">${liveBadge(t, clock(t))}Premier League<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
+    <div class="gd-score"><span class="t">${CREST(home[0])}${home[1]}</span><span class="sc" style="display:inline-block;transform:scale(${pop.toFixed(3)});${pop > 1.01 ? "color:var(--green-ink)" : ""}">${score}</span><span class="t away">${away[1]}${CREST(away[0])}</span></div>
+    <div class="gd-positions">${keys.map((k) => posLine(k, t)).join("")}</div>
+    <div class="gd-foot"><span>${usd(10 * keys.length)} riding</span><span class="${n >= 0 ? "amt-won" : "amt-lost"}">If it ends now ${roll(signed(net(keys, T.goal - 0.01)), signed(n), goal ? prog(t, T.goal, 0.7) : 1)}</span></div>
+  </div>`;
+}
+
+function hero(n, w, l, games) {
+  const tint = n >= 0 ? "var(--green-mid)" : "var(--red-mid)", bg = n >= 0 ? "var(--green-tint)" : "#1a0c0c";
+  return `<div class="card gd-hero" style="border-color:${tint};background:linear-gradient(180deg, ${bg}, var(--surface) 80%)"><div class="gd-hero-row">
+      <div><div class="gd-k">On the line</div><div class="gd-v">$20.00</div><div class="umeta">${games}</div></div>
+      <div style="text-align:right"><div class="gd-k">If it all ends now</div><div class="gd-v ${n >= 0 ? "amt-won" : "amt-lost"}">${signed(n)}</div><div class="umeta">${w} winning · ${l} losing</div></div>
+    </div></div>`;
+}
+
+/* your mates in play: Cold Libero flips at the goal */
+function mates(t) {
+  const flip = prog(t, T.goal, 0.9);
+  const lib = t >= T.goal
+    ? `<span class="badge b-won" style="transform:scale(${(1 + 0.16 * Math.sin(Math.min(1, flip * 2.2) * Math.PI)).toFixed(3)})">2 winning</span>`
+    : `<span class="badge b-won">1 winning</span><span class="badge b-lost">1 losing</span>`;
+  const glow = t >= T.toA[0] ? `box-shadow:inset 4px 0 0 var(--green), 0 0 ${(18 * (0.5 + 0.5 * Math.sin(t * 4))).toFixed(1)}px rgba(34,197,94,0.25);border-color:var(--green-mid)` : "";
+  const row = (id, mono, bg, name, sub, badges, style = "") => `<div class="card gd-mate" id="${id}" style="${style}">${AV(mono, bg)}<span class="gd-mate-t"><span class="uname">${name}</span><span class="umeta">${sub}</span></span><span class="gd-mate-s">${badges}</span></div>`;
+  return `<div id="mates"><div class="sec-hd"><h3>Your mates in play</h3></div>
+    ${row("mate-libero", "CL", "#1d4ed8", "Cold Libero", "On Arsenal v Spurs", lib, glow)}
+    ${row("mate-nutmeg", "FN", "#831843", "Fierce Nutmeg", "On Man Utd v Chelsea", `<span class="badge b-lost">1 losing</span>`)}
+    ${row("mate-rabona", "GR", "#a16207", "Golden Rabona", "On Man City v Newcastle", `<span class="badge b-won">1 winning</span>`)}</div>`;
+}
+
+function screenA(t) {
+  const enter = (i) => { const a = T.story[0] + 0.5 + i * 0.18, p = spring(prog(t, a, 0.6)); return `opacity:${cl(prog(t, a, 0.25))};transform:translateY(${((1 - p) * 40).toFixed(1)}px)`; };
+  let h = `<div style="${enter(0)}">${hero(net(["utd", "bruno"], t), 2, 0, "1 game")}</div>`;
+  h += `<div style="${enter(1)}">${mates(t)}</div>`;
+  h += `<div class="sec-hd" style="${enter(2)}"><h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live"><i class="livedot"></i>1 game</span></div>`;
+  h += `<div style="${enter(2)}">${board("cardA", ["33", "Man Utd"], ["49", "Chelsea"], "1–0", ["utd", "bruno"], null, t)}</div>`;
+  return `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div><span class="iconbtn">${icon("share", 17)}</span><span class="balpill" style="margin-left:0">$70.00</span></div>
+    <div class="body"><div class="scroll">${h}</div></div>${tabs("Profile")}`;
+}
+
+const market = (id, flash, title, meta, yes, no, settle) => `<div class="card" style="margin-top:10px">
+    <div class="match-top">${flash ? `<span class="badge b-flash">${icon("bolt", 12, 2)}Flash</span>` : `<span class="badge b-open">Terrace</span>`}<span class="umeta" style="margin:0">Premier League</span><span class="badge b-settled" style="margin-left:auto">${icon("clock", 12, 2)} ${flash ? "6m" : "Full time"}</span></div>
+    <div class="mrow"><span class="crest-pair">${CREST("42")}${CREST("47")}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:600">${title}</span><span class="umeta" style="display:block">${meta}</span></span></div>
+    <div class="odds2"><div class="odd o-yes" id="${id}-yes"><span class="lbl">Yes</span><span class="val">${yes}</span></div><div class="odd o-no"><span class="lbl">No</span><span class="val">${no}</span></div></div>
+    <div class="umeta" style="display:flex;align-items:center;gap:5px;margin-top:9px">${icon("shield", 12)} ${settle}</div></div>`;
+
+function screenB(t) {
+  const n = liberoNet(t), after = t >= T.goal;
+  const score = roll("0–0", after ? "1–0" : "0–0", prog(t, T.goal, 0.6));
+  let h = hero(n, after ? 2 : 1, after ? 0 : 1, "1 game");
+  h += `<div class="sec-hd"><h3 style="color:var(--red-ink)">In play</h3><span class="badge b-live"><i class="livedot"></i>1 game</span></div>`;
+  h += board("cardL", ["42", "Arsenal"], ["47", "Spurs"], score, ["ars", "btts"], [T.goal, "GOAL · ARSENAL 79'"], t);
+  h += `<div class="sec-hd" id="sameHd"><h3>Back the same games</h3><span class="more">Markets ›</span></div>`;
+  h += market("mk1", true, "Another goal before 85'", "Arsenal v Spurs · 41 fans in", "6/4", "1/2", "Settled by the official match feed");
+  h += market("mk2", false, "Spurs score before full time", "Arsenal v Spurs · 212 fans in", "7/4", "2/5", "Settled by the official result");
+  const backed = t >= T.tapBack + 0.1;
+  const sy = -eio(span(t, T.scrollB)) * 290;
+  let out = `<div class="hdr"><span class="iconbtn" id="backbtn">${icon("chevronLeft", 18, 2)}</span><div style="flex:1;min-width:0"><div class="hdr-title">Cold Libero's game day</div><div class="hdr-sub">Their bets, as it stands</div></div></div>
+    <div class="body"><div class="scroll" style="transform:translateY(${sy.toFixed(1)}px)">${h}</div></div>${tabs("Profile")}`;
+  const tp = prog(t, T.tapBack + 0.35, 0.3) * (1 - prog(t, T.tapHome - 0.3, 0.3));
+  if (tp > 0) out += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.tapBack + 0.35, 0.35))) * 14}px)">${icon("check", 18, 2.4)}<span>You're on: <b>Yes</b>, $5.00</span></div>`;
+  if (backed) out = out.replace('id="mk1-yes"', `id="mk1-yes" style="box-shadow:0 0 0 2px var(--green);background:#0f2a19"`);
+  return out;
+}
+
+/* ---------------- camera: a slow push into what just changed ---------------- */
+const SHOTS = [[8.3, 15.0, "A", "mates", 1.14], [19.2, 25.0, "B", "cardL", 1.14], [32.2, 38.6, "A", "mates", 1.12]];
+function camera(t) {
+  let s = 1, oy = 450;
+  for (const [a, b, scr, id, z] of SHOTS) {
+    const k = eio(prog(t, a, 0.9)) * (1 - eio(prog(t, b - 0.9, 0.9)));
+    if (k <= 0) continue;
+    const el = $(id);
+    if (!el) continue;
+    let y = el.offsetHeight / 2, n = el;
+    while (n && n.id !== "screen") { y += n.offsetTop; n = n.offsetParent; }
+    y += 12;
+    const zz = VERT ? 1 + (z - 1) * 0.3 : z;
+    s = lerp(1, zz, k);
+    oy = lerp(450, cl(y, 200, 760), k);
+  }
+  return { s, oy };
+}
+
+const TAPS = [[T.tapMate, "mate-libero"], [T.tapBack, "mk1-yes"], [T.tapHome, "backbtn"]];
+function tap(t) {
+  const dot = $("tap"), rip = $("ripple");
+  dot.style.opacity = 0; rip.style.opacity = 0;
+  for (const [a, id] of TAPS) {
+    if (t < a - 0.45 || t > a + 0.5) continue;
+    const el = $(id);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2, k = t - a;
+    const o = k < -0.3 ? prog(t, a - 0.45, 0.15) : k > 0.3 ? 1 - prog(t, a + 0.3, 0.2) : 1;
+    dot.style.cssText = `left:${x}px;top:${y + (k < -0.1 ? (1 - eo(prog(t, a - 0.45, 0.35))) * 40 : 0)}px;opacity:${o};transform:scale(${k > -0.08 && k < 0.1 ? 0.8 : 1})`;
+    if (k > 0) {
+      const p = eo(prog(t, a, 0.45)), size = 30 + p * 70;
+      rip.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;opacity:${(1 - p) * 0.9}`;
+    }
+  }
+}
+
+/* ---------------- narration, with the group chat's banter under it ---------------- */
+const CHAT = {
+  2: ["CL", "#1d4ed8", "Cold Libero", "come on Arsenal, it's 0–0 at 70"],
+  4: ["CL", "#1d4ed8", "Cold Libero", "I can't watch this"],
+  5: ["CL", "#1d4ed8", "Cold Libero", "GET IN"],
+  7: ["FN", "#831843", "Fierce Nutmeg", "fine. drinks are on me"],
+};
+function narration(t) {
+  const [a, b] = T.story;
+  if (t < a || t >= b) return "";
+  const idx = BEATS.reduce((n, [x], i) => (t >= x ? i : n), -1);
+  let h = `<div style="${st(life(t, a + 0.1, b))}"><span class="kicker"><span class="dot" style="opacity:${0.55 + 0.45 * Math.sin(t * 6)}"></span>Your mates · Game day</span></div>`;
+  if (idx >= 0) {
+    const [x, line, sub] = BEATS[idx], next = BEATS[idx + 1] ? BEATS[idx + 1][0] : b;
+    const long = line.replace(/[*_]/g, "").length > 15;
+    h += `<div class="beat" style="${long ? `font-size:${VERT ? 80 : 98}px` : ""}">${words(t, x + 0.05, next, line)}</div>`;
+    h += `<div class="bsub" style="${st(life(t, x + 0.45, next, { dy: 20, out: 0.3 }))}">${sub}</div>`;
+    const c = CHAT[idx];
+    h += `<div class="cextra" style="height:58px;${st(life(t, x + 0.7, next, { dy: 16, out: 0.3 }))}">${c ? `<span class="bubble">${AV(c[0], c[1], 40)}<b>${c[2]}</b>${c[3]}</span>` : ""}</div>`;
+  }
+  h += `<div class="steps" style="${st(life(t, a + 0.6, b))}">${BEATS.map((_, i) => `<i class="${i < idx ? "on" : i === idx ? "now" : ""}"></i>`).join("")}</div>`;
+  return h;
+}
+
+function endCard(t) {
+  if (t < T.end) return "";
+  const e = (k, dy = 30) => st(life(t, T.end + 0.25 + k * 0.3, 99, { d: 0.7, dy }));
+  const top = VERT ? 520 : 130;
+  return `<div class="ctr" style="top:${top}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}">
+    <div style="display:inline-flex;${e(0)}">${AV("CL", "#1d4ed8", 120).replace("avatar\"", "avatar\" ").replace("style=\"", "style=\"box-shadow:0 0 0 6px var(--canvas);")}${AV("FN", "#831843", 120).replace("style=\"", "style=\"margin-left:-24px;box-shadow:0 0 0 6px var(--canvas);")}${AV("GR", "#a16207", 120).replace("style=\"", "style=\"margin-left:-24px;box-shadow:0 0 0 6px var(--canvas);")}</div>
+    <span class="big" style="display:block;font-size:${VERT ? 130 : 150}px;margin-top:40px;${e(1)}">${VERT ? `Your mates<br/><span class="green">in play</span>` : `Your mates <span class="green">in play</span>`}</span>
+    <span class="lead" style="display:block;font-size:${VERT ? 40 : 44}px;margin-top:24px;color:var(--ink);${e(2, 16)}">See how their bets stand. Back the same games.</span>
+    <div style="margin-top:40px;${e(3, 16)}"><span class="pillurl">play.terrace.social</span></div>
+    <div style="margin-top:38px;${e(4, 12)}"><span class="brandrow"><img src="assets/terrace.png" /><b>TERRACE</b> &nbsp;on <img src="assets/monad.png" /><b>MONAD</b></span></div>
+    <div style="margin-top:22px;${e(5, 12)}"><span class="brandrow">Settled by <img class="cl" src="assets/chainlink.png" /><b>CHAINLINK</b></span></div>
+  </div>`;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  // the room's light follows Cold Libero: red while he's losing, green once the goal goes in
+  const inB = t >= T.toB[0] && t < T.toA[1];
+  const g = t < T.story[0] || t >= T.end ? 0.5 : inB ? cl((liberoNet(t) + 10) / 25) : 0.8;
+  const red = 0.13 * (1 - g), grn = 0.05 + 0.1 * g;
+  $("glow").style.background = `radial-gradient(900px 760px at ${VERT ? 50 : 30}% ${VERT ? 55 : 48}%, rgba(239,68,68,${red.toFixed(3)}), transparent 70%), radial-gradient(1000px 760px at ${VERT ? 50 : 62}% ${VERT ? 30 : 40}%, rgba(34,197,94,${grn.toFixed(3)}), transparent 70%)`;
+  $("stage").innerHTML = cover(t) + endCard(t);
+
+  const inPhone = t >= T.story[0] - 0.2 && t < T.end;
+  $("phonewrap").style.display = inPhone ? "" : "none";
+  if (inPhone) {
+    // A slides out left as B pushes in from the right, and back again
+    const k = eio(span(t, T.toB)) * (1 - eio(span(t, T.toA)));
+    const A = $("scrA"), B = $("scrB");
+    A.style.cssText = `transform:translateX(${(-30 * k).toFixed(2)}%);filter:brightness(${(1 - 0.5 * k).toFixed(3)});display:${k >= 1 ? "none" : ""}`;
+    B.style.cssText = `transform:translateX(${(100 * (1 - k)).toFixed(2)}%);box-shadow:-20px 0 40px rgba(0,0,0,${(0.6 * k).toFixed(2)});display:${k <= 0 ? "none" : ""}`;
+    A.innerHTML = k < 1 ? screenA(t) : "";
+    B.innerHTML = k > 0 ? screenB(t) : "";
+    const ph = life(t, T.story[0], T.end, { d: 0.8, dy: 120, out: 0.5 });
+    const cam = camera(t);
+    $("phone").style.cssText = `opacity:${ph.o.toFixed(3)};transform-origin:220px ${cam.oy.toFixed(1)}px;transform:translateY(${ph.y.toFixed(1)}px) scale(${(ph.s * cam.s).toFixed(4)})`;
+  }
+  $("cap").innerHTML = narration(t);
+  tap(t);
+};
+
+const IMGS = ["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "33", "49"].map((id) => `assets/crest-${id}.png`)];
+document.fonts.ready.then(() => Promise.all(IMGS.map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
