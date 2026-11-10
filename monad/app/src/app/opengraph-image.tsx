@@ -1,21 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import { font } from "@/lib/server/og";
 
 export const alt = "Terrace: back your take. The group chat for football calls, where your mates back it or fade it.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-
-/** Fetches a Google font as TTF for the image renderer; falls back to the default face if offline. */
-async function font(family: string, weight: number) {
-  try {
-    const css = await (await fetch(`https://fonts.googleapis.com/css2?family=${family.replace(/ /g, "+")}:wght@${weight}`, { headers: { "user-agent": "curl/8" } })).text();
-    const url = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
-    return url ? await (await fetch(url)).arrayBuffer() : null;
-  } catch {
-    return null;
-  }
-}
 
 const AV = { blue: "#1d4ed8", rust: "#7c2d12", green: "#166534", violet: "#4c1d95", pink: "#831843" };
 
