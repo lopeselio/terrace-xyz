@@ -379,6 +379,10 @@ from the live score; a fan's own take is read by the same rule Chainlink settles
 public live endpoint. A question nobody answers within three days of closing counts as void (a refund), as
 the contracts treat it. Settled positions stay on the board for 36 hours after kick-off.
 
+Each leg of an open parlay sits on its own match (*"Yes, parlay leg 2 of 3. Winning"*) with no stake of its
+own and outside *If it ends now*; the parlay gets one line of its own, such as *"Parlay #7, $2.00 staked: 2 of
+3 landing, 1 to play."* Legs are read from the parlays contract over the public Monad RPC (`MONAD_RPC_URL`).
+
 ### terrace_collect
 
 No input. Settles every finished 1v1 and market bet this account is in, and refunds its challenges nobody

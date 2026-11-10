@@ -53,10 +53,12 @@ test("matches come live first, then full time, then upcoming", () => {
 });
 
 test("a match off the schedule reads its score from the indexer once it's over", () => {
-  const groups = buildGroups([bet(1, 1, 2, q(1, 5, fx(9, NOW - 9 * 3600, 1, 1, 0)))], [], ME, new Map(), {}, NOW);
+  const f = fx(9, NOW - 9 * 3600, 1, 1, 0);
+  const groups = buildGroups([bet(1, 1, 2, q(1, 5, f)), bet(2, 1, 2, q(2, 0, f))], [], ME, new Map(), {}, NOW);
   assert.equal(groups[0].phase, "fulltime");
   assert.deepEqual(groups[0].score, { home: 1, away: 0 });
-  assert.equal(groups[0].positions[0].standing, "due");
+  // both teams score: settled off the final score; a fan's own take waits on Chainlink
+  assert.deepEqual(groups[0].positions.map((p) => [p.standing, p.collectible]), [["lost", false], ["due", false]]);
 });
 
 test("settled bets: paid out, to collect, and timed out into a refund", () => {
@@ -75,10 +77,24 @@ test("effectiveAnswer voids a called-off match and one past the grace", () => {
   assert.equal(effectiveAnswer({ answer: 2, kind: 1, fixture: null }, NOW), 2);
 });
 
+test("effectiveAnswer reads a standard question off the final score", () => {
+  const ft = { state: 1, kickoff: String(NOW - 7200), homeGoals: 2, awayGoals: 2 };
+  assert.equal(effectiveAnswer({ answer: 0, kind: 2, fixture: ft }, NOW), 1); // draw
+  assert.equal(effectiveAnswer({ answer: 0, kind: 4, line: 3, fixture: ft }, NOW), 1); // over 3.5
+  assert.equal(effectiveAnswer({ answer: 0, kind: 4, line: 4, fixture: ft }, NOW), 2);
+  assert.equal(effectiveAnswer({ answer: 0, kind: 0, closeTime: String(NOW - 60), fixture: ft }, NOW), 0); // a take still waits
+});
+
 test("1v1s: waiting for a mate, not taken, and won but not yet settled", () => {
   const soon = fx(1, NOW + 3600), gone = fx(2, NOW - 3 * 86400 + 3600), done = fx(3, NOW - 7200, 1, 2, 0);
   const matches = new Map([[1, match(1, "NS", null, null, NOW + 3600)], [3, match(3, "FT", 2, 0, NOW - 7200)]]);
-  const duels = [duel(1, 1, 3, q(1, 1, soon), { status: 0 }), duel(2, 1, 3, q(2, 1, gone), { status: 0 }), duel(3, 2, 3, q(3, 3, done, { answer: 2 }))];
+  const duels = [
+    duel(1, 1, 3, q(1, 1, soon), { status: 0 }),
+    duel(2, 1, 3, q(2, 1, gone), { status: 0 }),
+    duel(3, 2, 3, q(3, 3, done, { answer: 2 })),
+    duel(4, 1, 3, q(4, 1, done)), // no stored answer: Arsenal won 2-0 at full time
+    duel(5, 1, 3, q(5, 1, gone), { status: 0, challenger: "0xmate", opponent: ME }), // a mate's old untaken offer
+  ];
   const ps = buildGroups([], duels, ME, matches, {}, NOW).flatMap((g) => g.positions);
   const byId = Object.fromEntries(ps.map((p) => [p.id, p]));
   assert.equal(byId[1].standing, "waiting");
@@ -88,6 +104,9 @@ test("1v1s: waiting for a mate, not taken, and won but not yet settled", () => {
   assert.equal(byId[3].collectible, true);
   assert.equal(byId[3].returns, 6e6);
   assert.equal(byId[3].pick, "No, 1v1");
+  assert.equal(byId[4].standing, "won");
+  assert.equal(byId[4].collectible, true);
+  assert.equal(byId[5], undefined);
 });
 
 test("the board ends with what's on the line, if it all ends now, and what to collect", () => {
@@ -105,4 +124,22 @@ test("the board ends with what's on the line, if it all ends now, and what to co
 
 test("an empty game day points at where to find a bet", () => {
   assert.match(renderGameDay([], []), /No open bets right now/);
+});
+
+test("parlay legs sit on their own matches, without a stake, outside if-it-ends-now", () => {
+  const f = fx(1, NOW - 3600);
+  const matches = new Map([[1, match(1, "2H", 1, 0)]]);
+  const legs = [
+    { acca: "7", index: 0, of: 2, side: 1, question: q(10, 1, f) },
+    { acca: "7", index: 1, of: 2, side: 1, question: q(11, 3, fx(2, NOW - 7200, 1, 0, 0)) },
+  ];
+  const groups = buildGroups([bet(1, 2, 5, q(1, 1, f))], [], ME, matches, {}, NOW, legs);
+  const live = groups.find((g) => g.fixture === 1);
+  assert.deepEqual(live.positions.map((p) => [p.kind, p.standing, p.stake]), [["bet", "losing", 5e6], ["leg", "winning", 0]]);
+  assert.equal(live.ifEndsNow, -5e6);
+  assert.equal(groups.find((g) => g.fixture === 2).positions[0].standing, "lost"); // 0-0, the away side didn't win
+  const text = renderGameDay(groups, [{ id: "7", legs: 2, liveLegs: 1, stake: $(2), status: 0, payout: null }]);
+  assert.match(text, /Arsenal win: Yes, parlay leg 1 of 2\. Winning\n/);
+  assert.match(text, /Parlay #7, \$2\.00 staked: 1 leg down, 1 of 2 landing\./);
+  assert.match(text, /If it all ends now: -\$5\.00 \(1 winning, 1 losing\)\./);
 });
