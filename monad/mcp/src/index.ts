@@ -16,7 +16,7 @@ import {
   ABI, ADDR, ANSWER, API, MATCHUP_STATUS, MAX_STAKE, SIDE, account, approve, chain, challengeId, challengeLink, checkStake, compileTake,
   dollars, ensureFunds, fixtureName, gql, matchLink, matches, send,
 } from "./terrace.js";
-import { loadGameDay, renderGameDay } from "./gameday.js";
+import { effectiveAnswer, loadGameDay, renderGameDay } from "./gameday.js";
 
 // The published package.json sits next to dist/, so the server reports the version actually installed.
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
@@ -146,12 +146,12 @@ server.registerTool(
     const me = account.address.toLowerCase();
     const d = await gql<{
       sent: Mu[]; received: Mu[];
-      Bet: { stake: string; side: number; result: number | null; payout: string | null; market: { id: string; question: { answer: number; text: string } } }[];
+      Bet: { stake: string; side: number; result: number | null; payout: string | null; market: { id: string; question: Qa } }[];
     }>(
       `query M($me: String!) {
         sent: Matchup(where: { challenger: { _eq: $me } }, order_by: { createdAt: desc }) { ${MU} }
         received: Matchup(where: { opponent: { _eq: $me } }, order_by: { createdAt: desc }) { ${MU} }
-        Bet(where: { bettor: { _eq: $me } }) { stake side result payout market { id question { answer text } } }
+        Bet(where: { bettor: { _eq: $me } }) { stake side result payout market { id question { ${QA} } } }
       }`,
       { me },
     );
@@ -161,14 +161,14 @@ server.registerTool(
       take: m.question.text,
       youBack: SIDE[m.challenger === me ? m.challengerSide : 3 - m.challengerSide],
       stakeEach: dollars(m.stake),
-      status: m.status === 4 ? (m.winner === me ? `won ${dollars(BigInt(m.stake) * 2n)}` : "lost") : m.status === 1 && m.question.answer ? "ready to collect" : MATCHUP_STATUS[m.status],
+      status: m.status === 4 ? (m.winner === me ? `won ${dollars(BigInt(m.stake) * 2n)}` : "lost") : m.status === 1 && effectiveAnswer(m.question) ? "ready to collect" : MATCHUP_STATUS[m.status],
     }));
     const bets = d.Bet.map((b) => ({
       market: Number(b.market.id),
       take: b.market.question.text,
       side: SIDE[b.side] || "sealed",
       stake: dollars(b.stake),
-      status: b.result === null ? (b.market.question.answer === 0 ? "open" : "ready to collect") : b.result === 1 ? `won ${dollars(b.payout ?? 0)}` : b.result === 0 ? "refunded" : "lost",
+      status: b.result === null ? (effectiveAnswer(b.market.question) === 0 ? "open" : "ready to collect") : b.result === 1 ? `won ${dollars(b.payout ?? 0)}` : b.result === 0 ? "refunded" : "lost",
     }));
     const ready = [...challenges, ...bets].filter((x) => x.status === "ready to collect").length;
     return ok(`${challenges.length} challenges, ${bets.length} market bets${ready ? `, ${ready} ready to collect (terrace_collect)` : ""}.`, { challenges, bets });
@@ -190,8 +190,11 @@ server.registerTool(
   }),
 );
 
-type Mu = { id: string; challenger: string; opponent: string | null; challengerSide: number; stake: string; status: number; winner: string | null; question: { text: string; answer: number; closeTime: string } };
-const MU = "id challenger opponent challengerSide stake status winner question { text answer closeTime }";
+// Enough of a question to work out the answer the contracts act on (effectiveAnswer), not just the stored one
+type Qa = { text: string; answer: number; kind: number; line: number; closeTime: string; fixture: { state: number; kickoff: string; homeGoals: number; awayGoals: number } | null };
+const QA = "text answer kind line closeTime fixture { state kickoff homeGoals awayGoals }";
+type Mu = { id: string; challenger: string; opponent: string | null; challengerSide: number; stake: string; status: number; winner: string | null; question: Qa };
+const MU = `id challenger opponent challengerSide stake status winner question { ${QA} }`;
 
 server.registerTool(
   "terrace_open_takes",
@@ -339,11 +342,11 @@ server.registerTool(
   },
   tool(async () => {
     const me = account.address.toLowerCase();
-    const d = await gql<{ sent: Mu[]; received: Mu[]; Bet: { stake: string; market: { id: string; question: { answer: number; text: string } } }[] }>(
+    const d = await gql<{ sent: Mu[]; received: Mu[]; Bet: { stake: string; market: { id: string; question: Qa } }[] }>(
       `query C($me: String!) {
         sent: Matchup(where: { challenger: { _eq: $me }, status: { _in: [0, 1] } }) { ${MU} }
         received: Matchup(where: { opponent: { _eq: $me }, status: { _eq: 1 } }) { ${MU} }
-        Bet(where: { bettor: { _eq: $me }, result: { _is_null: true } }) { stake market { id question { answer text } } }
+        Bet(where: { bettor: { _eq: $me }, result: { _is_null: true } }) { stake market { id question { ${QA} } } }
       }`,
       { me },
     );
@@ -359,10 +362,10 @@ server.registerTool(
       }
     };
     for (const m of [...d.sent, ...d.received]) {
-      if (m.status === 1 && m.question.answer) await run(`1v1 #${m.id} "${m.question.text}"`, { address: ADDR.matchups, abi: ABI.matchups, functionName: "settle", args: [BigInt(m.id)] });
+      if (m.status === 1 && effectiveAnswer(m.question, now)) await run(`1v1 #${m.id} "${m.question.text}"`, { address: ADDR.matchups, abi: ABI.matchups, functionName: "settle", args: [BigInt(m.id)] });
       if (m.status === 0 && Number(m.question.closeTime) <= now) await run(`refund for untaken 1v1 #${m.id}`, { address: ADDR.matchups, abi: ABI.matchups, functionName: "expire", args: [BigInt(m.id)] });
     }
-    for (const b of d.Bet.filter((x) => x.market.question.answer !== 0)) {
+    for (const b of d.Bet.filter((x) => effectiveAnswer(x.market.question, now) !== 0)) {
       await run(`"${b.market.question.text}" (${dollars(b.stake)})`, { address: ADDR.markets, abi: ABI.markets, functionName: "settleBet", args: [BigInt(b.market.id), account.address] });
     }
     const usd = await chain.readContract({ address: ADDR.usd, abi: ABI.erc20, functionName: "balanceOf", args: [account.address] });
