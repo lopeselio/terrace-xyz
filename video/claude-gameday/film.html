@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Terrace Game Day in Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=block" rel="stylesheet" />
+<style>
+  /* tokens from monad/app/src/app/globals.css (dark) */
+  :root {
+    --canvas: #0a0a0a; --surface: #111111; --raised: #1a1a1a; --deep: #0d0d0d;
+    --line: #262626; --line-soft: #1e1e1e; --line-hair: #171717;
+    --green: #22c55e; --green-ink: #4ade80; --green-deep: #052e16; --green-mid: #14532d; --on-green: #04180c;
+    --red: #ef4444; --red-ink: #f87171; --amber-ink: #fbbf24; --amber-deep: #2a1605; --blue: #60a5fa; --blue-deep: #12263f;
+    --violet-ink: #c4b5fd; --violet-deep: #2e1065;
+    --ink: #f9fafb; --ink-2: #9ca3af; --ink-3: #6b7280; --ink-4: #4b5563;
+    --sans: "Barlow", system-ui, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+    --clay: #d97757;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body.v #frame { width: 1080px; height: 1920px; }
+  #glow { position: absolute; inset: 0; z-index: 0; }
+  #grid { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.2px); background-size: 28px 28px; }
+  #vig { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.5) 100%); }
+  .big { font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 0.92; letter-spacing: -1px; white-space: nowrap; }
+  .green { color: var(--green); }
+  .lead { font-weight: 600; color: var(--ink-2); }
+  .brands { display: inline-flex; align-items: center; gap: 30px; font-size: 24px; font-weight: 600; color: var(--ink-2); }
+  .brands .b { display: inline-flex; align-items: center; gap: 12px; }
+  .brands .w { color: var(--ink); font-family: var(--cond); font-size: 32px; font-weight: 800; letter-spacing: 1px; }
+  body.v .brands { flex-direction: column; gap: 18px; }
+  .logo { display: inline-flex; align-items: center; gap: 16px; font-family: var(--cond); font-weight: 800; letter-spacing: 2px; }
+
+  #cover, #end { position: absolute; left: 0; right: 0; text-align: center; z-index: 12; }
+  .ln { display: block; }
+
+  /* chapter title: big in the middle, then shrinks into the corner label */
+  #dim { position: absolute; inset: 0; background: rgba(8,8,8,0.82); z-index: 14; }
+  #chap { position: absolute; left: 0; top: 0; z-index: 15; transform-origin: 0 0; font-family: var(--cond); font-weight: 800; text-transform: uppercase; line-height: 1; white-space: nowrap; font-size: 120px; letter-spacing: -0.5px; }
+  #chap .n { color: var(--green); margin-right: 0.28em; }
+
+  /* windows */
+  .win { position: absolute; border-radius: 18px; overflow: hidden; z-index: 6; box-shadow: 0 30px 80px rgba(0,0,0,0.65); }
+  .bar { height: 46px; display: flex; align-items: center; gap: 9px; padding: 0 18px; font-weight: 700; font-size: 16px; }
+  .bar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .bar .who { margin-left: 12px; letter-spacing: 1.6px; text-transform: uppercase; font-size: 14px; }
+  .bar .app { margin-left: auto; font-weight: 600; opacity: 0.7; }
+  #term { background: #0c0c0c; border: 1.5px solid #2a2a2a; }
+  #term .bar { background: #151515; border-bottom: 1px solid #222; color: var(--ink-2); }
+  #term .bar .who { color: var(--green-ink); }
+  #tbody { padding: 26px 30px; font-family: var(--mono); font-size: 24px; line-height: 1.55; color: #e5e7eb; }
+  .tl { white-space: pre-wrap; margin-bottom: 14px; }
+  .tl .p { color: var(--ink-3); }
+  .tl .dot { color: var(--green); }
+  .tl .tool { color: var(--clay); font-weight: 700; }
+  .tl .dim { color: var(--ink-3); }
+  .tl .hl { color: var(--green-ink); font-weight: 700; }
+  .tl .lnk { color: #0a0a0a; background: var(--green); padding: 1px 8px; border-radius: 6px; font-weight: 700; }
+  .cur { display: inline-block; width: 13px; height: 27px; background: #e5e7eb; vertical-align: -4px; margin-left: 2px; }
+  #desk { background: #ffffff; border: 1.5px solid #e6e4dd; color: #1f1f1f; }
+  #desk .bar { background: #f7f6f2; border-bottom: 1px solid #ebe9e2; color: #6b6a65; }
+  #desk .bar .who { color: #b4552f; }
+  #dbody { position: absolute; left: 0; right: 0; top: 46px; bottom: 96px; overflow: hidden; }
+  #dchat { position: absolute; left: 0; right: 0; top: 0; padding: 22px 30px; display: flex; flex-direction: column; gap: 14px; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .ub { align-self: flex-end; max-width: 82%; background: #f0efea; border-radius: 16px; padding: 13px 18px; font-size: 22px; line-height: 1.4; }
+  .ub a { color: #1a5fb4; text-decoration: underline; }
+  .ab { font-size: 22px; line-height: 1.5; color: #1f1f1f; }
+  .ab b { font-weight: 600; }
+  .ab ul { margin: 6px 0 6px 28px; } .ab li { margin: 3px 0; }
+  .ab code { font-family: var(--mono); font-size: 18px; background: #f3f2ee; border: 1px solid #e6e4dd; border-radius: 6px; padding: 1px 6px; }
+  .ab .lnk2 { color: #1a5fb4; text-decoration: underline; }
+  .used { font-size: 19px; color: #8a8883; }
+  #dinput { position: absolute; left: 24px; right: 24px; bottom: 20px; height: 60px; border-radius: 18px; border: 1.5px solid #e2e0d8; background: #fff; display: flex; align-items: center; gap: 14px; padding: 0 12px; font-family: -apple-system, "Helvetica Neue", sans-serif; font-size: 20px; color: #a19f97; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+  #dinput .plus { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #3d3c39; font-size: 26px; font-weight: 300; }
+  #dinput .plus.on { background: #ecebe6; }
+  #dinput .txt { color: #1f1f1f; }
+  #dinput .ph { color: #a19f97; }
+  #dinput .model { margin-left: auto; font-size: 17px; color: #6b6a65; padding-right: 8px; }
+  .menu { position: absolute; background: #fff; border: 1px solid #e2e0d8; border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,0.12); padding: 6px; font-family: -apple-system, "Helvetica Neue", sans-serif; font-size: 18px; color: #2b2a27; z-index: 4; }
+  .mi { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 9px; white-space: nowrap; }
+  .mi .ic { width: 20px; text-align: center; color: #55534e; }
+  .mi .ch { margin-left: auto; color: #8a8883; }
+  .mi.hot { background: #f0efea; }
+  .sep { height: 1px; background: #ebe9e2; margin: 4px 8px; }
+  .tog { margin-left: auto; width: 40px; height: 24px; border-radius: 12px; background: #d4d2cb; position: relative; }
+  .tog i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+  .tico { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  #cursor { position: absolute; z-index: 25; width: 30px; height: 30px; pointer-events: none; }
+  .mk { display: inline-block; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; vertical-align: middle; }
+  .mk-claude { --m: url(assets/claude.svg); background: #d97757; }
+  .mk-npm { --m: url(assets/npm.svg); background: #cb3837; }
+  .mk-gh { --m: url(assets/github.svg); background: #f9fafb; }
+  .ilogo { height: 1em; width: 1em; border-radius: 0.25em; vertical-align: -0.15em; margin: 0 0.15em; }
+  .ilogo.round { border-radius: 50%; background: #fff; }
+  .clawd { display: inline-block; vertical-align: middle; image-rendering: pixelated; }
+  .banner { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+  .banner b { color: #f3f4f6; }
+  .compat { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 26px; max-width: 1500px; font-size: 22px; font-weight: 600; color: var(--ink-2); }
+  .compat .lbl { color: var(--ink-3); font-size: 18px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; }
+  .compat .c { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
+  .compat .mk { width: 26px; height: 26px; background: #f9fafb; }
+  body.v .compat { max-width: 860px; font-size: 21px; }
+  .links { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 14px; font-family: var(--mono); font-size: 26px; color: #e5e7eb; }
+  .links div { display: flex; align-items: center; gap: 16px; }
+  body.v .links { font-size: 22px; }
+  #fly { position: absolute; z-index: 20; height: 40px; border-radius: 10px; background: var(--green); color: #04180c; font-family: var(--mono); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; padding: 0 14px; white-space: nowrap; box-shadow: 0 0 40px rgba(34,197,94,0.45); }
+  #trail { position: absolute; inset: 0; z-index: 19; pointer-events: none; }
+
+  /* game day board in the terminal */
+  #tin { position: relative; }
+  .tl.out { color: #d1d5db; margin-bottom: 0; }
+  .tl.gap { height: 0.7em; margin: 0; }
+  .tl .wg { color: var(--green-ink); font-weight: 700; }
+  .tl .lg { color: var(--red-ink); font-weight: 700; }
+  .tl .live { color: #fff; background: #b91c1c; border-radius: 5px; padding: 0 6px; font-weight: 700; }
+  .tl .ft { color: var(--ink-2); }
+  .tl.hlt { border-radius: 8px; }
+  #side { position: absolute; z-index: 7; }
+  .call { display: flex; align-items: center; gap: 16px; padding: 18px 22px; border-radius: 18px; background: var(--surface); border: 1.5px solid var(--line); margin-bottom: 16px; }
+  .call .n { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--green-deep); color: var(--green-ink); font-family: var(--cond); font-weight: 800; font-size: 24px; flex: none; }
+  .call .tt { font-family: var(--cond); font-weight: 800; font-size: 34px; text-transform: uppercase; line-height: 1.05; }
+  .call .ss { font-size: 20px; font-weight: 600; color: var(--ink-2); margin-top: 4px; }
+  .call.on { border-color: var(--green-mid); background: linear-gradient(180deg, #0d1a12, #0f0f0f); }
+  #ftc { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 22px 24px; }
+  #ftc .h { display: flex; align-items: center; gap: 12px; font-family: var(--cond); font-weight: 800; font-size: 36px; text-transform: uppercase; }
+  .fr { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); font-weight: 700; font-size: 20px; }
+  .fr .t { display: flex; align-items: center; gap: 10px; }
+  .fr .t.away { justify-content: flex-end; }
+  .fr .sc { font-family: var(--cond); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .crest { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #161616; overflow: hidden; flex: none; }
+  .crest img { width: 78%; height: 78%; object-fit: contain; }
+  .wonb { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; background: var(--green-deep); color: var(--green-ink); font-weight: 700; font-size: 15px; }
+  #coin { position: absolute; z-index: 21; height: 54px; border-radius: 27px; background: var(--green); color: #04180c; display: flex; align-items: center; padding: 0 22px; font-family: var(--cond); font-weight: 800; font-size: 32px; box-shadow: 0 0 50px rgba(34,197,94,0.5); }
+  #url { display: inline-flex; align-items: center; height: 68px; border-radius: 34px; border: 1.5px solid var(--green-mid); background: #0b1a10; color: var(--green-ink); padding: 0 32px; font-weight: 700; font-size: 32px; }
+  #cmd { display: inline-flex; align-items: center; gap: 14px; height: 64px; border-radius: 14px; background: #0c0c0c; border: 1.5px solid #2a2a2a; padding: 0 26px; font-family: var(--mono); font-size: 24px; color: #e5e7eb; }
+  #cmd .p { color: var(--ink-3); }
+  .pchip { display: inline-flex; align-items: center; gap: 14px; height: 70px; border-radius: 16px; background: #0c0c0c; border: 1.5px solid #2a2a2a; padding: 0 28px; font-family: var(--mono); font-size: 30px; color: #e5e7eb; }
+  .pchip .p { color: var(--ink-3); }
+  body.v #cmd { font-size: 19px; padding: 0 18px; }
+  body.v #tbody { font-size: 19px; padding: 20px 22px; }
+  #tbody { font-size: 21px; }
+  body.v #ftc { padding: 18px 22px; } body.v .fr { margin-top: 12px; padding-top: 10px; }
+  body.v .ab, body.v .ub { font-size: 21px; }
+  body.v #dchat { gap: 10px; padding: 18px 24px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="glow"></div><div id="grid"></div>
+  <div id="cover"></div>
+  <div id="term" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who" id="who-you">You</span><span class="app"><span class="mk mk-claude" style="width:18px;height:18px;margin-right:8px"></span>Claude Code · terminal</span></div><div id="tbody" style="position:absolute;left:0;right:0;top:46px;bottom:0;overflow:hidden"><div id="tin"></div></div></div>
+  <div id="desk" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="who" id="who-desk">You</span><span class="app"><span class="mk mk-claude" style="width:18px;height:18px;margin-right:8px"></span>Claude Desktop</span></div><div id="dbody"><div id="dchat"></div></div><div id="dinput"></div></div>
+  <div id="side"></div>
+  <div id="coin"></div>
+  <div id="end"></div>
+  <div id="dim"></div><div id="chap"></div>
+  <div id="vig"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const VERT = new URLSearchParams(location.search).get("f") === "9x16";
+if (VERT) document.body.classList.add("v");
+const W = VERT ? 1080 : 1920, H = VERT ? 1920 : 1080;
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, d) => cl((t - a) / d);
+const span = (t, [a, b]) => prog(t, a, b - a);
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const spring = (x) => (x >= 1 ? 1 : 1 - Math.exp(-7 * x) * Math.cos(9 * x));
+const lerp = (a, b, x) => a + (b - a) * x;
+function life(t, a, b, { d = 0.5, dy = 26, out = 0.35 } = {}) {
+  const i = spring(prog(t, a, d)), o = eo(prog(t, b - out, out));
+  return { o: cl(prog(t, a, d * 0.6)) * (1 - o), y: (1 - i) * dy - o * 14, s: lerp(0.96, 1, i) };
+}
+const st = ({ o, y = 0, s = 1 }) => `opacity:${o.toFixed(3)};transform:translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+const typed = (t, a, b, text) => text.slice(0, Math.round(cl((t - a) / (b - a)) * text.length));
+
+/* Saturday, 67 minutes in: three bets on two live games, one more kicking off at 17:30.
+   48 s; music m207 from 64.04 s, so its drop (88.04 s) lands on full time at 24.0 s. */
+const T = {
+  coverOut: [3.4, 4.0],
+  ch: [
+    { at: 4.0, n: 1, text: "Mid-match. Ask Claude." },
+    { at: 10.0, n: 2, text: "Every bet, as it stands." },
+    { at: 24.0, n: 3, text: "Full time. Collect." },
+    { at: 32.0, n: 4, text: "Or ask in Claude Desktop." },
+  ],
+  termIn: [4.3, 5.2],
+  type1: [6.0, 7.4], tool1: 8.0, out1: 11.3, say1: [13.2, 14.6],
+  calls: [14.0, 16.5, 19.0, 21.5],
+  ftIn: 25.3, type2: [26.6, 28.0], tool2: 28.4, out2: 29.0, say2: [29.6, 30.8], coin: [29.2, 30.2],
+  swap: [32.6, 33.4], dtype: [33.6, 34.5], dsend: 34.7, dused: 35.1, dans: [35.5, 37.6],
+  end: 40.0, dur: 48,
+};
+
+/* ---------------- Clawd (Claude Code's block-character crab) ---------------- */
+const Q = { " ": "0000", "▐": "0101", "▛": "1110", "█": "1111", "▜": "1101", "▌": "1010", "▝": "0100", "▘": "1000" };
+const CLAWD_ROWS = [" ▐▛███▜▌", "▝▜█████▛▘", "  ▘▘ ▝▝"];
+const CLAWD_RECTS = (() => {
+  const r = [];
+  CLAWD_ROWS.forEach((row, ri) => [...row].forEach((ch, ci) => {
+    const q = Q[ch];
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([dx, dy], k) => { if (q[k] === "1") r.push([2 * ci + dx, (2 * ri + dy) * 2]); });
+  }));
+  return r;
+})();
+function clawd(w, { color = "#d97757", blink = false, flip = false, style = "" } = {}) {
+  const rects = CLAWD_RECTS.map(([x, y]) => `<rect x="${x}" y="${y}" width="1.04" height="2.04"/>`).join("");
+  const eyes = blink ? `<rect x="5" y="2" width="1.04" height="2.04"/><rect x="12" y="2" width="1.04" height="2.04"/>` : "";
+  return `<svg class="clawd" width="${w}" height="${(w * 12) / 18}" viewBox="0 0 18 12" shape-rendering="crispEdges" fill="${color}" style="${flip ? "transform:scaleX(-1);" : ""}${style}">${rects}${eyes}</svg>`;
+}
+const blinkAt = (t, seed = 0) => (t + seed) % 3.1 < 0.12;
+const CL = `<img class="ilogo round" src="assets/chainlink.png" />`;
+const CREST = (id) => `<span class="crest"><img src="assets/crest-${id}.png" /></span>`;
+
+/* ---------------- chapter titles: big in the middle, then into the corner ---------------- */
+function chapter(t) {
+  const el = $("chap"), dim = $("dim");
+  let c = null, next = Infinity;
+  T.ch.forEach((x, i) => { if (t >= x.at) { c = x; next = T.ch[i + 1]?.at ?? T.end; } });
+  if (!c || t >= T.end) { el.style.opacity = 0; dim.style.opacity = 0; return; }
+  el.innerHTML = `<span class="n">${c.n}</span>${c.text}`;
+  el.style.fontSize = "120px";
+  const w = el.offsetWidth, avail = W - (VERT ? 120 : 240);
+  const fs = Math.min(120, (120 * avail) / w);
+  el.style.fontSize = fs + "px";
+  const w2 = el.offsetWidth, h2 = el.offsetHeight;
+  const big = { x: (W - w2) / 2, y: (H - h2) / 2 - (VERT ? 40 : 20), k: 1 };
+  const small = { x: VERT ? 40 : 70, y: VERT ? 200 : 64, k: (VERT ? 52 : 50) / fs };
+  const a = c.at;
+  const m = eio(prog(t, a + 1.25, 0.55));
+  const x = lerp(big.x, small.x, m), y = lerp(big.y, small.y, m), k = lerp(big.k, small.k, m);
+  const reveal = eo(prog(t, a, 0.45));
+  const out = prog(t, next - 0.35, 0.35);
+  el.style.opacity = (1 - out).toFixed(3);
+  el.style.clipPath = `inset(0 0 ${((1 - reveal) * 100).toFixed(1)}% 0)`;
+  el.style.transform = `translate(${x.toFixed(1)}px, ${(y + (1 - reveal) * 40).toFixed(1)}px) scale(${k.toFixed(4)})`;
+  dim.style.opacity = (cl(prog(t, a - 0.05, 0.25)) * (1 - prog(t, a + 1.25, 0.45)) * 0.9).toFixed(3);
+}
+
+/* ---------------- layout ---------------- */
+const L = VERT
+  ? { term: [40, 290, 1000, 920], side: { x: 40, y: 1236, w: 1000 } }
+  : { term: [70, 150, 1250, 860], side: { x: 1370, y: 150, w: 490 } };
+
+function windows(t) {
+  const inT = eo(span(t, T.termIn));
+  const sw = eio(span(t, T.swap));
+  const [x, y, w, h] = L.term;
+  const off = 1 - inT;
+  const o = inT * (1 - prog(t, T.end - 0.6, 0.5));
+  $("term").style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:${(o * (1 - sw)).toFixed(3)};transform:translate(${VERT ? 0 : -off * 1300 - sw * 200}px,${VERT ? off * 1300 : 0}px) scale(${lerp(1, 0.94, sw)})`;
+  $("desk").style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${VERT ? 900 : 640}px;opacity:${(sw * (1 - prog(t, T.end - 0.6, 0.5))).toFixed(3)};transform:translate(${VERT ? 0 : (1 - sw) * 300}px,${VERT ? (1 - sw) * 300 : 0}px)`;
+  $("who-you").innerHTML = `${clawd(30, { blink: blinkAt(t), style: "margin-right:10px;vertical-align:-3px" })}You`;
+  $("who-desk").innerHTML = `${clawd(30, { blink: blinkAt(t, 1.3), style: "margin-right:10px;vertical-align:-3px" })}You`;
+}
+
+/* ---------------- Claude Code: terrace_game_day, then terrace_collect ---------------- */
+// the board, line for line as terrace-mcp 0.2.0 renders it (src/gameday.ts renderGameDay); hl = callout it belongs to
+const BOARD = [
+  [`<span class="live">LIVE 67'</span>  Man Utd 1-0 Chelsea`, 0],
+  [`  - Man Utd win: Yes, $10.00 staked. <span class="wg">Winning</span>, +$9.70`, 1],
+  [`  - "Bruno Fernandes scores before half-time": Yes, $10.00 staked. <span class="wg">Winning</span>, +$12.50`, 1],
+  [`  If it ends now: +$22.20`, -1],
+  [``, -1],
+  [`<span class="live">LIVE 67'</span>  Arsenal 0-1 Spurs`, 0],
+  [`  - Arsenal win: Yes, $10.00 staked. <span class="lg">Losing</span>, -$10.00`, 1],
+  [`  If it ends now: -$10.00`, -1],
+  [``, -1],
+  [`<span class="ft">Sat, 14 Nov 17:30 UTC</span>  Man City v Newcastle`, 0],
+  [`  - Man City win: Yes, $5.00 staked. Not started, pays $8.40`, -1],
+  [``, -1],
+  [`On the line: $35.00 across 3 games.`, 2],
+  [`If it all ends now: <span class="wg">+$12.20</span> (2 winning, 1 losing).`, 2],
+  [`Readings are as it stands, never a result: Chainlink settles every bet after full time.`, 3],
+];
+const CALLS = [
+  ["Live games first", "Beside the score, then what's next."],
+  ["Winning or losing", "Each bet, read against the live score."],
+  ["If it all ends now", "+$12.20 across three games."],
+  ["Never a result", "Chainlink settles after full time."],
+];
+const activeCall = (t) => (t >= T.ch[2].at ? -1 : T.calls.reduce((n, x, i) => (t >= x ? i : n), -1));
+
+function terminal(t) {
+  const lines = [];
+  const cur = (on) => (on && Math.floor(t * 2.4) % 2 === 0 ? `<span class="cur"></span>` : "");
+  const show = (at, html, cls = "", style = "") => { if (t >= at) lines.push(`<div class="tl ${cls}" style="opacity:${prog(t, at, 0.25)};${style}">${html}</div>`); };
+  const prompt = (at, [a, b], text, until) => { if (t >= at) lines.push(`<div class="tl"><span class="p">&gt; </span>${typed(t, a, b, text)}${cur(t < until)}</div>`); };
+  show(T.termIn[0], `<div class="banner">${clawd(VERT ? 60 : 72, { blink: blinkAt(t, 0.4) })}<div><b>Claude Code</b>\n<span class="dim">Opus 5.5 · ~/terrace · terrace-mcp 0.2.0</span></div></div>`);
+  prompt(T.termIn[1], T.type1, "how are my bets doing?", T.tool1);
+  show(T.tool1, `<span class="dot">⏺</span> <span class="tool">terrace - terrace_game_day</span> <span class="dim">(MCP)</span>${t < T.out1 ? `\n  <span class="dim">⎿  Reading the live scores…</span>` : ""}`);
+  const ac = activeCall(t);
+  if (t >= T.out1) {
+    BOARD.forEach(([html, g], i) => {
+      const at = T.out1 + i * 0.09;
+      if (!html) return show(at, "", "gap");
+      const on = ac >= 0 && g === ac;
+      const hl = on ? `background:rgba(34,197,94,${(0.16 * eo(prog(t, T.calls[ac], 0.3))).toFixed(3)});box-shadow:inset 4px 0 0 var(--green)` : "";
+      show(at, `${i === 0 ? '<span class="dim">⎿ </span> ' : "    "}${html}`, "out", `padding:0 8px;margin:0 -8px;${hl}`);
+    });
+    lines.push(`<div class="tl gap"></div>`);
+  }
+  if (t >= T.say1[0]) lines.push(`<div class="tl"><span class="dot">⏺</span> ${words(t, ...T.say1, `You're <span class="hl">+$12.20</span> if it all ends now. Man Utd lead 1-0, so both of those are winning. Arsenal are 0-1 down to Spurs, so that one's losing for now.`)}</div>`);
+  // full time
+  prompt(T.type2[0] - 0.3, T.type2, "full time! collect my winnings", T.tool2);
+  show(T.tool2, `<span class="dot">⏺</span> <span class="tool">terrace - terrace_collect</span> <span class="dim">(MCP)</span>`);
+  show(T.out2, `  <span class="dim">⎿ </span> Collected 3. Balance: $128.20.`);
+  const hop = Math.abs(Math.sin(cl((t - T.coin[1]) / 0.9) * Math.PI * 3)) * (1 - prog(t, T.coin[1], 0.9)) * 16;
+  if (t >= T.say2[0]) lines.push(`<div class="tl"><span class="dot">⏺</span> ${words(t, ...T.say2, `Three from three. Arsenal turned it round 2-1, Man Utd won 2-0 and Bruno scored before the break: <span class="hl" id="tpay">+$63.20</span> collected.`)} ${clawd(40, { style: `transform:translateY(${-hop}px);margin-left:6px` })}</div>`);
+  const tin = $("tin");
+  tin.innerHTML = lines.join("");
+  const pad = VERT ? 40 : 52;
+  const over = Math.max(0, tin.offsetHeight + pad + 24 - $("tbody").clientHeight);
+  tin.style.transform = `translateY(${-over}px)`;
+}
+
+/* reveal word by word; tags pass through untouched */
+const words = (t, t0, t1, html) => {
+  const parts = html.split(/(<[^>]+>|\s+)/).filter(Boolean);
+  const isWord = (w) => (w.startsWith("<img") || !w.startsWith("<")) && w.trim();
+  const n = parts.filter(isWord).length;
+  let k = Math.round(cl((t - t0) / (t1 - t0)) * n), i = 0;
+  return parts.map((w) => (!isWord(w) ? w : i++ < k ? w : w.startsWith("<img") ? w.replace("<img", '<img style="opacity:0"') : `<span style="opacity:0">${w}</span>`)).join("");
+};
+
+/* ---------------- Claude Desktop, after the games ---------------- */
+const USED = `<div class="used">Loaded tools, used terrace integration ▸</div>`;
+function desktop(t) {
+  const out = [];
+  const pop = (at, html) => { if (t >= at) { const p = spring(prog(t, at, 0.5)); out.push(`<div style="display:contents">${html.replace("STYLE", `opacity:${cl(prog(t, at, 0.25))};transform:translateY(${((1 - p) * 14).toFixed(1)}px)`)}</div>`); } };
+  const say = ([a, b], html) => { if (t >= a) out.push(`<div class="ab">${words(t, a, b, html)}</div>`); };
+  let input = `<span class="ph">Reply to Claude…</span>`;
+  const q = "how did my bets go today?";
+  if (t >= T.dtype[0] && t < T.dsend) input = `<span class="txt">${typed(t, ...T.dtype, q)}</span>`;
+  pop(T.dsend, `<div class="ub" style="STYLE">${q}</div>`);
+  pop(T.dused, USED.replace('class="used"', 'class="used" style="STYLE"'));
+  say(T.dans, `<b>Three from three today.</b><ul><li><b>Arsenal 2-1 Spurs:</b> Arsenal win, won $21.00</li><li><b>Man Utd 2-0 Chelsea:</b> Man Utd win, won $19.70</li><li><b>Bruno scores before half-time:</b> won $22.50</li></ul>All collected, settled by ${CL}Chainlink. Still to come: <b>Man City v Newcastle</b> at 17:30, $5 on City.`);
+  const chat = $("dchat");
+  chat.innerHTML = out.join("");
+  const over = Math.max(0, chat.scrollHeight - $("dbody").clientHeight);
+  chat.style.transform = `translateY(${-over}px)`;
+  $("dinput").innerHTML = `<span class="plus">+</span>${input}<span class="model">Opus 5.5</span>`;
+}
+
+/* ---------------- side column: callouts while it's live, the full-time card after ---------------- */
+function side(t) {
+  const el = $("side");
+  const { x, y, w } = L.side;
+  el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;opacity:${(1 - prog(t, T.end - 0.6, 0.5)).toFixed(3)}`;
+  const ac = activeCall(t);
+  let h = "";
+  if (t < T.ch[2].at) {
+    const o = 1 - prog(t, T.ch[2].at - 0.4, 0.4);
+    const shown = VERT ? (ac >= 0 ? [ac] : []) : CALLS.map((_, i) => i).filter((i) => t >= T.calls[i]);
+    h = shown.map((i) => {
+      const L = life(t, T.calls[i], VERT ? (T.calls[i + 1] ?? T.ch[2].at) : 99, { dy: 30 });
+      return `<div class="call ${i === ac ? "on" : ""}" style="${st({ ...L, o: L.o * o * (i === ac ? 1 : 0.55) })}"><span class="n">${i + 1}</span><div><div class="tt">${CALLS[i][0]}</div><div class="ss">${CALLS[i][1]}</div></div></div>`;
+    }).join("");
+  } else if (t >= T.ftIn) {
+    const p = life(t, T.ftIn, 99, { d: 0.6, dy: 40 });
+    const whistle = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="14" r="6"/><path d="M13 9.5L21 6v4l-6.5 2"/><path d="M9 11v.01"/></svg>`;
+    const row = (k, a, b, ha, hb, sc) => `<div class="fr" style="opacity:${prog(t, T.ftIn + 0.3 + k * 0.2, 0.3)}"><span class="t">${CREST(a)}${ha}</span><span class="sc">${sc}</span><span class="t away">${hb}${CREST(b)}</span></div>`;
+    h = `<div id="ftc" style="${st(p)}"><div class="h"><span style="transform:rotate(${(Math.sin(t * 30) * 12 * (1 - prog(t, T.ftIn + 0.4, 0.6))).toFixed(1)}deg);display:inline-block">${whistle}</span>Full time<span class="wonb" style="margin-left:auto;opacity:${prog(t, T.out2, 0.3)};transform:scale(${(1 + 0.25 * Math.sin(Math.PI * prog(t, T.say2[0] + 1.5, 0.4))).toFixed(3)})">3 won</span></div>
+      ${row(0, "42", "47", "Arsenal", "Spurs", "2–1")}${row(1, "33", "49", "Man Utd", "Chelsea", "2–0")}
+      <div style="margin-top:16px;display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:var(--ink-2);opacity:${prog(t, T.ftIn + 0.9, 0.3)}"><img src="assets/chainlink.png" style="width:26px;height:26px;border-radius:50%;background:#fff" />Checked by Chainlink from the official result</div></div>`;
+  }
+  el.innerHTML = h;
+}
+
+/* the winnings fly from the collect line to the full-time card */
+function coin(t) {
+  const c = $("coin");
+  c.style.opacity = 0;
+  const a0 = T.say2[0] + 0.6, a1 = a0 + 1.0;
+  if (t < a0 || t > a1 + 0.4) return;
+  const from = $("tpay")?.getBoundingClientRect(), to = document.querySelector("#ftc .wonb")?.getBoundingClientRect();
+  if (!from || !to) return;
+  const p = eio(prog(t, a0, 1.0));
+  const x0 = from.left, y0 = from.top - 14, x1 = to.left - 30, y1 = to.top - 12;
+  const arc = Math.sin(p * Math.PI) * (VERT ? 60 : 160);
+  c.style.cssText = `left:${lerp(x0, x1, p)}px;top:${lerp(y0, y1, p) - arc}px;opacity:${(cl(prog(t, a0, 0.15)) * (1 - prog(t, a1, 0.3))).toFixed(3)};transform:scale(${lerp(0.8, 1.1, Math.sin(p * Math.PI)).toFixed(3)})`;
+  c.textContent = "+$63.20";
+}
+
+/* ---------------- cover + end ---------------- */
+const BRANDS = `<span class="brands"><span class="b">In <span class="mk mk-claude" style="width:36px;height:36px"></span><span class="w">CLAUDE</span></span><span class="b">Settled by <img src="assets/chainlink.png" style="height:34px;border-radius:50%;background:#fff" /><span class="w">CHAINLINK</span></span><span class="b">On <img src="assets/monad.png" style="height:40px;border-radius:10px" /><span class="w">MONAD</span></span></span>`;
+function cover(t) {
+  const el = $("cover");
+  if (t >= T.coverOut[1]) { el.innerHTML = ""; return; }
+  const out = eo(span(t, T.coverOut));
+  const s = (k) => `opacity:${1 - out};transform:translateY(${-out * 30 * k}px)`;
+  el.style.top = VERT ? "420px" : "120px";
+  const fs = VERT ? 150 : 170;
+  el.innerHTML = `<div style="margin-bottom:34px;${s(1)}"><span class="logo" style="font-size:${VERT ? 44 : 40}px"><img src="assets/terrace.png" style="width:${VERT ? 64 : 56}px;height:${VERT ? 64 : 56}px;border-radius:14px" />TERRACE</span></div>
+    <div style="${s(1.2)}">${clawd(VERT ? 150 : 130, { blink: blinkAt(t, 0.5) })}</div>
+    <span class="ln big" style="font-size:${fs}px;margin-top:26px;${s(1.4)}">Game day,</span>
+    <span class="ln big green" style="font-size:${fs}px;${s(1.6)}">in Claude</span>
+    <div style="margin-top:34px;${s(1.8)}"><span class="pchip"><span class="p">&gt;</span>how are my bets doing?</span></div>
+    <div style="margin-top:40px;${s(2)}">${BRANDS}</div>`;
+}
+function endcard(t) {
+  const el = $("end");
+  if (t < T.end) { el.innerHTML = ""; return; }
+  const e = (a, dy = 26) => st(life(t, T.end + a, 99, { d: 0.7, dy }));
+  el.style.cssText = `top:${VERT ? 300 : 60}px;opacity:${1 - prog(t, T.dur - 0.6, 0.6)}`;
+  const fs = VERT ? 116 : 132;
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:30px;${e(0.2)}">${clawd(110, { blink: blinkAt(t) })}<img src="assets/terrace.png" style="width:100px;height:100px;border-radius:24px" /></div>
+    <span class="ln big" style="font-size:${fs}px;margin-top:30px;${e(0.3)}">Game day,</span>
+    <span class="ln big green" style="font-size:${fs}px;${e(0.6)}">in Claude.</span>
+    <div style="margin-top:36px;${e(1.1, 16)}"><span id="cmd"><span class="p">$</span>claude mcp add terrace -- npx -y terrace-mcp</span></div>
+    <div style="margin-top:26px;${e(1.4, 16)}"><span class="links"><div><span class="mk mk-gh" style="width:34px;height:34px"></span>github.com/lopeselio/terrace-mcp</div><div><span class="mk mk-npm" style="width:34px;height:34px"></span>npmjs.com/package/terrace-mcp</div></span></div>
+    <div style="margin-top:26px;${e(1.7, 16)}"><span id="url">play.terrace.social</span></div>
+    <div class="lead" style="font-size:22px;margin-top:16px;${e(1.9, 12)}">Free test dollars, no real money</div>
+    <div style="margin-top:24px;${e(2.1, 12)}">${BRANDS}</div>`;
+}
+
+/* ---------------- seek ---------------- */
+window.seek = (t) => {
+  const v = cl(prog(t, T.coverOut[0], 2)), ft = eo(prog(t, T.ch[2].at, 1.5));
+  $("glow").style.background = `radial-gradient(900px 700px at ${VERT ? "50% 30%" : "28% 45%"}, rgba(34,197,94,${(0.1 + 0.06 * ft).toFixed(3)}), transparent 70%), radial-gradient(800px 640px at ${VERT ? "50% 75%" : "75% 55%"}, rgba(217,119,87,${(0.09 * v).toFixed(3)}), transparent 70%)`;
+  cover(t);
+  windows(t);
+  terminal(t);
+  desktop(t);
+  side(t);
+  coin(t);
+  endcard(t);
+  chapter(t);
+};
+
+document.fonts.ready.then(() => Promise.all(["assets/terrace.png", "assets/monad.png", "assets/chainlink.png", ...["42", "47", "33", "49"].map((id) => `assets/crest-${id}.png`)].map((s) => { const i = new Image(); i.src = s; return i.decode().catch(() => {}); }))).then(() => {
+  window.seek(Number(new URLSearchParams(location.search).get("t") || 0));
+  window.ready = true;
+});
+</script>
+</body>
+</html>
