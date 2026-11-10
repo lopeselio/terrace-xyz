@@ -139,7 +139,9 @@
   .o-n .lbl { color: var(--ink-3); }
   .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 999px; background: #0c1f14; border: 1px solid #1f6b3a; color: var(--green-ink); font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 12px 30px rgba(0,0,0,0.6); z-index: 6; }
   .toast b { font-family: var(--cond); font-size: 21px; font-weight: 800; }
-  .goal { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-family: var(--cond); font-weight: 800; font-size: 64px; color: #fff; letter-spacing: 2px; text-shadow: 0 0 30px rgba(239,68,68,0.8); z-index: 7; white-space: nowrap; }
+  /* a goal: a banner across the scoring match's header row, the score below stays in view */
+  .gd-match { position: relative; }
+  .gd-goal { position: absolute; left: -1px; right: -1px; top: -1px; height: 46px; border-radius: 18px 18px 0 0; background: linear-gradient(90deg, #991b1b, #ef4444 50%, #991b1b); color: #fff; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--cond); font-weight: 800; font-size: 23px; letter-spacing: 1.6px; white-space: nowrap; z-index: 2; box-shadow: 0 0 26px rgba(239,68,68,0.55); }
   .coinpop { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4ade80, #15803d 70%); border: 3px solid #bbf7d0; color: #04180c; display: grid; place-items: center; font-family: var(--cond); font-weight: 800; font-size: 36px; z-index: 8; box-shadow: 0 0 40px rgba(34,197,94,0.6); }
 
   /* tap */
@@ -331,12 +333,21 @@ function posLine(p, t, flipAt) {
   </div>`;
 }
 
-function board({ phase, clock, league, home, away, score, ps, t, flips = [] }) {
+function board({ phase, clock, league, home, away, score, ps, t, flips = [], goals = [] }) {
   const n = net(ps), rid = riding(ps);
   const read = phase !== "up";
+  // the banner sweeps in over the header, holds, then lifts away; the new score pops underneath
+  let banner = "", pop = 1;
+  for (const [at, txt] of goals) {
+    const k = prog(t, at, 1.6);
+    if (k <= 0 || k >= 1) continue;
+    const i = eo(prog(t, at, 0.25)), o = eo(prog(t, at + 1.25, 0.35));
+    banner = `<div class="gd-goal" style="opacity:${(cl(prog(t, at, 0.12)) * (1 - o)).toFixed(3)};clip-path:inset(0 ${((1 - i) * 50).toFixed(1)}% 0 ${((1 - i) * 50).toFixed(1)}%)">${icon("ball", 20, 2)}${txt}</div>`;
+    pop = 1 + 0.22 * Math.sin(Math.min(1, prog(t, at, 0.6)) * Math.PI);
+  }
   return `<div class="card gd-match${phase === "live" ? " gd-live" : ""}">
-    <div class="gd-head">${phase === "live" ? `<span class="badge b-live"><i class="livedot"></i>${clock}</span>` : `<span class="badge ${phase === "ft" ? "b-settled" : "b-open"}">${clock}</span>`}${league}<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
-    <div class="gd-score"><span class="t">${CREST(home[0])}${home[1]}</span><span class="sc">${score}</span><span class="t away">${away[1]}${CREST(away[0])}</span></div>
+    ${banner}<div class="gd-head">${phase === "live" ? `<span class="badge b-live"><i class="livedot"></i>${clock}</span>` : `<span class="badge ${phase === "ft" ? "b-settled" : "b-open"}">${clock}</span>`}${league}<span style="margin-left:auto;color:var(--ink-4)">${icon("chevronRight", 16)}</span></div>
+    <div class="gd-score"><span class="t">${CREST(home[0])}${home[1]}</span><span class="sc" style="display:inline-block;transform:scale(${pop.toFixed(3)});${pop > 1.01 ? "color:var(--green-ink)" : ""}">${score}</span><span class="t away">${away[1]}${CREST(away[0])}</span></div>
     <div class="gd-positions">${ps.map((p, i) => posLine(p, t, flips[i])).join("")}</div>
     <div class="gd-foot">${rid ? `<span>${usd(rid)} riding</span>` : "<span></span>"}${read ? `<span class="${n >= 0 ? "amt-won" : "amt-lost"}">${phase === "live" ? "If it ends now" : "As it finished"} ${signed(n)}</span>` : ""}</div>
   </div>`;
@@ -358,8 +369,8 @@ function hero(t, P) {
 function gameDayScreen(t) {
   const P = positions(t);
   const ft = t >= T.ftA;
-  const A = board({ phase: ft ? "ft" : "live", clock: minuteA(t), league: "Premier League", home: ["42", "Arsenal"], away: ["47", "Spurs"], score: t >= T.goalA ? "1–0" : "0–0", ps: P.A, t, flips: [T.goalA, null, null] });
-  const B = board({ phase: "live", clock: minuteB(t), league: "Premier League", home: ["40", "Liverpool"], away: ["50", "Man City"], score: t >= T.goalC ? "1–1" : t >= T.goalB ? "1–0" : "0–0", ps: P.B, t, flips: [T.goalB, T.goalC] });
+  const A = board({ phase: ft ? "ft" : "live", clock: minuteA(t), league: "Premier League", home: ["42", "Arsenal"], away: ["47", "Spurs"], score: t >= T.goalA ? "1–0" : "0–0", ps: P.A, t, flips: [T.goalA, null, null], goals: [[T.goalA, "GOAL · ARSENAL 63'"]] });
+  const B = board({ phase: "live", clock: minuteB(t), league: "Premier League", home: ["40", "Liverpool"], away: ["50", "Man City"], score: t >= T.goalC ? "1–1" : t >= T.goalB ? "1–0" : "0–0", ps: P.B, t, flips: [T.goalB, T.goalC], goals: [[T.goalB, "GOAL · SALAH 41'"], [T.goalC, "GOAL · MAN CITY 44'"]] });
   const C = board({ phase: "up", clock: "Today 20:00", league: "Premier League", home: ["49", "Chelsea"], away: ["34", "Newcastle"], score: "v", ps: P.C, t });
   const live = ft ? [B] : [A, B];
   let h = hero(t, P);
@@ -380,11 +391,6 @@ function gameDayScreen(t) {
   const sy = -eio(span(t, T.scroll)) * 640;
   let out = `<div class="hdr"><div style="flex:1;min-width:0"><div class="hdr-title">Game day</div><div class="hdr-sub">Everything you've got on, as it happens</div></div><span class="balpill">$84.30</span></div>
     <div class="body"><div class="scroll" style="transform:translateY(${sy.toFixed(1)}px)">${h}</div></div>${tabs("Profile")}`;
-  // goal flashes
-  for (const [at, txt] of [[T.goalA, "GOAL · ARSENAL 1–0"], [T.goalB, "GOAL · SALAH 41'"], [T.goalC, "GOAL · CITY 1–1"]]) {
-    const k = prog(t, at, 1.1);
-    if (k > 0 && k < 1) out += `<div class="goal" style="font-size:44px;opacity:${(1 - eo(prog(t, at + 0.7, 0.4))) * cl(k * 6)};transform:translate(-50%,-50%) scale(${lerp(1.5, 1, eo(prog(t, at, 0.3)))})">${txt}</div>`;
-  }
   const tp = prog(t, T.tapCollect + 0.2, 0.35) * (1 - prog(t, T.tapCollect + 2.4, 0.3));
   if (tp > 0) out += `<div class="toast" style="opacity:${tp};transform:translate(-50%,${(1 - eo(prog(t, T.tapCollect + 0.2, 0.35))) * 14}px)">${icon("check", 18, 2.4)} <b>${usd(RET)}</b> collected</div>`;
   return out;
