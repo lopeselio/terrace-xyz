@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terrace on Monad</title>
+<meta name="description" content="Where Terrace stands on Monad testnet and the help it needs for liquidity, mainnet, legal and go-to-market.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Terrace on Monad: from testnet to matchday">
+<meta property="og:description" content="Where Terrace stands on Monad testnet and the help it needs for liquidity, mainnet, legal and go-to-market.">
+<meta property="og:image" content="https://play.terrace.social/opengraph-image">
+<meta property="og:url" content="https://ask.terrace.social">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://play.terrace.social/icon.png">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column, a scoreboard strip for traction, a matchday-style table for the liquidity options. Dark "Terrace Night", the app's own palette. */
+:root {
+  --bg: #0a0b0a; --surface: #121412; --raised: #1a1d1a; --line: #262a26;
+  --ink: #f4f6f3; --ink-2: #a3aba2; --ink-3: #6f786e;
+  --green: #22c55e; --green-ink: #4ade80; --green-deep: #0b2615;
+  --amber: #f59e0b; --amber-ink: #fbbf24; --amber-deep: #2a1a06;
+  --violet: #a78bfa;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 var(--body); }
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 48px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header .eyebrow { font: 700 13px/1 var(--body); letter-spacing: 1.6px; text-transform: uppercase; color: var(--green-ink); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pill { border: 1px solid var(--green); border-radius: 99px; padding: 5px 10px; }
+.pill.amber { border-color: var(--amber); color: var(--amber-ink); }
+h1 { font: 800 clamp(44px, 8vw, 72px)/0.95 var(--display); letter-spacing: -0.5px; text-transform: uppercase; margin: 18px 0 14px; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--green); }
+.lede { color: var(--ink-2); font-size: 19px; max-width: 62ch; margin: 0; }
+h2 { font: 800 30px/1.05 var(--display); text-transform: uppercase; letter-spacing: 0.3px; margin: 56px 0 6px; text-wrap: balance; }
+h2 .n { color: var(--green); margin-right: 10px; }
+h3 { font: 700 19px/1.3 var(--body); margin: 28px 0 6px; }
+p, li { max-width: 68ch; }
+p { margin: 10px 0; }
+ul { padding-left: 20px; margin: 10px 0; }
+li { margin: 6px 0; }
+li::marker { color: var(--green); }
+.sub { color: var(--ink-2); margin-top: 0; }
+strong { color: var(--ink); }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin: 28px 0 8px; }
+.board div { background: var(--surface); padding: 16px 14px; min-width: 0; }
+.board b { display: block; font: 800 34px/1 var(--display); font-variant-numeric: tabular-nums; }
+.board span { font-size: 13px; color: var(--ink-2); }
+@media (max-width: 620px) { .board { grid-template-columns: repeat(2, 1fr); } }
+
+.ask { border: 1px solid var(--green-deep); background: linear-gradient(180deg, var(--green-deep), var(--surface)); border-radius: 14px; padding: 14px 16px; margin: 14px 0; }
+.ask .k { font: 700 12px/1 var(--body); letter-spacing: 1.4px; text-transform: uppercase; color: var(--green-ink); }
+.ask p { margin: 6px 0 0; }
+.ask.amber { border-color: #4a3410; background: linear-gradient(180deg, var(--amber-deep), var(--surface)); }
+.ask.amber .k { color: var(--amber-ink); }
+
+.tbl { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
+th, td { text-align: left; padding: 11px 12px; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font: 700 12px/1.2 var(--body); letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; }
+.tag { display: inline-block; font: 700 11px/1 var(--body); letter-spacing: 1px; text-transform: uppercase; border-radius: 6px; padding: 4px 6px; white-space: nowrap; }
+.tag.g { color: var(--green-ink); background: var(--green-deep); }
+.tag.a { color: var(--amber-ink); background: var(--amber-deep); }
+
+.timeline { display: grid; gap: 12px; margin-top: 18px; }
+.phase { display: grid; grid-template-columns: 110px 1fr; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.phase .when { font: 800 20px/1.1 var(--display); text-transform: uppercase; color: var(--green-ink); }
+.phase ul { margin: 0; }
+@media (max-width: 560px) { .phase { grid-template-columns: 1fr; gap: 6px; } }
+
+.checklist { list-style: none; padding: 0; }
+.checklist li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+.checklist li::before { content: ""; width: 14px; height: 14px; margin-top: 6px; border: 2px solid var(--green); border-radius: 4px; }
+footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 15px; }
+a { color: var(--green-ink); }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow"><span class="pill">Monad Metropolis · Honourable mention</span><span class="pill amber">Prepared for Monad Foundation</span></div>
+  <h1>Terrace on Monad: <em>from testnet to matchday</em></h1>
+  <p class="lede">Terrace is the social prediction game for football fans: picks, takes, 1v1s with mates and leagues, with every result settled by Chainlink. This note sets out where we are, where we want to take it on Monad, and the help that would get us there fastest. The biggest open question is liquidity.</p>
+</header>
+
+<h2><span class="n">01</span>Where Terrace is today</h2>
+<p class="sub">Live on Monad testnet at <a href="https://play.terrace.social" target="_blank" rel="noopener">play.terrace.social</a>, played with free test dollars.</p>
+<div class="board" role="list">
+  <div role="listitem"><b>1,000+</b><span>bets placed</span></div>
+  <div role="listitem"><b>$6,000+</b><span>test dollars staked</span></div>
+  <div role="listitem"><b>727</b><span>takes posted in match chats</span></div>
+  <div role="listitem"><b>714</b><span>markets opened</span></div>
+  <div role="listitem"><b>765</b><span>fixtures, ~19 leagues</span></div>
+  <div role="listitem"><b>36</b><span>accounts (17 fans + 7 AI agents)</span></div>
+  <div role="listitem"><b>17</b><span>1v1 challenges</span></div>
+  <div role="listitem"><b>7</b><span>community leagues</span></div>
+</div>
+<p class="muted">Indexed with Envio on Monad testnet, 11 Nov 2026. A meaningful share of volume comes from our own AI agents (a pundit that posts takes and a house that seeds markets); fan numbers are small and honest, from friends-and-FPL-group testing.</p>
+
+<h3>What's built</h3>
+<ul>
+  <li><strong>Consumer-first accounts:</strong> a passkey (Mera) or an email code (Privy), no seed phrase, no extension, no signing pop-ups. Both can open the same account.</li>
+  <li><strong>Social core:</strong> match and league chats where any message can become a market; back or fade a take; 1v1 challenges by link; FPL-style leagues with members voting on house rules.</li>
+  <li><strong>Game day (Terrace 2.0, our answer to Kyle Samani's "game-day mode for prediction markets" RFP):</strong> every position beside the live score, winning or losing as it stands, swing alerts when a goal flips a bet, in-play calls on the game you're watching, parlay legs on their own matches, mates' bets, and a shareable matchday card.</li>
+  <li><strong>Settlement:</strong> Chainlink CRE workflows settle every market from official match data; custom takes get a plain-English rule checked against the data, or an AI judge with match evidence.</li>
+  <li><strong>AI agents:</strong> <code>terrace-mcp</code> on npm lets Claude, Cursor and other MCP clients bet, challenge a mate, follow game day and collect, from chat.</li>
+  <li><strong>Terrace Points:</strong> rewards for playing, double for founding fans until 30 Nov.</li>
+</ul>
+
+<h2><span class="n">02</span>Liquidity for the markets</h2>
+<p class="sub">This is the main thing standing between Terrace and real money.</p>
+<p>Every market today is a pool: winners split what losers staked, less a small creator fee. On testnet our house agent seeds both sides so prices exist. With real money, thin pools mean poor prices, and a fan's niche take can sit with no one on the other side. Football also concentrates demand: thousands of fans want the same few markets at the same 3pm kick-off, then nothing for days.</p>
+<p>Terrace has two kinds of market, and they need different answers:</p>
+<ul>
+  <li><strong>Standard markets</strong> (match result, over/under goals, both teams to score) on every fixture. These need depth and a fair price from the first bet.</li>
+  <li><strong>Fan markets</strong> (takes, 1v1s, league bets, in-play calls). These are peer-to-peer by design: the other side is your mate or the chat. They need a good matching experience more than a market maker.</li>
+</ul>
+
+<h3>Options for standard markets</h3>
+<div class="tbl">
+<table>
+  <thead><tr><th>Option</th><th>How it works</th><th>Needs</th><th>Fit</th></tr></thead>
+  <tbody>
+    <tr><td>Seeded pools</td><td>A funded market maker (or our house agent with a grant-funded float) puts money on both sides of every standard market before kick-off, priced from bookmaker lines.</td><td>Liquidity grant or MM partner; risk limits per market</td><td><span class="tag g">Fastest</span></td></tr>
+    <tr><td>AMM with a subsidy (LMSR-style)</td><td>A contract always quotes a price and always takes a bet. The worst-case loss per market is capped and covered by a subsidy pool.</td><td>Subsidy funding, contract work, audit</td><td><span class="tag g">Best UX</span></td></tr>
+    <tr><td>Shared PM liquidity layer</td><td>Route standard football markets to an existing prediction-market or order-book protocol on Monad; Terrace stays the social and game-day layer on top.</td><td>An integration partner on Monad</td><td><span class="tag a">Most scalable</span></td></tr>
+    <tr><td>Hybrid</td><td>Seed pools now, move the busiest leagues to an AMM or shared order book once volume justifies it.</td><td>All of the above, staged</td><td><span class="tag g">Our plan</span></td></tr>
+  </tbody>
+</table>
+</div>
+<p>Kyle's RFP makes the same point: the opportunity is the experience built on top of trading and resolution infrastructure. We'd rather plug into shared liquidity on Monad than run a book ourselves.</p>
+
+<div class="ask"><div class="k">The ask</div>
+  <p>Introductions to <strong>market makers</strong> and <strong>prediction-market or order-book teams building on Monad</strong> who'd provide or share liquidity for football markets, and any <strong>liquidity grant or subsidy programme</strong> for a launch float (we'd start with the top 5 European leagues).</p>
+</div>
+
+<h2><span class="n">03</span>Getting to mainnet</h2>
+<ul>
+  <li><strong>Settlement currency:</strong> USDC (or Monad's main stablecoin) on mainnet. The contracts already take any approved settlement token.</li>
+  <li><strong>Chainlink CRE in production on Monad mainnet.</strong> We settle through CRE simulation on testnet today; the receiver contracts are ready for the production forwarder.</li>
+  <li><strong>Security audit</strong> of the markets, parlays, 1v1s, leagues and vault contracts before any real money.</li>
+  <li><strong>Infrastructure:</strong> indexing (Envio), RPC, and gas sponsorship, so fans keep a sign-in with no signing pop-ups.</li>
+</ul>
+<div class="ask"><div class="k">The ask</div>
+  <p>Audit partners or credits Monad offers ecosystem teams, infra credits (indexer, RPC, paymaster), and a contact for CRE on Monad mainnet timing.</p>
+</div>
+
+<h3>Legal: the gate to real money</h3>
+<p>Real-money sports prediction is regulated in most countries, and rules differ by market. We won't take real stakes until we have a clear structure. In the meantime a free-to-play version (points, plus prizes) keeps fans growing on mainnet without that risk, and every flow is already built.</p>
+<div class="ask amber"><div class="k">The ask</div>
+  <p>Introductions to legal advisers that other Monad prediction-market or sports teams have worked with, and any guidance on jurisdictions where teams in the ecosystem have launched.</p>
+</div>
+
+<h2><span class="n">04</span>Community and go-to-market</h2>
+<p>Football is a group sport. Terrace grows through group chats, mates and leagues, so our go-to-market is built around matchdays and existing football communities.</p>
+<ul>
+  <li><strong>A Monad community league:</strong> an FPL-style league on Terrace for the Monad community, weekly gameweeks with prizes. An easy first campaign, and a fun one for FPL players in the ecosystem.</li>
+  <li><strong>Matchday co-marketing:</strong> Monad amplifying launches and weekly game-day moments; a slot in ecosystem roundups, Spaces or newsletters.</li>
+  <li><strong>Football creators and FPL communities:</strong> creators who'd host a league or run takes with their audience.</li>
+  <li><strong>Consumer apps and wallets on Monad:</strong> cross-promotion, or embedding Terrace's challenge links and game-day card.</li>
+  <li><strong>Watch parties:</strong> live matchday screenings at Monad events, Game day on the big screen.</li>
+  <li><strong>AI agents:</strong> <code>terrace-mcp</code> already lets AI agents play; agent-vs-agent and fan-vs-agent leagues are a story Monad can tell about consumer AI on-chain.</li>
+</ul>
+<div class="ask"><div class="k">The ask</div>
+  <p>Introductions to football creators and FPL communities, Monad consumer apps for cross-promotion, the Foundation's marketing team for matchday moments, and any <strong>grant or accelerator</strong> for consumer apps after Metropolis.</p>
+</div>
+
+<h2><span class="n">05</span>Proposed plan</h2>
+<div class="timeline">
+  <div class="phase"><div class="when">Weeks 1–4</div><ul>
+    <li>Monad community league on testnet; first co-marketed matchday.</li>
+    <li>Liquidity conversations: market makers and PM-layer teams; pick the launch model.</li>
+    <li>Audit scoping; legal advice on structure.</li>
+  </ul></div>
+  <div class="phase"><div class="when">Weeks 5–10</div><ul>
+    <li>Free-to-play mainnet launch (points, prizes) with sponsored gas.</li>
+    <li>Seeded standard markets for the top 5 leagues; AMM work starts.</li>
+    <li>Creator leagues and watch parties; agent leagues via <code>terrace-mcp</code>.</li>
+  </ul></div>
+  <div class="phase"><div class="when">After</div><ul>
+    <li>Real-money markets where the legal structure allows, on audited contracts and shared liquidity.</li>
+    <li>More sports on the same game-day layer.</li>
+  </ul></div>
+</div>
+
+<h2><span class="n">06</span>Asks, in one list</h2>
+<ul class="checklist">
+  <li>Intros to market makers and prediction-market or order-book teams on Monad.</li>
+  <li>Liquidity grant or subsidy for a launch float on standard markets.</li>
+  <li>Audit partners or credits; infra credits for indexing, RPC and gas sponsorship.</li>
+  <li>A contact for Chainlink CRE and stablecoin timing on Monad mainnet.</li>
+  <li>Legal adviser intros from other Monad PM or sports teams.</li>
+  <li>Matchday co-marketing and a Monad community league.</li>
+  <li>Intros to football creators, FPL communities, and Monad consumer apps.</li>
+  <li>Grant or accelerator options for consumer apps after Metropolis.</li>
+</ul>
+
+<footer>
+  <p><strong>Elio</strong>, founder, Terrace · <a href="https://play.terrace.social" target="_blank" rel="noopener">play.terrace.social</a> · <a href="https://x.com/terrace_social" target="_blank" rel="noopener">@terrace_social</a> · <a href="https://www.npmjs.com/package/terrace-mcp" target="_blank" rel="noopener">terrace-mcp on npm</a></p>
+  <p class="muted">Testnet figures from the Terrace indexer, 11 Nov 2026. Test dollars have no cash value.</p>
+</footer>
+</div>
+</body>
+</html>

@@ -17,3 +17,4 @@ cre/**/.env
 !indexer/abis/*.json
 !indexer/package.json
 *.tsbuildinfo
+!ask/vercel.json
