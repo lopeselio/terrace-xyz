@@ -126,7 +126,7 @@ a { color: var(--green-ink); }
   <tbody>
     <tr><td>Match results</td><td>Every 2 minutes on matchdays, for every fixture in play (765 fixtures across ~19 leagues so far)</td><td>Oracle runs and an on-chain report per batch; a sports data call per batch</td></tr>
     <tr><td>Fan takes</td><td>Every minute until each take is answered; every take is checked against full match data (events, line-ups, stats)</td><td>One data call and one oracle evaluation per open take, per run</td></tr>
-    <tr><td>AI judge</td><td>For takes that can't be written as a rule ("Haaland bullies the back line")</td><td>Model calls with match evidence, agreed across oracle nodes</td></tr>
+    <tr><td>AI layer</td><td>On every take: a Claude-based compiler filters the fan's intent into a rule the oracle can check, or flags it for judging; an AI judge (Claude Sonnet) rules on takes that can't be a rule ("Haaland bullies the back line"); an AI pundit posts takes in match rooms</td><td>Model calls on every take posted, and judge calls agreed across oracle nodes; grows with every fan and every chat</td></tr>
     <tr><td>Sealed picks</td><td>A confidential workflow opens hidden picks and league tables at kick-off</td><td>Extra oracle runs per gameweek and per sealed market</td></tr>
     <tr><td>Fixtures</td><td>New matches scheduled every 6 hours</td><td>Oracle runs and gas to schedule</td></tr>
     <tr><td>Sports data</td><td>A paid live-data plan today; real money needs a licensed official feed</td><td>Official feeds are the single biggest line item for sports betting products</td></tr>
@@ -136,9 +136,10 @@ a { color: var(--green-ink); }
   </tbody>
 </table>
 </div>
+<p>The AI layer is what keeps Terrace football-first: fans type a take the way they'd say it in the pub, and the model turns it into something the oracle can settle fairly. It's also the cost that grows fastest, because it runs on every message that becomes a market.</p>
 <p>Football makes this peaky: most of the load lands in a few hours on Saturday and Sunday, so the stack has to be sized for 3pm, not for the average.</p>
 <div class="ask"><div class="k">The ask</div>
-  <p>Help bringing these costs down to something a pre-revenue consumer app can carry: <strong>infra credits</strong> or startup terms with <strong>Monad's infrastructure partners</strong> (indexing, RPC, paymasters), <strong>oracle and gas credits</strong> for settlement reports on Monad, a direct line to <strong>Chainlink</strong> on CRE pricing and timing for Monad mainnet, and intros to <strong>official sports data providers</strong> who work with ecosystem teams.</p>
+  <p>Help bringing these costs down to something a pre-revenue consumer app can carry: <strong>infra credits</strong> or startup terms with <strong>Monad's infrastructure partners</strong> (indexing, RPC, paymasters), <strong>oracle and gas credits</strong> for settlement reports on Monad, a direct line to <strong>Chainlink</strong> on CRE pricing and timing for Monad mainnet, intros to <strong>official sports data providers</strong> who work with ecosystem teams, and help getting <strong>AI credits</strong> for the orchestration layer, such as Anthropic's startup program for Claude API credits, or any AI partners Monad works with.</p>
 </div>
 
 <h2><span class="n">03</span>Liquidity partners and bootstrapping</h2>
@@ -220,6 +221,7 @@ a { color: var(--green-ink); }
   <li>Infra credits or startup terms with Monad's infrastructure partners (indexing, RPC, paymasters), and oracle and gas credits for settlement.</li>
   <li>A direct line to Chainlink on CRE pricing and timing for Monad mainnet.</li>
   <li>Intros to official sports data providers.</li>
+  <li>AI credits for the intent-filtering and judging layer (for example Anthropic's startup program for Claude).</li>
   <li>Intros to market makers and prediction-market or order-book teams on Monad.</li>
   <li>Help bootstrapping initial liquidity for standard markets: a partner or a liquidity subsidy.</li>
   <li>Audit credits or audit firm intros, and legal advisers other Monad teams have used.</li>
