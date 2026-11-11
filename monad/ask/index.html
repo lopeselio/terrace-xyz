@@ -81,6 +81,7 @@ td:first-child { font-weight: 700; }
 .checklist li::before { content: ""; width: 14px; height: 14px; margin-top: 6px; border: 2px solid var(--green); border-radius: 4px; }
 footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 15px; }
 a { color: var(--green-ink); }
+.watch { display: inline-flex; gap: 6px; margin-top: 6px; font-weight: 700; font-size: 15px; border: 1px solid var(--green); border-radius: 99px; padding: 4px 12px; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 </style>
 </head>
@@ -110,7 +111,7 @@ a { color: var(--green-ink); }
 <ul>
   <li><strong>Consumer-first accounts:</strong> a passkey (Mera) or an email code (Privy), no seed phrase, no extension, no signing pop-ups. Both can open the same account.</li>
   <li><strong>Social core:</strong> match and league chats where any message can become a market; back or fade a take; 1v1 challenges by link; FPL-style leagues with members voting on house rules.</li>
-  <li><strong>Game day (Terrace 2.0, our answer to Kyle Samani's "game-day mode for prediction markets" RFP):</strong> every position beside the live score, winning or losing as it stands, swing alerts when a goal flips a bet, in-play calls on the game you're watching, parlay legs on their own matches, mates' bets, and a shareable matchday card.</li>
+  <li><strong>Game day (Terrace 2.0, our answer to Kyle Samani's "game-day mode for prediction markets" RFP):</strong> every position beside the live score, winning or losing as it stands, swing alerts when a goal flips a bet, in-play calls on the game you're watching, parlay legs on their own matches, mates' bets, and a shareable matchday card.<br><a class="watch" href="https://youtube.com/shorts/ZVyQVSQ9s6U" target="_blank" rel="noopener">▶ Watch Kyle's request (YouTube Short)</a></li>
   <li><strong>Settlement:</strong> Chainlink CRE workflows settle every market from official match data; custom takes get a plain-English rule checked against the data, or an AI judge with match evidence.</li>
   <li><strong>AI agents:</strong> <code>terrace-mcp</code> on npm lets Claude, Cursor and other MCP clients bet, challenge a mate, follow game day and collect, from chat.</li>
   <li><strong>Terrace Points:</strong> rewards for playing, double for founding fans until 30 Nov.</li>
@@ -160,7 +161,7 @@ a { color: var(--green-ink); }
   </tbody>
 </table>
 </div>
-<p>Kyle's RFP makes the same point: the opportunity is the experience built on top of trading and resolution infrastructure. We'd rather plug into shared liquidity on Monad than run a book ourselves.</p>
+<p><a href="https://youtube.com/shorts/ZVyQVSQ9s6U" target="_blank" rel="noopener">Kyle's RFP</a> makes the same point: the opportunity is the experience built on top of trading and resolution infrastructure. We'd rather plug into shared liquidity on Monad than run a book ourselves.</p>
 <div class="ask"><div class="k">The ask</div>
   <p>Introductions to <strong>market makers</strong> and <strong>prediction-market or order-book teams building on Monad</strong> who'd provide or share liquidity for football markets, and help bootstrapping the <strong>initial liquidity</strong> to launch with, whether through a partner or a <strong>liquidity subsidy</strong> for the first markets (we'd start with the top 5 European leagues).</p>
 </div>
