@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Terrace on Monad</title>
-<meta name="description" content="Where Terrace stands on Monad testnet and the help it needs for liquidity, mainnet, legal and go-to-market.">
+<meta name="description" content="Where Terrace stands on Monad testnet, and the help it needs with oracle infrastructure costs, liquidity, mainnet and go-to-market.">
 <meta name="robots" content="noindex">
 <meta property="og:title" content="Terrace on Monad: from testnet to matchday">
-<meta property="og:description" content="Where Terrace stands on Monad testnet and the help it needs for liquidity, mainnet, legal and go-to-market.">
+<meta property="og:description" content="Where Terrace stands on Monad testnet, and the help it needs with oracle infrastructure costs, liquidity, mainnet and go-to-market.">
 <meta property="og:image" content="https://play.terrace.social/opengraph-image">
 <meta property="og:url" content="https://ask.terrace.social">
 <meta name="twitter:card" content="summary_large_image">
@@ -89,7 +89,7 @@ a { color: var(--green-ink); }
 <header>
   <div class="eyebrow"><span class="pill">Monad Metropolis · Honourable mention</span><span class="pill amber">Prepared for Monad Foundation</span></div>
   <h1>Terrace on Monad: <em>from testnet to matchday</em></h1>
-  <p class="lede">Terrace is the social prediction game for football fans: picks, takes, 1v1s with mates and leagues, with every result settled by Chainlink. This note sets out where we are, where we want to take it on Monad, and the help that would get us there fastest. The biggest open question is liquidity.</p>
+  <p class="lede">Terrace is the social prediction game for football fans: picks, takes, 1v1s with mates and leagues, with every result settled by Chainlink. This note sets out where we are, where we want to take it on Monad, and the help that would get us there fastest. The two biggest needs are the cost of running oracle-settled markets, and liquidity.</p>
 </header>
 
 <h2><span class="n">01</span>Where Terrace is today</h2>
@@ -116,8 +116,31 @@ a { color: var(--green-ink); }
   <li><strong>Terrace Points:</strong> rewards for playing, double for founding fans until 30 Nov.</li>
 </ul>
 
-<h2><span class="n">02</span>Liquidity for the markets</h2>
-<p class="sub">This is the main thing standing between Terrace and real money.</p>
+<h2><span class="n">02</span>The real cost: running an oracle-settled market</h2>
+<p class="sub">This is where we need the most help.</p>
+<p>Terrace has no admin key that decides results. Every market, take and 1v1 is settled by Chainlink CRE from official match data, and that is what makes it trustworthy. It also means the running costs grow with every match and every take, long before any revenue arrives. Today, on testnet, the stack looks like this:</p>
+<div class="tbl">
+<table>
+  <thead><tr><th>What runs</th><th>How often</th><th>What it costs at scale</th></tr></thead>
+  <tbody>
+    <tr><td>Match results</td><td>Every 2 minutes on matchdays, for every fixture in play (765 fixtures across ~19 leagues so far)</td><td>Oracle runs and an on-chain report per batch; a sports data call per batch</td></tr>
+    <tr><td>Fan takes</td><td>Every minute until each take is answered; every take is checked against full match data (events, line-ups, stats)</td><td>One data call and one oracle evaluation per open take, per run</td></tr>
+    <tr><td>AI judge</td><td>For takes that can't be written as a rule ("Haaland bullies the back line")</td><td>Model calls with match evidence, agreed across oracle nodes</td></tr>
+    <tr><td>Sealed picks</td><td>A confidential workflow opens hidden picks and league tables at kick-off</td><td>Extra oracle runs per gameweek and per sealed market</td></tr>
+    <tr><td>Fixtures</td><td>New matches scheduled every 6 hours</td><td>Oracle runs and gas to schedule</td></tr>
+    <tr><td>Sports data</td><td>A paid live-data plan today; real money needs a licensed official feed</td><td>Official feeds are the single biggest line item for sports betting products</td></tr>
+    <tr><td>Indexing</td><td>Every bet, take, vote and result indexed live (Envio)</td><td>We are already past the free tier's hours on testnet</td></tr>
+    <tr><td>Gas for fans</td><td>No signing pop-ups: we top up fans' gas and sponsor sign-in</td><td>Grows with every active fan</td></tr>
+    <tr><td>Runners</td><td>The settlement, pundit, house and push services run 24/7</td><td>Servers sized for matchday peaks</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Football makes this peaky: most of the load lands in a few hours on Saturday and Sunday, so the stack has to be sized for 3pm, not for the average.</p>
+<div class="ask"><div class="k">The ask</div>
+  <p>Help bringing these costs down to something a pre-revenue consumer app can carry: introductions to <strong>Monad's infrastructure partners</strong> (indexing, RPC, paymasters) on startup terms, a direct line to <strong>Chainlink</strong> on CRE pricing and timing for Monad mainnet, and intros to <strong>official sports data providers</strong> who work with ecosystem teams.</p>
+</div>
+
+<h2><span class="n">03</span>Liquidity partners and bootstrapping</h2>
 <p>Every market today is a pool: winners split what losers staked, less a small creator fee. On testnet our house agent seeds both sides so prices exist. With real money, thin pools mean poor prices, and a fan's niche take can sit with no one on the other side. Football also concentrates demand: thousands of fans want the same few markets at the same 3pm kick-off, then nothing for days.</p>
 <p>Terrace has two kinds of market, and they need different answers:</p>
 <ul>
@@ -130,28 +153,26 @@ a { color: var(--green-ink); }
 <table>
   <thead><tr><th>Option</th><th>How it works</th><th>Needs</th><th>Fit</th></tr></thead>
   <tbody>
-    <tr><td>Seeded pools</td><td>A funded market maker (or our house agent with a grant-funded float) puts money on both sides of every standard market before kick-off, priced from bookmaker lines.</td><td>Liquidity grant or MM partner; risk limits per market</td><td><span class="tag g">Fastest</span></td></tr>
-    <tr><td>AMM with a subsidy (LMSR-style)</td><td>A contract always quotes a price and always takes a bet. The worst-case loss per market is capped and covered by a subsidy pool.</td><td>Subsidy funding, contract work, audit</td><td><span class="tag g">Best UX</span></td></tr>
+    <tr><td>Seeded pools</td><td>A market-making partner puts money on both sides of every standard market before kick-off, priced from bookmaker lines.</td><td>A liquidity partner; risk limits per market</td><td><span class="tag g">Fastest</span></td></tr>
+    <tr><td>AMM (LMSR-style)</td><td>A contract always quotes a price and always takes a bet. The worst-case loss per market is capped by a funded liquidity pool.</td><td>Liquidity providers for the pool, contract work, audit</td><td><span class="tag g">Best UX</span></td></tr>
     <tr><td>Shared PM liquidity layer</td><td>Route standard football markets to an existing prediction-market or order-book protocol on Monad; Terrace stays the social and game-day layer on top.</td><td>An integration partner on Monad</td><td><span class="tag a">Most scalable</span></td></tr>
-    <tr><td>Hybrid</td><td>Seed pools now, move the busiest leagues to an AMM or shared order book once volume justifies it.</td><td>All of the above, staged</td><td><span class="tag g">Our plan</span></td></tr>
+    <tr><td>Hybrid</td><td>Bootstrap with seeded pools now, move the busiest leagues to an AMM or shared order book once volume justifies it.</td><td>All of the above, staged</td><td><span class="tag g">Our plan</span></td></tr>
   </tbody>
 </table>
 </div>
 <p>Kyle's RFP makes the same point: the opportunity is the experience built on top of trading and resolution infrastructure. We'd rather plug into shared liquidity on Monad than run a book ourselves.</p>
-
 <div class="ask"><div class="k">The ask</div>
-  <p>Introductions to <strong>market makers</strong> and <strong>prediction-market or order-book teams building on Monad</strong> who'd provide or share liquidity for football markets, and any <strong>liquidity grant or subsidy programme</strong> for a launch float (we'd start with the top 5 European leagues).</p>
+  <p>Introductions to <strong>market makers</strong> and <strong>prediction-market or order-book teams building on Monad</strong> who'd provide or share liquidity for football markets, and help putting together the <strong>initial liquidity</strong> to launch with (we'd start with the top 5 European leagues).</p>
 </div>
 
-<h2><span class="n">03</span>Getting to mainnet</h2>
+<h2><span class="n">04</span>Getting to mainnet</h2>
 <ul>
   <li><strong>Settlement currency:</strong> USDC (or Monad's main stablecoin) on mainnet. The contracts already take any approved settlement token.</li>
   <li><strong>Chainlink CRE in production on Monad mainnet.</strong> We settle through CRE simulation on testnet today; the receiver contracts are ready for the production forwarder.</li>
   <li><strong>Security audit</strong> of the markets, parlays, 1v1s, leagues and vault contracts before any real money.</li>
-  <li><strong>Infrastructure:</strong> indexing (Envio), RPC, and gas sponsorship, so fans keep a sign-in with no signing pop-ups.</li>
 </ul>
 <div class="ask"><div class="k">The ask</div>
-  <p>Audit partners or credits Monad offers ecosystem teams, infra credits (indexer, RPC, paymaster), and a contact for CRE on Monad mainnet timing.</p>
+  <p>Introductions to audit firms that work with Monad teams, and a contact for CRE and stablecoin timing on Monad mainnet.</p>
 </div>
 
 <h3>Legal: the gate to real money</h3>
@@ -160,7 +181,7 @@ a { color: var(--green-ink); }
   <p>Introductions to legal advisers that other Monad prediction-market or sports teams have worked with, and any guidance on jurisdictions where teams in the ecosystem have launched.</p>
 </div>
 
-<h2><span class="n">04</span>Community and go-to-market</h2>
+<h2><span class="n">05</span>Community and go-to-market</h2>
 <p>Football is a group sport. Terrace grows through group chats, mates and leagues, so our go-to-market is built around matchdays and existing football communities.</p>
 <ul>
   <li><strong>A Monad community league:</strong> an FPL-style league on Terrace for the Monad community, weekly gameweeks with prizes. An easy first campaign, and a fun one for FPL players in the ecosystem.</li>
@@ -171,19 +192,20 @@ a { color: var(--green-ink); }
   <li><strong>AI agents:</strong> <code>terrace-mcp</code> already lets AI agents play; agent-vs-agent and fan-vs-agent leagues are a story Monad can tell about consumer AI on-chain.</li>
 </ul>
 <div class="ask"><div class="k">The ask</div>
-  <p>Introductions to football creators and FPL communities, Monad consumer apps for cross-promotion, the Foundation's marketing team for matchday moments, and any <strong>grant or accelerator</strong> for consumer apps after Metropolis.</p>
+  <p>Introductions to football creators and FPL communities, Monad consumer apps for cross-promotion, and the Foundation's marketing team for matchday moments.</p>
 </div>
 
-<h2><span class="n">05</span>Proposed plan</h2>
+<h2><span class="n">06</span>Proposed plan</h2>
 <div class="timeline">
   <div class="phase"><div class="when">Weeks 1–4</div><ul>
     <li>Monad community league on testnet; first co-marketed matchday.</li>
+    <li>Infra conversations: indexing, RPC, paymaster and data partners; CRE on mainnet.</li>
     <li>Liquidity conversations: market makers and PM-layer teams; pick the launch model.</li>
     <li>Audit scoping; legal advice on structure.</li>
   </ul></div>
   <div class="phase"><div class="when">Weeks 5–10</div><ul>
     <li>Free-to-play mainnet launch (points, prizes) with sponsored gas.</li>
-    <li>Seeded standard markets for the top 5 leagues; AMM work starts.</li>
+    <li>Bootstrap standard markets for the top 5 leagues with a liquidity partner; AMM work starts.</li>
     <li>Creator leagues and watch parties; agent leagues via <code>terrace-mcp</code>.</li>
   </ul></div>
   <div class="phase"><div class="when">After</div><ul>
@@ -192,16 +214,16 @@ a { color: var(--green-ink); }
   </ul></div>
 </div>
 
-<h2><span class="n">06</span>Asks, in one list</h2>
+<h2><span class="n">07</span>Asks, in one list</h2>
 <ul class="checklist">
+  <li>Intros to Monad's infrastructure partners (indexing, RPC, paymasters) on startup terms.</li>
+  <li>A direct line to Chainlink on CRE pricing and timing for Monad mainnet.</li>
+  <li>Intros to official sports data providers.</li>
   <li>Intros to market makers and prediction-market or order-book teams on Monad.</li>
-  <li>Liquidity grant or subsidy for a launch float on standard markets.</li>
-  <li>Audit partners or credits; infra credits for indexing, RPC and gas sponsorship.</li>
-  <li>A contact for Chainlink CRE and stablecoin timing on Monad mainnet.</li>
-  <li>Legal adviser intros from other Monad PM or sports teams.</li>
+  <li>Help bootstrapping initial liquidity for standard markets.</li>
+  <li>Intros to audit firms and legal advisers other Monad teams have used.</li>
   <li>Matchday co-marketing and a Monad community league.</li>
   <li>Intros to football creators, FPL communities, and Monad consumer apps.</li>
-  <li>Grant or accelerator options for consumer apps after Metropolis.</li>
 </ul>
 
 <footer>
