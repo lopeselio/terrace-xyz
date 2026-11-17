@@ -1,0 +1,55 @@
+{
+  "v": 4,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T19:30:00Z"
+  },
+  "lists": "css",
+  "title": "Terrace Pitch Deck",
+  "order": [
+    "cover",
+    "story",
+    "market",
+    "problem",
+    "move",
+    "product",
+    "gameday",
+    "social",
+    "leagues",
+    "compare",
+    "monad",
+    "stack",
+    "traction",
+    "growth",
+    "close"
+  ],
+  "sections": {
+    "s1": {
+      "description": "Why fans need a place to back their takes",
+      "start": "cover"
+    },
+    "s2": {
+      "description": "What Terrace is and how it plays",
+      "start": "move"
+    },
+    "s3": {
+      "description": "Why it wins and why Monad and Chainlink",
+      "start": "compare"
+    },
+    "s4": {
+      "description": "Traction, growth, roadmap and the team",
+      "start": "traction"
+    }
+  },
+  "faces": {
+    "barlow-condensed": {
+      "family": "Barlow Condensed",
+      "href": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&display=swap"
+    },
+    "barlow": {
+      "family": "Barlow",
+      "href": "https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
+    }
+  },
+  "designSystems": []
+}

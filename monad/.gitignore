@@ -18,3 +18,5 @@ cre/**/.env
 !indexer/package.json
 *.tsbuildinfo
 !ask/vercel.json
+!pitch/vercel.json
+!pitch/slides/deck.json
