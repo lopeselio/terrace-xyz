@@ -5,7 +5,7 @@ import Script from "next/script";
  * an env var. Empty means analytics is off. Ads storage and personalisation are always denied: we only count
  * visits. GA4's enhanced measurement records client-side route changes as page views.
  */
-export const GA_ID = "";
+export const GA_ID = "G-LBWP6K6CVJ";
 
 export function GoogleAnalytics() {
   if (!GA_ID) return null;
