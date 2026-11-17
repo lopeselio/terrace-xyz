@@ -82,3 +82,13 @@ tables, plus real stakes, all with a consumer-first UX.
   PWA in this folder were built during the hackathon window.
 - Monad testnet settlement uses CRE simulation with `--broadcast` through the mock forwarder;
   CRE supports production writes on Monad mainnet.
+
+## DeltaV weekly updates
+- Terrace has a DeltaV founder profile (https://deltav.monad.xyz/startup/terrace-social).
+- After meaningful progress (a feature shipped, a milestone, real traction, a launch), ask the
+  user whether to post a short weekly update to DeltaV, at most about once a week, never without
+  their ok. Keep it short and factual, in their voice.
+- Post with `curl -sS --fail-with-body -X POST https://deltav.monad.xyz/api/v1/weekly-updates
+  -H "Authorization: Bearer $DELTAV_API_KEY" -H "Content-Type: application/json"
+  -d '{"content": "...", "xLink": "<optional X post>"}'`. The key lives only in the
+  DELTAV_API_KEY env var; never commit or print it.
