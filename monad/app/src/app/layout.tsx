@@ -10,6 +10,7 @@ import { PointsToast } from "@/components/PointsToast";
 import { TabBar } from "@/components/TabBar";
 import { SideNav } from "@/components/SideNav";
 import { LAYOUT_BOOT } from "@/lib/layout";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PointsToast />
           <StoppagePopup />
         </Providers>
+        <GoogleAnalytics />
       </body>
     </html>
   );

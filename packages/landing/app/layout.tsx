@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed, JetBrains_Mono, Tektur } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import "./globals.css";
 
 const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-barlow" });
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <Analytics />
+        <GoogleAnalytics />
       </body>
     </html>
   );
