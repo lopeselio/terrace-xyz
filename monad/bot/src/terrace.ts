@@ -28,6 +28,17 @@ export class Terrace {
     this.url = url.replace(/\/+$/, "");
   }
 
+  private cache: { at: number; list: Promise<Match[]> } | null = null;
+  /** One shared /api/matches read for the bot, the watcher and the live hub; concurrent callers share the request. */
+  cachedMatches(maxAgeMs = 60_000): Promise<Match[]> {
+    if (!this.cache || Date.now() - this.cache.at > maxAgeMs) {
+      const list = this.matches();
+      this.cache = { at: Date.now(), list };
+      list.catch(() => (this.cache = null));
+    }
+    return this.cache.list;
+  }
+
   async matches(): Promise<Match[]> {
     const r = await this.fetcher(`${this.url}/api/matches`);
     if (!r.ok) throw new Error(`matches ${r.status}`);
@@ -50,10 +61,12 @@ export class Terrace {
   }
 
   /** Take markets listed since a time on some fixtures: used to spot the market a group take opened. */
-  async takeMarketsSince(fixtureIds: number[], sinceUnix: number): Promise<IndexedMarket[]> {
+  async takeMarketsSince(fixtureIds: number[], texts: string[], sinceUnix: number): Promise<IndexedMarket[]> {
+    // Only markets whose words match a pending take, newest first, so old busy fixtures can't crowd new takes out.
+    const like = texts.map((t) => ({ question: { text: { _ilike: t.replace(/[\\%_]/g, (c) => `\\${c}`) } } }));
     const d = await this.gql<{ Market: IndexedMarket[] }>(
-      `query($f: [String!], $t: numeric!) { Market(where: { question: { fixture_id: { _in: $f } }, take_id: { _is_null: false }, createdAt: { _gte: $t } }, order_by: { createdAt: asc }, limit: 200) { ${MARKET} } }`,
-      { f: fixtureIds.map(String), t: sinceUnix },
+      `query($f: [String!], $t: numeric!, $like: [Market_bool_exp!]) { Market(where: { question: { fixture_id: { _in: $f } }, take_id: { _is_null: false }, createdAt: { _gte: $t }, _or: $like }, order_by: { createdAt: desc }, limit: 200) { ${MARKET} } }`,
+      { f: fixtureIds.map(String), t: sinceUnix, like },
     );
     return d.Market;
   }
@@ -82,7 +95,7 @@ export class Terrace {
   /** Live snapshots for the fan-out hub: one request for every watched fixture. */
   async snapshots(ids: number[]): Promise<Snapshot[]> {
     const want = new Set(ids);
-    return (await this.matches())
+    return (await this.cachedMatches(20_000))
       .filter((m) => want.has(m.id))
       .map((m) => ({ id: m.id, status: m.status, elapsed: m.elapsed, home: m.home.name, away: m.away.name, goals: m.goals }));
   }

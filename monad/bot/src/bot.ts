@@ -30,14 +30,9 @@ export function createBot(cfg: BotConfig, d: BotDeps) {
   const bot = new Bot(cfg.token, cfg.botInfo ? { botInfo: cfg.botInfo } : undefined);
   const now = () => Math.floor((d.now ?? Date.now)() / 1000);
   const username = () => cfg.username ?? bot.botInfo.username;
-  const choices = new Map<string, { raw: string; at: number }>();
+  const choices = new Map<string, { raw: string; at: number; author: { id: number; name: string } }>();
 
-  let fixtureCache: { at: number; list: Fixture[] } | null = null;
-  async function fixtures(): Promise<Fixture[]> {
-    if (fixtureCache && Date.now() - fixtureCache.at < 60_000) return fixtureCache.list;
-    fixtureCache = { at: Date.now(), list: await d.terrace.matches() };
-    return fixtureCache.list;
-  }
+  const fixtures = (): Promise<Fixture[]> => d.terrace.cachedMatches();
 
   bot.use(async (ctx, next) => {
     if (ctx.chat && ctx.from && !ctx.from.is_bot) d.store.seen(ctx.chat.id, ctx.from.id);
@@ -88,7 +83,7 @@ export function createBot(cfg: BotConfig, d: BotDeps) {
     d.store.newLinkCode(code, ctx.from.id, displayName(ctx.from), now() + 600);
     await ctx.reply(
       "Tap to put your Terrace record on your groups' tables. It opens Terrace and asks you to confirm with your passkey or email. Nothing is shared but your name and record. The link works once, for 10 minutes.",
-      { reply_markup: new InlineKeyboard().url("Link my Terrace", linkPage(cfg.terraceUrl, cfg.botUrl, code)) },
+      { reply_markup: new InlineKeyboard().url("Link my Terrace", linkPage(cfg.terraceUrl, code)) },
     );
   }
 
@@ -96,11 +91,12 @@ export function createBot(cfg: BotConfig, d: BotDeps) {
   bot.callbackQuery(/^fx:([\w-]+):(\d+)$/, async (ctx) => {
     const [, key, id] = ctx.match;
     const c = choices.get(key);
+    if (c && ctx.from?.id !== c.author.id) return void (await ctx.answerCallbackQuery({ text: `That's ${c.author.name}'s take to place.` }));
     await ctx.answerCallbackQuery();
     if (!c) return;
     choices.delete(key);
-    const f = (await fixtures()).find((x) => x.id === Number(id));
-    if (f) await publishTake(ctx, c.raw, f);
+    const f = (await fixtures().catch(() => [] as Fixture[])).find((x) => x.id === Number(id));
+    if (f) await publishTake(ctx, c.raw, f, c.author);
   });
 
   bot.on("message:text", async (ctx) => {
@@ -130,25 +126,26 @@ export function createBot(cfg: BotConfig, d: BotDeps) {
     if (!found.length) return void (await ctx.reply("I can't see that match on Terrace yet. Name a team playing in the next few days."));
     if (found.length > 1) {
       const key = newToken(6);
-      choices.set(key, { raw, at: Date.now() });
+      if (!ctx.from) return;
+      choices.set(key, { raw, at: Date.now(), author: { id: ctx.from.id, name: displayName(ctx.from) } });
       for (const [k, v] of choices) if (Date.now() - v.at > 15 * 60_000) choices.delete(k);
       const kb = new InlineKeyboard();
       for (const f of found) kb.text(`${matchLabel(f)} · ${when(f.kickoff, cfg.tz)}`, `fx:${key}:${f.id}`).row();
       return void (await ctx.reply("Which match?", { reply_markup: kb }));
     }
-    await publishTake(ctx, raw, found[0]);
+    if (ctx.from) await publishTake(ctx, raw, found[0], { id: ctx.from.id, name: displayName(ctx.from) });
   }
 
-  async function publishTake(ctx: Context, raw: string, f: Fixture) {
+  async function publishTake(ctx: Context, raw: string, f: Fixture, by: { id: number; name: string }) {
     const parsed = parseTake(raw, username())!;
-    if (!ctx.chat || !ctx.from) return;
-    const c = await d.terrace.compile(parsed.text, f.id);
+    if (!ctx.chat) return;
+    const c = await d.terrace.compile(parsed.text, f.id).catch(() => ({ error: "server" }));
     if ("error" in c) return void (await ctx.reply(STOPPAGE[c.error] ?? STOPPAGE.server));
     if (c.closeTime <= now()) return void (await ctx.reply("That one's already locked. Try a take on a match that hasn't kicked off."));
     const token = newToken();
     const stake = parsed.stake ?? cfg.defaultStake;
-    const author = displayName(ctx.from);
-    d.store.addPending({ token, chatId: ctx.chat.id, authorTg: ctx.from.id, authorName: author, text: parsed.text, fixtureId: f.id, stake, closeTime: c.closeTime, reading: c.reading, ruled: !!c.spec, createdAt: now() });
+    const author = by.name;
+    d.store.addPending({ token, chatId: ctx.chat.id, authorTg: by.id, authorName: author, text: parsed.text, fixtureId: f.id, stake, closeTime: c.closeTime, reading: c.reading, ruled: !!c.spec, createdAt: now() });
     const msg = await ctx.reply(takeCard({ author, text: parsed.text, reading: c.reading, fixture: f, closeTime: c.closeTime, stake, ruled: !!c.spec, tz: cfg.tz }), {
       parse_mode: "HTML",
       reply_markup: takeKeyboard(cfg.botUrl, token, f.id, cfg.terraceUrl),
