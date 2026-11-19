@@ -17,10 +17,10 @@ export function parseTake(raw: string, botUsername: string): ParsedTake | null {
   s = s.replace(new RegExp(`@${escape(botUsername)}\\b`, "ig"), "");
   s = s.replace(/\s+/g, " ").trim();
   let stake: number | null = null;
-  const m = s.match(/(?:[,;:\-–]\s*|\s+for\s+|\s+)(?:[$£€]\s?)?(\d{1,4}(?:\.\d{1,2})?)\s*(?:quid|bucks|dollars|usd)?\s*[.!]?$/i);
+  const m = s.match(/(?:[,;:]\s*|\s+for\s+|\s+)(?:[$£€]\s?)?(\d{1,4}(?:\.\d{1,2})?)\s*(?:quid|bucks|dollars|usd)?\s*[.!]?$/i);
   // Only treat a trailing number as a stake when it's clearly separated (comma, currency, "for") or there's a
   // currency sign; "Haaland scores 2" must keep its number.
-  if (m && (/[,;:\-–$£€]|for\s/i.test(m[0]) || /quid|bucks|dollars|usd/i.test(m[0]))) {
+  if (m && (/[,;:$£€]|for\s/i.test(m[0]) || /quid|bucks|dollars|usd/i.test(m[0]))) {
     const n = Number(m[1]);
     if (n >= MIN_STAKE && n <= MAX_STAKE) {
       stake = n;

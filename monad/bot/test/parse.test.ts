@@ -14,6 +14,10 @@ describe("parseTake", () => {
     expect(parseTake("/take Spurs win Sunday", "TerraceBot")).toEqual({ text: "Spurs win Sunday", stake: null });
     expect(parseTake("/take@TerraceBot Spurs win, $15", "TerraceBot")).toEqual({ text: "Spurs win", stake: 15 });
   });
+  test("a scoreline at the end is part of the take, not a stake", () => {
+    expect(parseTake("/take Arsenal win 2-1", "TerraceBot")).toEqual({ text: "Arsenal win 2-1", stake: null });
+    expect(parseTake("/take Arsenal win 3–0, 10", "TerraceBot")).toEqual({ text: "Arsenal win 3–0", stake: 10 });
+  });
   test("keeps numbers that are part of the take", () => {
     expect(parseTake("/take Haaland scores 2", "TerraceBot")).toEqual({ text: "Haaland scores 2", stake: null });
     expect(parseTake("/take over 3.5 goals at Anfield", "TerraceBot")!.text).toBe("over 3.5 goals at Anfield");
