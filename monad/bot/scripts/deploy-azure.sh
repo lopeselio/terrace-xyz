@@ -25,10 +25,12 @@ if [ "${1:-}" = "--setup" ]; then
 fi
 
 echo "== code -> ~/terrace/bot (database and .env on the server are kept)"
-rsync -az --delete -e "ssh -i $KEY" --exclude node_modules --exclude .env --exclude 'bot.sqlite*' ./ "$VM:terrace/bot/"
+rsync -az --delete -e "ssh -i $KEY" --exclude node_modules --exclude .env --exclude 'bot.sqlite*' --exclude bun.lock ./ "$VM:terrace/bot/"
 # The .env goes across as a file, never through the terminal.
 "${SSH[@]}" 'umask 077; cat > ~/terrace/bot/.env && chmod 600 ~/terrace/bot/.env' < .env
-"${SSH[@]}" 'cd ~/terrace/bot && ~/.bun/bin/bun install --production --frozen-lockfile 2>/dev/null || ~/.bun/bin/bun install --production'
+# The lockfile stays behind: it's written by a newer bun than the VM's 1.3.2 (which the runners use), and
+# package.json pins the ranges.
+"${SSH[@]}" 'cd ~/terrace/bot && rm -f bun.lock && ~/.bun/bin/bun install --production --no-save'
 
 if [ "${1:-}" = "--setup" ]; then
   echo "== Caddy for $HOST and the terrace-bot service"
