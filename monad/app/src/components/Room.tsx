@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { ChallengeSheet } from "./ChallengeSheet";
+import { shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
 import { TakeSheet } from "./TakeSheet";
@@ -102,6 +103,19 @@ export function Room({
     document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center" });
   }, [messages]);
 
+  // A group chat's Back it / Fade it link (?bet=yes&stake=10#take-12) opens the bet sheet on that take.
+  const betLinked = useRef(false);
+  useEffect(() => {
+    if (betLinked.current || !messages?.length) return;
+    const q = new URLSearchParams(window.location.search);
+    const side = q.get("bet");
+    const m = messages.find((x) => `#take-${x.id}` === window.location.hash);
+    if (!side || !m?.market) return;
+    betLinked.current = true;
+    openBet(m, side === "no" ? 2 : 1, Number(q.get("stake")) || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
   // The chat is its own scroll window (like a messaging app): sized to fill the screen above the
   // composer and tab bar, pinned to the newest take.
   const pane = useRef<HTMLDivElement>(null);
@@ -178,7 +192,7 @@ export function Room({
     });
   }
 
-  function openBet(m: Msg, side: 1 | 2) {
+  function openBet(m: Msg, side: 1 | 2, stake?: number) {
     const mk = m.market!;
     const yes = Number(mk.yesPool), no = Number(mk.noPool);
     setBetPick({
@@ -187,6 +201,7 @@ export function Room({
       side,
       pool: side === 1 ? { side: yes, other: no } : { side: no, other: yes },
       feeBps: mk.feeBps,
+      stake,
       note: mk.question.spec ? "Settled from live match data by Chainlink." : "Settled by Chainlink's AI judge after full time. Unclear means refunds.",
       place: (dollars) => {
         if (!address) throw new FanError("Sign in to place it.");
@@ -257,6 +272,11 @@ export function Room({
                   <Icon name="shield" size={12} />
                   {mk.question.spec ? "Settles from live match data, checked by Chainlink" : "Settles after full time: Terrace AI judges it, Chainlink checks"}
                 </p>
+              )}
+              {mk && (
+                <button type="button" className="btn-out" style={{ marginTop: 6 }} onClick={() => shareLink(`“${m.text}”`, `“${m.text}” — back it or fade it on Terrace:`, `${window.location.origin}/b/${mk.id}`)}>
+                  Post to group
+                </button>
               )}
 
               {mk && (

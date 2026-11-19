@@ -120,6 +120,17 @@ cre workflow simulate questions  -T staging-settings --non-interactive --trigger
 cre workflow simulate reveal     -T staging-settings --non-interactive --trigger-index 0 --broadcast   # open sealed picks
 ```
 
+### Group-chat bot (Telegram)
+
+`bot/` turns takes in a Telegram group into Terrace markets: `@TerraceBot Saka scores Sunday, 10`
+gets the rule, match and lock time with **Back it / Fade it** links into the bet sheet. It holds no keys
+or funds, reads the app and indexer only, and posts full-time results from CRE settlement. Setup
+(BotFather token, webhook, env) is in [`bot/README.md`](bot/README.md).
+
+```bash
+cd bot && bun install && bun start   # webhook server; bun run webhook points Telegram at it
+```
+
 ### AI agents
 
 **The Gaffer** (`agents/pundit.ts`) is an autonomous AI player: each round it asks Gemini (with live

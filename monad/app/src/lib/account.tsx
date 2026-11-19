@@ -24,6 +24,12 @@ async function emailUnlocker(check = false) {
   return { address, wrapKey: wrapKeyFromSignature(signature) };
 }
 
+function openFound(found: { root: Uint8Array; account: Address }) {
+  const k = openRoot(found.root, emailAgain);
+  if (k.account.address.toLowerCase() !== found.account.toLowerCase()) throw new FanError("That email's Terrace key didn't match. Try again.");
+  return k;
+}
+
 /** The root an email sign-in unlocks, or null if this email hasn't been linked to an account yet. */
 async function rootFromEmail(): Promise<{ root: Uint8Array; account: Address } | null> {
   const { address, wrapKey } = await emailUnlocker();
@@ -65,6 +71,11 @@ type Ctx = {
   linkEmail: () => Promise<void>;
   /** Add a Face ID passkey to an account that started with email. */
   addPasskey: () => Promise<void>;
+  /**
+   * Inside the Telegram Mini App: open the account of the email whose Privy user has this Telegram linked,
+   * with no code. Quiet: resolves null (and shows no error) when there's nothing to open.
+   */
+  loginTelegram: () => Promise<Keys | null>;
 };
 
 const AccountContext = createContext<Ctx | null>(null);
@@ -185,11 +196,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     () =>
       finish(async () => {
         const found = await rootFromEmail();
-        if (found) {
-          const k = openRoot(found.root, emailAgain);
-          if (k.account.address.toLowerCase() !== found.account.toLowerCase()) throw new FanError("That email's Terrace key didn't match. Try again.");
-          return k;
-        }
+        if (found) return openFound(found);
         // A new fan starting with email: a fresh root, linked to this email before they can play,
         // because the vault is the only place this account can come back from.
         const { address, wrapKey } = await emailUnlocker(true);
@@ -199,6 +206,17 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       }, "email"),
     [finish, linkUnlocker],
   );
+
+  const loginTelegram = useCallback(async () => {
+    try {
+      await emailBridge().loginTelegram();
+    } catch {
+      return null; // Telegram isn't linked to an email sign-in yet: the fan signs in the usual way.
+    }
+    const found = await rootFromEmail().catch(() => null);
+    if (!found) return null;
+    return finish(async () => openFound(found), "email");
+  }, [finish]);
 
   const linkEmail = useCallback(async () => {
     if (!keys) throw new FanError("Sign in first.");
@@ -242,8 +260,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<Ctx>(
-    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey }),
-    [status, keys, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey],
+    () => ({ status, keys, address: keys?.account.address ?? null, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey, loginTelegram }),
+    [status, keys, error, join, login, loginFrom, logout, send, sign, method, loginEmail, linkEmail, addPasskey, loginTelegram],
   );
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

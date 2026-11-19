@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { OpenInBrowser } from "./OpenInBrowser";
+import { inTelegram } from "@/lib/telegram";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 import { TerraceMark } from "./TerraceMark";
@@ -223,6 +225,7 @@ function SignInButtons({ busy, error, join, login, onDone }: { busy: boolean; er
         <Icon name="shield" size={12} /> Face ID or fingerprint. No passwords, nothing to install.
       </div>
       {error && <p className="error" style={{ textAlign: "center", marginTop: 8 }}>{error}</p>}
+      <OpenInBrowser failed={!!error} />
       {onDone && (
         <button className="textbtn onb-skip" onClick={onDone}>Look around first</button>
       )}
@@ -244,7 +247,8 @@ export function Onboarding() {
   useEffect(() => {
     try {
       const before = localStorage.getItem("terrace.hasPasskey") === "1" || localStorage.getItem("terrace.signedInHere") === "1";
-      setShow(!before && !sessionStorage.getItem(LATER));
+      // Fans arriving from a group chat's button came to back a take, not for the tour.
+      setShow(!before && !sessionStorage.getItem(LATER) && !inTelegram());
     } catch {}
   }, []);
   useEffect(() => {

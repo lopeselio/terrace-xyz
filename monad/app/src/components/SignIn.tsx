@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 import { useAccount } from "@/lib/account";
 import { EmailSignIn } from "./EmailSignIn";
 import { OldPasskey } from "./OldPasskey";
+import { OpenInBrowser } from "./OpenInBrowser";
 
 /** One passkey ceremony. No seed phrase, no extension, no email code. */
 export function SignIn({ reason = "Save your picks and join the chat.", bare }: { reason?: string; bare?: boolean }) {
@@ -30,6 +31,7 @@ export function SignIn({ reason = "Save your picks and join the chat.", bare }: 
       <EmailSignIn />
       <div className="umeta" style={{ textAlign: "center", marginTop: 10 }}>No seed phrase, no app to install. Your passkey is your account on any device.</div>
       {error && <p className="error" style={{ marginTop: 8 }}>{error}</p>}
+      <OpenInBrowser failed={!!error} />
     </div>
   );
 }
