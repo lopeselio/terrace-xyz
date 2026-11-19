@@ -66,7 +66,9 @@ Telegram ──webhook──► src/server.ts ─► src/bot.ts ──► Terrac
 
    In the app (Vercel), set `NEXT_PUBLIC_TELEGRAM_BOT_URL` to `BOT_PUBLIC_URL` so the link page only ever
    talks to your bot.
-3. **Run.** `bun install && bun start` (port `PORT`, default 8787). It can run on the same machine as the
+3. **Run.** On the Terrace runners VM: `bash scripts/deploy-azure.sh --setup` the first time (firewall, Caddy
+   for HTTPS, a `terrace-bot` systemd service), plain `bash scripts/deploy-azure.sh` to ship changes. Locally:
+   `bun install && bun start` (port `PORT`, default 8787). It can run on the same machine as the
    CRE match-day runner; it needs no CRE keys.
 4. **Point Telegram at it.** `bun run webhook` sets the webhook and the command menu.
 5. **Add it to a group.** Group → Add members → search the bot's username. Then try
