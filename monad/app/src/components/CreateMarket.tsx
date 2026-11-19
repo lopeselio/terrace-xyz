@@ -1,13 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "./Header";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
 import { compileTake, explainCompile, FeeSlider, StakeChips, TakeReading, type Compiled } from "./TakeSheet";
 import { Crest, Empty, Sheet, SheetHead } from "./ui";
 import { useAccount } from "@/lib/account";
-import { listTake, postMessage, type Money } from "@/lib/play";
+import { groupPointsLive, listTake, postMessage, type Money } from "@/lib/play";
 import { balanceChanged } from "@/lib/useBalance";
 import "@/styles/create.css";
 import { showError } from "@/lib/errors";
@@ -24,16 +24,18 @@ const when = (f: CreateFixture) => (LIVE.has(f.status) ? "Live now" : <LocalTime
  * and you read it in plain English, set your cut, back it. Publishing posts the take to the match room
  * and opens its market in one go.
  */
-export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[]; initial?: number }) {
+export type Prefill = { text: string; side: 1 | 2; stake: number; fromGroup: boolean };
+
+export function CreateMarket({ fixtures, initial, prefill }: { fixtures: CreateFixture[]; initial?: number; prefill?: Prefill }) {
   const router = useRouter();
   const { status, address, send } = useAccount();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(prefill?.text ?? "");
   const [fixture, setFixture] = useState<CreateFixture | null>(fixtures.find((f) => f.id === initial) ?? fixtures[0] ?? null);
   const [picking, setPicking] = useState(false);
   const [compiled, setCompiled] = useState<Compiled | null>(null);
   const [reading, setReading] = useState(false);
   const [feeBps, setFeeBps] = useState(300);
-  const [dollars, setDollars] = useState(5);
+  const [dollars, setDollars] = useState(prefill?.stake ?? 5);
   const [money, setMoney] = useState<Money>("usd");
   const [busy, setBusy] = useState<"post" | "publish" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,13 +53,22 @@ export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[];
     explainCompile(c, read);
   }
 
+  // A take from a group chat arrives ready: read it straight away so the fan only has to publish.
+  const autoRead = useRef(false);
+  useEffect(() => {
+    if (!prefill || autoRead.current || !ready) return;
+    autoRead.current = true;
+    void read();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill, ready]);
+
   async function publish() {
     if (!compiled || compiled.error || !fixture || !address) return;
     setBusy("publish");
     setError(null);
     try {
       const messageId = await postMessage(send, 0, BigInt(fixture.id), text.trim());
-      await listTake(send, address, { messageId, fixtureId: BigInt(fixture.id), closeTime: compiled.closeTime, text: text.trim(), spec: compiled.spec, money, dollars, feeBps });
+      await listTake(send, address, { messageId, fixtureId: BigInt(fixture.id), closeTime: compiled.closeTime, text: text.trim(), spec: compiled.spec, money, dollars, feeBps, side: prefill?.side, fromGroup: prefill?.fromGroup && groupPointsLive });
       balanceChanged();
       router.push(`/m/${fixture.id}#take-${messageId}`);
     } catch (e) {
@@ -153,7 +164,7 @@ export function CreateMarket({ fixtures, initial }: { fixtures: CreateFixture[];
         <div className="dock">
           {compiled && !compiled.error ? (
             <button className="cta" disabled={!!busy || !!expired} onClick={publish}>
-              {busy === "publish" ? "Putting it on the board…" : `Publish market · $${dollars}`}
+              {busy === "publish" ? "Putting it on the board…" : `${prefill?.side === 2 ? "Fade it" : prefill ? "Back it" : "Publish market"} · $${dollars}`}
             </button>
           ) : (
             <button className="cta" disabled={!ready || reading} onClick={read}>

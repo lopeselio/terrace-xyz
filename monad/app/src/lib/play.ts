@@ -36,10 +36,17 @@ export function backTake(send: Send, messageId: bigint) {
   return send({ ...chatAt(messageId), functionName: "back", args: [messageId] });
 }
 
+/**
+ * Top bit of a take's chat reference: set when the take came from a group chat through the Terrace bot, so
+ * the indexer can award the chat-market and group-invite points. Off until the indexer that reads it is live.
+ */
+export const GROUP_REF = 1n << 255n;
+export const groupPointsLive = process.env.NEXT_PUBLIC_GROUP_POINTS === "1";
+
 export async function listTake(
   send: Send,
   owner: Address,
-  t: { messageId: bigint; fixtureId: bigint; closeTime: number; text: string; spec: string; money: Money; dollars: number; feeBps?: number },
+  t: { messageId: bigint; fixtureId: bigint; closeTime: number; text: string; spec: string; money: Money; dollars: number; feeBps?: number; side?: 1 | 2; fromGroup?: boolean },
 ) {
   const token = tokenOf(t.money);
   const stake = toUnits(t.dollars);
@@ -48,7 +55,7 @@ export async function listTake(
     address: ADDR.markets,
     abi: marketsAbi,
     functionName: "createTakeMarket",
-    args: [t.messageId, t.fixtureId, BigInt(t.closeTime), t.text, t.spec ? stringToHex(t.spec) : "0x", token, t.feeBps ?? 300, YES, stake],
+    args: [t.fromGroup ? t.messageId | GROUP_REF : t.messageId, t.fixtureId, BigInt(t.closeTime), t.text, t.spec ? stringToHex(t.spec) : "0x", token, t.feeBps ?? 300, t.side ?? YES, stake],
     dollars: t.dollars,
   });
 }
