@@ -113,8 +113,11 @@ export function resolveFixture(text: string, fixtures: Fixture[], nowUnix: numbe
     const onDay = pool.filter((x) => weekday(x.f.kickoff, tz) === day);
     if (onDay.length) pool = onDay;
   }
-  const top = Math.max(...pool.map((x) => x.score));
-  pool = pool.filter((x) => x.score === top).sort((a, b) => a.f.kickoff - b.f.kickoff);
+  if (pool[0].both) {
+    const top = Math.max(...pool.map((x) => x.score));
+    pool = pool.filter((x) => x.score === top);
+  }
+  pool.sort((a, b) => a.f.kickoff - b.f.kickoff);
   // One team named and no day: their next match is what fans mean.
   if (!pool[0].both && day < 0) {
     const teams = new Set(pool.map((x) => (mentions(text, x.f.home.name) >= mentions(text, x.f.away.name) ? x.f.home.name : x.f.away.name)));

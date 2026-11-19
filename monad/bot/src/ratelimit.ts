@@ -67,7 +67,8 @@ export class SendQueue {
   }
 
   private allowed(chatId: number, t: number) {
-    if (t - (this.lastByChat.get(chatId) ?? 0) < this.limits.chatGapMs) return false;
+    const last = this.lastByChat.get(chatId);
+    if (last !== undefined && t - last < this.limits.chatGapMs) return false;
     const recent = (this.minuteByChat.get(chatId) ?? []).filter((x) => t - x < 60_000);
     this.minuteByChat.set(chatId, recent);
     return chatId > 0 || recent.length < this.limits.groupPerMin;
