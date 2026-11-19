@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { SendQueue, type Job } from "../src/ratelimit";
+import { MAX_TEXT, SendQueue, type Job } from "../src/ratelimit";
 
 function rig() {
   let t = 1_000_000;
@@ -56,4 +56,16 @@ test("retry_after pauses the queue and keeps the message", async () => {
   await q.tick();
   expect(sent).toEqual(["hi"]);
   q.stop();
+});
+
+test("merges stop short of Telegram's 4096 characters; one long text is cut", async () => {
+  const r = rig();
+  const chunk = "g".repeat(3000);
+  r.q.push({ chatId: -1, text: chunk, key: "ft-1" });
+  r.q.push({ chatId: -1, text: chunk, key: "ft-1" });
+  r.q.push({ chatId: -2, text: "x".repeat(5000) });
+  expect(r.q.size).toBe(3);
+  await r.q.tick();
+  expect(r.sent.every((j) => j.text.length <= MAX_TEXT)).toBe(true);
+  r.q.stop();
 });

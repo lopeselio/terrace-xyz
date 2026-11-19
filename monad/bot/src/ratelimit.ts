@@ -10,6 +10,10 @@ export type Sender = (job: Job) => Promise<unknown>;
 export type Limits = { globalPerSec: number; chatGapMs: number; groupPerMin: number };
 export const TELEGRAM_LIMITS: Limits = { globalPerSec: 25, chatGapMs: 1100, groupPerMin: 18 };
 
+/** Telegram's limit for one message. Merges stop short of it; a single longer text is cut. */
+export const MAX_TEXT = 4096;
+const clip = (t: string) => (t.length <= MAX_TEXT ? t : `${t.slice(0, MAX_TEXT - 1)}…`);
+
 export class SendQueue {
   private queue: Job[] = [];
   private lastByChat = new Map<number, number>();
@@ -29,9 +33,10 @@ export class SendQueue {
 
   /** Queue a message. Jobs with the same key for the same chat that haven't gone yet are joined into one. */
   push(job: Job) {
-    const same = job.key ? this.queue.find((j) => j.chatId === job.chatId && j.key === job.key && !j.extra && !job.extra) : undefined;
-    if (same) same.text = `${same.text}\n\n${job.text}`;
-    else this.queue.push({ ...job });
+    const text = clip(job.text);
+    const same = job.key ? this.queue.find((j) => j.chatId === job.chatId && j.key === job.key && !j.extra && !job.extra && j.text.length + 2 + text.length <= MAX_TEXT) : undefined;
+    if (same) same.text = `${same.text}\n\n${text}`;
+    else this.queue.push({ ...job, text });
     this.schedule(0);
   }
 
