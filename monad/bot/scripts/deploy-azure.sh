@@ -27,7 +27,7 @@ fi
 echo "== code -> ~/terrace/bot (database and .env on the server are kept)"
 rsync -az --delete -e "ssh -i $KEY" --exclude node_modules --exclude .env --exclude 'bot.sqlite*' ./ "$VM:terrace/bot/"
 # The .env goes across as a file, never through the terminal.
-rsync -az --chmod=F600 -e "ssh -i $KEY" .env "$VM:terrace/bot/.env"
+"${SSH[@]}" 'umask 077; cat > ~/terrace/bot/.env && chmod 600 ~/terrace/bot/.env' < .env
 "${SSH[@]}" 'cd ~/terrace/bot && ~/.bun/bin/bun install --production --frozen-lockfile 2>/dev/null || ~/.bun/bin/bun install --production'
 
 if [ "${1:-}" = "--setup" ]; then
