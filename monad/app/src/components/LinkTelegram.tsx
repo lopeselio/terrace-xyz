@@ -18,8 +18,8 @@ const linkMessage = (code: string) => `Link my Terrace record to Telegram: ${cod
 export function LinkTelegram() {
   const q = useSearchParams();
   const code = q.get("code") ?? "";
-  // A configured bot URL wins over the one in the link, so a forged link can't redirect the confirmation.
-  const bot = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || q.get("bot") || "").replace(/\/+$/, "");
+  // Only the configured bot: never a URL from the link, or a forged link could carry the confirmation elsewhere.
+  const bot = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "").replace(/\/+$/, "");
   const { status, address, sign } = useAccount();
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export function LinkTelegram() {
     setState("busy");
     setError(null);
     try {
+      if (!bot) throw new Error("Telegram linking isn't switched on here yet.");
       const signature = await sign(linkMessage(code));
       const r = await fetch(`${bot}/link`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code, address, signature }) });
       const body = (await r.json().catch(() => ({}))) as { name?: string; error?: string };

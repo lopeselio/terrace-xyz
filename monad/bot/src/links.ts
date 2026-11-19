@@ -22,8 +22,8 @@ export function betLink(terraceUrl: string, t: { fixtureId: number; messageId: s
 
 export const collectLink = (terraceUrl: string) => `${trim(terraceUrl)}/live`;
 export const matchLink = (terraceUrl: string, fixtureId: number) => `${trim(terraceUrl)}/m/${fixtureId}`;
-export const linkPage = (terraceUrl: string, botUrl: string, code: string) =>
-  `${trim(terraceUrl)}/link/telegram?${new URLSearchParams({ code, bot: trim(botUrl) })}`;
+export const linkPage = (terraceUrl: string, code: string) =>
+  `${trim(terraceUrl)}/link/telegram?${new URLSearchParams({ code })}`;
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
