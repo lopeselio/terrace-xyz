@@ -9,6 +9,7 @@ export const EARN: { reason: string; label: string; points: number; note?: strin
   { reason: "WIN", label: "A bet comes in", points: 20 },
   { reason: "TAKE", label: "Post a take in the chat", points: 5, note: "first 10 a day" },
   { reason: "TAKE_LISTED", label: "Your take becomes a market", points: 25 },
+  { reason: "CHAT_MARKET", label: "Your group chat's take becomes a market", points: 25, note: "through the Terrace bot" },
   { reason: "TAKE_BACKED", label: "Someone backs your take", points: 5 },
   { reason: "BET_ON_YOUR_TAKE", label: "Someone bets on your take", points: 5 },
   { reason: "CHALLENGE", label: "Send a 1v1", points: 15 },
@@ -18,7 +19,7 @@ export const EARN: { reason: string; label: string; points: number; note?: strin
   { reason: "LEAGUE_JOINED", label: "Join a league", points: 25 },
   { reason: "PICKS", label: "Make your gameweek picks", points: 15 },
   { reason: "VOTE", label: "Vote in your league", points: 5 },
-  { reason: "INVITE", label: "Bring a new fan in", points: 100, note: "through your 1v1 or league link" },
+  { reason: "INVITE", label: "Bring a new fan in", points: 100, note: "through your 1v1, league link or group chat take" },
 ];
 
 const LABEL: Record<string, string> = {

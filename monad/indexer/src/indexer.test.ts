@@ -61,6 +61,34 @@ describe("takes become ranked markets", () => {
     t.expect(author.dayStreak).toBe(1);
   });
 
+  it("a group chat take earns chat-market points and the first-time fans it brings in", async (t) => {
+    const indexer = createTestIndexer();
+    const group = (1n << 255n) | 5n;
+    await indexer.process({
+      chains: {
+        10143: {
+          simulate: [
+            { contract: "TerraceChat", event: "MessagePosted", params: { messageId: 5n, roomKind: 0n, roomId: 1557424n, author: alice, replyTo: 0n, text: "Saka scores Sunday" } },
+            { contract: "TerraceOracle", event: "QuestionCreated", params: { questionId: 2n, fixtureId: 1557424n, kind: 0n, line: 0n, closeTime: 1791732600n, creator: alice, text: "Saka scores Sunday" } },
+            { contract: "TerraceMarkets", event: "MarketCreated", params: { marketId: 3n, questionId: 2n, creator: alice, token: usd, feeBps: 300n, sealed_: false, flash: false } },
+            { contract: "TerraceMarkets", event: "TakeListed", params: { marketId: 3n, chatRef: group, author: alice, questionId: 2n } },
+            { contract: "TerraceMarkets", event: "BetPlaced", params: { marketId: 3n, bettor: alice, side: 1n, stake: 5_000_000n } },
+            { contract: "TerraceMarkets", event: "BetPlaced", params: { marketId: 3n, bettor: carol, side: 2n, stake: 5_000_000n } },
+          ],
+        },
+      },
+    });
+    const market = await indexer.Market.getOrThrow("3");
+    t.expect(market.take_id).toBe("5");
+    t.expect(market.fromGroup).toBe(true);
+    const a = await indexer.Player.getOrThrow(alice.toLowerCase());
+    t.expect(a.invitesLanded).toBe(1);
+    const m = (await indexer.Player.getOrThrow(carol.toLowerCase())).terracePoints / 125n; // welcome 100 + daily 10 + bet 10 + 5
+    t.expect([1n, 2n]).toContain(m);
+    // alice: welcome 100 + daily 10 + take 5 + listed 25 + chat market 25 + bet 10+5 + bet on her take 5 + invite 100
+    t.expect(a.terracePoints).toBe(285n * m);
+  });
+
   it("someone else can't list your take as theirs", async (t) => {
     const indexer = createTestIndexer();
     await indexer.process({

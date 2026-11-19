@@ -18,6 +18,7 @@ export const POINTS = {
   TAKE_BACKED: 5n, // someone backs your take
   BACKED_A_TAKE: 2n, // you back someone's take
   TAKE_LISTED: 25n, // your take becomes a market
+  CHAT_MARKET: 25n, // your group chat's take becomes a market (through the Terrace bot)
   BET: 10n, // place a bet (+1 per dollar staked, up to 25)
   BET_ON_YOUR_TAKE: 5n, // someone else bets on your take
   WIN: 20n, // a bet comes in
@@ -31,7 +32,7 @@ export const POINTS = {
   PICKS: 15n, // submit gameweek picks
   VOTE: 5n,
   PROPOSAL: 10n,
-  INVITE: 100n, // a brand-new fan joins through your 1v1 or league
+  INVITE: 100n, // a brand-new fan joins through your 1v1, league or group chat take
 } as const;
 
 export type Reason = keyof typeof POINTS;
@@ -92,7 +93,7 @@ export async function award(context: Ctx, event: EventMeta, address: string, rea
   return isNew;
 }
 
-/** A new fan arrived through someone's 1v1 or league: thank the person who brought them. */
+/** A new fan arrived through someone's 1v1, league or group chat take: thank the person who brought them. */
 export async function invited(context: Ctx, event: EventMeta, inviter: string) {
   await award(context, event, inviter, "INVITE");
   const p = await player(context, inviter);

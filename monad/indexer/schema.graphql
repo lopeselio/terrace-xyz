@@ -94,6 +94,7 @@ type Market {
   volume: BigInt!
   bettors: Int!
   take: Message # set when the market came from a chat take
+  fromGroup: Boolean! # listed from a group chat through the Terrace bot
   createdAt: BigInt!
   bets: [Bet!]! @derivedFrom(field: "market")
 }
