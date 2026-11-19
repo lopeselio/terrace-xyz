@@ -1,0 +1,22 @@
+{
+  "name": "@terrace/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Terrace group-chat bot: turns Telegram banter into Terrace markets",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "dev": "bun --watch src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "webhook": "bun scripts/webhook.ts"
+  },
+  "dependencies": {
+    "grammy": "^1.30.0",
+    "viem": "^2.37.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "5.9.3"
+  }
+}
