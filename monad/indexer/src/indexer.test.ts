@@ -61,7 +61,7 @@ describe("takes become ranked markets", () => {
     t.expect(author.dayStreak).toBe(1);
   });
 
-  it("a group chat take earns chat-market points and the first-time fans it brings in", async (t) => {
+  it("a group chat take is marked, but the unauthenticated flag earns no extra points", async (t) => {
     const indexer = createTestIndexer();
     const group = (1n << 255n) | 5n;
     await indexer.process({
@@ -82,11 +82,11 @@ describe("takes become ranked markets", () => {
     t.expect(market.take_id).toBe("5");
     t.expect(market.fromGroup).toBe(true);
     const a = await indexer.Player.getOrThrow(alice.toLowerCase());
-    t.expect(a.invitesLanded).toBe(1);
+    t.expect(a.invitesLanded).toBe(0);
     const m = (await indexer.Player.getOrThrow(carol.toLowerCase())).terracePoints / 125n; // welcome 100 + daily 10 + bet 10 + 5
     t.expect([1n, 2n]).toContain(m);
-    // alice: welcome 100 + daily 10 + take 5 + listed 25 + chat market 25 + bet 10+5 + bet on her take 5 + invite 100
-    t.expect(a.terracePoints).toBe(285n * m);
+    // alice: welcome 100 + daily 10 + take 5 + listed 25 + bet 10+5 + bet on her take 5
+    t.expect(a.terracePoints).toBe(160n * m);
   });
 
   it("someone else can't list your take as theirs", async (t) => {

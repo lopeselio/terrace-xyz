@@ -1,8 +1,11 @@
 import { indexer, type EvmOnEventContext } from "envio";
 import { feed, heat, id, player, type EventMeta } from "../lib";
-import { award, invited, stakeBonus } from "../points";
+import { award, stakeBonus } from "../points";
 
-/** Top bit of TakeListed.chatRef: the take came from a group chat through the Terrace bot (app/src/lib/play.ts GROUP_REF). */
+/**
+ * Top bit of TakeListed.chatRef: the lister says the take came from a group chat (app/src/lib/play.ts GROUP_REF).
+ * Anyone can set it, so it marks Market.fromGroup for counting only and earns no points.
+ */
 export const GROUP_REF = 1n << 255n;
 
 indexer.onEvent({ contract: "TerraceMarkets", event: "MarketCreated" }, async ({ event, context }) => {
@@ -39,7 +42,6 @@ indexer.onEvent({ contract: "TerraceMarkets", event: "TakeListed" }, async ({ ev
   context.Player.set({ ...author, takesListed: author.takesListed + 1 });
   feed(context, event, { kind: "TAKE_LISTED", actor: p.author, room_id: message.room_id, message_id: message.id, market_id: market.id, text: message.text });
   await award(context, event, p.author, "TAKE_LISTED");
-  if (fromGroup) await award(context, event, p.author, "CHAT_MARKET");
 });
 
 async function addStake(context: EvmOnEventContext, marketId: string, bettor: string, side: number, stake: bigint, sealed: boolean) {
@@ -93,13 +95,9 @@ indexer.onEvent({ contract: "TerraceMarkets", event: "SealedBetPlaced" }, async 
   if (m) await betPoints(context, event, m, p.bettor, p.stake);
 });
 
-/**
- * Points for a bet, and for the take's author when someone else backs their call with money. A brand-new
- * fan whose first bet is on a group chat's take counts as brought in by whoever listed it.
- */
-async function betPoints(context: EvmOnEventContext, event: EventMeta, m: { take_id?: string; fromGroup: boolean; creator: string }, bettor: string, stake: bigint) {
-  const isNew = await award(context, event, bettor, "BET", stakeBonus(stake));
-  if (isNew && m.fromGroup && m.creator !== id(bettor)) await invited(context, event, m.creator);
+/** Points for a bet, and for the take's author when someone else backs their call with money. */
+async function betPoints(context: EvmOnEventContext, event: EventMeta, m: { take_id?: string }, bettor: string, stake: bigint) {
+  await award(context, event, bettor, "BET", stakeBonus(stake));
   const takeId = m.take_id;
   const take = takeId ? await context.Message.get(takeId) : undefined;
   if (take && take.author !== id(bettor)) await award(context, event, take.author, "BET_ON_YOUR_TAKE");

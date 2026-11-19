@@ -41,11 +41,10 @@ Telegram ──webhook──► src/server.ts ─► src/bot.ts ──► Terrac
 
 - **Rate limits:** one message a second per chat, 18 a minute per group, 25 a second overall;
   queued live updates for the same match merge into one message; `retry_after` pauses the queue.
-- **Points:** takes listed from a group carry a flag in the top bit of `chatRef`
-  (`GROUP_REF` in `app/src/lib/play.ts`). The indexer awards `CHAT_MARKET` (25) to the lister, and when a
-  brand-new fan's first bet is on a group take, `INVITE` (100) to whoever listed it. Both go through the
-  normal points code, so the founding-fan x2 (until 30 Nov 2026) applies. The app only sets the flag when
-  `NEXT_PUBLIC_GROUP_POINTS=1`, which should be switched on once the indexer with this change is live.
+- **Points:** takes listed from a group carry a flag in the top bit of `chatRef` (`GROUP_REF` in
+  `app/src/lib/play.ts`, only set when `NEXT_PUBLIC_GROUP_POINTS=1`). The indexer marks those markets
+  `fromGroup` for counting, but awards nothing for it: anyone can set the bit, so it can't carry points until
+  a trusted source (the bot) vouches for the take. Fans still earn the normal take, listing and bet points.
 
 ## Setup
 
