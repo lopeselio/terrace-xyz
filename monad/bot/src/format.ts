@@ -6,8 +6,11 @@ import type { Fixture } from "./parse";
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export const when = (unix: number, tz: string) =>
-  new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: tz }).format(new Date(unix * 1000));
+/** "Sun 22 Nov, 16:30", built from parts: how Intl joins date and time ("," or "at") differs between runtimes. */
+export const when = (unix: number, tz: string) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz }).formatToParts(new Date(unix * 1000)).map((x) => [x.type, x.value]));
+  return `${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute}`;
+};
 export const clock = (unix: number, tz: string) =>
   new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }).format(new Date(unix * 1000));
 
