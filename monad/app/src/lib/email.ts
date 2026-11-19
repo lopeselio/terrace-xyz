@@ -10,6 +10,12 @@ import { ADDR } from "./contracts";
 export const emailSignInEnabled = () =>
   process.env.NEXT_PUBLIC_EMAIL_SIGNIN === "1" && Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID) && Boolean(ADDR.vault);
 
+/**
+ * Inside the Telegram Mini App, a fan who linked their Telegram to their email sign-in is signed in with no
+ * code (Privy's seamless Telegram login). Needs Telegram set up in the Privy dashboard first, hence its own flag.
+ */
+export const telegramSignInEnabled = () => emailSignInEnabled() && process.env.NEXT_PUBLIC_TELEGRAM_SIGNIN === "1";
+
 export type TypedData = {
   domain: { name: string; version: string; chainId: number; verifyingContract: Address };
   types: Record<string, { name: string; type: string }[]>;
@@ -29,6 +35,12 @@ export type EmailBridge = {
   signMessage: (message: string) => Promise<Hex>;
   signTypedData: (data: TypedData) => Promise<Hex>;
   logout: () => Promise<void>;
+  /** Sign in to an existing Privy user from Telegram's launch data (no code, never a new sign-up). */
+  loginTelegram: () => Promise<void>;
+  /** Link this Telegram to the signed-in Privy user, from the Mini App's launch data. */
+  linkTelegram: (initDataRaw: string) => Promise<void>;
+  /** Whether the signed-in Privy user has a Telegram linked. */
+  hasTelegram: () => boolean;
 };
 
 let bridge: EmailBridge | null = null;
