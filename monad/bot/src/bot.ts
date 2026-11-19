@@ -5,13 +5,13 @@
 import { Bot, InlineKeyboard, type Context } from "grammy";
 import { isDispute, parseTake, resolveFixture, type Fixture } from "./parse";
 import { disputeReply, esc, helpText, marketsCard, matchLabel, tableCard, takeCard, when, type OpenMarket } from "./format";
-import { goLink, linkPage, newToken } from "./links";
+import { goLink, linkPage, miniAppLink, newToken } from "./links";
 import type { Store } from "./store";
 import type { Terrace } from "./terrace";
 import type { SendQueue } from "./ratelimit";
 import { fanName } from "./names";
 
-export type BotConfig = { token: string; botUrl: string; terraceUrl: string; tz: string; defaultStake: number; username?: string; botInfo?: Bot["botInfo"] };
+export type BotConfig = { token: string; botUrl: string; terraceUrl: string; /** t.me/<bot>/<app>: buttons open the Mini App. */ miniApp?: string; tz: string; defaultStake: number; username?: string; botInfo?: Bot["botInfo"] };
 export type BotDeps = { store: Store; terrace: Terrace; queue: SendQueue; now?: () => number };
 
 const STOPPAGE: Record<string, string> = {
@@ -20,7 +20,9 @@ const STOPPAGE: Record<string, string> = {
   bad_input: "Keep the take under 200 characters and name a team.",
 };
 
-export function takeKeyboard(botUrl: string, token: string, fixtureId: number, terraceUrl: string) {
+/** Back it / Fade it / Match room. With a Mini App set they open Terrace inside Telegram, otherwise in the browser. */
+export function takeKeyboard(botUrl: string, token: string, fixtureId: number, terraceUrl: string, miniApp?: string) {
+  if (miniApp) return new InlineKeyboard().url("Back it", miniAppLink(miniApp, `y${token}`)).url("Fade it", miniAppLink(miniApp, `n${token}`)).row().url("Match room", miniAppLink(miniApp, `m${fixtureId}`));
   return new InlineKeyboard().url("Back it", goLink(botUrl, token, "yes")).url("Fade it", goLink(botUrl, token, "no")).row().url("Match room", `${terraceUrl.replace(/\/+$/, "")}/m/${fixtureId}`);
 }
 
@@ -148,7 +150,7 @@ export function createBot(cfg: BotConfig, d: BotDeps) {
     d.store.addPending({ token, chatId: ctx.chat.id, authorTg: by.id, authorName: author, text: parsed.text, fixtureId: f.id, stake, closeTime: c.closeTime, reading: c.reading, ruled: !!c.spec, createdAt: now() });
     const msg = await ctx.reply(takeCard({ author, text: parsed.text, reading: c.reading, fixture: f, closeTime: c.closeTime, stake, ruled: !!c.spec, tz: cfg.tz }), {
       parse_mode: "HTML",
-      reply_markup: takeKeyboard(cfg.botUrl, token, f.id, cfg.terraceUrl),
+      reply_markup: takeKeyboard(cfg.botUrl, token, f.id, cfg.terraceUrl, cfg.miniApp),
       link_preview_options: { is_disabled: true },
     });
     d.store.setPendingMessage(token, msg.message_id);

@@ -18,6 +18,8 @@ const env = (k: string, fallback?: string) => {
 const token = env("TELEGRAM_BOT_TOKEN");
 const botUrl = env("BOT_PUBLIC_URL");
 const terraceUrl = env("TERRACE_URL", "https://play.terrace.social");
+// Optional: the Mini App registered with BotFather (/newapp), e.g. https://t.me/TerraceSocialBot/play.
+const miniApp = process.env.TG_MINIAPP_URL || undefined;
 const tz = env("BOT_TZ", "Europe/London");
 const port = Number(env("PORT", "8787"));
 
@@ -32,9 +34,9 @@ const hub = new FixtureHub({
   publish: (chatId, text, key) => queue.push({ chatId, text, key }),
 });
 const fixtures = (): Promise<Fixture[]> => terrace.cachedMatches();
-const bot = createBot({ token, botUrl, terraceUrl, tz, defaultStake: Number(env("BOT_DEFAULT_STAKE", "5")) }, { store, terrace, queue });
+const bot = createBot({ token, botUrl, terraceUrl, miniApp, tz, defaultStake: Number(env("BOT_DEFAULT_STAKE", "5")) }, { store, terrace, queue });
 await bot.init();
-const watcher = new Watcher({ botUrl, terraceUrl, store, terrace, queue, hub, api, tz, fixtures });
+const watcher = new Watcher({ botUrl, terraceUrl, miniApp, store, terrace, queue, hub, api, tz, fixtures });
 
 const every = (ms: number, name: string, fn: () => Promise<unknown>) => {
   let busy = false;

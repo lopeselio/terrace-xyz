@@ -24,7 +24,7 @@ export const OPENING_SECS = 120;
 
 export function createHandler(cfg: ServerConfig, store: Store, bot: Bot | null, verify: Verify, now = () => Math.floor(Date.now() / 1000)) {
   const hook = bot ? webhookCallback(bot, "std/http", { secretToken: cfg.webhookSecret }) : null;
-  const cors = { "access-control-allow-origin": cfg.terraceUrl.replace(/\/+$/, ""), "access-control-allow-methods": "POST, OPTIONS", "access-control-allow-headers": "content-type" };
+  const cors = { "access-control-allow-origin": cfg.terraceUrl.replace(/\/+$/, ""), "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 
   const opening = new Map<string, number>();
 
@@ -36,7 +36,7 @@ export function createHandler(cfg: ServerConfig, store: Store, bot: Bot | null, 
     const go = url.pathname.match(/^\/go\/([\w-]+)$/);
     if (go && req.method === "GET") {
       let p = store.pending(go[1]);
-      if (!p) return new Response("That take has gone. Ask the group for a fresh one.", { status: 404 });
+      if (!p) return new Response("That take has gone. Ask the group for a fresh one.", { status: 404, headers: cors });
       if (!p.marketId && cfg.claim) {
         await cfg.claim(p).catch(() => false);
         p = store.pending(go[1]) ?? p;
@@ -52,6 +52,8 @@ export function createHandler(cfg: ServerConfig, store: Store, bot: Bot | null, 
         opening.set(p.token, now());
         to = takeLink(cfg.terraceUrl, { fixtureId: p.fixtureId, text: p.text, side, stake: p.stake });
       }
+      // The Mini App (app/src/components/TelegramEntry.tsx) asks for the destination instead of being redirected.
+      if (url.searchParams.get("format") === "json") return Response.json({ to }, { headers: cors });
       return Response.redirect(to, 302);
     }
 

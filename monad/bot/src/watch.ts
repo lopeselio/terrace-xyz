@@ -33,7 +33,7 @@ export function settledNames(bets: IndexedBet[], answer: number, names: Map<stri
   };
 }
 
-export type WatchDeps = { botUrl: string; terraceUrl: string; store: Store; terrace: Terrace; queue: SendQueue; hub: FixtureHub; api: Api | null; tz: string; fixtures: () => Promise<Fixture[]>; now?: () => number };
+export type WatchDeps = { botUrl: string; terraceUrl: string; miniApp?: string; store: Store; terrace: Terrace; queue: SendQueue; hub: FixtureHub; api: Api | null; tz: string; fixtures: () => Promise<Fixture[]>; now?: () => number };
 
 export class Watcher {
   constructor(private d: WatchDeps) {}
@@ -72,7 +72,7 @@ export class Watcher {
     const f = (await this.d.fixtures()).find((x) => x.id === p.fixtureId);
     if (!f) return;
     const text = takeCard({ author: p.authorName, text: p.text, reading: p.reading, fixture: f, closeTime: p.closeTime, stake: p.stake, ruled: p.ruled, tz: this.d.tz }) + listedLine({ backers: m.bettors, pot: (Number(m.yesPool) + Number(m.noPool)) / 1e6 });
-    await this.d.api.editMessageText(p.chatId, p.messageId, text, { parse_mode: "HTML", link_preview_options: { is_disabled: true }, reply_markup: takeKeyboard(this.d.botUrl, p.token, p.fixtureId, this.d.terraceUrl) }).catch(() => undefined);
+    await this.d.api.editMessageText(p.chatId, p.messageId, text, { parse_mode: "HTML", link_preview_options: { is_disabled: true }, reply_markup: takeKeyboard(this.d.botUrl, p.token, p.fixtureId, this.d.terraceUrl, this.d.miniApp) }).catch(() => undefined);
   }
 
   async settleRound() {

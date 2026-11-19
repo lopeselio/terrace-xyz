@@ -67,3 +67,20 @@ describe("/link one-time account link", () => {
     expect((await post({ code: "code1", address: acct.address, signature })).status).toBe(410);
   });
 });
+
+describe("Mini App", () => {
+  test("/go?format=json returns the destination for the Mini App instead of redirecting", async () => {
+    const { handle } = setup();
+    const r = await handle(new Request("http://bot/go/tok?side=yes&format=json"));
+    expect(r.status).toBe(200);
+    expect(r.headers.get("access-control-allow-origin")).toBe("https://play.terrace.social");
+    const { to } = (await r.json()) as { to: string };
+    expect(new URL(to).pathname).toBe("/take");
+  });
+  test("an unknown take is a 404 the Mini App can read", async () => {
+    const { handle } = setup();
+    const r = await handle(new Request("http://bot/go/nope?format=json"));
+    expect(r.status).toBe(404);
+    expect(r.headers.get("access-control-allow-origin")).toBe("https://play.terrace.social");
+  });
+});

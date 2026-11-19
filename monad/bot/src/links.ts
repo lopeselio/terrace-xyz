@@ -20,6 +20,13 @@ export function betLink(terraceUrl: string, t: { fixtureId: number; messageId: s
   return `${trim(terraceUrl)}/m/${t.fixtureId}?${q}#take-${t.messageId}`;
 }
 
+/**
+ * The same buttons as a Telegram Mini App link: opens Terrace in a half-height sheet over the group chat
+ * (https://core.telegram.org/bots/webapps#direct-link-mini-apps). `app` is t.me/<bot>/<short name>.
+ * Params match app/src/lib/telegram.ts parseStart: y<take> / n<take> / m<fixture>.
+ */
+export const miniAppLink = (app: string, param: string) => `${trim(app)}?${new URLSearchParams({ startapp: param, mode: "compact" })}`;
+
 export const collectLink = (terraceUrl: string) => `${trim(terraceUrl)}/live`;
 export const matchLink = (terraceUrl: string, fixtureId: number) => `${trim(terraceUrl)}/m/${fixtureId}`;
 export const linkPage = (terraceUrl: string, code: string) =>
