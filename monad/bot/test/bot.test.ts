@@ -17,8 +17,8 @@ function rig(state: Parameters<typeof fakeTerrace>[0] = {}) {
   const bot = createBot(cfg, { store, terrace, queue, now: () => NOW * 1000 });
   const calls = capture(bot);
   const hub = new FixtureHub({ read: (ids) => terrace.snapshots(ids), fixtures: () => store.liveFixtures(), chats: (id) => store.chatsOfFixture(id), publish: (c, t, k) => queue.push({ chatId: c, text: t, key: k }) });
-  const watcher = new Watcher({ store, terrace, queue, hub, api: bot.api, tz: cfg.tz, fixtures: () => terrace.matches(), now: () => NOW * 1000 + 60_000 });
-  return { store, bot, calls, sent, queue, watcher, state };
+  const watcher = new Watcher({ botUrl: cfg.botUrl, terraceUrl: cfg.terraceUrl, store, terrace, queue, hub, api: bot.api, tz: cfg.tz, fixtures: () => terrace.matches(), now: () => NOW * 1000 + 60_000 });
+  return { store, bot, calls, sent, queue, watcher, state, terrace };
 }
 
 describe("group flow (mocked Telegram)", () => {
@@ -48,6 +48,32 @@ describe("group flow (mocked Telegram)", () => {
     r.queue.stop();
   });
 
+  test("only the take's author picks the match; the card stays theirs", async () => {
+    const r = rig();
+    await r.bot.handleUpdate(groupText("/take City or United win this weekend"));
+    const ask = r.calls.filter((c) => c.method === "sendMessage").at(-1)!;
+    const data = (ask.payload.reply_markup as { inline_keyboard: { callback_data: string }[][] }).inline_keyboard[0][0].callback_data;
+    const tap = (from: { id: number; first_name: string }, n: number) =>
+      r.bot.handleUpdate({ update_id: 900 + n, callback_query: { id: `cb${n}`, from: { ...from, is_bot: false }, chat_instance: "ci", data, message: { message_id: 50, date: NOW, chat: { id: -100, type: "group", title: "G" } } } } as never);
+    await tap({ id: 8, first_name: "Bob" }, 1);
+    expect(r.calls.find((c) => c.method === "answerCallbackQuery")!.payload.text).toBe("That's Dave's take to place.");
+    expect(r.store.unclaimed(0)).toEqual([]);
+    await tap({ id: 7, first_name: "Dave" }, 2);
+    expect(r.store.unclaimed(0)[0].authorName).toBe("Dave");
+    expect(r.store.unclaimed(0)[0].authorTg).toBe(7);
+    r.queue.stop();
+  });
+
+  test("an unreachable compiler still gets a plain reply", async () => {
+    const r = rig();
+    r.terrace.compile = async () => {
+      throw new Error("fetch failed");
+    };
+    await r.bot.handleUpdate(groupText("/take Arsenal beat Chelsea"));
+    expect(r.calls.at(-1)!.payload.text).toContain("couldn't read that one");
+    r.queue.stop();
+  });
+
   test("compiler stoppage is explained in plain words", async () => {
     const r = rig({ compileError: "match_data" });
     await r.bot.handleUpdate(groupText("/take Arsenal beat Chelsea"));
@@ -70,7 +96,10 @@ describe("group flow (mocked Telegram)", () => {
     r.state.markets = [market];
     expect(await r.watcher.claimRound()).toBe(1);
     expect(r.store.marketsOfChat(-100).map((m) => m.marketId)).toEqual(["77"]);
-    expect(r.calls.some((c) => c.method === "editMessageText" && String(c.payload.text).includes("2 in, $15"))).toBe(true);
+    const edit = r.calls.find((c) => c.method === "editMessageText")!;
+    expect(String(edit.payload.text)).toContain("2 in, $15");
+    // Back it / Fade it stay on the card after the market opens.
+    expect(JSON.stringify(edit.payload.reply_markup)).toContain("Fade it");
     r.store.link(7, "0x00000000000000000000000000000000000000aa", "Dave", 1);
     r.state.markets = [{ ...market, question: { ...market.question, answer: 1 } }];
     r.state.bets = [
@@ -94,7 +123,7 @@ describe("group flow (mocked Telegram)", () => {
     const dm = groupText("/start link", { id: 7, first_name: "Dave" }, 7);
     (dm.message.chat as { type: string }).type = "private";
     await r.bot.handleUpdate(dm);
-    expect(JSON.stringify(r.calls.at(-1)!.payload.reply_markup)).toMatch(/link\/telegram\?code=[\w-]+&bot=https%3A%2F%2Fbot\.example/);
+    expect(JSON.stringify(r.calls.at(-1)!.payload.reply_markup)).toMatch(/link\/telegram\?code=[\w-]+"/);
     r.queue.stop();
   });
 });

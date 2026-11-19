@@ -2,6 +2,7 @@
  * Background rounds: spot the market a group take opened, post full-time results, and drive the
  * per-fixture live updates. All reads; settlement itself stays with Chainlink CRE.
  */
+import { takeKeyboard } from "./bot";
 import type { Api } from "grammy";
 import { listedLine, settlementCard, takeCard } from "./format";
 import { fanName } from "./names";
@@ -32,7 +33,7 @@ export function settledNames(bets: IndexedBet[], answer: number, names: Map<stri
   };
 }
 
-export type WatchDeps = { store: Store; terrace: Terrace; queue: SendQueue; hub: FixtureHub; api: Api | null; tz: string; fixtures: () => Promise<Fixture[]>; now?: () => number };
+export type WatchDeps = { botUrl: string; terraceUrl: string; store: Store; terrace: Terrace; queue: SendQueue; hub: FixtureHub; api: Api | null; tz: string; fixtures: () => Promise<Fixture[]>; now?: () => number };
 
 export class Watcher {
   constructor(private d: WatchDeps) {}
@@ -41,10 +42,18 @@ export class Watcher {
   }
 
   async claimRound() {
-    const pending = this.d.store.unclaimed(this.now);
+    return this.claim(this.d.store.unclaimed(this.now));
+  }
+
+  /** Look for one take's market right now (a fan tapped its link): true once it's mapped to the chat. */
+  async claimOne(p: Pending) {
+    return (await this.claim([p])) > 0;
+  }
+
+  private async claim(pending: Pending[]) {
     if (!pending.length) return 0;
     const since = Math.min(...pending.map((p) => p.createdAt)) - 5;
-    const markets = await this.d.terrace.takeMarketsSince([...new Set(pending.map((p) => p.fixtureId))], since);
+    const markets = await this.d.terrace.takeMarketsSince([...new Set(pending.map((p) => p.fixtureId))], [...new Set(pending.map((p) => p.text))], since);
     let claimed = 0;
     for (const m of markets) {
       if (this.d.store.isClaimed(m.id)) continue;
@@ -57,13 +66,13 @@ export class Watcher {
     return claimed;
   }
 
-  /** Update the take card in place: the buttons already redirect to the live market via /go. */
+  /** Update the take card in place, keeping Back it / Fade it: /go now sends them to the live market. */
   private async markOpen(p: Pending, m: IndexedMarket) {
     if (!this.d.api || !p.messageId) return;
     const f = (await this.d.fixtures()).find((x) => x.id === p.fixtureId);
     if (!f) return;
     const text = takeCard({ author: p.authorName, text: p.text, reading: p.reading, fixture: f, closeTime: p.closeTime, stake: p.stake, ruled: p.ruled, tz: this.d.tz }) + listedLine({ backers: m.bettors, pot: (Number(m.yesPool) + Number(m.noPool)) / 1e6 });
-    await this.d.api.editMessageText(p.chatId, p.messageId, text, { parse_mode: "HTML", link_preview_options: { is_disabled: true } }).catch(() => undefined);
+    await this.d.api.editMessageText(p.chatId, p.messageId, text, { parse_mode: "HTML", link_preview_options: { is_disabled: true }, reply_markup: takeKeyboard(this.d.botUrl, p.token, p.fixtureId, this.d.terraceUrl) }).catch(() => undefined);
   }
 
   async settleRound() {
