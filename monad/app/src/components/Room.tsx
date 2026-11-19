@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { BetSheet, type BetPick } from "./BetSheet";
 import { ChallengeSheet } from "./ChallengeSheet";
+import { shareLink } from "./Header";
 import { Icon } from "./Icon";
 import { SignIn } from "./SignIn";
 import { TakeSheet } from "./TakeSheet";
@@ -271,6 +272,11 @@ export function Room({
                   <Icon name="shield" size={12} />
                   {mk.question.spec ? "Settles from live match data, checked by Chainlink" : "Settles after full time: Terrace AI judges it, Chainlink checks"}
                 </p>
+              )}
+              {mk && (
+                <button type="button" className="btn-out" style={{ marginTop: 6 }} onClick={() => shareLink(`“${m.text}”`, `“${m.text}” — back it or fade it on Terrace:`, `${window.location.origin}/b/${mk.id}`)}>
+                  Post to group
+                </button>
               )}
 
               {mk && (
