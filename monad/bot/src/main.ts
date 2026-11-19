@@ -31,14 +31,10 @@ const hub = new FixtureHub({
   chats: (id) => store.chatsOfFixture(id),
   publish: (chatId, text, key) => queue.push({ chatId, text, key }),
 });
-let cache: { at: number; list: Fixture[] } | null = null;
-const fixtures = async () => {
-  if (!cache || Date.now() - cache.at > 60_000) cache = { at: Date.now(), list: await terrace.matches() };
-  return cache.list;
-};
+const fixtures = (): Promise<Fixture[]> => terrace.cachedMatches();
 const bot = createBot({ token, botUrl, terraceUrl, tz, defaultStake: Number(env("BOT_DEFAULT_STAKE", "5")) }, { store, terrace, queue });
 await bot.init();
-const watcher = new Watcher({ store, terrace, queue, hub, api, tz, fixtures });
+const watcher = new Watcher({ botUrl, terraceUrl, store, terrace, queue, hub, api, tz, fixtures });
 
 const every = (ms: number, name: string, fn: () => Promise<unknown>) => {
   let busy = false;
@@ -59,6 +55,6 @@ every(30_000, "live", () => hub.poll());
 every(5_000, "flush", async () => hub.flush());
 every(60_000, "settle", () => watcher.settleRound());
 
-const handler = createHandler({ terraceUrl, webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET, rpcUrl: env("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz") }, store, bot, viemVerify(env("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")));
+const handler = createHandler({ terraceUrl, webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET, rpcUrl: env("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz"), claim: (p) => watcher.claimOne(p) }, store, bot, viemVerify(env("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")));
 Bun.serve({ port, fetch: handler });
 console.log(`Terrace bot @${bot.botInfo.username} on :${port}, webhook ${botUrl}/telegram`);

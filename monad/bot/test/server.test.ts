@@ -22,6 +22,26 @@ describe("/go deep links", () => {
     expect(to.pathname).toBe("/take");
     expect(Object.fromEntries(to.searchParams)).toEqual({ match: "101", text: "Arsenal win", side: "no", stake: "10", via: "group" });
   });
+  test("while the first fan's market is being indexed, others go to the match room, not a second market", async () => {
+    const { handle } = setup();
+    const first = await handle(new Request("http://bot/go/tok?side=yes"));
+    expect(new URL(first.headers.get("location")!).pathname).toBe("/take");
+    const second = await handle(new Request("http://bot/go/tok?side=no"));
+    expect(second.headers.get("location")).toBe("https://play.terrace.social/m/101");
+  });
+  test("a tap looks the market up on demand, so it lands on the bet sheet straight away", async () => {
+    const s = new Store();
+    s.addPending({ token: "tok", chatId: -1, authorTg: 7, authorName: "Dave", text: "Arsenal win", fixtureId: 101, stake: 10, closeTime: 9e9, reading: "r", ruled: true, createdAt: 1 });
+    const handle = createHandler({ ...cfg, claim: async (p) => s.claim(p.token, "42", "7", 2) }, s, null, verify, () => 100);
+    const r = await handle(new Request("http://bot/go/tok?side=no"));
+    expect(r.headers.get("location")).toBe("https://play.terrace.social/m/101?bet=no&stake=10&via=group#take-7");
+  });
+  test("a market with no take message goes to the match room", async () => {
+    const { s, handle } = setup();
+    s.claim("tok", "42", null, 2);
+    const r = await handle(new Request("http://bot/go/tok?side=yes"));
+    expect(r.headers.get("location")).toBe("https://play.terrace.social/m/101");
+  });
   test("after: the take in its match room, bet sheet up", async () => {
     const { s, handle } = setup();
     s.claim("tok", "42", "7", 2);
