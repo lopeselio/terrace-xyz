@@ -26,6 +26,8 @@ export type BetPick = {
   place: (dollars: number) => Promise<unknown>;
   /** Extra line under the price (e.g. how it settles). */
   note?: ReactNode;
+  /** Stake to start with (a group chat's deep link). */
+  stake?: number;
 };
 
 const STAKES = [5, 10, 20, 50];
@@ -34,7 +36,7 @@ const STAKES = [5, 10, 20, 50];
 export function BetSheet({ pick, onClose, onPlaced }: { pick: BetPick; onClose: () => void; onPlaced?: () => void }) {
   const { status } = useAccount();
   const { balance } = useBalance();
-  const [stake, setStake] = useState("10");
+  const [stake, setStake] = useState(String(pick.stake ?? 10));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<number | null>(null);
